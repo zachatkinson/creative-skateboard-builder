@@ -9,6 +9,7 @@ declare( strict_types=1 );
 
 namespace CreativeBranding\SkateboardBuilder\Tests\Integration;
 
+use CreativeBranding\SkateboardBuilder\Adapter\KitProduct;
 use CreativeBranding\SkateboardBuilder\Tests\Support\LayerFiles;
 use CreativeBranding\SkateboardBuilder\Service\PartRenditions;
 use CreativeBranding\SkateboardBuilder\Cart\ShowHooks;
@@ -198,7 +199,7 @@ final class BuilderPageTest extends IntegrationTestCase {
 			$regions[] = strtok( $region->getAttribute( 'class' ), ' ' );
 		}
 		self::assertSame(
-			array( 'cbuild__status', 'cbuild__limited', 'cbuild-progress', 'cbuild__stage', 'cbuild-errors', 'cbuild__heading', 'cbuild-step__lead', 'cbuild-step', 'cbuild-presets', 'cbuild-changes', 'cbuild-review', 'cbuild-bar' ),
+			array( 'cbuild__status', 'cbuild-progress', 'cbuild__stage', 'cbuild-errors', 'cbuild__heading', 'cbuild-step__lead', 'cbuild-step', 'cbuild-presets', 'cbuild-changes', 'cbuild-review', 'cbuild-bar' ),
 			$regions
 		);
 		// No directive is left outside a region, where nothing would run it.
@@ -319,13 +320,48 @@ final class BuilderPageTest extends IntegrationTestCase {
 		self::assertMatchesRegularExpression( '#;--cbuild-mask:url\("[^"]+/creative-skateboard-builder/layers/[0-9]+-[0-9a-f]{20}-432x1626\.webp"\)$#', $top->item( 0 )->getAttribute( 'style' ), 'its outline is the deck\'s largest WebP rendition' );
 		self::assertSame( 1, $dom->query( '//div[contains(@class,"cbuild-bar")]//span[contains(@class,"cbuild-board--top")]/span' )->length, 'the bar has the same top' );
 
-		$button = $dom->query( '//div[@class="cbuild-picture__turn"][not(@hidden)]/button[@hidden]' )->item( 0 );
-		self::assertInstanceOf( \DOMElement::class, $button, 'offered by the script alone' );
-		self::assertSame( array( 'button', 'false', 'Show the top' ), array( $button->getAttribute( 'type' ), $button->getAttribute( 'aria-pressed' ), trim( $button->textContent ) ) );
+		// F28 (#128): a button a side, Underside and Top, the side shown pressed, in a group the picture's heading names.
+		$group = $dom->query( '//div[@class="cbuild-picture__turn"][not(@hidden)]/div[@class="cbuild-picture__sides"][@hidden]' )->item( 0 );
+		self::assertInstanceOf( \DOMElement::class, $group, 'offered by the script alone' );
+		self::assertSame( array( 'group', 'cbuild-picture-heading' ), array( $group->getAttribute( 'role' ), $group->getAttribute( 'aria-labelledby' ) ) );
+		$buttons = array();
+		foreach ( $dom->query( './button', $group ) as $button ) {
+			self::assertInstanceOf( \DOMElement::class, $button );
+			$buttons[] = array( $button->getAttribute( 'type' ), trim( $button->textContent ), $button->getAttribute( 'aria-pressed' ) );
+		}
+		self::assertSame( array( array( 'button', 'Underside', 'true' ), array( 'button', 'Top', 'false' ) ), $buttons, 'the trucks step shows the underside' );
 
 		$caption = '//figcaption[contains(@class,"cbuild-picture__description")]';
 		self::assertNotNull( $dom->query( $caption . '/span[not(@hidden)]/span[not(@hidden)][.="Seen from underneath."]' )->item( 0 ) );
 		self::assertNotNull( $dom->query( $caption . '/span/span[@hidden][.="Seen from the top."]' )->item( 0 ) );
+	}
+
+	// Cowork's review of 1.1.0, F29 (issue #129, D-371): the top drew the demo's grips from their 350 KB files, as no
+	// rendition of a grip that gives no size was made. Its index job makes them, and the top takes the largest WebP.
+	public function test_the_tops_grip_is_drawn_from_its_largest_webp_rendition_when_the_grip_gives_no_size(): void {
+		$grips = self::factory()->term->create( array( 'taxonomy' => 'product_cat' ) );
+		$grip  = $this->part( 'Grip', '8', array(), $grips );
+		$slots = KitDocuments::slots();
+		foreach ( array( 0 => $this->parts['deck 8.5'], 1 => $this->parts['truck 149'] ) as $at => $part ) {
+			$slots['slots'][ $at ]['sources'] = array( 'categories' => array_map( 'intval', wp_get_post_terms( $part, 'product_cat', array( 'fields' => 'ids' ) ) ) );
+		}
+		$slots['slots'][6]['sources'] = array( 'categories' => array( $grips ) );
+		$kit                          = wc_get_product( $this->kit );
+		self::assertInstanceOf( KitProduct::class, $kit );
+		$kit->setDocument( Options::META_KIT_SLOTS, $slots );
+		$kit->save();
+		foreach ( array( $this->parts['deck 8.5'] => array( 432, 1626, true, 'png' ), $grip => array( 572, 2096, true, 'webp' ) ) as $part => $file ) {
+			$product = wc_get_product( $part );
+			$product->update_meta_data( Options::META_LAYER, (string) LayerFiles::attachment( ...$file ) );
+			$product->save();
+		}
+		self::work();
+		$this->service( Kits::class )->forget();
+
+		$dom   = self::dom( $this->kitPage( array( 'deck' => (string) $this->parts['deck 8.5'], 'grip' => (string) $grip, 'step' => 'grip' ) ) );
+		$layer = $dom->query( '//figure[@id="cbuild-picture"]/div[contains(@class,"cbuild-board--top")]/span[contains(@class,"cbuild-board__layer--grip")]' )->item( 0 );
+		self::assertInstanceOf( \DOMElement::class, $layer );
+		self::assertMatchesRegularExpression( '#;--cbuild-image:url\("[^"]+/creative-skateboard-builder/layers/[0-9]+-[0-9a-f]{20}-458x1677\.webp"\)#', $layer->getAttribute( 'style' ), 'the 9 by 33 in sheet at 2 px/mm, not the full-size file' );
 	}
 
 	public function test_the_kits_page_gives_the_store_its_route_page_and_language_and_loads_it(): void {
@@ -338,6 +374,8 @@ final class BuilderPageTest extends IntegrationTestCase {
 				'page'     => $this->kit,
 				'locale'   => determine_locale(),
 				'title'    => PageTitle::around( PageTitle::base() ),
+				// What the step says when the route has not answered in time (D-364).
+				'late'     => 'The shop did not answer in time. Try again in a moment.',
 			),
 			wp_interactivity_config( BuilderPage::STORE )
 		);
@@ -619,6 +657,43 @@ final class BuilderPageTest extends IntegrationTestCase {
 		self::assertSame( 'false', $dom->query( $path . '//button[@value="8in"]' )->item( 0 )->getAttribute( 'aria-pressed' ) );
 		self::assertNotNull( $dom->query( '//input[@type="hidden"][@name="cbuild[_width]"][@value="8.5in"]' )->item( 0 ), 'the width stays on through a pick' );
 		self::assertNotNull( $dom->query( '//input[@type="hidden"][@name="cbuild[_on]"][@value="deck"]' )->item( 0 ), 'the step its form is on' );
+	}
+
+	/**
+	 * The deck step at 8″ with more decks than a step lists alone, so it has Sort, as the step's form sends it: Sort's
+	 * row and the count's paragraph, as served.
+	 *
+	 * @param array<string, string> $sent The build link's shelf fields.
+	 * @return array{0: DOMXPath, 1: \DOMElement, 2: \DOMElement}
+	 */
+	private function sortAndCount( array $sent ): array {
+		$decks = (int) wp_get_object_terms( $this->parts['deck 8.0'], 'product_cat', array( 'fields' => 'ids' ) )[0];
+		for ( $at = 0; $at < 13; $at++ ) {
+			$this->parts[ 'deck 8.0 ' . $at ] = $this->part( 'Deck 8.0 no. ' . $at, '65', array( 'deck_width' => '8.0000' ), $decks );
+		}
+		$dom   = self::dom( $this->kitPage( array( '_on' => 'deck', '_width' => '8in' ) + $sent ) );
+		$sort  = $dom->query( '//div[contains(@class,"cbuild-step__bar")]' )->item( 0 );
+		$count = $dom->query( '//p[contains(@class,"cbuild-step__more")]' )->item( 0 );
+		self::assertInstanceOf( \DOMElement::class, $sort );
+		self::assertInstanceOf( \DOMElement::class, $count );
+		return array( $dom, $sort, $count );
+	}
+
+	// Cowork's 1.1.0 review, F26 (#124): a search that found nothing still showed Sort and "Showing 0 of 0" under its
+	// message. With nothing listed, neither is in the page; with decks listed, both are (the next test).
+	public function test_a_search_that_lists_nothing_shows_no_sort_and_no_count(): void {
+		[ $dom, $sort, $count ] = $this->sortAndCount( array( '_q' => 'zzzq' ) );
+		self::assertFalse( $dom->query( '//div[contains(@class,"cbuild-found")]' )->item( 0 )->hasAttribute( 'hidden' ), 'the search says it found nothing' );
+		self::assertTrue( $sort->hasAttribute( 'hidden' ), 'no Sort' );
+		self::assertTrue( $count->hasAttribute( 'hidden' ), 'no count' );
+		self::assertSame( '', trim( $count->textContent ) );
+	}
+
+	public function test_a_step_that_lists_decks_shows_sort_and_the_count(): void {
+		[ , $sort, $count ] = $this->sortAndCount( array() );
+		self::assertFalse( $sort->hasAttribute( 'hidden' ), 'Sort' );
+		self::assertFalse( $count->hasAttribute( 'hidden' ), 'the count' );
+		self::assertSame( 'Showing 14 of 14', trim( $count->textContent ) );
 	}
 
 	public function test_a_step_past_one_the_build_leaves_empty_stays_there_and_says_why(): void {

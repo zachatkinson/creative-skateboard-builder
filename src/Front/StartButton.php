@@ -26,11 +26,16 @@ if ( ! defined( 'ABSPATH' ) ) {
  * variable.php:125, external.php:32, grouped.php:145), that opens a kit's builder with the deck picked. The deck brings
  * its width, so the builder skips the question.
  *
- * - **Which kit.** One whose first slot offers the product, or one of its variations, in stock; where more than one
- *   does, the first by menu order, then by ID.
+ * - **Which kit.** One whose first slot offers the product, or one of its variations, in stock, and whose Build tab
+ *   leaves Show "Build a complete with this deck" on its parts' pages on (1.2.0, #115); where more than one does, the
+ *   first by menu order, then by ID.
  * - **Which deck.** The product, or its first variation the kit offers in stock; on a variable product's page, the
  *   variation the shopper chooses in its form, where the kit offers it in stock (the spec reviewer's M10 minor M3).
  * - **What a shop changes.** `cbuild_start_button`.
+ * - **How it is drawn** (#133, D-377). As the theme's own button, `button` for a classic theme and `wp-element-button`
+ *   for a block theme, and never Add to cart's `single_add_to_cart_button`, which WooCommerce's scripts bind to, nor
+ *   `alt`. A script after it gives it Add to cart's font and height as the page draws them, and where the theme draws
+ *   both buttons the same it takes Add to cart's colour as an outline, so it reads as the page's second action.
  *
  * @since 1.0.0
  */
@@ -50,6 +55,39 @@ final class StartButton implements Hookable {
 	private const string FOLLOW = 'jQuery(function($){$(".variations_form").on("found_variation reset_data",function(e,v){$(".cbuild-start__link[data-cbuild-starts]").each(function(){var a=$(this),s=a.data("cbuildStarts")||{},d=a.data("cbuildStart");a.attr("href",v&&s[v.variation_id]?s[v.variation_id]:d);});});});';
 
 	/**
+	 * The handle the button's few rules are printed under: a handle with no file, as the carts' (D-377).
+	 */
+	private const string HANDLE = 'cbuild-start';
+
+	/**
+	 * The outline the button takes where the theme draws it as Add to cart's twin, in the colour the script below sets
+	 * as `--cbuild-start-ink`. Its weight outranks a theme's plain `.button:hover`. An inset ring, not a border, so its
+	 * height stays Add to cart's. Focused, the button is the theme's own, so the theme's focus mark shows whether it is
+	 * an outline, a shadow or a background (the auditor's third pass on M12). The paragraph keeps no inline padding: WooCommerce's add-to-cart form
+	 * block pads every child after its first by 4 px (`:where(.wp-block-woocommerce-add-to-cart-form>*+*)`, in
+	 * assets/client/blocks/wc-block-library-style.css, 11.3.1), which set the button 4 px in from the quantity and
+	 * Add to cart on a block theme.
+	 */
+	private const string STYLES = '.cbuild-start{padding-inline:0}:where(.cbuild-start__link){display:inline-block}.cbuild-start .cbuild-start__link.cbuild-start__link--outline:not(:focus){background:transparent;color:var(--cbuild-start-ink);border-color:var(--cbuild-start-ink);box-shadow:inset 0 0 0 2px var(--cbuild-start-ink)}.cbuild-start .cbuild-start__link.cbuild-start__link--outline:not(:focus):hover{background:color-mix(in srgb,var(--cbuild-start-ink) 12%,transparent)}';
+
+	/**
+	 * Gives the button just printed Add to cart's font, weight and height as the page draws them (#133, D-377): a theme
+	 * may style Add to cart through its own class or a setting aimed at it alone, which no rule of the plugin's can
+	 * name without naming the theme. The padding makes up any difference in the borders. Where the theme draws the two
+	 * in the same colours, the button takes the outline above, in Add to cart's fill where that reads at 4.5:1 or more
+	 * against the first background behind the button that is not transparent (white where none is), else in Add to
+	 * cart's words where they do, else not at all, keeping the theme's own button (WCAG 1.4.3, 1.4.11). The ratio is
+	 * WCAG's, from relative luminance; a part-transparent background is read as solid, and a background image not at
+	 * all. The script holds no angle bracket: a block theme passes the template's markup through WordPress's
+	 * texturizer, which takes a "<" and a later ">" in a script for a tag and turns the script's "&&" into entities. It runs as the button is parsed, before the first paint,
+	 * and finds every start button where a page has moved the script away from it. A theme's button may change size at
+	 * a breakpoint, so a ResizeObserver on Add to cart copies them again whenever its size changes, and lets go once it
+	 * leaves the page. The copy is made with the theme's transitions off, so a theme that eases every change of its
+	 * buttons (Kadence's) shows no growing or shrinking button. Without it the button is the theme's as it stands.
+	 */
+	private const string MATCH = '(function(s){var w=s&&s.previousElementSibling,u=function(x){var m=String(x).match(/^rgba?\\(([^)]*)\\)$/);return m?m[1].split(/[\\s,\\/]+/).filter(Boolean).map(parseFloat):null},l=function(v){return[.2126,.7152,.0722].reduce(function(t,k,i){var j=v[i]/255;return t+k*(j===Math.min(j,.04045)?j/12.92:Math.pow((j+.055)/1.055,2.4));},0)},q=function(x,y){var i=u(x),j=u(y),h,m;if(!i||!j){return 0;}h=l(i);m=l(j);return(Math.max(h,m)+.05)/(Math.min(h,m)+.05)};[].forEach.call(w&&w.matches(".cbuild-start")?[w]:document.querySelectorAll(".cbuild-start"),function(p){var b=p.querySelector(".cbuild-start__link"),a=(p.closest(".product")||document).querySelector(".single_add_to_cart_button");if(!b||!a){return;}var c=getComputedStyle(a),o=getComputedStyle(b),n=function(x,k){return parseFloat(x[k])||0},r=window.ResizeObserver?new ResizeObserver(function(){f();}):null,f=function(){if(!a.isConnected){if(r){r.disconnect();}return;}b.style.transition="none";["fontFamily","fontSize","fontWeight","letterSpacing","lineHeight"].forEach(function(k){b.style[k]=c[k];});b.style.paddingTop=Math.max(0,n(c,"paddingTop")+n(c,"borderTopWidth")-n(o,"borderTopWidth"))+"px";b.style.paddingBottom=Math.max(0,n(c,"paddingBottom")+n(c,"borderBottomWidth")-n(o,"borderBottomWidth"))+"px";void b.offsetHeight;b.style.transition="";};if(o.backgroundColor===c.backgroundColor&&o.color===c.color){var g="rgb(255, 255, 255)",e,t,v,k,i;for(e=p;e;e=e.parentElement){t=getComputedStyle(e).backgroundColor;v=u(t);if(v&&0!==v[3]){g=t;break;}}k=/^(transparent|rgba\\(.*, 0\\))$/.test(c.backgroundColor)?c.color:c.backgroundColor;i=4.5===Math.min(q(k,g),4.5)?k:4.5===Math.min(q(c.color,g),4.5)?c.color:"";if(i){b.style.setProperty("--cbuild-start-ink",i);b.classList.add("cbuild-start__link--outline");}}if("inline"===o.display){b.style.display="inline-block";}f();if(r){r.observe(a);}});})(document.currentScript);';
+
+	/**
 	 * Constructor.
 	 *
 	 * @since 1.0.0
@@ -57,6 +95,28 @@ final class StartButton implements Hookable {
 	 * @param Closure(): Kits $kits The kits and their parts, built on a product's page alone.
 	 */
 	public function __construct( private Closure $kits ) {}
+
+	/**
+	 * Where each kit's builder is, as its Build tab chose (1.2.0, #113): none in a copy an earlier release's container
+	 * built, which asks `BuilderUrl::of()` as 1.1.0 did (D-208).
+	 *
+	 * @var BuilderAddress|null
+	 */
+	private ?BuilderAddress $address = null;
+
+	/**
+	 * The same, sending shoppers to the Builder page each kit's Build tab chose (#113, D-348). Only this release's
+	 * container calls it (D-208).
+	 *
+	 * @since 1.2.0
+	 *
+	 * @param BuilderAddress $address Where each kit's builder is.
+	 */
+	public function withAddress( BuilderAddress $address ): self {
+		$copy          = clone $this;
+		$copy->address = $address;
+		return $copy;
+	}
 
 	/**
 	 * Attach hooks: the button is placed once the request knows its product, so a shop's filter can move it.
@@ -109,23 +169,34 @@ final class StartButton implements Hookable {
 		if ( null === $read || null === $slot || $part < 1 || '' === $text || '' === $hook ) {
 			return;
 		}
-		$url    = ( new BuildLink() )->pick( $slot->key, $part )->address( BuilderUrl::of( $kit ), $read->slots );
-		$starts = $this->starts( $product, $kit, $slot, $read );
+		$base   = $this->address?->of( $kit, $read ) ?? BuilderUrl::of( $kit );
+		$url    = ( new BuildLink() )->pick( $slot->key, $part )->address( $base, $read->slots );
+		$starts = $this->starts( $product, $kit, $slot, $read, $base );
 		add_action(
 			$hook,
 			static function () use ( $url, $text, $starts ): void {
 				if ( array() === $starts ) {
-					printf( '<p class="cbuild-start"><a class="button cbuild-start__link" href="%1$s" rel="nofollow">%2$s</a></p>', esc_url( $url ), esc_html( $text ) );
-					return;
+					printf( '<p class="cbuild-start"><a class="button wp-element-button cbuild-start__link" href="%1$s" rel="nofollow">%2$s</a></p>', esc_url( $url ), esc_html( $text ) );
+				} else {
+					printf(
+						'<p class="cbuild-start"><a class="button wp-element-button cbuild-start__link" href="%1$s" rel="nofollow" data-cbuild-start="%1$s" data-cbuild-starts="%2$s">%3$s</a></p>',
+						esc_url( $url ),
+						esc_attr( (string) wp_json_encode( array_map( 'esc_url_raw', $starts ) ) ),
+						esc_html( $text )
+					);
 				}
-				printf(
-					'<p class="cbuild-start"><a class="button cbuild-start__link" href="%1$s" rel="nofollow" data-cbuild-start="%1$s" data-cbuild-starts="%2$s">%3$s</a></p>',
-					esc_url( $url ),
-					esc_attr( (string) wp_json_encode( array_map( 'esc_url_raw', $starts ) ) ),
-					esc_html( $text )
-				);
+				wp_print_inline_script_tag( self::MATCH );
 			},
 			Cast::int( $said['priority'] ?? 10 )
+		);
+		add_action(
+			'wp_enqueue_scripts',
+			static function (): void {
+				// A handle with no file: WordPress prints what is added to it and asks for nothing.
+				wp_register_style( self::HANDLE, false, array(), CBUILD_VERSION );
+				wp_add_inline_style( self::HANDLE, self::STYLES );
+				wp_enqueue_style( self::HANDLE );
+			}
 		);
 		if ( array() !== $starts ) {
 			// After WooCommerce registers its variation script (class-wc-frontend-scripts.php:56, :238 in 11.3.0).
@@ -142,13 +213,14 @@ final class StartButton implements Hookable {
 	/**
 	 * On a variable product's page, the builder's link for each of its variations the slot offers in stock, by ID.
 	 *
-	 * @param int  $product The product's ID.
-	 * @param int  $kit     The kit product's ID.
-	 * @param Slot $slot    The slot the deck is picked in.
-	 * @param Kit  $read    The kit.
+	 * @param int    $product The product's ID.
+	 * @param int    $kit     The kit product's ID.
+	 * @param Slot   $slot    The slot the deck is picked in.
+	 * @param Kit    $read    The kit.
+	 * @param string $base    The builder's address for the kit.
 	 * @return array<int, string>
 	 */
-	private function starts( int $product, int $kit, Slot $slot, Kit $read ): array {
+	private function starts( int $product, int $kit, Slot $slot, Kit $read, string $base ): array {
 		$found = wc_get_product( $product );
 		if ( ! $found instanceof \WC_Product_Variable ) {
 			return array();
@@ -157,7 +229,7 @@ final class StartButton implements Hookable {
 		$starts   = array();
 		foreach ( ( $this->kits )()->offered( $kit, $slot ) as $part ) {
 			if ( $part->inStock && in_array( $part->id, $children, true ) ) {
-				$starts[ $part->id ] = ( new BuildLink() )->pick( $slot->key, $part->id )->address( BuilderUrl::of( $kit ), $read->slots );
+				$starts[ $part->id ] = ( new BuildLink() )->pick( $slot->key, $part->id )->address( $base, $read->slots );
 			}
 		}
 		return $starts;
@@ -188,7 +260,9 @@ final class StartButton implements Hookable {
 		foreach ( $kits as $kit ) {
 			$read = $every->isPublic( $kit ) ? $every->kit( $kit ) : null;
 			$slot = null === $read ? null : ( $read->slots->all()[0] ?? null );
-			if ( null === $read || null === $slot ) {
+			// A kit whose Show "Build a complete with this deck" on its parts' pages is off is passed over, and the next
+			// that offers the part places it (#115, D-349).
+			if ( null === $read || null === $slot || ! $read->settings->startButton ) {
 				continue;
 			}
 			if ( ! in_array( $slot->key, $every->slotsOf( $product, $read ), true ) ) {

@@ -1,0 +1,61 @@
+{
+	"$schema": "http://json-schema.org/draft-04/schema#",
+	"title": "cbuild_presets",
+	"description": "A kit's ready builds, stored in the _cbuild_presets product meta. Each fills every required slot and names only the kit's own slots; the plugin checks both against the slots document.",
+	"type": "object",
+	"additionalProperties": false,
+	"required": [
+		"schema_version"
+	],
+	"properties": {
+		"schema_version": {
+			"description": "The document's version. Version 1 is the only one so far.",
+			"type": "integer",
+			"enum": [
+				1
+			]
+		},
+		"presets": {
+			"description": "Up to six ready builds.",
+			"type": "array",
+			"maxItems": 6,
+			"items": {
+				"type": "object",
+				"additionalProperties": false,
+				"required": [
+					"name",
+					"picks"
+				],
+				"properties": {
+					"name": {
+						"description": "The owner's name for the build.",
+						"type": "string",
+						"minLength": 1,
+						"maxLength": 60
+					},
+					"description": {
+						"description": "A line on who the build is for.",
+						"type": "string",
+						"maxLength": 160
+					},
+					"image": {
+						"description": "From 1.0.0, a rider photo for the build's tile, an attachment's id. Without one, the tile shows the build's composed picture (D-252).",
+						"type": "integer",
+						"minimum": 1
+					},
+					"picks": {
+						"description": "A part's id by slot key.",
+						"type": "object",
+						"additionalProperties": false,
+						"patternProperties": {
+							"^[a-z][a-z0-9_]{0,31}$": {
+								"type": "integer",
+								"minimum": 1
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+}

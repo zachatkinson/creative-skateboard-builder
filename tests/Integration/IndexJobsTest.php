@@ -9,6 +9,7 @@ declare( strict_types=1 );
 
 namespace CreativeBranding\SkateboardBuilder\Tests\Integration;
 
+use CreativeBranding\SkateboardBuilder\Adapter\ActionSchedulerQueue;
 use CreativeBranding\SkateboardBuilder\Domain\Spec\IndexedSpec;
 use CreativeBranding\SkateboardBuilder\Domain\Spec\Origin;
 use CreativeBranding\SkateboardBuilder\Domain\Spec\SpecKey;
@@ -20,6 +21,7 @@ use CreativeBranding\SkateboardBuilder\Service\IndexJobs;
 use CreativeBranding\SkateboardBuilder\Service\ReindexState;
 use CreativeBranding\SkateboardBuilder\Support\Options;
 use CreativeBranding\SkateboardBuilder\Support\Tables;
+use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\FakeClock;
 use CreativeBranding\SkateboardBuilder\Tests\Support\IntegrationTestCase;
 
 /**
@@ -226,6 +228,60 @@ final class IndexJobsTest extends IntegrationTestCase {
 		$this->service( Queue::class )->schedule( 1, Options::JOB_INDEX_PART, array( 'part' => $deck->get_id(), 'attempt' => 2 ) );
 		self::assertSame( 1, self::work() );
 		self::assertSame( array( 'deck_width=8.0000' ), $this->indexed( $deck->get_id() )[ $deck->get_id() ] );
+	}
+
+	// D-378: a job an update's step asks for is due later, past any runner the earlier release started; one due now,
+	// which such a runner may claim, does not stand in for it, and one already waiting for later does.
+	public function test_a_job_scheduled_for_later_is_scheduled_once_and_one_due_now_does_not_stand_in_for_it(): void {
+		$queue = $this->service( Queue::class );
+		$queue->cancelAll( Options::JOB_INDEX_PART );
+		$later = time() + IndexJobs::AFTER_UPDATE;
+		$queue->enqueueDistinct( Options::JOB_INDEX_PART, array( 'part' => 7 ) );
+		$queue->scheduleDistinct( $later, Options::JOB_INDEX_PART, array( 'part' => 7 ) );
+		$queue->scheduleDistinct( $later + 60, Options::JOB_INDEX_PART, array( 'part' => 7 ) );
+		$queue->scheduleDistinct( $later, Options::JOB_INDEX_PART, array( 'part' => 8 ) );
+		$dates = array_map(
+			static fn( \ActionScheduler_Action $action ): array => array( $action->get_args(), $action->get_schedule()->get_date()?->getTimestamp() ),
+			array_values( as_get_scheduled_actions( array( 'hook' => Options::JOB_INDEX_PART, 'group' => Options::QUEUE_GROUP, 'status' => \ActionScheduler_Store::STATUS_PENDING, 'orderby' => 'action_id', 'order' => 'ASC', 'per_page' => -1 ) ) )
+		);
+		self::assertSame( array( array( 'part' => 7 ), array( 'part' => 7 ), array( 'part' => 8 ) ), array_column( $dates, 0 ), 'the 7 due now and once for later, the 8 for later' );
+		self::assertSame( array( $later, $later ), array_slice( array_column( $dates, 1 ), 1 ) );
+		$queue->cancelAll( Options::JOB_INDEX_PART );
+	}
+
+	// The spec-reviewer's third pass on milestone 12: IndexJobs takes the job's due time from the Clock, so the queue
+	// judges "a moment to come" by the same clock, not the system's (CLAUDE.md: Time). A clock an hour behind the
+	// wall's: the job it scheduled is still to come by that clock, so a second call schedules nothing. A clock a day
+	// ahead: a job due at its now is due, not to come, so it does not stand in for one scheduled later.
+	public function test_a_job_to_come_is_judged_by_the_plugins_clock_not_the_systems(): void {
+		$this->service( Queue::class )->cancelAll( Options::JOB_INDEX_PART );
+		$behind = new FakeClock( time() - 3600 );
+		$queue  = new ActionSchedulerQueue( $behind );
+		$queue->scheduleDistinct( $behind->timestamp() + IndexJobs::AFTER_UPDATE, Options::JOB_INDEX_PART, array( 'part' => 7 ) );
+		$queue->scheduleDistinct( $behind->timestamp() + IndexJobs::AFTER_UPDATE, Options::JOB_INDEX_PART, array( 'part' => 7 ) );
+		self::assertCount( 1, self::pendingAt( 7 ), 'an hour behind: scheduled once' );
+
+		$ahead = new FakeClock( time() + 86_400 );
+		$queue = new ActionSchedulerQueue( $ahead );
+		as_schedule_single_action( $ahead->timestamp(), Options::JOB_INDEX_PART, array( 'part' => 8 ), Options::QUEUE_GROUP );
+		$queue->scheduleDistinct( $ahead->timestamp() + IndexJobs::AFTER_UPDATE, Options::JOB_INDEX_PART, array( 'part' => 8 ) );
+		self::assertSame( array( $ahead->timestamp(), $ahead->timestamp() + IndexJobs::AFTER_UPDATE ), self::pendingAt( 8 ), 'a day ahead: the job due now does not stand in' );
+		$this->service( Queue::class )->cancelAll( Options::JOB_INDEX_PART );
+	}
+
+	/**
+	 * When each pending index job for a part is due, soonest first.
+	 *
+	 * @param int $part The part's ID.
+	 * @return list<int|null>
+	 */
+	private static function pendingAt( int $part ): array {
+		$dates = array_map(
+			static fn( \ActionScheduler_Action $action ): ?int => $action->get_schedule()->get_date()?->getTimestamp(),
+			array_values( as_get_scheduled_actions( array( 'hook' => Options::JOB_INDEX_PART, 'args' => array( 'part' => $part ), 'group' => Options::QUEUE_GROUP, 'status' => \ActionScheduler_Store::STATUS_PENDING, 'per_page' => -1 ) ) )
+		);
+		sort( $dates );
+		return $dates;
 	}
 
 	public function test_a_variable_products_job_indexes_its_variations_and_a_deleted_products_removes_its_rows(): void {

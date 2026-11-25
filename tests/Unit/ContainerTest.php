@@ -68,12 +68,44 @@ final class ContainerTest extends TestCase {
 				array( \CreativeBranding\SkateboardBuilder\Service\SpecImport::class, 'check', \CreativeBranding\SkateboardBuilder\Service\LayerCheck::class ),
 				array( \CreativeBranding\SkateboardBuilder\Service\SpecImport::class, 'layers', \CreativeBranding\SkateboardBuilder\Port\PartLayers::class ),
 				array( \CreativeBranding\SkateboardBuilder\Service\SpecExport::class, 'layers', \CreativeBranding\SkateboardBuilder\Port\PartLayers::class ),
+				array( \CreativeBranding\SkateboardBuilder\Front\PageHooks::class, 'address', \CreativeBranding\SkateboardBuilder\Front\BuilderAddress::class ),
+				array( \CreativeBranding\SkateboardBuilder\Front\StartButton::class, 'address', \CreativeBranding\SkateboardBuilder\Front\BuilderAddress::class ),
+				array( \CreativeBranding\SkateboardBuilder\Front\MyBuildsView::class, 'address', \CreativeBranding\SkateboardBuilder\Front\BuilderAddress::class ),
+				array( \CreativeBranding\SkateboardBuilder\Cart\ShowHooks::class, 'address', \CreativeBranding\SkateboardBuilder\Front\BuilderAddress::class ),
+				array( \CreativeBranding\SkateboardBuilder\Rest\StateRoute::class, 'address', \CreativeBranding\SkateboardBuilder\Front\BuilderAddress::class ),
+				array( \CreativeBranding\SkateboardBuilder\Admin\BuildTab::class, 'place', \CreativeBranding\SkateboardBuilder\Front\BuilderPlace::class ),
+				array( \CreativeBranding\SkateboardBuilder\Service\CatalogueCheck::class, 'kept', \CreativeBranding\SkateboardBuilder\Port\PartsKeptOut::class ),
+				array( \CreativeBranding\SkateboardBuilder\Port\Kits::class, 'meta', \CreativeBranding\SkateboardBuilder\Port\ProductMeta::class ),
+				array( \CreativeBranding\SkateboardBuilder\Front\MyBuildsView::class, 'meta', \CreativeBranding\SkateboardBuilder\Port\ProductMeta::class ),
+				array( \CreativeBranding\SkateboardBuilder\Service\ComposedPictures::class, 'layers', \CreativeBranding\SkateboardBuilder\Port\ComposedLayers::class ),
 			) as [ $id, $property, $type ]
 		) {
 			$service = $container->get( $id );
 			self::assertInstanceOf( $type, ( new \ReflectionProperty( $service, $property ) )->getValue( $service ), $id );
 		}
 		self::assertNull( ( new \ReflectionProperty( \CreativeBranding\SkateboardBuilder\Front\StateAnswer::class, 'artwork' ) )->getValue( ( new \ReflectionClass( \CreativeBranding\SkateboardBuilder\Front\StateAnswer::class ) )->newInstanceWithoutConstructor() ), 'none without the container' );
+	}
+
+	// D-208: what 1.2.0 adds is given to a copy, so the object it was called on is still what an earlier release's
+	// container built: My builds' Open and the start button go to the kit's own page, and My builds reads its parts'
+	// meta a part at a time, as 1.1.0 did.
+	public function test_each_with_this_release_adds_gives_a_copy_and_leaves_the_one_it_was_called_on_as_it_was(): void {
+		$container = new Container();
+		$address   = $container->get( \CreativeBranding\SkateboardBuilder\Front\BuilderAddress::class );
+		$meta      = $container->get( \CreativeBranding\SkateboardBuilder\Port\ProductMeta::class );
+		foreach (
+			array(
+				array( \CreativeBranding\SkateboardBuilder\Front\StartButton::class, 'address', static fn( object $earlier ): object => $earlier->withAddress( $address ) ),
+				array( \CreativeBranding\SkateboardBuilder\Front\MyBuildsView::class, 'address', static fn( object $earlier ): object => $earlier->withAddress( $address ) ),
+				array( \CreativeBranding\SkateboardBuilder\Front\MyBuildsView::class, 'meta', static fn( object $earlier ): object => $earlier->withMeta( $meta ) ),
+			) as [ $class, $property, $with ]
+		) {
+			$earlier = ( new \ReflectionClass( $class ) )->newInstanceWithoutConstructor();
+			$copy    = $with( $earlier );
+			$read    = new \ReflectionProperty( $class, $property );
+			self::assertNotNull( $read->getValue( $copy ), $class . ' ' . $property );
+			self::assertNull( $read->getValue( $earlier ), $class . ' ' . $property . ': the one it was called on' );
+		}
 	}
 
 	public function test_set_replaces_a_service_and_has_reports_it(): void {
@@ -99,7 +131,7 @@ final class ContainerTest extends TestCase {
 	public function test_the_registry_is_built_from_its_classes(): void {
 		$registry = ( new Container() )->get( MigrationRegistry::class );
 		$keys     = $registry->keys();
-		self::assertSame( array( 'schema_1', 'noop_1', 'spec_tables_1', 'schema_2', 'reserved_slot_keys_1', 'spec_tables_2', 'layer_renditions_1', 'schema_3' ), $keys );
+		self::assertSame( array( 'schema_1', 'noop_1', 'spec_tables_1', 'schema_2', 'reserved_slot_keys_1', 'spec_tables_2', 'layer_renditions_1', 'schema_3', 'layer_renditions_2' ), $keys );
 	}
 
 	public function test_an_unknown_service_throws(): void {

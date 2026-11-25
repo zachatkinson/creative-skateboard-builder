@@ -3,6 +3,7 @@ import path from 'node:path';
 import type { APIResponse, Route } from '@playwright/test';
 import { test, expect, Page, inLocale } from './support/test';
 import { axe } from './support/axe';
+import { SITE } from './support/site';
 
 /**
  * Milestone 10, a long step (spec: One card per look, Search; SPEC-CONFIGURATOR): the shelf kit's deck step has 46
@@ -122,16 +123,11 @@ test.describe( 'A long step', () => {
 			)
 		);
 		await expect( cards( page ) ).toHaveCount( 0 );
+		// Nothing listed, so nothing to sort and no "Showing 0 of 0" (Cowork's 1.1.0 review, F26, #124), as served
+		// without the script and as the store draws it with.
+		await expect( page.locator( '.cbuild-sort' ) ).toBeHidden();
+		await expect( page.locator( '.cbuild-step__count' ) ).toBeHidden();
 		if ( javaScriptEnabled ) {
-			// Where the layout is stacked, the bar covers the foot of the window, and axe counts a target it covers as
-			// too small wherever the page happens to stand (D-288). Since the bare stage scrolls with the page (#82), on
-			// a tablet the step's Sort stands across the bar's edge. It is brought into view as a shopper scrolls to it,
-			// clear of the bar by the page's scroll padding.
-			await page
-				.locator( '.cbuild-sort__select' )
-				.evaluate( ( sort ) =>
-					sort.scrollIntoView( { block: 'nearest' } )
-				);
 			await axe( page, 'a search that finds nothing here', '.cbuild' );
 		}
 		await found.getByRole( 'button', { name: 'Show 8″ decks' } ).click();
@@ -154,8 +150,15 @@ test.describe( 'A long step', () => {
 		await expect(
 			found.getByRole( 'button', { name: 'Show 8″ decks' } )
 		).toHaveCount( 0 );
+		await expect( page.locator( '.cbuild-sort' ) ).toBeHidden();
+		await expect( page.locator( '.cbuild-step__count' ) ).toBeHidden();
 		await found.getByRole( 'button', { name: 'Clear search' } ).click();
 		await expect( cards( page ) ).toHaveCount( 30 );
+		// Listed again, Sort and the count are back.
+		await expect( page.locator( '.cbuild-sort' ) ).toBeVisible();
+		await expect(
+			page.locator( '.cbuild-step__more .cbuild-step__count' )
+		).toHaveText( /30\D+46/ );
 		await expect( page.locator( '#cbuild-search' ) ).toHaveValue( '' );
 		// Without JavaScript the box's own text goes too, before the button's empty one, which PHP reads last.
 		await expect
@@ -316,27 +319,33 @@ test.describe( 'A long step, with JavaScript', () => {
 
 	// The auditor's M10 review, 19: an answer that came back while the shopper typed on put the box back to the letters
 	// it was asked with. The answer to "R" is held until "a" is typed, then let through inside the search's 150 ms wait,
-	// before "Ra" is asked.
+	// before "Ra" is asked. The request is held as soon as it is asked, and its answer waited for on its own: held only
+	// once the server had answered, a server slower than the poll's 5 s under load looked like no search asked (#145).
 	test( 'keeps every letter typed when an answer comes back mid-word', async ( {
 		page,
 	} ) => {
 		await page.goto( at() );
-		let held: { route: Route; response: APIResponse } | undefined;
+		let held:
+			{ route: Route; response: Promise< APIResponse > } | undefined;
 		let holding = true;
 		await page.route( /cbuild\/v1\/kits\/\d+\/state/, async ( route ) => {
 			if ( ! holding ) {
 				await route.continue();
 				return;
 			}
-			held = { route, response: await route.fetch() };
+			held = { route, response: route.fetch() };
 		} );
 		const search = page.locator( '#cbuild-search' );
 		await search.press( 'R' );
-		await expect.poll( () => held ).toBeDefined();
+		await expect
+			.poll( () => held, 'the search for "R" asked' )
+			.toBeDefined();
+		// The answer to "R" in hand before "a" is typed, however long the server takes.
+		const response = await held!.response;
 		await search.press( 'a' );
 		holding = false;
 		const answered = page.waitForResponse( /cbuild\/v1\/kits\/\d+\/state/ );
-		await held!.route.fulfill( { response: held!.response } );
+		await held!.route.fulfill( { response } );
 		await answered;
 		await page.evaluate(
 			() =>
@@ -424,5 +433,204 @@ test.describe( 'Compact deck cards (F14)', () => {
 			boxes.filter( ( box ) => box.seen ).length,
 			'six in view'
 		).toBeGreaterThanOrEqual( 6 );
+	} );
+
+	// #130 (D-377): with the builder's gap between the deck's picture and its words, the cards keep their rows on each
+	// theme: two to a row at 1440 and one on a phone. The gap itself is measured on decks with pictures (builder.spec.ts).
+	for ( const theme of [ 'twentytwentyfive', 'storefront', 'kadence' ] ) {
+		test( `keeps two decks to a row at 1440 and one on a phone on ${ theme }`, async ( {
+			page,
+			context,
+			baseURL,
+		}, info ) => {
+			const phone = info.project.name.includes( 'phone' );
+			await context.addCookies( [
+				{
+					name: 'cbuild_e2e_theme',
+					value: theme,
+					url: baseURL || SITE,
+				},
+			] );
+			if ( ! phone ) {
+				await page.setViewportSize( { width: 1440, height: 900 } );
+			}
+			await page.goto( at() );
+			await expect( cards( page ) ).toHaveCount( 30 );
+			const [ one, two, three ] = await cards( page ).evaluateAll(
+				( items ) =>
+					items.slice( 0, 3 ).map( ( item ) => {
+						const box = item.getBoundingClientRect();
+						return {
+							top: Math.round( box.top ),
+							left: Math.round( box.left ),
+						};
+					} )
+			);
+			if ( phone ) {
+				expect( two?.left, 'one column' ).toBe( one?.left );
+				return;
+			}
+			expect( two?.top, 'two to a row' ).toBe( one?.top );
+			expect( three?.left, 'and no third' ).toBe( one?.left );
+		} );
+	}
+
+	// Cowork's 1.1.0 review, F24 (#122): once a width is chosen, the first view at 1440 by 900 on the demo (Board size
+	// Balanced) showed two cards, cut off, under the step's lead, a plugin's notice of about 70 px, the width, the
+	// search, the brands and Sort. With the lead gone once a width is chosen and Sort on the brands' line, the builder
+	// at the window's top shows, under a 70 px notice above the step, four whole cards on Kadence (two before) and two
+	// on Twenty Twenty-Five, whose type is larger (none before). D-322's six need the page scrolled to the cards (D-360).
+	for ( const [ theme, held ] of [
+		[ 'twentytwentyfive', 2 ],
+		[ 'kadence', 4 ],
+	] as const ) {
+		test( `shows ${ held } whole decks in the first view after a width at 1440 by 900, under a 70 px notice, on ${ theme }`, async ( {
+			page,
+			context,
+			baseURL,
+		}, info ) => {
+			test.skip(
+				/phone|tablet/.test( info.project.name ),
+				'A desktop: the stage beside the panel.'
+			);
+			test.skip(
+				'no-js' === info.project.name,
+				'Without the script every brand shows, with Apply, over several lines (D-314).'
+			);
+			await context.addCookies( [
+				{
+					name: 'cbuild_e2e_theme',
+					value: theme,
+					url: baseURL || SITE,
+				},
+			] );
+			await page.setViewportSize( { width: 1440, height: 900 } );
+			await page.goto( at() );
+			await expect( cards( page ) ).toHaveCount( 30 );
+			// Board size Balanced, the demo's: the builder's own class for it, as the Board size test sets it.
+			await page
+				.locator( '.cbuild' )
+				.evaluate( ( root ) =>
+					root.classList.add( 'cbuild--balanced' )
+				);
+			// A notice of another plugin's, as Mature Content's, 70 px high above the step.
+			await page.locator( '.cbuild-step' ).evaluate( ( step ) => {
+				const notice = document.createElement( 'div' );
+				notice.style.blockSize = '70px';
+				step.before( notice );
+			} );
+			// The builder at the window's top, as under a shop's header.
+			await page
+				.locator( '.cbuild' )
+				.evaluate( ( builder ) =>
+					builder.scrollIntoView( { block: 'start' } )
+				);
+			// The brands on one line with "N more" and Sort (#98). The row is laid out again for the narrower panel Balanced
+			// gives it, in the frames after the class. Counted before then, the row still held the chips the wider panel had
+			// room for and took two lines, and the cards were a line lower: 0 seen on Twenty Twenty-Five and 2 on Kadence
+			// (#145). The count waits for the one line.
+			const line = () =>
+				page.evaluate( () => {
+					// Each chip shown, those past the row being out of sight, "N more" and Sort: how far apart their middles are.
+					const middles = [
+						...document.querySelectorAll< HTMLElement >(
+							'.cbuild-chips__options--row .cbuild-chips__chip, .cbuild-chips__options--row .cbuild-chips__more, .cbuild-sort'
+						),
+					]
+						.filter( ( shown ) =>
+							shown.checkVisibility( {
+								visibilityProperty: true,
+							} )
+						)
+						.map( ( shown ) => {
+							const box = shown.getBoundingClientRect();
+							return box.top + box.height / 2;
+						} );
+					// A chip and Sort at least, or there is no line to read.
+					return middles.length >= 2
+						? Math.max( ...middles ) - Math.min( ...middles )
+						: Number.POSITIVE_INFINITY;
+				} );
+			await expect
+				.poll( line, 'the brands, N more and Sort on one line' )
+				.toBeLessThanOrEqual( 4 );
+			const seen = await cards( page ).evaluateAll( ( items ) => {
+				const bar = document
+					.querySelector( '.cbuild-bar:not([hidden])' )
+					?.getBoundingClientRect();
+				const foot =
+					bar && bar.top > 0 && bar.top < innerHeight
+						? bar.top
+						: innerHeight;
+				return items.filter( ( item ) => {
+					const box = item.getBoundingClientRect();
+					return box.top >= 0 && box.bottom <= foot;
+				} ).length;
+			} );
+			expect(
+				seen,
+				'whole cards in the first view'
+			).toBeGreaterThanOrEqual( held );
+			// The step's lead has done its work once the width is chosen.
+			await expect( page.locator( '.cbuild-step__lead' ) ).toBeHidden();
+		} );
+	}
+} );
+
+// Issue #143: a search sends `cbuild:rendered` once its answer is drawn, not for each key typed before it.
+test.describe( 'The rendered event on a search (#143)', () => {
+	test( 'sends cbuild:rendered once for a search, after its answer, not per key', async ( {
+		page,
+		javaScriptEnabled,
+	} ) => {
+		test.skip( ! javaScriptEnabled, 'The event is the script’s.' );
+		await page.addInitScript( () => {
+			const heard: unknown[] = [];
+			(
+				window as unknown as { cbuildRendered: unknown[] }
+			 ).cbuildRendered = heard;
+			document.addEventListener( 'cbuild:rendered', ( event ) => {
+				heard.push( ( event as CustomEvent ).detail );
+			} );
+		} );
+		const rendered = () =>
+			page.evaluate(
+				() =>
+					( window as unknown as { cbuildRendered: unknown[] } )
+						.cbuildRendered
+			);
+		await page.goto( at() );
+		const once = { kit: shelf().kit, step: 'deck' };
+		await expect.poll( rendered ).toEqual( [ once ] );
+		// Another plugin's elements where Mature Content 1.6.0 puts them: the stage's last child, the step's first.
+		await page.evaluate( () => {
+			const stage = document.querySelector( '.cbuild__stage' )!;
+			const step = document.querySelector( '.cbuild-step' )!;
+			const veil = document.createElement( 'div' );
+			const notice = document.createElement( 'div' );
+			stage.append( veil );
+			step.prepend( notice );
+			( window as unknown as { cbuildOwn: () => boolean[] } ).cbuildOwn =
+				() => [
+					veil.isConnected && stage.lastElementChild === veil,
+					notice.isConnected && step.firstElementChild === notice,
+				];
+		} );
+		const kept = () =>
+			page.evaluate( () =>
+				(
+					window as unknown as { cbuildOwn: () => boolean[] }
+				 ).cbuildOwn()
+			);
+		await page
+			.locator( '#cbuild-search' )
+			.pressSequentially( 'Rascals', { delay: 40 } );
+		await expect( cards( page ) ).toHaveCount( 1 );
+		await expect( page.locator( '.cbuild' ) ).toHaveAttribute(
+			'aria-busy',
+			'false'
+		);
+		await expect.poll( rendered ).toEqual( [ once, once ] );
+		expect( await kept() ).toEqual( [ true, true ] );
 	} );
 } );

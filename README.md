@@ -43,7 +43,7 @@ It is built by [Creative Branding](https://creativebranding.ca). Skatehouse is t
 
 ## Features
 
-**For the shopper**
+### For the shopper
 
 - **Only what fits.** Fit is worked out from each part's specs: trucks for the deck's width, wheels that clear the trucks, risers where the wheels need them, and bolts long enough to reach through.
 - **The deck's width first,** with a guide by shoe size. Every later step offers only what fits that deck.
@@ -54,12 +54,13 @@ It is built by [Creative Branding](https://creativebranding.ca). Skatehouse is t
 - **Saved builds.** A signed-in customer can save a build and open it again from My account. If a part has changed since, the builder says what changed and offers the closest parts.
 - **For everyone.** It works by keyboard and with a screen reader, on a phone, without JavaScript, in English and French (Canada), and right to left.
 
-**For the shop**
+### For the shop
 
 - **Each part on its own line** in the cart, on the order and in its emails, with a picture of the build.
 - **Specs from where they already are:** a maker's size chart, a field on the product, a mapped attribute, or a CSV import.
 - **A catalogue check** that lists the parts the builder can't place, and why.
 - **Kits,** a product type with a Build tab: the steps and where their parts come from, the presets, the layout and the assembly fee.
+- **The shop's own choices,** on the same tab: the page the builder is on, whether a deck's page offers "Build a complete with this deck", and the width guide's rows. A part or a variation can be kept out of the builder and still sold on its own.
 - **For the workshop,** each order's build in a box on the order screen, and an assembly ticket to print.
 
 ## Screenshots
@@ -133,7 +134,7 @@ Each release is held to twelve dimensions, written down in [docs/AUDIT.md](docs/
 | --- | --- |
 | Unit tests | 100 % of lines and branches in the fit engine |
 | Unit and integration tests together | 95 % of all lines |
-| Mutation testing | A mutation score of 100 % in the fit engine and 95 % elsewhere ([Infection](https://infection.github.io)), and 90 % in the store ([StrykerJS](https://stryker-mutator.io)) |
+| Mutation testing | A mutation score of 100 % in the fit engine and 95 % elsewhere ([Infection](https://infection.github.io)), and 95 % in the store ([StrykerJS](https://stryker-mutator.io)) |
 | Static analysis | PHPStan level 9, and 10 on the fit engine; PHPCS with WordPress-Extra and WordPress VIP |
 | Browsers | Playwright with axe on Chromium, WebKit and Firefox, at phone, tablet and desktop widths, without JavaScript, in French and right to left |
 | Accessibility | WCAG 2.2 AA ([docs/A11Y.md](docs/A11Y.md)) |

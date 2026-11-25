@@ -107,6 +107,12 @@ final class BuildCartTest extends TestCase {
 		self::assertSame( 0, $this->kits->offered, 'and never from what is kept of the slots\' parts' );
 	}
 
+	public function test_the_cart_is_kept_once_before_a_builds_add_is_answered(): void {
+		self::assertSame( 0, $this->cart->kept );
+		$this->builds->answering();
+		self::assertSame( 1, $this->cart->kept, 'issues #51 and #108: the cart kept before the answer goes out' );
+	}
+
 	public function test_a_kit_with_no_build_is_refused_whatever_arrives_in_its_place(): void {
 		foreach ( array( null, '', 'picks', array(), array( 'picks' => '103' ), array( 'assembly' => true ) ) as $request ) {
 			$verdict = $this->builds->consider( self::KIT, $request, 1 );

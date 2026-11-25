@@ -19,8 +19,6 @@ $cbuild_class  = 'cbuild' . ( $cbuild_layout['stageRight'] ? ' cbuild--stage-rig
 	<?php // The builder's first stop: past the rail to the step, seen once focused (spec: Accessibility, keyboard order). ?>
 	<a class="cbuild__skip" href="#cbuild-heading"><?php esc_html_e( 'Skip to the step', 'creative-skateboard-builder' ); ?></a>
 	<p class="cbuild__status screen-reader-text" role="status" aria-live="polite" data-wp-interactive="creative-skateboard-builder" data-wp-init="callbacks.init" data-wp-watch="callbacks.busy" data-wp-on-window--popstate="actions.back" data-wp-on-window--resize="actions.fit" data-wp-text="state.status"></p>
-	<?php // Past the route's rate limit, the step keeps what it shows and says when to try again; the status region reads it out. ?>
-	<p class="cbuild__limited" hidden data-wp-interactive="creative-skateboard-builder" data-wp-bind--hidden="!state.limited" data-wp-text="state.limited"></p>
 	<?php // The rail first: a row across the top on a desktop (D-268), the sheet's head on a tablet or a phone. ?>
 	<?php require __DIR__ . '/progress.php'; ?>
 	<div class="cbuild__layout">
@@ -28,7 +26,7 @@ $cbuild_class  = 'cbuild' . ( $cbuild_layout['stageRight'] ? ' cbuild--stage-rig
 		<div class="cbuild__stage" data-wp-interactive="creative-skateboard-builder" data-wp-class--cbuild__stage--bare="!state.view.picture.captioned">
 			<?php require __DIR__ . '/picture.php'; ?>
 		</div>
-		<?php // The panel: the step, scrolling inside itself on a desktop, and the footer pinned at its foot. ?>
+		<?php // The panel: the step, scrolling inside itself on a desktop. ?>
 		<div class="cbuild__panel">
 			<div class="cbuild__body">
 				<?php // The panel's head: the way back to the shop, and the product's name where the builder holds the page's h1. ?>
@@ -47,7 +45,11 @@ $cbuild_class  = 'cbuild' . ( $cbuild_layout['stageRight'] ? ' cbuild--stage-rig
 				<?php require __DIR__ . '/changes.php'; ?>
 				<?php require __DIR__ . '/review.php'; ?>
 			</div>
-			<?php require __DIR__ . '/bar.php'; ?>
 		</div>
+		<?php
+		// The footer after the panel, not in it: under the panel on a desktop, and on a tablet or a phone one of the
+		// builder's own rows, so its sticky foot may rise as high as the builder's top, not only the panel's (D-382).
+		?>
+		<?php require __DIR__ . '/bar.php'; ?>
 	</div>
 </div>

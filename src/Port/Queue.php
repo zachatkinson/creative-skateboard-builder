@@ -95,6 +95,19 @@ interface Queue {
 	public function enqueueDistinct( string $hook, array $args ): void;
 
 	/**
+	 * Schedule an action for a moment to come, unless one with the same hook and the same arguments already waits for
+	 * a moment to come. One that is due now does not stand in for it: a runner an earlier release started before its
+	 * files were replaced may claim that one, and run it with that release's code (D-378).
+	 *
+	 * @since 1.2.0
+	 *
+	 * @param int                  $timestamp When, a UTC timestamp.
+	 * @param string               $hook      The action.
+	 * @param array<string, mixed> $args      Its arguments.
+	 */
+	public function scheduleDistinct( int $timestamp, string $hook, array $args ): void;
+
+	/**
 	 * How many of the plugin's actions have failed and are still on the queue's record.
 	 *
 	 * @since 0.3.0

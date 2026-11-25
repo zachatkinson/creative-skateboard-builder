@@ -177,6 +177,41 @@ final class Options {
 	public const CLASS_CARD_DRAWN = 'cbuild-card__photo--drawn';
 
 	/**
+	 * A part's card in a step, where `cbuild_part_classes` lands (#143, D-376).
+	 *
+	 * @since 1.2.0
+	 */
+	public const CLASS_CARD = 'cbuild-card';
+
+	/**
+	 * A card's own radio (#143).
+	 *
+	 * @since 1.2.0
+	 */
+	public const CLASS_CARD_CONTROL = 'cbuild-card__control';
+
+	/**
+	 * The picture's root, on the stage (#143).
+	 *
+	 * @since 1.2.0
+	 */
+	public const CLASS_PICTURE = 'cbuild-picture';
+
+	/**
+	 * The stage, around the picture (#143, D-376).
+	 *
+	 * @since 1.2.0
+	 */
+	public const CLASS_STAGE = 'cbuild__stage';
+
+	/**
+	 * A step's form (#143, D-376).
+	 *
+	 * @since 1.2.0
+	 */
+	public const CLASS_STEP = 'cbuild-step';
+
+	/**
 	 * Order item meta (spec: Data model, Order items). Hidden from customers by their underscore, and kept with the
 	 * shop's order records for good: a key is never renamed.
 	 */
@@ -215,11 +250,26 @@ final class Options {
 	public const META_LAYER = '_cbuild_layer';
 
 	/**
+	 * Product meta: "Not offered in the builder", ticked on a part's Part specs (#116, D-351). `yes` when ticked; a
+	 * part with none is offered.
+	 *
+	 * @since 1.2.0
+	 */
+	public const META_NOT_OFFERED = '_cbuild_not_offered';
+
+	/**
 	 * The kit's product type.
 	 *
 	 * @since 0.4.0
 	 */
 	public const PRODUCT_TYPE_KIT = 'cbuild_kit';
+
+	/**
+	 * The Builder block's name, which a page's content holds as `<!-- wp:creative-skateboard-builder/builder`.
+	 *
+	 * @since 1.2.0
+	 */
+	public const BLOCK = 'creative-skateboard-builder/builder';
 
 	/**
 	 * A kit's meta: its four documents, each as JSON text (docs/HOOKS.md, Document schemas).
@@ -244,6 +294,14 @@ final class Options {
 	 * @since 1.0.0
 	 */
 	public const META_KIT_LAYOUT = '_cbuild_layout';
+
+	/**
+	 * A kit's meta: its settings from 1.2.0 on, as JSON text (schema/kit-settings.json). A kit may have none. A new
+	 * kit setting goes here, never as a new key in an older document, so a rollback still reads the kit (D-354).
+	 *
+	 * @since 1.2.0
+	 */
+	public const META_KIT_SETTINGS = '_cbuild_settings';
 
 	/**
 	 * The spec tables' post type.
@@ -367,18 +425,19 @@ final class Options {
 	 * @return string[]
 	 */
 	public static function metaKeys(): array {
-		return array( self::META_SPECS, self::META_SPEC_TABLE, self::META_LAYER, self::META_TABLE_ROWS, self::META_TABLE_SEED, ...self::kitDocuments() );
+		return array( self::META_SPECS, self::META_SPEC_TABLE, self::META_LAYER, self::META_NOT_OFFERED, self::META_TABLE_ROWS, self::META_TABLE_SEED, ...self::kitDocuments() );
 	}
 
 	/**
-	 * The meta keys of a kit's documents: the four, the picture's from 0.7.0 and the layout's from 1.0.0.
+	 * The meta keys of a kit's documents: the four, the picture's from 0.7.0, the layout's from 1.0.0 and the settings'
+	 * from 1.2.0.
 	 *
 	 * @since 0.4.0
 	 *
 	 * @return list<string>
 	 */
 	public static function kitDocuments(): array {
-		return array( self::META_KIT_SLOTS, self::META_KIT_RULES, self::META_KIT_PRESETS, self::META_KIT_ASSEMBLY, self::META_KIT_PICTURE, self::META_KIT_LAYOUT );
+		return array( self::META_KIT_SLOTS, self::META_KIT_RULES, self::META_KIT_PRESETS, self::META_KIT_ASSEMBLY, self::META_KIT_PICTURE, self::META_KIT_LAYOUT, self::META_KIT_SETTINGS );
 	}
 
 	/**
@@ -396,6 +455,7 @@ final class Options {
 			'assembly' => self::META_KIT_ASSEMBLY,
 			'picture'  => self::META_KIT_PICTURE,
 			'layout'   => self::META_KIT_LAYOUT,
+			'settings' => self::META_KIT_SETTINGS,
 		);
 	}
 
@@ -426,6 +486,11 @@ final class Options {
 			self::CLASS_CHIPS_ROW,
 			self::CLASS_CARDS_COMPACT,
 			self::CLASS_CARD_DRAWN,
+			self::CLASS_CARD,
+			self::CLASS_CARD_CONTROL,
+			self::CLASS_PICTURE,
+			self::CLASS_STAGE,
+			self::CLASS_STEP,
 		);
 	}
 

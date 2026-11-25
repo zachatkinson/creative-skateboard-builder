@@ -1,0 +1,46 @@
+// markdownlint-cli2's settings for `npm run lint:md` (D-345). Every rule markdownlint ships (MD001 to MD060) is on with
+// its defaults, but for the few below, where the house style differs. Each says why.
+{
+	"config": {
+		"default": true,
+
+		// One paragraph or list item is one line: a diff shows what changed in a sentence, not a re-wrapped paragraph,
+		// and GitHub and editors wrap the text. Headings, tables and code have no limit for the same reason.
+		"MD013": false,
+
+		// A changelog repeats Added, Changed and Fixed under each version, and a review its For Zach under each
+		// section, as Keep a Changelog does. A heading is refused only where it repeats one beside it.
+		"MD024": { "siblings_only": true },
+
+		// The readme's centred header and its picture, which switches the screenshot for a dark scheme, need these
+		// elements; GitHub has no Markdown for either. Any other HTML in the docs is still refused.
+		"MD033": { "allowed_elements": ["div", "picture", "source", "img"] },
+
+		// WordPress's coding standards indent PHP with tabs (`composer lint`), and the docs' PHP examples are written to
+		// be pasted into a theme or plugin as they are. Tabs anywhere else are still refused.
+		"MD010": { "ignore_code_languages": ["php"] },
+
+		// A Claude Code agent or skill is titled by the `name` in its front matter, as a document by its H1.
+		"MD041": { "front_matter_title": "^\\s*\"?(?:title|name)\"?\\s*[:=]" }
+	},
+
+	"overrides": [
+		{
+			// GitHub puts a pull request's title above its description, so the template starts at its first section.
+			"filter": [".github/pull_request_template.md"],
+			"config": { "MD041": false },
+			"combine": "merge"
+		},
+		{
+			// The readme's H1 opens the centred header, inside its <div>. Its first heading must still be the H1.
+			"filter": ["README.md"],
+			"config": { "MD041": { "allow_preamble": true } },
+			"combine": "merge"
+		}
+	],
+
+	// Every Markdown file in the repository, but those .gitignore leaves out (vendor/, node_modules/, the test
+	// reports and tmp/).
+	"globs": ["**/*.md"],
+	"gitignore": true
+}

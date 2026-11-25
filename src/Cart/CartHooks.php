@@ -48,6 +48,11 @@ final class CartHooks implements Hookable {
 	public const string REQUEST = 'cbuild';
 
 	/**
+	 * The Store API's route that adds a line, which the builder's script posts a build to.
+	 */
+	private const string ADD_ROUTE = '/wc/store/v1/cart/add-item';
+
+	/**
 	 * Constructor.
 	 *
 	 * @since 0.5.0
@@ -82,6 +87,27 @@ final class CartHooks implements Hookable {
 		add_action( 'woocommerce_add_to_cart', array( $this, 'added' ), 10, 1 );
 		// includes/class-wc-cart.php:1532: a line put back by the cart's Undo has a product read afresh.
 		add_action( 'woocommerce_restore_cart_item', array( $this, 'restoring' ), 10, 2 );
+		// wp-includes/rest-api/class-wp-rest-server.php:1318: the route has run, and its answer is not yet sent.
+		add_filter( 'rest_request_after_callbacks', array( $this, 'answering' ), 10, 3 );
+	}
+
+	/**
+	 * The Store API's add-item has run with a build: the cart is kept before the answer goes out, and not only as
+	 * the request ends, so a cart page asked for as soon as the add answers holds the build (issues #51 and #108).
+	 * The answer is passed on as it is.
+	 *
+	 * @since 1.2.0
+	 *
+	 * @param mixed $response The route's answer.
+	 * @param mixed $handler  The route's handler.
+	 * @param mixed $request  The request.
+	 */
+	public function answering( mixed $response, mixed $handler, mixed $request ): mixed {
+		unset( $handler );
+		if ( $request instanceof WP_REST_Request && self::ADD_ROUTE === $request->get_route() && null !== $request->get_param( self::REQUEST ) ) {
+			( $this->builds )()->answering();
+		}
+		return $response;
 	}
 
 	/**

@@ -85,6 +85,7 @@ interface Start {
 	contentLoaded: number;
 	yields: number;
 	resumed: number;
+	errors: string[];
 }
 
 /**
@@ -95,8 +96,28 @@ interface Start {
  * The wrapper calls the browser's own `yield()` and only counts its answer.
  */
 function countStart() {
-	const start: Start = { contentLoaded: -1, yields: 0, resumed: 0 };
+	const start: Start = {
+		contentLoaded: -1,
+		yields: 0,
+		resumed: 0,
+		errors: [],
+	};
 	( window as unknown as { cbuildStart: Start } ).cbuildStart = start;
+	// An error or a promise no one handled, a module's that failed to load among them, said where the trace may not.
+	window.addEventListener(
+		'error',
+		( event: Event ) => {
+			start.errors.push(
+				event instanceof ErrorEvent
+					? `${ event.message } (${ event.filename }:${ event.lineno })`
+					: `${ ( event.target as Element | null )?.outerHTML?.slice( 0, 120 ) } failed to load`
+			);
+		},
+		true
+	);
+	window.addEventListener( 'unhandledrejection', ( event ) => {
+		start.errors.push( `unhandled: ${ String( event.reason ) }` );
+	} );
 	document.addEventListener( 'DOMContentLoaded', () => {
 		start.contentLoaded = performance.now();
 	} );
@@ -115,8 +136,10 @@ function countStart() {
 }
 
 /**
- * What a page that never set the ready mark had done: its counts from `countStart()`, its load, its regions, and
- * whether a yield and a timer asked now are answered within a second.
+ * What a page that never set the ready mark had done: its counts and errors from `countStart()`, its load, its
+ * regions, whether the runtime's module ran to its end (one of its last statements marks the history entry with
+ * `wpInteractivityId`), when the runtime and the builder's script arrived, and whether a yield and a timer asked now
+ * are answered within a second.
  *
  * @param page The page.
  */
@@ -143,6 +166,24 @@ async function startSeen( page: Page ): Promise< unknown > {
 			 ).scheduler;
 			return {
 				counted,
+				runtimeRan:
+					'object' === typeof window.history.state &&
+					null !== window.history.state &&
+					'wpInteractivityId' in window.history.state,
+				scripts: performance
+					.getEntriesByType( 'resource' )
+					.filter( ( entry ) =>
+						/interactivity\/index|builder\/view/.test( entry.name )
+					)
+					.map(
+						( entry ) =>
+							`${ new URL( entry.name ).pathname } ${ Math.round(
+								entry.startTime
+							) } to ${ Math.round(
+								( entry as PerformanceResourceTiming )
+									.responseEnd
+							) } ms`
+					),
 				readyState: document.readyState,
 				contentLoadedStart: navigation?.domContentLoadedEventStart,
 				loadEnd: navigation?.loadEventEnd,

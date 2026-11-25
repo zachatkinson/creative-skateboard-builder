@@ -1,0 +1,8 @@
+<?php
+declare( strict_types=1 );
+<<<<<<< HEAD
+$a = 1;
+||||||| Stash base
+=======
+$a = 2;
+>>>>>>> 349a967 (A commit)

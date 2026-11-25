@@ -150,6 +150,30 @@ final class FakeQueue implements Queue {
 	public array $distinct = array();
 
 	/**
+	 * What scheduleDistinct() scheduled: the hook, the arguments and the moment.
+	 *
+	 * @var list<array{0: string, 1: array<string, mixed>, 2: int}>
+	 */
+	public array $scheduledDistinct = array();
+
+	/**
+	 * Schedule unless the same hook and arguments wait for a moment to come.
+	 *
+	 * @param int                  $timestamp When.
+	 * @param string               $hook      Hook.
+	 * @param array<string, mixed> $args      Arguments.
+	 */
+	public function scheduleDistinct( int $timestamp, string $hook, array $args ): void {
+		foreach ( $this->scheduledDistinct as $waiting ) {
+			if ( array( $waiting[0], $waiting[1] ) === array( $hook, $args ) ) {
+				return;
+			}
+		}
+		$this->scheduledDistinct[] = array( $hook, $args, $timestamp );
+		$this->pending[ $hook ]    = true;
+	}
+
+	/**
 	 * Queue unless the same hook and arguments wait.
 	 *
 	 * @param string               $hook Hook.

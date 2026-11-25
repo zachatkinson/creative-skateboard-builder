@@ -296,4 +296,24 @@ final class CartLinesTest extends CartTestCase {
 		self::assertSame( array( 'Complete is no longer sold. Remove it from your cart to check out.' ), self::errors(), 'and nothing is said of an add that never happened' );
 		self::assertArrayHasKey( $key, WC()->cart->get_cart() );
 	}
+
+	// Issue #116, the auditor's M12 should-fix 4: a part the shop keeps out of the builder after a build with it was
+	// carted is drift as a spec changed is: the build stays for the shopper to change, and the order stops, naming it.
+	public function test_a_part_kept_out_after_the_build_was_carted_stops_the_order_and_is_named(): void {
+		$key  = $this->added();
+		$deck = wc_get_product( $this->parts['deck'] );
+		$deck->update_meta_data( Options::META_NOT_OFFERED, 'yes' );
+		$deck->save();
+
+		// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- WooCommerce's own.
+		do_action( 'woocommerce_check_cart_items' );
+		$errors = self::errors();
+		self::assertArrayHasKey( $key, WC()->cart->get_cart(), 'the build stays, for the shopper to change' );
+		self::assertSame( 'Complete cannot be bought as it is now. Remove it from your cart to check out, then build it again.', $errors[0] ?? '' );
+		self::assertContains( 'Deck: the part chosen is not one this kit offers here.', $errors, implode( ' | ', $errors ) );
+		wc_clear_notices();
+
+		$errors = array_column( $this->cart( 'GET', '' )->get_data()['errors'], 'message' );
+		self::assertContains( 'Deck: the part chosen is not one this kit offers here.', $errors, 'and the Store API says the same' );
+	}
 }

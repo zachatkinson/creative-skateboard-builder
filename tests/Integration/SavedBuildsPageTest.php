@@ -362,6 +362,26 @@ final class SavedBuildsPageTest extends CartTestCase {
 		self::assertStringContainsString( 'A part has changed since you saved it. Open the build to see which.', $this->page() );
 	}
 
+	// Issue #116, the auditor's M12 should-fix 4: a saved build's part kept out of the builder since is a part that
+	// changed: My builds says so, and the build opened names the part.
+	public function test_a_saved_builds_part_kept_out_since_is_said_on_my_builds_and_named_when_opened(): void {
+		wp_set_current_user( $this->ana );
+		$uuid = $this->service( SavedBuilds::class )->save( $this->ana, $this->kit, $this->picks(), true, '' )['uuid'];
+		self::assertStringNotContainsString( 'A part has changed since you saved it.', $this->page(), 'nothing has changed yet' );
+
+		$deck = wc_get_product( $this->picks()['deck'] );
+		self::assertInstanceOf( \WC_Product::class, $deck );
+		$deck->update_meta_data( Options::META_NOT_OFFERED, 'yes' );
+		$deck->save();
+		$this->service( Kits::class )->forget();
+		self::assertStringContainsString( 'A part has changed since you saved it. Open the build to see which.', $this->page() );
+
+		$link = BuildLink::read( array_map( 'strval', $this->picks() ) + array( 'step' => 'review', '_saved' => $uuid ) );
+		$html = $this->builder()->render( $this->kit, $link, (string) get_permalink( $this->kit ) );
+		self::assertMatchesRegularExpression( '/<h3 autofocus class="cbuild-changes__heading"[^>]*>Your build has changed<\/h3>/', $html );
+		self::assertStringContainsString( (string) $deck->get_name(), $html, 'the part named' );
+	}
+
 	public function test_undo_names_an_unnamed_build_as_the_list_did_and_is_offered_on_the_next_view_alone(): void {
 		[ , $fields, $page ] = $this->deleteAndOfferUndo( '' );
 		self::assertSame( 1, preg_match( '#aria-label="Undo deleting ([^"]+)">Undo</button>#', $page, $label ) );

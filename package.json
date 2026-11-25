@@ -1,6 +1,6 @@
 {
 	"name": "creative-skateboard-builder",
-	"version": "1.1.0",
+	"version": "1.2.0",
 	"private": true,
 	"description": "Complete skateboards built from the parts a WooCommerce shop stocks.",
 	"author": "Zach Atkinson",
@@ -18,6 +18,7 @@
 		"build": "bash tools/build-assets.sh",
 		"start": "wp-scripts start --experimental-modules --webpack-src-dir=assets/src --output-path=build",
 		"lint:js": "wp-scripts lint-js --no-error-on-unmatched-pattern assets/src tests/js tests/e2e tools/*.mjs playwright.config.ts vitest.config.mts stryker.config.mjs eslint.config.js lighthouserc.cjs",
+		"lint:md": "markdownlint-cli2",
 		"lint:css": "wp-scripts lint-style --allow-empty-input 'assets/**/*.{css,scss}'",
 		"format:check": "prettier --check --no-error-on-unmatched-pattern assets/src tests/js tests/e2e tools/*.mjs playwright.config.ts vitest.config.mts stryker.config.mjs eslint.config.js .prettierrc.js lighthouserc.cjs",
 		"format": "prettier --write --no-error-on-unmatched-pattern assets/src tests/js tests/e2e tools/*.mjs playwright.config.ts vitest.config.mts stryker.config.mjs eslint.config.js .prettierrc.js lighthouserc.cjs",
@@ -32,7 +33,7 @@
 		"mutate:js": "bash tools/mutate-js.sh",
 		"budget": "node tools/budget.mjs",
 		"lhci": "bash tools/lhci.sh",
-		"check": "npm run lint:js && npm run lint:css && npm run format:check && npm run typecheck && npm run test:js"
+		"check": "npm run lint:js && npm run lint:css && npm run lint:md && npm run format:check && npm run typecheck && npm run test:js"
 	},
 	"devDependencies": {
 		"@axe-core/playwright": "^4.14.0",
@@ -45,6 +46,7 @@
 		"@wordpress/scripts": "^37.1.0",
 		"jsdom": "^31.0.0",
 		"json-schema-to-typescript": "^16.0.0",
+		"markdownlint-cli2": "0.24.0",
 		"typescript": "^6.0.3",
 		"vitest": "5.1.0"
 	},

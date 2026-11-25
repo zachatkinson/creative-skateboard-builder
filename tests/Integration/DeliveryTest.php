@@ -212,11 +212,15 @@ final class DeliveryTest extends CartTestCase {
 		);
 
 		$context = array(
-			'kit'       => $this->kit,
-			'assembly'  => true,
-			'lead_time' => 'Two business days',
-			'total'     => 19800,
-			'decimals'  => 2,
+			'kit'        => $this->kit,
+			'assembly'   => true,
+			'lead_time'  => 'Two business days',
+			'total'      => 19800,
+			'decimals'   => 2,
+			// From 1.2.0 (#142): the kit has no assembly time, and no lines were given.
+			'lead_days'  => '',
+			'parts'      => array(),
+			'quantities' => array(),
 		);
 		self::assertSame(
 			array(
@@ -232,6 +236,68 @@ final class DeliveryTest extends CartTestCase {
 		self::assertSame( '', $given[0][1]['lead_time'], 'a build the shop does not assemble has no lead time' );
 		self::assertFalse( $given[0][1]['assembly'] );
 		self::assertSame( 18300, $given[1][1]['total'] );
+	}
+
+	// #142, with Cowork's comment: the state route gives both filters the kit's assembly time in business days for an
+	// assembled build, and the parts its total counts, each with how many one build takes, so a plugin can give no
+	// date while a part is on backorder. The trucks are sold singly and a build takes two; the risers are left empty.
+	public function test_both_filters_are_given_the_assembly_time_and_each_part_with_its_quantity_by_the_state_route(): void {
+		$kit = wc_get_product( $this->kit );
+		$kit->setDocument(
+			Options::META_KIT_SETTINGS,
+			array(
+				'schema_version' => 1,
+				'lead_days'      => '2-4',
+			)
+		);
+		$kit->save();
+		$given = array();
+		foreach ( array( 'cbuild_arrival_estimate', 'cbuild_delivery_line' ) as $filter ) {
+			add_filter(
+				$filter,
+				static function ( string $said, array $context ) use ( &$given, $filter ): string {
+					$given[ $filter ] = $context;
+					return '';
+				},
+				10,
+				2
+			);
+		}
+		$ask = function ( bool $assembly ): void {
+			$request = new \WP_REST_Request( 'GET', '/cbuild/v1/kits/' . $this->kit . '/state' );
+			$request->set_query_params(
+				array(
+					'picks'    => $this->picks(),
+					'assembly' => $assembly ? '1' : '0',
+				)
+			);
+			self::assertSame( 200, rest_get_server()->dispatch( $request )->get_status() );
+		};
+
+		$ask( true );
+		self::assertSame( $given['cbuild_arrival_estimate'], $given['cbuild_delivery_line'], 'the same for both' );
+		$context = $given['cbuild_delivery_line'];
+		self::assertSame( array( 'kit', 'assembly', 'lead_time', 'total', 'decimals', 'lead_days', 'parts', 'quantities' ), array_keys( $context ), '1.1.0\'s keys first, as they were' );
+		self::assertTrue( $context['assembly'] );
+		self::assertSame( '2-4', $context['lead_days'] );
+		self::assertSame( $this->picks(), $context['parts'] );
+		self::assertArrayNotHasKey( 'risers', $context['parts'], 'a slot left empty' );
+		self::assertArrayNotHasKey( 'risers', $context['quantities'], 'is in neither' );
+		self::assertSame( array_keys( $this->picks() ), array_keys( $context['quantities'] ) );
+		self::assertSame( 2, $context['quantities']['trucks'], 'two trucks, sold singly' );
+		self::assertSame( 1, $context['quantities']['deck'] );
+
+		$ask( false );
+		self::assertFalse( $given['cbuild_delivery_line']['assembly'] );
+		self::assertSame( '', $given['cbuild_delivery_line']['lead_days'], 'a build the shop does not assemble has none' );
+		self::assertSame( '', $given['cbuild_arrival_estimate']['lead_days'] );
+		self::assertSame( $this->picks(), $given['cbuild_delivery_line']['parts'], 'and the same parts' );
+
+		$kit = wc_get_product( $this->kit );
+		$kit->setDocument( Options::META_KIT_SETTINGS, array( 'schema_version' => 1 ) );
+		$kit->save();
+		$ask( true );
+		self::assertSame( '', $given['cbuild_delivery_line']['lead_days'], 'a kit with no time set has none' );
 	}
 
 	public function test_an_answer_that_is_not_words_is_no_answer(): void {

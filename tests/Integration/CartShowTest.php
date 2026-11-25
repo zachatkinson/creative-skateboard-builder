@@ -233,6 +233,24 @@ final class CartShowTest extends CartTestCase {
 		$data = apply_filters( 'woocommerce_get_item_data', array(), $kit[1] ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- as above.
 		remove_filter( 'cbuild_builder_url', $to );
 		self::assertStringContainsString( 'href="' . esc_url( get_permalink( $page ) ), $data[1]['display'] );
+
+		// #113 (D-348): the page the kit's Build tab chose, while it is published and holds the kit's Builder block.
+		$chosen = self::factory()->post->create(
+			array(
+				'post_type'    => 'page',
+				'post_status'  => 'publish',
+				'post_content' => '<!-- wp:creative-skateboard-builder/builder {"kit":' . $this->kit . '} /-->',
+			)
+		);
+		$product = wc_get_product( $this->kit );
+		self::assertInstanceOf( \CreativeBranding\SkateboardBuilder\Adapter\KitProduct::class, $product );
+		$product->setDocument( Options::META_KIT_SETTINGS, array( 'schema_version' => 1, 'builder_page' => $chosen ) );
+		$product->save();
+		$data = apply_filters( 'woocommerce_get_item_data', array(), $kit[1] ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- as above.
+		self::assertStringContainsString( 'href="' . esc_url( get_permalink( $chosen ) ), $data[1]['display'], 'the kit\'s Builder page' );
+		wp_trash_post( $chosen );
+		$data = apply_filters( 'woocommerce_get_item_data', array(), $kit[1] ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- as above.
+		self::assertStringContainsString( 'href="' . esc_url( get_permalink( $this->kit ) ), $data[1]['display'], 'and the kit\'s own once it is in the bin' );
 	}
 
 	public function test_a_classic_cart_prints_the_kits_link_after_its_assembly_with_no_entry_of_no_label(): void {

@@ -103,14 +103,14 @@ Whatever the picture is, the builder has to draw the board on the server first. 
 | Accessibility | Low risk: an image with a written description, ordinary form controls, no motion | Medium: click and keyboard controls, no auto-rotate, a description per build, French strings | High: everything custom |
 | For the shopper | Their graphic with their trucks and wheels, to scale, on every device | Turn it over: grip, profile, wheel graphics, concave | Animation and tricks |
 
-**Why A first**
+### Why A first
 
 - **Shoppers rarely use rich views.** 83% never tried a 360° view where one was offered, and Baymard calls rich media a supplement, not a replacement ([Baymard](https://baymard.com/product-page/benchmark/page-designs/video-and-360-views/)).
 - **The lift from 3D is small.** Independent studies find the lift from 3D and AR small or conditional ([Tan et al., 2022](https://www.ama.org/2021/04/20/augmented-reality-in-retail-and-its-impact-on-sales-2/); [Hayati et al., 2025](https://proceedings.emac-online.org/pdfs/A2025-125566.pdf)). The large figures (+94%, +112%) are vendors comparing shoppers who chose to use the feature, with no control group.
 - **B needs models** of trucks Skatehouse doesn't stock yet.
 - **A shows a shopper's own graphic for free:** it is simply the deck layer.
 
-**How A works**
+### How A works
 
 - Every part is shot at one camera height and lens, at a fixed scale, nose up, and kept with a transparent background (`docs/PICTURE.md`).
 - The server stacks the layers: the deck scaled by its width, the trucks placed by its wheelbase, then the wheels.
@@ -118,7 +118,7 @@ Whatever the picture is, the builder has to draw the board on the server first. 
 - With JavaScript, a pick swaps a layer in place and the change is announced.
 - The off-the-shelf WooCommerce layer plugins stack PNGs, and none could be confirmed to work without JavaScript.
 
-**The road to B**
+### The road to B
 
 - **Decks need no 3D artist.** One mesh per shape family is generated from width, length, wheelbase, nose, tail and concave. The graphic is laid on from the flat photo, and the grip is the top's material.
 - **Trucks and wheels.** Trucks need one model per brand line, scaled to axle width. Wheels need one per shape, scaled from 52 to 58 mm.
@@ -130,7 +130,7 @@ Whatever the picture is, the builder has to draw the board on the server first. 
 
 Uploading a graphic changes what Skatehouse makes as well as how it sells, so it hangs on one answer: can the owner print a single deck? His printed decks are films pressed onto blank decks today (what Creative Stockroom tracks), so his film supplier's price, lead time and file spec for one film decide it. The rules below follow two custom deck printers' published specs, to be set against that supplier's.
 
-**Print rules**
+### Print rules
 
 | Rule | Value | Why |
 | --- | --- | --- |
@@ -143,7 +143,7 @@ Uploading a graphic changes what Skatehouse makes as well as how it sells, so it
 | Colour | Uploaded as sRGB, converted to the supplier's print profile in production | Print is darker and duller than a screen; the proof says so |
 | Enlarging | Never blown up past its own size | Enlarged photos print blurred |
 
-**What the builder checks**
+### What the builder checks
 
 - JPEG and PNG only. Every file is re-saved on the server, which strips anything hidden in it; anything else is refused with the reason. No SVG or PDF, since they can carry scripts.
 - The resolution at print size, live as the shopper zooms. 300 or more passes; 150 to 299 warns that it may print soft; under 150 can't be ordered.
@@ -152,20 +152,20 @@ Uploading a graphic changes what Skatehouse makes as well as how it sells, so it
 - A new width redraws the template and checks again.
 - A size cap, and a limit on uploads per visitor.
 
-**Proof and approval**
+### Proof and approval
 
 - The review shows the proof (the graphic on the chosen deck, with the guides), with a line saying print comes out darker than a screen.
 - The shopper confirms they've checked the proof, and that they own the graphic or have permission to print it.
 - After the order, the owner approves the artwork in the admin before anything prints, or refuses it with a reason, and the custom deck is refunded.
 - The server makes the print file at full resolution with bleed, in the supplier's format, attached to the order for staff alone.
 
-**Rights, returns and files**
+### Rights, returns and files
 
 - The terms say Skatehouse can refuse any graphic, including logos and characters the shopper doesn't own.
 - A one-off deck can't be returned unless it arrives faulty, and this is said before checkout.
 - Uploads stay private (never in the public Media Library), only staff see them, and they're deleted once no longer needed.
 
-**Questions for the owner**
+### Questions for the owner
 
 1. Will your film supplier print a single deck film? Its cost, lead time and any minimum.
 2. Their file spec: resolution, bleed, colour profile, file type, and a template per shape.

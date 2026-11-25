@@ -172,6 +172,14 @@ final class SentencesTest extends TestCase {
 				$finding( 'preset_broken', 'decks' ),
 				'The preset "" names it for the slot "decks", and it no longer fits the preset\'s other parts.',
 			),
+			'a part the shop keeps out'              => array(
+				new CheckFinding( 'part_not_offered', 10, values: array( 'from' => 'part' ) ),
+				'Not offered in the builder is ticked on its Part specs, so no kit offers it.',
+			),
+			'a variation its product keeps out'      => array(
+				new CheckFinding( 'part_not_offered', 11, values: array( 'from' => 'product' ) ),
+				'Not offered in the builder is ticked on its product\'s Part specs, so no kit offers it or the product\'s other variations.',
+			),
 			'a code with no sentence'                => array( $finding( 'something_new', 'decks', 'deck_width' ), 'something_new' ),
 		);
 	}
@@ -289,6 +297,11 @@ final class SentencesTest extends TestCase {
 			'slots_leave_presets'         => 'The slots were not saved. A preset the kit already has names a slot these leave out, or leaves empty one a build must now have. Put that preset right, or remove it, in the same save.',
 			'presets_without_slots'       => 'Presets need the kit\'s slots. Put the slots right and save, then add the presets.',
 			'picture_wheelbase_range'     => 'The Trucks slot, Units per build: type a wheelbase from 10 to 20 in, or leave it empty.',
+			'layout_builder_page_not_offered' => 'The Trucks slot, Units per build: choose one of the pages listed, or the kit\'s own page. A page is listed when it is published and holds this kit\'s Builder block.',
+			'width_guide_width_range'     => 'The Trucks slot, Units per build: type a width from 5 to 12 in.',
+			'width_guide_shoe_twice'      => 'The Trucks slot, Units per build: the guide already has a row for this shoe size. Give each row its own.',
+			'settings_lead_days_form'     => 'The Trucks slot, Units per build: type a number of business days, such as 2, or a range with the fewer first, such as 2-4.',
+			'settings_lead_days_range'    => 'The Trucks slot, Units per build: type business days from 0 to 60, such as 2 or 2-4.',
 			'preset_part_not_in_slot'     => 'The Trucks slot, Units per build: Indy 144 is not a part the Trucks slot takes, or it cannot be bought now.',
 			'preset_part_blocked'         => 'The Trucks slot, Units per build: Indy 144 does not fit the other parts of "Street". Rule R1 does not let them go together.',
 			'document_wrong_type'         => 'The Trucks slot, Units per build: this is not a value the field takes.',

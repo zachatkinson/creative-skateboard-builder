@@ -187,6 +187,7 @@ The rules:
 11. **Not re-checked:** `UninstallTest` was not run here.
 
 The repository (`gh api`, today):
+
 - **Who can write:** collaborators are `zachatkinson` alone, and `fork-pr-contributor-approval` is `all_external_contributors`. Holds.
 - **`main`:** ruleset 27576433, active, bypass `[]`. Rules: `deletion`, `non_fast_forward`, `pull_request` (merge only, review threads resolved) and `required_status_checks` with 12 contexts (7 plus 5 `Browser (…)`). Holds. There is no `required_signatures` rule yet, which SECURITY.md does not claim; D-259 plans to add it.
 - **Release tags:** ruleset 27576435, `refs/tags/v*`, rules `deletion`, `non_fast_forward` and `update`, bypass `[]`. Holds.
@@ -195,6 +196,7 @@ The repository (`gh api`, today):
 - **Reporting:** private vulnerability reporting `{"enabled":true}`. Holds.
 
 The walk by check:
+
 - **A01:** holds. The `_saved` owner check is at `Builder.php:102-105`; `withLayers` adds no route. Stale citations: `PartSpecsPanel.php:221`/`:247` are now `:249`/`:275` (O17).
 - **A02:** holds. `hash_equals` is at `Updater.php:231`. The `WpLayerRenditions.php:182` citation is now `:270`.
 - **A03:** holds. PHPCS is clean, and so are gates 1, 1b, 1c and 2. The block wrapper goes through `WP_HTML_Tag_Processor`. The `ShareHooks.php:115` citation is now `:150`.
@@ -231,6 +233,9 @@ The walk by check:
 
 **Minor:**
 
+<!-- The findings are numbered through the whole review and cited by number, so this list goes on from the one before. -->
+<!-- markdownlint-disable MD029 -->
+
 3. `src/Adapter/WooPartLayers.php:35`, `:79-91`, `:262-266`. LIKE `%stem%`, cut at 20 rows by ID, then matched exactly. In a library where more than 20 files contain the stem, the right image can fall past the cut and the row says `layer_not_found`. The comment's "refused as ambiguous anyway" is wrong. Fix: match `_wp_attached_file` with `REGEXP '(^|/)stem(-scaled)?\.ext$'`, or drop the cap and count exact matches.
 4. `src/Adapter/ShopMoney.php:65`. `format` is WooCommerce's pattern with `&nbsp;` as an entity, while `symbol` is decoded to plain text. This is frozen API from 1.0. Fix: decode `format` as `symbol` is, and update `schema/state.json`'s description, before the tag.
 5. `src/Adapter/WooPartCards.php:371-378`, called at `:135` and `:388`. A variation with no photo and no own layer image reads its parent with `wc_get_product()` per card, twice, unprimed. Fix: collect the parents' IDs and `load()` them with the missed products.
@@ -240,6 +245,8 @@ The walk by check:
 9. `src/Service/SpecExport.php:59-62` and `src/Service/SpecImport.php:127-131`. `withLayers()` changes `$this`, where every other `with…()` returns a clone (`CatalogueCheck.php:1365-1368`, `Builder.php:822-827`). Fix: clone.
 10. `assets/src/builder/block.json:20-23`. With `align` defaulting to `full`, choosing None in the editor likely clears the attribute, which reads back as `full`, so the content-column option HOOKS.md:653 implies ("unless the editor chose otherwise") is lost. Fix: check in the editor; if confirmed, add a `none` value or handle an empty one.
 11. `src/Service/Health.php:141`. Site Health runs `CatalogueCheck::run()`, which now works out `shared()` per kit and slot (`CatalogueCheck.php:199-219`) only for Health to discard it. Fix: a flag, or Health builds the check without `withLooks()`.
+
+<!-- markdownlint-enable MD029 -->
 
 Count: 0 blockers, 4 should-fix (P1, P2, P3 in the release audit, P1 and P3 being the same two code issues as second-pass 1 and 2), 13 minor (P4 to P6, and second-pass 3 to 11, with second-pass 6 overlapping P6). In distinct findings: 0 blockers, 3 should-fix, 12 minor.
 
@@ -252,7 +259,7 @@ Written by Claude Code after the audit, not by the auditor. Each fix has a test 
 | P1, P3 (second pass 1, 2) | Fixed. `SpecImport::layer()` keeps a cell that names the part's own image, by ID or by the name an export writes, before any lookup. `LayerColumnTest` re-imports a part whose image has a same-name twin; `SpecsBenchmarkTest` plans 2,000 parts' export with layer images in 0.47 s (16.3 s before). |
 | P2 | Fixed. `SavedBuildHooks::kept()` drops an Undo copy read past its 15 minutes, and PRIVACY.md says each way the copy goes. |
 | P4 | Fixed, and gate 17 now fails any file outside the domain without its `ABSPATH` guard. |
-| P5 | Fixed: "Choose an image for <part>". |
+| P5 | Fixed: "Choose an image for \<part>". |
 | P6, second pass 6 | Fixed. PRIVACY.md has the rendition log's error and the picture jobs' rows, and a throw is logged with the step it came from (`quality`, `resize` or `save`). |
 | Second pass 3 | Fixed. The lookup matches the file's whole name, in any folder or as WordPress's `-scaled` copy, so any number of near names don't push it out of the 20 read. With LIKE, since VIP's ruleset refuses REGEXP. |
 | Second pass 4 | Fixed before the freeze: `currency.format` is plain text (D-290). |

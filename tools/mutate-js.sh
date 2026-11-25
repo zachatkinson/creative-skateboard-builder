@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# StrykerJS on the plugin's TypeScript at 90 % (docs/AUDIT.md: Mutation testing): the admin's script now (D-086), and
+# StrykerJS on the plugin's TypeScript at 95 % (docs/AUDIT.md: Mutation testing): the admin's script now (D-086), and
 # the builder's store from milestone 6. With no file to mutate, the run is skipped.
 set -euo pipefail
 cd "$(dirname "$0")/.."

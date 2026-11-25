@@ -21,6 +21,8 @@ for fixture in "$fixtures"/*.fixture; do
 		6-*|11-*|12-*|13-*) mkdir -p "$root/src/Domain"; cp "$fixture" "$root/src/Domain/Probe.php" ;;
 		14-*|15-*) mkdir -p "$root/assets/src/builder"; cp "$fixture" "$root/assets/src/builder/probe.ts" ;;
 		16-*) mkdir -p "$root/assets/src/builder"; cp "$fixture" "$root/assets/src/builder/block.json" ;;
+		*.gitattributes) cp "$fixture" "$root/.gitattributes" ;;
+		*.distignore) cp "$fixture" "$root/.distignore" ;;
 		*) cp "$fixture" "$root/src/Support/Probe.php" ;;
 	esac
 	code=0

@@ -708,7 +708,7 @@ final class PartSpecsPanelTest extends IntegrationTestCase {
 	}
 
 	/**
-	 * The names of the controls a browser would send: those not disabled.
+	 * The names of the controls a browser would send: those not disabled, and no box that is not ticked (1.2.0, #116).
 	 *
 	 * @return list<string>
 	 */
@@ -716,7 +716,8 @@ final class PartSpecsPanelTest extends IntegrationTestCase {
 		preg_match_all( '#<(?:input|select)\b[^>]*>#s', $html, $controls );
 		$names = array();
 		foreach ( $controls[0] as $control ) {
-			if ( 1 === preg_match( '#\sname="([^"]+)"#', $control, $name ) && 1 !== preg_match( '#\sdisabled\b#', $control ) ) {
+			$unticked = 1 === preg_match( '#\stype="checkbox"#', $control ) && 1 !== preg_match( '#\schecked=#', $control );
+			if ( 1 === preg_match( '#\sname="([^"]+)"#', $control, $name ) && 1 !== preg_match( '#\sdisabled\b#', $control ) && ! $unticked ) {
 				$names[] = $name[1];
 			}
 		}

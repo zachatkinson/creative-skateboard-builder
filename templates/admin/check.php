@@ -14,6 +14,8 @@
  * @var int                                                                  $past   How many of those it does not list.
  * @var list<array{kit: string, about: string, link: string, says: string}> $alike  Variations that share a card, as far as the page lists (D-281).
  * @var int                                                                  $beyond How many of those it does not list.
+ * @var list<array{kit: string, about: string, link: string, says: string}> $kept   Parts the shop keeps out of the builder, as far as the page lists (#116).
+ * @var int                                                                  $aside  How many of those it does not list.
  * @var bool                                                                 $none  Whether the shop has no kit yet.
  * @var string                                                               $nonce The form's nonce action.
  * @var string                                                               $back  The tab's own address.
@@ -78,6 +80,14 @@ if ( ! defined( 'ABSPATH' ) ) {
 			$beyond,
 			__( 'What it says', 'creative-skateboard-builder' ),
 		),
+		array(
+			'cbuild-kept',
+			__( 'Parts kept out of the builder', 'creative-skateboard-builder' ),
+			__( 'Not offered in the builder is ticked on these parts, or on their product, so no kit offers them. They stay in the shop. Untick it on the part\'s Part specs to offer it again.', 'creative-skateboard-builder' ),
+			$kept,
+			$aside,
+			__( 'What it says', 'creative-skateboard-builder' ),
+		),
 	);
 	?>
 	<?php foreach ( $ran ? $cbuild_lists : array() as list( $cbuild_id, $cbuild_heading, $cbuild_intro, $cbuild_rows, $cbuild_more, $cbuild_column ) ) : ?>
@@ -85,6 +95,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 		if ( array() === $cbuild_rows ) {
 			continue;
 		}
+		// A list whose rows belong to no kit, as parts kept out of every kit, has no Kit column.
+		$cbuild_kits = array() !== array_filter( array_column( $cbuild_rows, 'kit' ), static fn( string $kit ): bool => '' !== $kit );
 		?>
 		<h3 id="<?php echo esc_attr( $cbuild_id ); ?>"><?php echo esc_html( $cbuild_heading ); ?></h3>
 		<?php if ( '' !== $cbuild_intro ) : ?>
@@ -95,7 +107,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 				<thead>
 					<tr>
 						<th scope="col"><?php esc_html_e( 'Where', 'creative-skateboard-builder' ); ?></th>
-						<th scope="col"><?php esc_html_e( 'Kit', 'creative-skateboard-builder' ); ?></th>
+						<?php if ( $cbuild_kits ) : ?>
+							<th scope="col"><?php esc_html_e( 'Kit', 'creative-skateboard-builder' ); ?></th>
+						<?php endif; ?>
 						<th scope="col"><?php echo esc_html( $cbuild_column ); ?></th>
 					</tr>
 				</thead>
@@ -109,7 +123,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 									<?php echo esc_html( $cbuild_row['about'] ); ?>
 								<?php endif; ?>
 							</td>
-							<td><?php echo esc_html( $cbuild_row['kit'] ); ?></td>
+							<?php if ( $cbuild_kits ) : ?>
+								<td><?php echo esc_html( $cbuild_row['kit'] ); ?></td>
+							<?php endif; ?>
 							<td><?php echo esc_html( $cbuild_row['says'] ); ?></td>
 						</tr>
 					<?php endforeach; ?>

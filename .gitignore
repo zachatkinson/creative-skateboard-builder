@@ -17,6 +17,7 @@
 /.phpunit.result.cache
 /infection.log
 /.eslintcache
+/.stylelintcache
 /.stryker-tmp/
 /.lighthouseci/
 *.log
@@ -35,7 +36,10 @@ Thumbs.db
 
 # PHPUnit 9.6 and the polyfills for the WordPress suite (tools/integration.sh installs them; the lock is committed)
 /tools/integration/vendor/
-.deptrac.cache
+/.deptrac.cache
+
+# Claude Code's agent worktrees, each a checkout of its own: never committed, and never linted as this one's files.
+/.claude/worktrees/
 
 # The browser tool's screenshots and snapshots, local only.
-.playwright-mcp/
+/.playwright-mcp/

@@ -49,6 +49,7 @@ final class UninstallTest extends IntegrationTestCase {
 		$product->set_regular_price( '10' );
 		$product->update_meta_data( Options::META_SPECS, array( 'deck_width' => '8.2500' ) );
 		$product->update_meta_data( Options::META_LAYER, '41' );
+		$product->update_meta_data( Options::META_NOT_OFFERED, 'yes' );
 		$product->save();
 		$order = wc_create_order();
 		$item  = new \WC_Order_Item_Product();
@@ -139,6 +140,7 @@ final class UninstallTest extends IntegrationTestCase {
 		self::assertNotNull( get_post( $page ), 'the shop\'s pages are never touched' );
 		self::assertFalse( metadata_exists( 'post', $records['product'], Options::META_SPECS ), 'a part\'s specs left behind' );
 		self::assertFalse( metadata_exists( 'post', $records['product'], Options::META_LAYER ), 'a part\'s layer image left behind' );
+		self::assertFalse( metadata_exists( 'post', $records['product'], Options::META_NOT_OFFERED ), 'a part\'s Not offered box left behind' );
 		self::assertNotEmpty( get_post( $records['product'] ), 'products are never touched' );
 		$order = wc_get_order( $records['order'] );
 		self::assertNotFalse( $order, 'orders are never touched' );

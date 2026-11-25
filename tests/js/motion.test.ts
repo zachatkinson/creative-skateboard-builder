@@ -363,8 +363,9 @@ describe( 'build', () => {
 		const board = document.createElement( 'div' );
 		board.innerHTML =
 			'<template></template><picture></picture><picture></picture><picture></picture>';
+		const deck: Played[] = [];
 		const drawn = [ ...board.querySelectorAll( 'picture' ) ].map(
-			( layer ) => animated( layer, played )
+			( layer, at ) => animated( layer, 0 === at ? deck : played )
 		);
 		const after = [
 			{ key: 'deck-1' },
@@ -380,6 +381,7 @@ describe( 'build', () => {
 			0, 60,
 		] );
 		expect( drawn[ 0 ] ).toBeDefined();
+		expect( deck, 'the deck drawn first, unchanged' ).toEqual( [] );
 	} );
 
 	it( 'fades them where it is calm, and passes over a layer that is not drawn or a board that is none', () => {
@@ -414,11 +416,13 @@ describe( 'a part removed', () => {
 		const [ moved, still, gone ] = [ item(), item(), item() ];
 		placed( moved, 100, 50 );
 		placed( still, 10, 10 );
-		placed( gone, 0, 0 );
+		placed( gone, 20, 20 );
 		const was = measured( [ moved, still, gone ] );
 		placed( moved, 40, 50.5 );
 		placed( still, 10.5, 9.5 );
 		gone.remove();
+		// Off the page, an element measures as at the page's corner, wherever it was.
+		placed( gone, 0, 0 );
 		close( was, false );
 		expect( played ).toHaveLength( 1 );
 		expect( played[ 0 ]!.frames ).toEqual( [
@@ -430,6 +434,11 @@ describe( 'a part removed', () => {
 		close( was, false );
 		expect( played[ 1 ]!.frames[ 0 ] ).toEqual( {
 			transform: 'translate(0px, 1px)',
+		} );
+		placed( moved, 99, 50 );
+		close( was, false );
+		expect( played[ 2 ]!.frames[ 0 ] ).toEqual( {
+			transform: 'translate(1px, 0px)',
 		} );
 	} );
 

@@ -13,6 +13,7 @@ use CreativeBranding\SkateboardBuilder\Domain\Kit\Kit;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Part;
 use CreativeBranding\SkateboardBuilder\Domain\Spec\Origin;
 use CreativeBranding\SkateboardBuilder\Port\LookFact;
+use CreativeBranding\SkateboardBuilder\Port\PartsKeptOut;
 use CreativeBranding\SkateboardBuilder\Domain\Spec\Reading;
 use CreativeBranding\SkateboardBuilder\Domain\Spec\SpecKey;
 use CreativeBranding\SkateboardBuilder\Domain\Spec\Specs;
@@ -386,6 +387,41 @@ final class CatalogueCheckTest extends TestCase {
 		self::assertNotSame( $plain, $plain->withLooks( $this->looks ) );
 		$plain->run();
 		self::assertSame( array(), $this->looks->asked );
+	}
+
+	// #116 (D-351): each part the shop keeps out of the builder is listed with whose box keeps it out, the part's own
+	// or its product's. withKeptOut() gives a copy (D-208): the check it was called on lists none, as 1.1.0's did.
+	public function test_a_part_the_shop_keeps_out_is_listed_and_the_check_with_kept_out_was_called_on_lists_none(): void {
+		$this->catalogue->products = array(
+			7 => array( 7 ),
+			8 => array( 8 ),
+			9 => array( 9 ),
+		);
+		$kept  = new class() implements PartsKeptOut {
+			/**
+			 * The parts asked about, a list a call.
+			 *
+			 * @var list<list<int>>
+			 */
+			public array $asked = array();
+
+			public function keptOut( int ...$parts ): array {
+				$this->asked[] = $parts;
+				return array_intersect_key(
+					array(
+						7 => self::OWN,
+						9 => self::PRODUCT,
+					),
+					array_flip( $parts )
+				);
+			}
+		};
+		$check = $this->check->withKeptOut( $kept );
+		self::assertSame( array( 'part_not_offered part=7 kit=0 from=part', 'part_not_offered part=9 kit=0 from=product' ), self::lines( $check->run() ) );
+		self::assertSame( array( array( 7, 8, 9 ) ), $kept->asked, 'read together' );
+		$kept->asked = array();
+		self::assertSame( array(), $this->check->run(), 'the check it was called on' );
+		self::assertSame( array(), $kept->asked );
 	}
 
 	/**

@@ -13,6 +13,7 @@ use CreativeBranding\SkateboardBuilder\Domain\Kit\InvalidMoney;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\SlotKey;
 use CreativeBranding\SkateboardBuilder\Domain\Saved\SavedBuild;
 use CreativeBranding\SkateboardBuilder\Port\Kits;
+use CreativeBranding\SkateboardBuilder\Port\ProductMeta;
 use CreativeBranding\SkateboardBuilder\Port\Money;
 use CreativeBranding\SkateboardBuilder\Service\BuildState;
 use CreativeBranding\SkateboardBuilder\Service\ComposedPictures;
@@ -63,6 +64,28 @@ final class MyBuildsView {
 	) {}
 
 	/**
+	 * Where each kit's builder is, as its Build tab chose (1.2.0, #113): none in a copy an earlier release's container
+	 * built, which asks `BuilderUrl::of()` as 1.1.0 did (D-208).
+	 *
+	 * @var BuilderAddress|null
+	 */
+	private ?BuilderAddress $address = null;
+
+	/**
+	 * The same, sending shoppers to the Builder page each kit's Build tab chose (#113, D-348). Only this release's
+	 * container calls it (D-208).
+	 *
+	 * @since 1.2.0
+	 *
+	 * @param BuilderAddress $address Where each kit's builder is.
+	 */
+	public function withAddress( BuilderAddress $address ): self {
+		$copy          = clone $this;
+		$copy->address = $address;
+		return $copy;
+	}
+
+	/**
 	 * Whether this page may still ask for pictures: it stops at the first refusal.
 	 *
 	 * @var bool
@@ -75,6 +98,27 @@ final class MyBuildsView {
 	 * @var array<string, true>
 	 */
 	private array $asked = array();
+
+	/**
+	 * Reads the builds' parts' meta together (1.2.0); null in a container of an earlier release (D-208).
+	 *
+	 * @var ProductMeta|null
+	 */
+	private ?ProductMeta $meta = null;
+
+	/**
+	 * A copy that reads the page's builds' parts, and their products, in one query before the rows are made,
+	 * so "Not offered in the builder" asks no query a part (#116, D-351). Called only from the container's additions.
+	 *
+	 * @since 1.2.0
+	 *
+	 * @param ProductMeta $meta Reads several products' meta in one query.
+	 */
+	public function withMeta( ProductMeta $meta ): self {
+		$copy       = clone $this;
+		$copy->meta = $meta;
+		return $copy;
+	}
 
 	/**
 	 * The customer's builds, the last saved first, as the template prints them.
@@ -90,8 +134,10 @@ final class MyBuildsView {
 		// The builds share their kits' slots: each slot's parts are read once for the page (audit of milestone 8).
 		return $this->kits->together(
 			function () use ( $user ): array {
+				$builds = $this->saved->of( $user );
+				$this->prime( $builds );
 				$rows = array();
-				foreach ( $this->saved->of( $user ) as $build ) {
+				foreach ( $builds as $build ) {
 					$rows[] = $this->row( $build );
 				}
 				return $rows;
@@ -118,7 +164,7 @@ final class MyBuildsView {
 				BuildLink::PARAM => urlencode_deep( $query ),
 				self::PARAM      => $build->uuid,
 			),
-			BuilderUrl::of( $build->kit )
+			$this->address?->of( $build->kit, $kit ) ?? BuilderUrl::of( $build->kit )
 		);
 	}
 
@@ -161,6 +207,24 @@ final class MyBuildsView {
 			return $build->name;
 		}
 		return null === $state ? __( 'A saved build', 'creative-skateboard-builder' ) : $this->cards->title( $state->counted() );
+	}
+
+	/**
+	 * Read the meta of the builds' parts and of the parts their kits name, with their products, in one query. Each
+	 * row reads its slots' parts one slot at a time, so "Not offered in the builder" would otherwise ask a query a
+	 * part (#116, D-351).
+	 *
+	 * @param list<SavedBuild> $builds The page's builds.
+	 */
+	private function prime( array $builds ): void {
+		if ( null === $this->meta ) {
+			return;
+		}
+		$products = array();
+		foreach ( $builds as $build ) {
+			$products = array( ...$products, $build->kit, ...array_values( $build->picks ) );
+		}
+		$this->meta->primeWithParents( ...$products );
 	}
 
 	/**

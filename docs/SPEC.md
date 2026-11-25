@@ -4,6 +4,62 @@ Oct 22, 2026, updated Nov 9, 2026 · Zach Atkinson
 
 Build a WooCommerce plugin of our own that sells a complete made from parts the shop already stocks: the shopper picks a deck, sees only the trucks, wheels, bearings, hardware and grip that fit it, watches the total as they go, and orders it assembled. Each part stays its own line in the cart and the order, so stock, tax and refunds work as WooCommerce means them to. Built for reuse, like Creative Locator, Creative Stockroom and Creative Search: Skatehouse is the first shop, and any skate shop the agency builds can run it.
 
+## Contents
+
+- [What changed on 9 Nov](#what-changed-on-9-nov)
+- [What changed since 22 Oct](#what-changed-since-22-oct)
+- [Goal and scope](#goal-and-scope)
+  - [What it does](#what-it-does)
+  - [Working with Claude Code](#working-with-claude-code)
+- [The bar to clear](#the-bar-to-clear)
+  - [Where 1.0 beats them](#where-10-beats-them)
+- [Quality bar](#quality-bar)
+  - [The matrix, applied to the builder](#the-matrix-applied-to-the-builder)
+  - [CI gates](#ci-gates)
+- [Vocabulary](#vocabulary)
+- [How it fits](#how-it-fits)
+  - [How a build travels](#how-a-build-travels)
+- [Data model](#data-model)
+- [Compatibility rules](#compatibility-rules)
+- [The builder](#the-builder)
+  - [Ways in](#ways-in)
+  - [A step](#a-step)
+  - [The total](#the-total)
+  - [The picture](#the-picture)
+  - [Review and add to cart](#review-and-add-to-cart)
+  - [Without JavaScript](#without-javascript)
+  - [Speed](#speed)
+- [Cart, checkout and orders](#cart-checkout-and-orders)
+  - [Showing it](#showing-it)
+  - [Orders](#orders)
+- [Pricing, stock, assembly and returns](#pricing-stock-assembly-and-returns)
+  - [Pricing](#pricing)
+  - [Stock](#stock)
+  - [Assembly](#assembly)
+  - [Returns](#returns)
+- [Admin](#admin)
+  - [WooCommerce > Builder](#woocommerce--builder)
+  - [On orders](#on-orders)
+- [French and other languages](#french-and-other-languages)
+- [SEO and sharing](#seo-and-sharing)
+- [Privacy and data handling](#privacy-and-data-handling)
+- [Security, performance and compatibility](#security-performance-and-compatibility)
+  - [Compatibility](#compatibility)
+  - [Upgrades and the public API](#upgrades-and-the-public-api)
+  - [Resilience](#resilience)
+- [Testing](#testing)
+  - [Unit, with no WordPress](#unit-with-no-wordpress)
+  - [Integration, in wp-env with the WordPress test suite](#integration-in-wp-env-with-the-wordpress-test-suite)
+  - [Browser, in Playwright on Chromium, WebKit and Firefox at phone and desktop widths](#browser-in-playwright-on-chromium-webkit-and-firefox-at-phone-and-desktop-widths)
+  - [Accessibility](#accessibility)
+  - [Also](#also)
+- [What Skatehouse needs before the builder can sell](#what-skatehouse-needs-before-the-builder-can-sell)
+- [Milestones for Claude Code](#milestones-for-claude-code)
+- [Open questions](#open-questions)
+- [Sources](#sources)
+  - [Fit rules](#fit-rules)
+  - [WooCommerce](#woocommerce)
+
 ## What changed on 9 Nov
 
 The UX deep dive, Zach's audit list and the plugin's new name reshaped the plan. Milestones 1 to 5 build what they did before, with the additions below; the builder's front end is now two milestones.
@@ -42,7 +98,7 @@ The demo moved on in the two weeks after this spec was written (checked 6 Nov 20
 
 **Name:** Creative Skateboard Builder (Zach's call, 9 Nov; D-001). Plugin slug and text domain `creative-skateboard-builder`, namespace `CreativeBranding\SkateboardBuilder`. The short prefix `cbuild_` stays on tables, options, meta, hooks and actions, and on the WP-CLI command `wp cbuild`.
 
-**What it does**
+### What it does
 
 - Adds a **kit** product type: a product made of **slots** (deck, trucks, wheels, risers, bearings, hardware, grip), each filled by one **part** the shop already sells. The kit says which products can fill each slot, which slots are optional, and which presets to offer.
 - Checks every pick against **compatibility rules** that read the parts' **specs** (a deck's width, a truck's axle width and height, a bolt's length). A part that doesn't fit is shown as unavailable, with the reason; a part that fits but needs care (big wheels without risers) gets a warning.
@@ -50,7 +106,9 @@ The demo moved on in the two weeks after this spec was written (checked 6 Nov 20
 - Adds a **build** to the cart as one parent line (the kit, carrying the assembly fee) with one child line per part, so each part keeps its own price, tax class, stock and refund. The Cart block, the Mini-Cart and a classic checkout all show the build grouped, and nothing in it can be changed piece by piece.
 - Carries the build into the order, the emails and the admin, and prints an **assembly ticket** for the workshop.
 
-**Who it's for.** Skatehouse first: one kit, the complete skateboard, built from 160 deck variations, wheels, hardware and grip, plus the trucks and bearings the shop will add. Then any skate shop Creative Branding builds. The kit model underneath (slots, parts, rules) isn't tied to skateboards, so another kind of kit could follow one day, but 1.0's rules, spec tables and words are for skateboards. The owner sets up kits, slots and presets once; a shop manager only ever fills in part specs.
+**Who it's for.** Skatehouse first: one kit, the complete skateboard, built from 160 deck variations, wheels, hardware and grip, plus the trucks and bearings the shop will add. Then any skate shop Creative Branding builds.
+
+The kit model underneath (slots, parts, rules) isn't tied to skateboards, so another kind of kit could follow one day, but 1.0's rules, spec tables and words are for skateboards. The owner sets up kits, slots and presets once; a shop manager only ever fills in part specs.
 
 **Requirements.** PHP 8.5 or later, WordPress 7.0 or later and WooCommerce 11.2 or later (open question 8: Creative Search moved to the same PHP and WordPress floors on 21 Oct, and WooCommerce 11.2 brought the Store API validation filters the cart relies on), and MySQL 8.0 or MariaDB 10.6 or later, as WordPress itself asks. Tested against the oldest pair, WordPress 7.0 with WooCommerce 11.2.0, and the newest, pinned in `.wp-env.json`: WordPress 7.1.4 with WooCommerce 11.2.2, as on the demo on 6 Nov, all on PHP 8.5, on MySQL 8.4 and MariaDB 10.11. No external service, no API key, and no outbound request but the agency's update check.
 
@@ -100,7 +158,7 @@ Eleven skate shops run a complete builder; most give advice rather than checking
 | [Eastern Boarder](https://easternboarder.com/pages/board-builder) | By size tier, chosen first | Not stated | Free, optional | 10% off | Not stated |
 | [Orchard](https://orchardshop.com/pages/complete-builder) | Advice only | Packages | Free, a cart checkbox | $15 off with a code | Not stated |
 | [SoCal Skateshop](https://socalskateshop.com/custom-complete.html) | Not visible | Not visible | Not visible | Not visible | Any part can come first |
-| [Tactics](https://www.tactics.com/skateboardbuilder) | The builder link lands on the skateboards category |  |  |  |  |
+| [Tactics](https://www.tactics.com/skateboardbuilder) | The builder link lands on the skateboards category | | | | |
 
 The WooCommerce plugins that sell a build. Woo's own Product Bundles and Composite Products both document a skateboard as their example.
 
@@ -114,7 +172,7 @@ The WooCommerce plugins that sell a build. Woo's own Product Bundles and Composi
 | [Product Add-Ons](https://woocommerce.com/products/product-add-ons/) | One line, add-ons as meta | Flat or % | None for options | Yes | $79 a year; no stock, no rules |
 | [BuildKit](https://wordpress.org/plugins/woo-product-builder/) | Stepped "PC builder" | Summed preview, extra fee | Hides sold-out | HPOS yes; blocks not stated | Free; Pro adds attribute rules |
 
-**Where 1.0 beats them**
+### Where 1.0 beats them
 
 - **It checks fit from specs.** Rules compare a deck's width with a truck's published range, wheels with truck height, bolts with risers. The shops mostly give advice, and the plugins list compatible options by hand.
 - **It passes an accessibility audit and works without JavaScript.** None of the eleven builders had a no-JavaScript version.
@@ -138,7 +196,7 @@ Creative Skateboard Builder is held to the same measured standard as Creative Se
 - `docs/STANDARDS.md` gives the standards the code is written to.
 - A milestone isn't done while a gate is red or a dimension fails.
 
-**The matrix, applied to the builder**
+### The matrix, applied to the builder
 
 | Dimension | What it means here |
 | --- | --- |
@@ -155,7 +213,7 @@ Creative Skateboard Builder is held to the same measured standard as Creative Se
 | Resilience and error handling | The builder never takes its page down; it falls back to the form when the route fails; every use of a build re-checks parts that changed; jobs retry, and failures reach Site Health and the log |
 | UX and content | The deep dive's patterns and Baymard's guidelines, checked screen by screen; plain copy with no em dashes or superlatives; motion that confirms picks and keeps the shopper oriented, and none under reduced motion |
 
-**CI gates**
+### CI gates
 
 | Gate | Floor | How it's checked |
 | --- | --- | --- |
@@ -234,7 +292,9 @@ The browser never decides fit or price. The server checks a build as the shopper
 
 Three tables (two until 0.4.0, D-116), product meta on the kit and the parts, and keys on cart and order items. Everything the plugin stores is either the owner's settings or rebuildable from WooCommerce.
 
-**The kit**, a product of type `cbuild_kit` (class `KitProduct extends WC_Product`). It is virtual (the parts ship), can't be bought outside the builder, and its price is the assembly fee, read from its assembly settings rather than WooCommerce's price fields and set to $0 by the cart when the shopper turns assembly off. Its settings are product meta, each a JSON document carrying a `schema_version` and validated against a JSON Schema in the plugin's `schema/` folder, which ships with it. Validation runs at the edge through WordPress's own `rest_validate_value_from_schema()`, with no library added, and the domain's value objects check their own invariants:
+**The kit**, a product of type `cbuild_kit` (class `KitProduct extends WC_Product`). It is virtual (the parts ship), can't be bought outside the builder, and its price is the assembly fee, read from its assembly settings rather than WooCommerce's price fields and set to $0 by the cart when the shopper turns assembly off.
+
+Its settings are product meta, each a JSON document carrying a `schema_version` and validated against a JSON Schema in the plugin's `schema/` folder, which ships with it. Validation runs at the edge through WordPress's own `rest_validate_value_from_schema()`, with no library added, and the domain's value objects check their own invariants:
 
 | Meta | Holds |
 | --- | --- |
@@ -244,7 +304,9 @@ Three tables (two until 0.4.0, D-116), product meta on the kit and the parts, an
 | `_cbuild_assembly` | Default on or off, the fee, the lead time, and the returns notice shown before checkout |
 | `_cbuild_picture` | The picture's settings (milestone 7): the slots' layer order, and any anchor the kit moves, such as where the trucks sit on a shape with no wheelbase |
 
-**Part specs.** A shop manager fills them in on each part's Part specs panel (simple products and variations), or imports them; they're stored as `_cbuild_specs` meta, one value per spec key. Two other sources feed the same specs: an attribute mapping, set once for the shop at WooCommerce > Settings > Builder (the deck's `deck_width` comes from the `pa_width` attribute, in inches), and **spec tables**, a post type `cbuild_spec_table` holding a maker's size chart (Independent 149: axle 8.5 in, decks 8.375 to 8.6 in, height 55 mm, wheels up to 56 mm). A truck variation names its table and size, and inherits the rest. Which source wins where two disagree is a shop-wide setting as well, so the index holds one value per part and spec whichever kit reads it (D-026). From milestone 7 a part can also carry a **layer image** for the picture, an attachment ID in `_cbuild_layer`, set on the same panel.
+**Part specs.** A shop manager fills them in on each part's Part specs panel (simple products and variations), or imports them; they're stored as `_cbuild_specs` meta, one value per spec key. Two other sources feed the same specs: an attribute mapping, set once for the shop at WooCommerce > Settings > Builder (the deck's `deck_width` comes from the `pa_width` attribute, in inches), and **spec tables**, a post type `cbuild_spec_table` holding a maker's size chart (Independent 149: axle 8.5 in, decks 8.375 to 8.6 in, height 55 mm, wheels up to 56 mm). A truck variation names its table and size, and inherits the rest.
+
+Which source wins where two disagree is a shop-wide setting as well, so the index holds one value per part and spec whichever kit reads it (D-026). From milestone 7 a part can also carry a **layer image** for the picture, an attachment ID in `_cbuild_layer`, set on the same panel.
 
 **The specs index**, table `{prefix}cbuild_specs`: one row per part and spec, with the value as a number (`DECIMAL(10,4)`) or a short text, where it came from, and when. Keyed on the part and the spec, indexed on spec and value so a slot's candidates come back in one query. Derived: rebuilt in the background from the three sources, never edited.
 
@@ -284,19 +346,19 @@ Seed spec tables. Each maker's figures come from its own size chart, read on 10 
 
 | Axle | Independent, with its deck range | Thunder, with its deck range | Venture, with its deck range |
 | --- | --- | --- | --- |
-| 6.9 in | 109: 6.25–7.6 |  |  |
-| 7.125 in |  | 143: up to 7.4 |  |
-| 7.6 in | 129: 7.4–7.8 |  |  |
-| 7.62 in |  | 145: 7.4–7.9 | 5.0: up to 7.9 |
+| 6.9 in | 109: 6.25–7.6 | | |
+| 7.125 in | | 143: up to 7.4 | |
+| 7.6 in | 129: 7.4–7.8 | | |
+| 7.62 in | | 145: 7.4–7.9 | 5.0: up to 7.9 |
 | 8.0 in | 139: 7.8–8.2 | 147: 7.9–8.12 | 5.2: 7.9–8.1 |
 | 8.25 in | 144: 8.2–8.375 | 148: 8.12–8.38 | 5.6: 8.1–8.3 |
-| 8.375 in | 146: 8.125–8.625 |  |  |
+| 8.375 in | 146: 8.125–8.625 | | |
 | 8.5 in | 149: 8.375–8.6 | 149: 8.38–8.62 | 5.8: 8.4–8.6 |
-| 8.625 in | 151: 8.375–8.875 |  |  |
+| 8.625 in | 151: 8.375–8.875 | | |
 | 8.75 in | 159: 8.6–9.0 | 151: 8.62–8.85 | 6.1: 8.62 and up |
-| 9.0 in | 166: 8.5–9.5 |  |  |
-| 9.125 in | 169: 9.0–9.5 | 161: 8.9–9.5 |  |
-| 10.0 in | 215: 9.5–10.5 | 181: 9.5 and up |  |
+| 9.0 in | 166: 8.5–9.5 | | |
+| 9.125 in | 169: 9.0–9.5 | 161: 8.9–9.5 | |
+| 10.0 in | 215: 9.5–10.5 | 181: 9.5 and up | |
 
 **R2. Mounting holes (block).**
 
@@ -345,9 +407,11 @@ Seed spec tables. Each maker's figures come from its own size chart, read on 10 
 
 ## The builder
 
-One step per slot, in the kit's order, then a review. The deck comes first, every later step offers only what fits, and every step shows the picture and the running total. A pick never leaves the shopper guessing whether it fits. The research behind this section is `docs/UX-RESEARCH.md`; its patterns are numbered there, P1 to P12, and each milestone's review checks them.
+One step per slot, in the kit's order, then a review. The deck comes first, every later step offers only what fits, and every step shows the picture and the running total.
 
-**Ways in**
+A pick never leaves the shopper guessing whether it fits. The research behind this section is `docs/UX-RESEARCH.md`; its patterns are numbered there, P1 to P12, and each milestone's review checks them.
+
+### Ways in
 
 - The kit's page or the Builder block: blank, or from a preset.
 - A deck's product page: a "Make it a complete" link opens the builder with that deck and width picked, the way CCS and Daddies do it. On Skatehouse, Skatehouse Core 2.x places the link.
@@ -360,7 +424,7 @@ One step per slot, in the kit's order, then a review. The deck comes first, ever
 - A preset fills every slot, and the shopper can change any part after (P3).
 - A preset holding a sold-out part says so on its tile.
 
-**A step**
+### A step
 
 - **Where the shopper is.** The heading says it: "Step 2 of 7: Trucks". A progress list above shows the steps as done, current or to come, and done steps link back with their picks kept.
 - **Risers only when needed.** The risers step appears only when the wheels need risers, with "No risers" as a choice (P2).
@@ -383,7 +447,7 @@ One step per slot, in the kit's order, then a review. The deck comes first, ever
 - Without JavaScript, the same panel is a step of its own, with both as buttons.
 - Focus moves to the panel's heading, and the status region says how many parts changed.
 
-**The total**
+### The total
 
 - Assembly is in the total from the first step ("Assembly: free", or its fee), so no cost appears late (P5).
 - A summary bar shows the total, the parts so far and any build discount.
@@ -398,7 +462,7 @@ One step per slot, in the kit's order, then a review. The deck comes first, ever
 - Baymard found that [40% of shoppers who abandon a cart cite extra costs](https://baymard.com/lists/cart-abandonment-rate), and [48% of checkouts give no delivery date](https://baymard.com/research-articles/current-state-of-checkout-ux) (2025).
 - Other plugins add lines under the total through `cbuild_summary_notes`. Creative Loyalty can show the points a build earns. A signed-in dealer is told the builder shows retail prices (open question 7).
 
-**The picture**
+### The picture
 
 The board as it's built (P6). It heads every step and the review, and is redrawn with each pick.
 
@@ -415,7 +479,7 @@ The board as it's built (P6). It heads every step and the review, and is redrawn
 - **The largest paint.** The deck layer is the page's largest paint: an explicit size, `fetchpriority="high"`, and AVIF or WebP at the size shown. A pick swaps one layer in place.
 - **Ready for 3D.** Both renderers sit behind one interface, so a 3D view that loads on a tap can be added as a module after 1.0 (`docs/ROADMAP.md`).
 
-**Review and add to cart**
+### Review and add to cart
 
 - The review lists the build by slot, each part with a fit tick and a Change link (P7).
 - It also shows assembly on or off with its fee and lead time, the arrival date, the total, and the returns notice the owner writes, all before Add to cart.
@@ -439,13 +503,13 @@ Each animation lasts 150 to 250 ms, eases out, and moves only `transform` and `o
 - A blocking problem on Next or Add to cart shows an error summary that takes focus and links to the slot, and the page title gets "Error:" first.
 - 24 px targets, a visible focus ring everywhere, and no motion when the shopper asks for reduced motion.
 
-**Without JavaScript**
+### Without JavaScript
 
 - Each step is a form whose picks travel in the URL (a GET), so the server renders the next step and every state can be bookmarked.
 - The change panel and the review are server-rendered steps too.
 - Add to cart posts to WooCommerce's own add-to-cart handler, which takes no nonce, so a cached page never goes stale (see Security).
 
-**Speed**
+### Speed
 
 - The first step and the picture are rendered on the server.
 - The state route is called once per pick, 150 ms after the last one.
@@ -470,7 +534,7 @@ A build is a parent line (the kit) with a child line per part, the model Woo's o
 - A change that would break that is refused with a `WP_Error` from `woocommerce_store_api_cart_item_quantity_validation`: a child changed alone, or a parent raised past a part's stock.
 - `woocommerce_check_cart_items` drops orphaned children and re-checks every build, since stock or specs may have changed since it was added.
 
-**Showing it**
+### Showing it
 
 | Where | How |
 | --- | --- |
@@ -480,7 +544,7 @@ A build is a parent line (the kit) with a child line per part, the model Woo's o
 
 **The kit's thumbnail.** In every cart, the kit's line shows the build's composed picture once it's made, through the Store API's cart item images and `woocommerce_cart_item_thumbnail` (both confirmed in the installed source in milestone 7), and the deck's photo until then. Every part sits under it as its own line with its own photo.
 
-**Orders**
+### Orders
 
 - `woocommerce_checkout_create_order_line_item` copies the build's keys onto each order item; the Store API's checkout calls the same method ([source](https://wp-kama.com/plugin/woocommerce/hook/woocommerce_checkout_create_order_line_item)). Once the order is saved, the cart keys are turned into order item ids.
 - `woocommerce_order_item_name` labels the parts in emails, the account pages, the admin's order rows and the order confirmation ([source](https://wp-kama.com/plugin/woocommerce/hook/woocommerce_order_item_name)).
@@ -491,7 +555,7 @@ A build is a parent line (the kit) with a child line per part, the model Woo's o
 
 ## Pricing, stock, assembly and returns
 
-**Pricing**
+### Pricing
 
 - Each part is charged at its own live price, so sales flow through, and the parent line carries the assembly fee or $0. This is the model Composite Products uses for its skateboard ([kit builder](https://woocommerce.com/document/composite-products/composite-products-use-case-kit-builder/)).
 - Every price is worked out on the server, and nothing the browser sends is trusted. Every part needs a price, since WooCommerce won't sell a product without one ([Bundles FAQ](https://woocommerce.com/document/bundles/bundles-faq/)).
@@ -500,14 +564,14 @@ A build is a parent line (the kit) with a child line per part, the model Woo's o
 - Revenue sits on the parts; the parent is credited only its fee. Reporting tools that count a bundle's parts and the bundle twice ([Metorik](https://help.metorik.com/article/77-product-bundles-support)) can read the role on each line to tell them apart.
 - At most one line is $0: the parent, when assembly is free. Bundles warns that $0 lines trip some carriers, Canada Post among them ([compatibility](https://woocommerce.com/document/bundles/bundles-compatibility-and-integrations/)), so the integration tests run the shop's own shipping methods.
 
-**Stock**
+### Stock
 
 - The plugin never writes stock. Reservation, reduction, restoring stock on a failed or cancelled order ([advisory](https://developer.woocommerce.com/2026/07/17/failed-order-stock-update/)) and restocking on a refund all run per line, in WooCommerce ([reduce](https://hooks.wbcomdesigns.com/?p=33660), [reserve](https://wp-kama.com/plugin/woocommerce/function/ReserveStock::reserve_stock_for_order), [restock](https://wp-kama.com/plugin/woocommerce/function/wc_restock_refunded_items)).
 - What the builder offers is worked out when it's asked, never synced. Imports and bulk edits that skip WooCommerce's functions can't leave it stale. (Since 0.4.0, D-116: the state route's options come from the parts table, so a change that fires no WooCommerce hook shows within two hours, or at once after `cbuild_parts_changed`. What goes to the cart is read from WooCommerce. For Zach.)
 - Creative Stockroom keeps a printed deck's stock right in WooCommerce, so it needs nothing from the builder. The `cbuild_part_available` filter lets any plugin rule a part out.
 - If a part sells out between the builder and the checkout, WooCommerce's own checks stop the order, and the cart line's Edit build link takes the shopper back to swap it.
 
-**Assembly**
+### Assembly
 
 - Assembly is on or off for each build, with the owner choosing the default. Skatehouse's proposal says free, by the team.
 - The fee sits on the parent line. A lead time, in the owner's words, shows in the builder and in the order email.
@@ -516,7 +580,7 @@ A build is a parent line (the kit) with a child line per part, the model Woo's o
 
 **Shipping.** The parent is virtual, and the parts carry their own weights. A filter on `woocommerce_cart_shipping_packages` can keep a build in one package for shops that split packages.
 
-**Returns**
+### Returns
 
 - Whether an assembled build can be returned is the owner's call. Warehouse Skateboards, Skate Warehouse and SkatePro say no. The owner's returns notice shows on the review step and in the order email.
 - Refunds work line by line with Restock refunded items ([refunds](https://woocommerce.com/document/woocommerce-refunds/)). That box covers a whole refund, so restocking unused parts without the grip already applied takes two refunds. The admin's help text says so.
@@ -547,7 +611,7 @@ Everything sits in WooCommerce's own screens, built from WordPress's admin marku
 - Saving queues `cbuild_index_part` for the part, so the builder sees the change within moments without slowing the save.
 - Both save hooks fire just before WooCommerce writes the object, so the specs go in with the same save (checked in 11.2.1): `woocommerce_admin_process_product_object` gets the product, and `woocommerce_admin_process_variation_object` the variation and its row. WooCommerce's variation save checks no nonce of its own, so the plugin checks `edit_products` before reading its fields.
 
-**WooCommerce > Builder**
+### WooCommerce > Builder
 
 - **Spec tables** (`cbuild_spec_table`): a maker's size chart, a row per size with its axle width, deck range, height, largest wheel without risers and baseplate holes. Independent, Thunder and Venture are created by a migration from the table under R1, each row with its source and the date it was read, so an upgraded site gets them as a new one does. Changing a table re-indexes every part that names it.
 - **Catalogue check:** for each kit, the parts that can fill a slot but lack a spec one of their rules needs (and so aren't offered), parts whose sources disagree (the Width attribute says 8.25 in, the field 8.5 in), presets that no longer fit or hold a sold-out part, and slots with nothing in stock. Each row links to the field that fixes it. It runs when asked, in the admin or as `wp cbuild check`, which exits with an error for CI or a monitor.
@@ -560,7 +624,7 @@ Everything sits in WooCommerce's own screens, built from WordPress's admin marku
 - On the kit's Build tab, a Picture section sets the slots' layer order and any anchor the kit needs to move.
 - The Catalogue check lists the parts without a layer image, so the owner sees what the picture still lacks.
 
-**On orders**
+### On orders
 
 - A **Build box** on the order screen, registered for `wc_get_page_screen_id( 'shop-order' )` so it shows with HPOS on or off ([recipe](https://developer.woocommerce.com/docs/features/high-performance-order-storage/recipe-book/)). It lists the build by slot with each part's specs as sold (from `_cbuild_snapshot`) and a Print assembly ticket button.
 - If the order's lines no longer match the build (a part removed or a quantity changed in the admin, which can also drop the build's meta, as [Bundles warns](https://woocommerce.com/document/bundles/bundles-faq/)), the box says so before anyone prints a ticket.
@@ -651,7 +715,7 @@ The builder needs almost nothing personal, and keeps it that way. `docs/PRIVACY.
 - The picture's deck layer is the page's largest paint, sized and prioritised. Composed pictures are made in Action Scheduler, so no page waits on one.
 - A pick paints its own selected state before the state route answers, so the interaction stays within its budget on a slow phone.
 
-**Compatibility**
+### Compatibility
 
 - **Where the builder renders.** On a kit's page it takes the place of the add-to-cart form, through `woocommerce_cbuild_kit_add_to_cart`, the action WooCommerce calls for each product type's form. That covers classic themes, Shop Kit's product templates and block themes' Add to Cart form block. The browser tests run Storefront and Twenty Twenty-Five; Shop Kit can't run in CI, so Claude in Cowork checks its templates and checkout with a build in them. The Builder block puts a kit on any page.
 - **Shop Kit's checkout** replaces WooCommerce's checkout templates and lets other plugins override only those it lists (`flux_allowed_template_overrides`), so the builder changes the checkout through WooCommerce's filters only, never templates. Its order summary is checked with a build in it, by Claude in Cowork.
@@ -661,7 +725,7 @@ The builder needs almost nothing personal, and keeps it that way. `docs/PRIVACY.
 - **The agency's plugins.** Creative Stockroom needs nothing (Stock). The kit stays out of Creative Search's results, as it stays out of the catalogue, and the Build a complete page is suggested by its title; a slot's own filters don't call Search. Skatehouse Core 2.x brings Skatehouse's rule settings, copy and the "Make it a complete" link through the builder's hooks. Creative Checkout, Mature Content, Creative Shipment Tracking and Creative Reviews meet the builder as What changed since 22 Oct says.
 - **Everything else** is in the Quality bar's matrix: PHP 8.5; Kadence, Storefront and Twenty Twenty-Five; page caches (the kit's page caches, the state route doesn't); a persistent object cache; multisite, activated per site; Yoast SEO; and the oldest and newest supported WordPress and WooCommerce.
 
-**Upgrades and the public API**
+### Upgrades and the public API
 
 - **What's public.** Each of these is listed in `docs/HOOKS.md` with the version it arrived in:
   - the hooks (`cbuild_*`);
@@ -693,7 +757,7 @@ The builder needs almost nothing personal, and keeps it that way. `docs/PRIVACY.
 - **Interruptions recover.** A migration or reindex stopped halfway resumes from its cursor and ends exactly as an uninterrupted run would, with no duplicate rows. This is tested.
 - **Rolling back one minor release leaves a working shop.** Within a major release, migrations only add columns, keys and documents; they never drop or rename them.
 
-**Resilience**
+### Resilience
 
 - **The builder never takes its page down.** Its render is a boundary: it logs an error and shows the shopper "This builder isn't available right now". An admin sees why.
 - **Without WooCommerce, or below the floors,** the plugin hooks nothing and says so in the admin.
@@ -709,14 +773,14 @@ The builder needs almost nothing personal, and keeps it that way. `docs/PRIVACY.
 
 The floors are under Quality bar; this is what the suites cover. The test cases under Compatibility rules are written first, before each rule's code.
 
-**Unit, with no WordPress**
+### Unit, with no WordPress
 
 - Each rule with the cases this spec gives, and every boundary: both ends of a range, each tolerance, a missing spec (the part isn't offered), unit conversions and fractions.
 - The engine: a later pick removed when an earlier one changes, with its reason; quantities from set sizes (R7); presets checked.
 - Prices: the build discount rounded per line to the shop's decimals, a currency without decimals, a $0 parent.
 - The change list and its closest fits; recommendations; the picture's layout at each width, length and wheelbase.
 
-**Integration, in wp-env with the WordPress test suite**
+### Integration, in wp-env with the WordPress test suite
 
 - A build added through the Store API's `cart/add-item` and through the classic handler, and every refusal with its message.
 - Keeping it together: quantity changes, removal from either end without a loop, a child changed alone refused, orphans dropped, the parent's maximum.
@@ -726,20 +790,20 @@ The floors are under Quality bar; this is what the suites cover. The test cases 
 - **The invariant.** Across random builds over a generated catalogue, whatever the state route offers, the cart's validation accepts, and whatever it blocks, validation refuses.
 - The abilities giving the state route's answers; the exporter, the eraser and account deletion; a migration and a reindex stopped halfway and run again; the composed picture with GD and with Imagick, and its pruning; multisite; a persistent object cache; MySQL 8.4 and MariaDB 10.11.
 
-**Browser, in Playwright on Chromium, WebKit and Firefox at phone and desktop widths**
+### Browser, in Playwright on Chromium, WebKit and Firefox at phone and desktop widths
 
 - Every way in: blank, a preset, a deck's link, a build link and a saved build. A later pick removed, a sold-out part in a preset, the review, Edit build replacing the build in the cart, and Back and Forward between steps with every pick kept.
 - The build grouped and locked in the Cart block, the Mini-Cart and a classic checkout (Storefront's in CI; Shop Kit's is checked by Claude in Cowork).
 - The whole flow again with JavaScript off, once in French and once right to left.
 - A change that breaks later picks, accepted and undone; the picture's description after each pick; the phone bar never covering focus; the state route forced to fail; the SEO tags on the clean page and on a build link; visual snapshots of the main states on three themes, dark and light.
 
-**Accessibility**
+### Accessibility
 
 - axe on every step, the error summary, the three carts and every admin screen.
 - A whole build by keyboard alone, from the first step to a placed order; focus on each step's heading; the status region's announcements read from the page; 24 px targets measured; reflow at 320 px wide (WCAG 1.4.10); forced colours; text spacing (WCAG 1.4.12); no animation running under reduced motion.
 - The manual VoiceOver and NVDA script each release, in `docs/A11Y.md`.
 
-**Also**
+### Also
 
 - Infection's mutation floors, and StrykerJS's on the builder's store.
 - The contract tests: every state route answer against its schema, and the public API against its snapshot.
@@ -827,7 +891,7 @@ Opened 22 October 2026. WooCommerce's source is cited from mirrors (wp-kama.com 
 
 **Skate shops' builders.** Linked in The bar to clear, plus Warehouse Skateboards' [assembly options](https://www.warehouseskateboards.com/assembly-options), [policies](https://www.warehouseskateboards.com/policies) and [grip option](https://www.warehouseskateboards.com/grip-option); Skate Warehouse's [build guide](https://www.skatewarehouse.com/news/articles/how-to-build-a-skateboard.html) and [order information](https://www.skatewarehouse.com/SupportCenter/OrderInfo/); SkatePro's [US builder](https://www.skatepro.com/en-us/build-a-skateboard.htm); Hammer's [in-store assembly](https://www.hammertoronto.com/products/assemble-complete-board-in-store); and a [UX case study of Zumiez's builder](https://www.behance.net/gallery/159688635/Zumiez-Build-a-Custom-Skateboard-Case-Study), not by Zumiez.
 
-**Fit rules**
+### Fit rules
 
 - R1: [Independent's trucks](https://independenttrucks.com/trucks); Thunder's from [its own chart](https://www.thundertrucks.com/sizing/) and Venture's from [its own](https://venturetrucks.net/sizes/), each published as images (D-093); the tolerance from [Warehouse's trucks step](https://www.warehouseskateboards.com/skateboard-trucks?bac=1) and [Skate Warehouse's trucks guide](https://www.skatewarehouse.com/news/articles/skateboard_trucks_buying_guide.html); the disagreeing range from [NHS](https://nhsskatedirect.com/products/stage-11-polished-standard-skateboard-trucks-independent).
 - R2: [Riding Boards](https://www.ridingboards.com/?p=2738) for the patterns; [NHS's Indy 215](https://nhsskatedirect.com/products/stage-11-215-polished-skateboard-trucks-independent) for six-hole baseplates.
@@ -838,7 +902,7 @@ Opened 22 October 2026. WooCommerce's source is cited from mirrors (wp-kama.com 
 - R7: [Tactics on assembling a skateboard](https://www.tactics.com/info/assembling-a-skateboard).
 - R8: [Concrete Waves](https://concretewaves.com/?p=9409); [SkateboardersHQ](https://skateboardershq.com/skateboard-wheelbase-guide/).
 
-**WooCommerce**
+### WooCommerce
 
 - Extensions: Composite Products' [kit builder](https://woocommerce.com/document/composite-products/composite-products-use-case-kit-builder/), [data structures](https://woocommerce.com/document/composite-products/composite-products-data-structures-storage/) and [FAQ](https://woocommerce.com/document/composite-products/composite-products-faq/); Product Bundles' [complex products](https://woocommerce.com/document/bundles/bundles-use-case-complex-products), [data structures](https://woocommerce.com/document/bundles/bundles-data-structures-storage/), [FAQ](https://woocommerce.com/document/bundles/bundles-faq/) and [compatibility](https://woocommerce.com/document/bundles/bundles-compatibility-and-integrations/); Mix and Match's [Store API reference](https://woocommerce.com/document/woocommerce-mix-and-match-products/mix-and-match-store-api-reference/).
 - Developer docs: [extending the Store API](https://developer.woocommerce.com/docs/apis/store-api/extending-store-api/extend-store-api-add-data/), [cart line item filters](https://developer.woocommerce.com/docs/block-development/extensible-blocks/cart-and-checkout-blocks/filters-in-cart-and-checkout/cart-line-items/), [migrated hooks](https://developer.woocommerce.com/docs/block-development/reference/hooks/migrated-hooks/), [hook alternatives](https://developer.woocommerce.com/docs/block-development/reference/hooks/hook-alternatives/), the [HPOS recipe book](https://developer.woocommerce.com/docs/features/high-performance-order-storage/recipe-book/) and the [blocks extensibility FAQ](https://developer.woocommerce.com/2023/11/06/faq-extending-cart-and-checkout-blocks/).

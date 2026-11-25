@@ -9,6 +9,7 @@ declare( strict_types=1 );
 
 namespace CreativeBranding\SkateboardBuilder\Adapter;
 
+use Automattic\WooCommerce\StoreApi\SessionHandler;
 use CreativeBranding\SkateboardBuilder\Port\Cart;
 use CreativeBranding\SkateboardBuilder\Port\CartLine;
 use CreativeBranding\SkateboardBuilder\Support\Cast;
@@ -17,6 +18,7 @@ use WC_Cart;
 use WC_Customer;
 use WC_Product;
 use WC_Product_Variation;
+use WC_Session_Handler;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -155,6 +157,22 @@ final class WooCart implements Cart {
 		}
 		WC()->initialize_session();
 		WC()->customer = new WC_Customer( get_current_user_id(), true );
+	}
+
+	/**
+	 * Write the session now. WooCommerce saves it at `shutdown` (includes/class-wc-session-handler.php:105; the
+	 * Store API's own handler, for a request with a cart token, at src/StoreApi/SessionHandler.php:58), which runs
+	 * after a REST route has written its answer out. The site sends the answer as it is written, so the shopper's
+	 * next request could arrive before the cart was kept and find it empty (issues #51 and #108). A session saved
+	 * here is no longer changed, so the save at `shutdown` writes nothing again.
+	 *
+	 * @since 1.2.0
+	 */
+	public function keep(): void {
+		$session = get_object_vars( WC() )['session'] ?? null;
+		if ( $session instanceof WC_Session_Handler || $session instanceof SessionHandler ) {
+			$session->save_data();
+		}
 	}
 
 	/**

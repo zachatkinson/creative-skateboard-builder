@@ -2,15 +2,27 @@
 
 Thank you for looking. This plugin is built by Creative Branding and held to a written audit, so the way in is a little narrower than usual.
 
+## Contents
+
+- [Issues: welcome](#issues-welcome)
+- [Pull requests: by invitation](#pull-requests-by-invitation)
+- [Conduct](#conduct)
+
 ## Issues: welcome
 
-Open an issue for a bug, a question or an idea, with the template that fits. For a bug, the plugin's version, WordPress's and WooCommerce's, the theme, and the steps that show it are what we need most. Site Health's Info tab has a "Skateboard builder" section with the versions and the index's state, which can be copied in whole.
+Open an issue for a bug, a question or an idea, with the template that fits. For a bug, these are what we need most:
+
+- the plugin's version, WordPress's and WooCommerce's;
+- the theme;
+- the steps that show it.
+
+Site Health's Info tab has a "Skateboard builder" section with the versions and the index's state, which can be copied in whole.
 
 A security problem goes through [SECURITY.md](SECURITY.md), not an issue.
 
 ## Pull requests: by invitation
 
-Every change is held to the twelve dimensions in [docs/AUDIT.md](docs/AUDIT.md), with tests first and every gate green, so a pull request we haven't talked about first is likely to be closed unread. If you would like to work on something, say so on its issue, and we'll say whether we can take it and how.
+**Every change is held to the twelve dimensions** in [docs/AUDIT.md](docs/AUDIT.md), with tests first and every gate green, so a pull request we haven't talked about first is likely to be closed unread. If you would like to work on something, say so on its issue, and we'll say whether we can take it and how.
 
 Once invited:
 

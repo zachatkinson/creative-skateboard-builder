@@ -38,4 +38,23 @@ interface BuilderPosts {
 	 * @param int $post The post's ID.
 	 */
 	public function isKit( int $post ): bool;
+
+	/**
+	 * Whether a post is a page a visitor may see: published, public and with no password (1.2.0).
+	 *
+	 * @since 1.2.0
+	 *
+	 * @param int $post The post's ID.
+	 */
+	public function isPage( int $post ): bool;
+
+	/**
+	 * The site's published pages a visitor may see, by title (1.2.0): the pages a kit's Build tab may choose for its
+	 * builder. At most a few hundred.
+	 *
+	 * @since 1.2.0
+	 *
+	 * @return list<int>
+	 */
+	public function pages(): array;
 }

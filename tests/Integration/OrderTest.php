@@ -149,6 +149,36 @@ final class OrderTest extends CartTestCase {
 	}
 
 	/**
+	 * `schema/order-snapshot.json`, as published or made strict. The published schema lets a key it does not describe
+	 * through, so a plugin that checks a snapshot against one release's schema accepts the keys a later release adds
+	 * (1.2.0's `lead_days`). Strict, every object with properties takes those alone, so a key the schema does not
+	 * describe fails the plugin's own tests.
+	 *
+	 * @param bool $strict Whether to close each object.
+	 * @return array<string, mixed>
+	 */
+	private static function snapshotSchema( bool $strict ): array {
+		$schema = json_decode( (string) file_get_contents( dirname( __DIR__, 2 ) . '/schema/order-snapshot.json' ), true );
+		self::assertIsArray( $schema );
+		$close = static function ( mixed $node ) use ( &$close, $strict ): mixed {
+			if ( ! is_array( $node ) ) {
+				return $node;
+			}
+			$node = array_map( $close, $node );
+			if ( isset( $node['properties'], $node['type'] ) && is_array( $node['properties'] ) ) {
+				self::assertNotFalse( $node['additionalProperties'] ?? null, 'The published schema closes no object with properties.' );
+				if ( $strict ) {
+					$node['additionalProperties'] = false;
+				}
+			}
+			return $node;
+		};
+		$schema = $close( $schema );
+		self::assertIsArray( $schema );
+		return $schema;
+	}
+
+	/**
 	 * An order's builds as the plugin's keys tell them, read from the order as it was saved.
 	 *
 	 * @param WC_Order $order The order.
@@ -196,16 +226,15 @@ final class OrderTest extends CartTestCase {
 		self::assertMatchesRegularExpression( '/^[0-9a-f-]{36}$/', $kit->get_meta( '_cbuild_id' ) );
 
 		$snapshot = $kit->get_meta( '_cbuild_snapshot' );
-		self::assertSame( array( 'schema_version', 'kit', 'assembly', 'picks', 'lead_time', 'returns_notice' ), array_keys( $snapshot ) );
+		self::assertSame( array( 'schema_version', 'kit', 'assembly', 'picks', 'lead_time', 'returns_notice', 'lead_days' ), array_keys( $snapshot ) );
 		// The auditor's finding 6 on milestone 5: the document kept for as long as the order is has its schema.
-		$schema = json_decode( (string) file_get_contents( dirname( __DIR__, 2 ) . '/schema/order-snapshot.json' ), true );
-		self::assertIsArray( $schema );
+		$schema = self::snapshotSchema( true );
 		$valid = rest_validate_value_from_schema( $snapshot, $schema, '_cbuild_snapshot' );
 		self::assertTrue( $valid, is_wp_error( $valid ) ? $valid->get_error_message() : '' );
 		$wrong = $snapshot;
 		unset( $wrong['picks']['deck']['label'] );
 		self::assertWPError( rest_validate_value_from_schema( $wrong, $schema, '_cbuild_snapshot' ), 'and the schema refuses what is not one' );
-		self::assertSame( array( '', '' ), array( $snapshot['lead_time'], $snapshot['returns_notice'] ), 'the kit has neither' );
+		self::assertSame( array( '', '', '' ), array( $snapshot['lead_time'], $snapshot['returns_notice'], $snapshot['lead_days'] ), 'the kit has none of them' );
 		self::assertSame( array( 1, $this->kit, $assembly ), array( $snapshot['schema_version'], $snapshot['kit'], $snapshot['assembly'] ) );
 		self::assertSame(
 			array(
@@ -293,6 +322,66 @@ final class OrderTest extends CartTestCase {
 		$loose = $builds[1]['item']->get_meta( '_cbuild_snapshot' );
 		self::assertFalse( $loose['assembly'] );
 		self::assertSame( array( '', '' ), array( $loose['lead_time'], $loose['returns_notice'] ), 'neither is said of a build the shop does not assemble' );
+	}
+
+	// #142: the assembly time in business days is kept in the snapshot as sold, for an assembled build alone, and the
+	// snapshot still meets its schema. A snapshot made before 1.2.0, with no key, still does.
+	public function test_an_assembled_builds_order_keeps_the_assembly_time_in_business_days_as_sold(): void {
+		$kit = wc_get_product( $this->kit );
+		$kit->setDocument(
+			Options::META_KIT_SETTINGS,
+			array(
+				'schema_version' => 1,
+				'lead_days'      => '2-4',
+			)
+		);
+		$kit->save();
+		$this->added( true );
+		$this->added( false );
+		$builds = self::told( $this->classic() );
+
+		$assembled = $builds[0]['item']->get_meta( '_cbuild_snapshot' );
+		self::assertTrue( $assembled['assembly'] );
+		self::assertSame( '2-4', $assembled['lead_days'] );
+		$loose = $builds[1]['item']->get_meta( '_cbuild_snapshot' );
+		self::assertFalse( $loose['assembly'] );
+		self::assertSame( '', $loose['lead_days'], 'not said of a build the shop does not assemble' );
+
+		$schema = self::snapshotSchema( true );
+		foreach ( array( 'assembled' => $assembled, 'loose' => $loose ) as $what => $snapshot ) {
+			$valid = rest_validate_value_from_schema( $snapshot, $schema, '_cbuild_snapshot' );
+			self::assertTrue( $valid, $what . ': ' . ( is_wp_error( $valid ) ? $valid->get_error_message() : '' ) );
+		}
+		$before = $assembled;
+		unset( $before['lead_days'] );
+		self::assertTrue( rest_validate_value_from_schema( $before, $schema, '_cbuild_snapshot' ), 'a snapshot made before 1.2.0' );
+		$assembled['lead_days'] = '61';
+		self::assertWPError( rest_validate_value_from_schema( $assembled, $schema, '_cbuild_snapshot' ), 'and no more than 60 days' );
+
+		// Kept as sold: the kit's time changed after the order is not the order's.
+		$kit = wc_get_product( $this->kit );
+		$kit->setDocument( Options::META_KIT_SETTINGS, array( 'schema_version' => 1, 'lead_days' => '5' ) );
+		$kit->save();
+		self::assertSame( '2-4', wc_get_order( $builds[0]['item']->get_order_id() )->get_item( $builds[0]['item']->get_id() )->get_meta( '_cbuild_snapshot' )['lead_days'] );
+	}
+
+	// The audit's third pass on milestone 12: a companion plugin that checked `_cbuild_snapshot` against 1.1.0's
+	// published schema refused every 1.2.0 snapshot, which gained `lead_days`. The published schema is open, as
+	// `schema/state.json` is (D-143), and the plugin's own check stays strict.
+	public function test_the_published_snapshot_schema_lets_a_later_key_through_and_the_strict_one_does_not(): void {
+		$this->added( true );
+		$snapshot = self::told( $this->classic() )[0]['item']->get_meta( '_cbuild_snapshot' );
+		self::assertIsArray( $snapshot );
+		$later                           = $snapshot;
+		$later['a_later_key']            = 'kept';
+		$later['picks']['deck']['later'] = 3;
+		self::assertTrue( rest_validate_value_from_schema( $later, self::snapshotSchema( false ), '_cbuild_snapshot' ), 'a later release\'s keys, through the published schema' );
+		self::assertTrue( rest_validate_value_from_schema( $snapshot, self::snapshotSchema( true ), '_cbuild_snapshot' ), 'every key this release writes, described' );
+		foreach ( array( 'a_later_key' => $later, 'a part\'s later key' => array( 'picks' => $later['picks'] ) + $snapshot ) as $what => $document ) {
+			self::assertWPError( rest_validate_value_from_schema( $document, self::snapshotSchema( true ), '_cbuild_snapshot' ), $what . ': refused by the strict schema' );
+		}
+		unset( $later['picks']['deck']['label'] );
+		self::assertWPError( rest_validate_value_from_schema( $later, self::snapshotSchema( false ), '_cbuild_snapshot' ), 'and the published schema still refuses what is not one' );
 	}
 
 	public function test_a_kits_line_on_the_order_says_what_its_amount_is_in_place_of_a_bare_price(): void {

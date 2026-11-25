@@ -439,7 +439,6 @@ final class CartPriceTest extends CartTestCase {
 		// and the session are left as they are, since every later test shares them.
 		global $wpdb;
 		$sessions = static fn(): int => (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$wpdb->prefix}woocommerce_sessions" ); // phpcs:ignore
-		$kept     = $sessions();
 		$own      = WC()->customer;
 		$request  = new WP_REST_Request( 'GET', '/cbuild/v1/kits/' . $this->kit . '/state' );
 		$request->set_query_params(
@@ -475,7 +474,9 @@ final class CartPriceTest extends CartTestCase {
 			self::assertSame( '219.60', number_format( (float) WC()->cart->get_total( 'edit' ), 2, '.', '' ), 'which is what the cart charges' );
 			WC()->cart->empty_cart();
 
-			// A visitor nobody knows is priced for the shop's own address, and nothing is kept of the asking.
+			// A visitor nobody knows is priced for the shop's own address, and nothing is kept of the asking. Counted
+			// from here: the shopper's add above keeps their session before it answers (issue #108).
+			$kept = $sessions();
 			wp_set_current_user( 0 );
 			WC()->customer = null;
 			$guest         = rest_get_server()->dispatch( $request );

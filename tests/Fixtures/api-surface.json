@@ -18,7 +18,9 @@
         "cbuild_updates_enabled",
         "cbuild_width_guide"
     ],
-    "actions": [],
+    "actions": [
+        "cbuild_parts_changed"
+    ],
     "listened_actions": [
         "cbuild_parts_changed"
     ],
@@ -62,11 +64,13 @@
         "_cbuild_assembly",
         "_cbuild_layer",
         "_cbuild_layout",
+        "_cbuild_not_offered",
         "_cbuild_picture",
         "_cbuild_presets",
         "_cbuild_rows",
         "_cbuild_rules",
         "_cbuild_seed",
+        "_cbuild_settings",
         "_cbuild_slots",
         "_cbuild_spec_table",
         "_cbuild_specs"
@@ -170,6 +174,8 @@
         "cbuild-assembly",
         "cbuild-bar__photo",
         "cbuild-board__layer",
+        "cbuild-card",
+        "cbuild-card__control",
         "cbuild-card__photo--drawn",
         "cbuild-cards--compact",
         "cbuild-cart-picture",
@@ -181,14 +187,18 @@
         "cbuild-kit",
         "cbuild-part",
         "cbuild-part__slot",
+        "cbuild-picture",
         "cbuild-picture__item",
         "cbuild-preset__photo",
         "cbuild-quantity",
-        "cbuild-review__item"
+        "cbuild-review__item",
+        "cbuild-step",
+        "cbuild__stage"
     ],
     "dom_events": [
         "cbuild:added",
-        "cbuild:pick"
+        "cbuild:pick",
+        "cbuild:rendered"
     ],
     "css_properties": [
         "--cbuild-accent",
@@ -284,6 +294,7 @@
         "schema/kit-picture.json",
         "schema/kit-presets.json",
         "schema/kit-rules.json",
+        "schema/kit-settings.json",
         "schema/kit-slots.json",
         "schema/order-snapshot.json",
         "schema/settings.json",
@@ -295,10 +306,11 @@
         "schema/kit-picture.json": "f5a644b1f0082bd93867dbc8ac74342730c47a8008128c32380a80485f9ef939",
         "schema/kit-presets.json": "fa1447fe7d550c544db2236d898f02ca63e5966023a875f73bbbd90dba4f66c3",
         "schema/kit-rules.json": "79f9a5c998a63c1ceee8ec7877096515dabd9e75c6116257874e1d4418242c45",
+        "schema/kit-settings.json": "7a03f209132c964b61d7419fbe957ee4b25a90833701d1eebd6d5c1cefdf693a",
         "schema/kit-slots.json": "7c383e3f551b517328d9d195c01e15f9f5dad1a1263a20fa4ff2188592bb820c",
-        "schema/order-snapshot.json": "78cc2355e3468a3f4ff06aa8c609594f21ab961dbcf06ca54bb2b4b2e1b18030",
+        "schema/order-snapshot.json": "22d23b0213b466dfd4092e7e40ec09574bb4eaed6e99347bd166dadc86c441bb",
         "schema/settings.json": "c6ce801eae753f4d85734fdf81489cc91a4e2db8adf318aa2da21832d7ef9df4",
-        "schema/state.json": "89fb49d9a2631da9e343696c8fb264a483b2b8e3b1741e149aedfa2d3eab964a"
+        "schema/state.json": "e11e02f3aa42589b7b26e9dd9fa61328f0d95c0108350050c0311d63bdf877dd"
     },
     "spec_keys": [
         "deck_width",

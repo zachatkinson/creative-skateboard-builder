@@ -43,19 +43,63 @@ final class ProductMetaRepository implements ProductMeta {
 	 * @param int ...$products Product or variation IDs.
 	 */
 	public function prime( int ...$products ): void {
-		global $wpdb;
+		$asked = self::cold( $products );
+		if ( count( $asked ) < 2 ) {
+			// One product costs one query either way, and WooCommerce's own read keeps its order.
+			return;
+		}
+		$this->read( $asked, false );
+	}
+
+	/**
+	 * Read these products' meta, and their products' where they are variations, into WooCommerce's cache.
+	 *
+	 * @since 1.2.0
+	 *
+	 * @param int ...$products Product or variation IDs.
+	 */
+	public function primeWithParents( int ...$products ): void {
+		$asked = self::cold( $products );
+		if ( array() !== $asked ) {
+			$this->read( $asked, true );
+		}
+	}
+
+	/**
+	 * The products whose meta WooCommerce's cache does not hold yet.
+	 *
+	 * @param array<int> $products Product or variation IDs.
+	 * @return list<int>
+	 */
+	private static function cold( array $products ): array {
 		$asked = array();
 		foreach ( array_unique( $products ) as $product ) {
 			if ( $product > 0 && ! is_array( wp_cache_get( WC_Data::generate_meta_cache_key( $product, self::GROUP ), self::GROUP ) ) ) {
 				$asked[] = $product;
 			}
 		}
-		if ( count( $asked ) < 2 ) {
-			// One product costs one query either way, and WooCommerce's own read keeps its order.
-			return;
+		return $asked;
+	}
+
+	/**
+	 * Read the products' meta, and with $parents their variations' products' too, in one query.
+	 *
+	 * @param list<int> $asked   Product or variation IDs not in the cache.
+	 * @param bool      $parents Whether to read each variation's product as well.
+	 */
+	private function read( array $asked, bool $parents ): void {
+		global $wpdb;
+		$list = implode( ', ', array_fill( 0, count( $asked ), '%d' ) );
+		if ( $parents ) {
+			// Two selects, each found by an index: the products' rows by post_id, and their parents' through the posts'
+			// primary key. Under one OR, MySQL read every row of postmeta instead (the auditor's M12 should-fix 3). UNION
+			// drops only a row read twice, a parent also asked for, since each row brings its meta_id.
+			// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber, PluginCheck.Security.DirectDB.UnescapedDBParameter -- Only placeholders are joined in: one %d per product.
+			$rows = $wpdb->get_results( $wpdb->prepare( 'SELECT meta_id, post_id, meta_key, meta_value FROM %i WHERE post_id IN (' . $list . ') UNION SELECT m.meta_id, m.post_id, m.meta_key, m.meta_value FROM %i AS m INNER JOIN %i AS p ON m.post_id = p.post_parent WHERE p.ID IN (' . $list . ') AND p.post_type = %s AND p.post_parent > 0 ORDER BY meta_id', array( $wpdb->postmeta, ...$asked, ...array( $wpdb->postmeta, $wpdb->posts ), ...$asked, 'product_variation' ) ) );
+		} else {
+			// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber, PluginCheck.Security.DirectDB.UnescapedDBParameter -- Only placeholders are joined in: one %d per product.
+			$rows = $wpdb->get_results( $wpdb->prepare( 'SELECT meta_id, post_id, meta_key, meta_value FROM %i WHERE post_id IN (' . $list . ') ORDER BY meta_id', array( $wpdb->postmeta, ...$asked ) ) );
 		}
-		// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber, PluginCheck.Security.DirectDB.UnescapedDBParameter -- Only placeholders are joined in: one %d per product.
-		$rows  = $wpdb->get_results( $wpdb->prepare( 'SELECT meta_id, post_id, meta_key, meta_value FROM %i WHERE post_id IN (' . implode( ', ', array_fill( 0, count( $asked ), '%d' ) ) . ') ORDER BY meta_id', array( $wpdb->postmeta, ...$asked ) ) );
 		$found = array_fill_keys( $asked, array() );
 		foreach ( is_array( $rows ) ? $rows : array() as $row ) {
 			if ( is_object( $row ) ) {
@@ -66,6 +110,8 @@ final class ProductMetaRepository implements ProductMeta {
 				);
 			}
 		}
+		// A product already in the cache is left as WooCommerce holds it.
+		$found = array_filter( $found, static fn( int $id ): bool => in_array( $id, $asked, true ) || ! is_array( wp_cache_get( WC_Data::generate_meta_cache_key( $id, self::GROUP ), self::GROUP ) ), ARRAY_FILTER_USE_KEY );
 		WC_Data::prime_raw_meta_data_cache( $found, self::GROUP );
 	}
 }

@@ -5,9 +5,9 @@
  * layers are described by the sentence, so each is empty to a screen reader.
  *
  * From 0.8.0 the board has a top as well (#46): the deck's outline, the grip filled into it, the bolt heads and the
- * wheels at the edges, each layer an element the stylesheet paints from its style. One side shows at a time. The
- * grip step shows the top, and the button by the board turns it over, with the script; the sentence says which side
- * is shown.
+ * wheels at the edges, each layer an element the stylesheet paints from its style. One side shows at a time. Each step
+ * opens on the side its part is seen on (F27, #127), and with the script two buttons by the board, Underside and Top,
+ * turn it over, the side shown pressed (F28, #128); the sentence says which side is shown.
  *
  * @package CreativeBranding\SkateboardBuilder
  */
@@ -36,7 +36,11 @@ defined( 'ABSPATH' ) || exit;
 		</template>
 	</div>
 	<div class="cbuild-picture__turn" data-wp-bind--hidden="!state.view.picture.turnable">
-		<button class="cbuild-button" type="button" data-wp-bind--hidden="!state.canTurn" data-wp-bind--aria-pressed="state.view.picture.turned" data-wp-on--click="actions.turn" data-wp-text="state.view.picture.turn"></button>
+		<?php // A toggle button a side, each named the same whichever is pressed, in a group named by the heading a sighted shopper reads (D-369). ?>
+		<div class="cbuild-picture__sides" role="group" aria-labelledby="cbuild-picture-heading" data-wp-bind--hidden="!state.canTurn">
+			<button class="cbuild-button" type="button" data-wp-bind--aria-pressed="!state.view.picture.turned" data-wp-on--click="actions.under" data-wp-text="state.view.picture.sides.under"></button>
+			<button class="cbuild-button" type="button" data-wp-bind--aria-pressed="state.view.picture.turned" data-wp-on--click="actions.over" data-wp-text="state.view.picture.sides.top"></button>
+		</div>
 	</div>
 	<ul class="cbuild-picture__items">
 		<template data-wp-each--item="state.view.picture.items" data-wp-each-key="context.item.key">

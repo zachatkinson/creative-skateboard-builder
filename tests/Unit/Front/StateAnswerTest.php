@@ -16,6 +16,7 @@ use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\InMemoryLayerImages;
 use CreativeBranding\SkateboardBuilder\Domain\Picture\Renditions;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\InMemoryLayerRenditions;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\BuildTerms;
+use CreativeBranding\SkateboardBuilder\Domain\Kit\Kit;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Part;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\SlotKey;
 use CreativeBranding\SkateboardBuilder\Front\BuildLink;
@@ -24,6 +25,7 @@ use CreativeBranding\SkateboardBuilder\Front\ShippingWords;
 use CreativeBranding\SkateboardBuilder\Front\StateAnswer;
 use CreativeBranding\SkateboardBuilder\Port\LookFact;
 use CreativeBranding\SkateboardBuilder\Port\TextFolding;
+use CreativeBranding\SkateboardBuilder\Service\Phases;
 use CreativeBranding\SkateboardBuilder\Service\ShelfQuery;
 use CreativeBranding\SkateboardBuilder\Service\StepShelf;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\FakeRanking;
@@ -33,6 +35,7 @@ use CreativeBranding\SkateboardBuilder\Tests\Support\Domain\Builds;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Domain\KitDocuments;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Domain\Parts;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Domain\Shop;
+use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\FakeClock;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\FakeMoney;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\FakeLogger;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\FakeShippingZones;
@@ -186,6 +189,22 @@ final class StateAnswerTest extends TestCase {
 
 	private static function money( int $amount, string $text ): array {
 		return compact( 'amount', 'text' );
+	}
+
+	/**
+	 * The auditor's second pass on M12, should-fix 2: `withPhases()` times a copy, and the answer it was called on
+	 * times nothing, as an earlier release's container builds it (#125, D-365).
+	 */
+	public function test_with_phases_times_a_copy_and_leaves_the_answer_it_was_called_on_untimed(): void {
+		$state = ( new BuildState( $this->kits, $this->settings, $this->logger ) )->of( self::KIT, array(), null, SlotKey::DECK, null );
+		self::assertNotNull( $state );
+		$phases = new Phases( new FakeClock() );
+		$plain  = new StateAnswer( $this->cards, new FakeMoney(), $this->kits, new Delivery( $this->kits, new FakeShippingZones(), new ShippingWords( new FakeMoney() ) ), new PageRenderer() );
+		$timed  = $plain->withPhases( $phases );
+		$plain->of( $state );
+		self::assertSame( array(), $phases->took(), 'the answer withPhases() was called on times nothing' );
+		$timed->of( $state );
+		self::assertArrayHasKey( 'shelf', $phases->took(), 'its copy times its phases' );
 	}
 
 	public function test_with_nothing_picked_the_first_step_lists_its_parts_each_with_its_card(): void {
@@ -399,7 +418,8 @@ final class StateAnswerTest extends TestCase {
 	}
 
 	// Spec, Presets: each tile says its total. #104 (R1): one a part keeps from the cart, Park with its wheels sold out,
-	// is listed in the answer and not shown, and the Catalogue check lists it for the owner.
+	// is listed in the answer and not shown, and the Catalogue check lists it for the owner. Spec, Presets: "A preset or
+	// link that holds one names it", so what keeps Park from the cart carries the wheels' name from their card.
 	public function test_each_preset_says_its_total_and_one_a_part_keeps_from_the_cart_is_not_shown(): void {
 		$this->worded();
 		$parts                    = Shop::parts();
@@ -415,6 +435,20 @@ final class StateAnswerTest extends TestCase {
 		self::assertCount( 2, $answer['presets'], 'Park is listed, at its place' );
 		self::assertSame( array( true, false ), array_column( $answer['presets'], 'shown' ), 'and not shown' );
 		self::assertFalse( $answer['presets'][1]['ready'] );
+		self::assertSame(
+			array(
+				array(
+					'code'     => 'part_sold_out',
+					'slot'     => SlotKey::WHEELS,
+					'part'     => 302,
+					'message'  => 'Wheels: the part chosen is sold out.',
+					'messages' => array(),
+					'name'     => 'Part 302',
+				),
+			),
+			$answer['presets'][1]['problems'],
+			'what keeps it from the cart, the part named as its card names it'
+		);
 	}
 
 	public function test_a_plugins_answer_to_each_filter_is_what_the_answer_says(): void {
@@ -1348,6 +1382,39 @@ final class StateAnswerTest extends TestCase {
 		self::assertTrue( $seen['assembly'] );
 		self::assertSame( $answer['total']['total']['amount'], $seen['total'] );
 		self::assertSame( 2, $seen['decimals'] );
+	}
+
+	// #142: the filters' context also has the kit's assembly time in business days, for an assembled build, and the
+	// parts the total counts with how many of each one build takes, so a plugin can give no date for a part on
+	// backorder. A slot left empty is in neither.
+	public function test_the_delivery_filters_are_given_the_assembly_time_and_each_part_with_its_quantity(): void {
+		// Bolts sold in fours, so a build of eight takes two.
+		$parts                       = Shop::parts();
+		$parts[ SlotKey::HARDWARE ][0] = Shop::priced( Parts::of( array( 'bolt_length' => '1', 'set_size' => 4 ), 601 ), 200 );
+		$this->kits->add( self::KIT, Kit::fromDocuments( KitDocuments::slots(), KitDocuments::rules(), KitDocuments::presets(), KitDocuments::assembly(), null, null, array( 'schema_version' => 1, 'lead_days' => '2-4' ) ), $parts );
+		$seen                           = array();
+		$GLOBALS['cbuild_test_filters'] = array(
+			'cbuild_arrival_estimate' => static function ( string $said, array $context ) use ( &$seen ): string {
+				$seen['arrival'] = $context;
+				return '';
+			},
+			'cbuild_delivery_line'    => static function ( string $said, array $context ) use ( &$seen ): string {
+				$seen['line'] = $context;
+				return '';
+			},
+		);
+		$this->answer( self::COMPLETE, null, null, true );
+		self::assertSame( $seen['arrival'], $seen['line'], 'the same for both' );
+		self::assertSame( '2-4', $seen['line']['lead_days'] );
+		self::assertSame( self::COMPLETE, $seen['line']['parts'] );
+		self::assertSame( array_keys( self::COMPLETE ), array_keys( $seen['line']['quantities'] ), 'the risers left empty are in neither' );
+		self::assertSame( 2, $seen['line']['quantities'][ SlotKey::HARDWARE ], 'two packs of four bolts' );
+		self::assertSame( 1, $seen['line']['quantities'][ SlotKey::TRUCKS ], 'one pair of trucks' );
+		self::assertSame( array( 'kit', 'assembly', 'lead_time', 'total', 'decimals', 'lead_days', 'parts', 'quantities' ), array_keys( $seen['line'] ), 'added after 1.1.0\'s keys' );
+
+		$this->answer( self::COMPLETE, null, null, false );
+		self::assertSame( '', $seen['line']['lead_days'], 'a build the shop does not assemble has none' );
+		self::assertSame( self::COMPLETE, $seen['line']['parts'], 'and the same parts' );
 	}
 
 	public function test_other_plugins_lines_under_the_total_are_plain_text_and_six_at_most(): void {

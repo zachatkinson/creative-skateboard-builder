@@ -201,6 +201,8 @@ final class BuilderPage {
 					'locale'   => determine_locale(),
 					// What goes around each step in the page's title (D-149).
 					'title'    => PageTitle::around( PageTitle::base() ),
+					// What the step says when the route has not answered within the store's limit (D-364).
+					'late'     => __( 'The shop did not answer in time. Try again in a moment.', 'creative-skateboard-builder' ),
 				)
 			);
 			// The block's own render enqueues it; the kit's page has no block.

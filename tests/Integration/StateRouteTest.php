@@ -178,10 +178,11 @@ final class StateRouteTest extends IntegrationTestCase {
 	 * offers, so it is left out for shoppers.
 	 *
 	 * @param array<string, mixed>|null                                        $layout  The kit's layout document, or null for one saved before 1.0.0.
-	 * @param (callable(array<string, int>): list<array<string, mixed>>)|null $presets The kit's presets from the whole Street's picks, or null for that Street alone.
+	 * @param (callable(array<string, int>): list<array<string, mixed>>)|null $presets  The kit's presets from the whole Street's picks, or null for that Street alone.
+	 * @param array<string, mixed>|null                                        $settings The kit's settings document, or null for one saved before 1.2.0.
 	 * @return array{kit: int, picks: array<string, int>}
 	 */
-	private function whole( ?array $layout = null, ?callable $presets = null ): array {
+	private function whole( ?array $layout = null, ?callable $presets = null, ?array $settings = null ): array {
 		$slots = KitDocuments::slots();
 		$picks = array(
 			'deck'   => $this->parts['deck 8.0'],
@@ -236,6 +237,7 @@ final class StateRouteTest extends IntegrationTestCase {
 					'returns_notice' => 'An assembled board goes back whole.',
 				),
 				Options::META_KIT_LAYOUT   => $layout,
+				Options::META_KIT_SETTINGS => $settings,
 			)
 		)->get_id();
 		return array(
@@ -559,6 +561,49 @@ final class StateRouteTest extends IntegrationTestCase {
 		self::assertStringContainsString( rawurlencode( 'cbuild[_width]' ) . '=8in', $changed['view']['url'], 'the view\'s address is the build as now listed' );
 	}
 
+	// #114, on the route: a kit saved before 1.2.0 answers the plugin's rows; the shop's own rows are answered with
+	// their shoe sizes through `cbuild_kit_text`, and a hidden guide carries no rows and no words.
+	public function test_the_width_guide_is_the_kits_own_through_the_text_filter_and_a_hidden_one_is_not_in_the_answer(): void {
+		$guide = static fn( array $answer ): mixed => $answer['view']['step']['shelf']['width']['guide'] ?? null;
+		$deck  = array( 'cbuild' => array( 'step' => 'deck' ) );
+		$plain = $guide( $this->answer( $deck ) );
+		self::assertIsArray( $plain );
+		self::assertTrue( $plain['shown'] );
+		self::assertSame( 'Shoe size (US)', $plain['shoe'] );
+		self::assertSame( array( '6.5 or smaller', '7 to 8', '8.5 to 9', '9.5 and larger' ), array_column( $plain['rows'], 'shoe' ) );
+
+		$rows      = array(
+			array(
+				'shoe' => 'EU 38 to 40',
+				'from' => '7.75',
+				'to'   => '8',
+			),
+			array(
+				'shoe' => 'EU 41 and up',
+				'from' => '8.25',
+			),
+		);
+		$this->kit = $this->whole( null, null, array( 'schema_version' => 1, 'width_guide' => array( 'rows' => $rows ) ) )['kit'];
+		$kit       = $this->kit;
+		add_filter( 'cbuild_kit_text', static fn( string $text, string $field, int $id, string $of ): string => 'width_guide_shoe' === $field && $kit === $id && '1' === $of ? 'EU 41 et plus' : $text, 10, 4 );
+		$own = $guide( $this->answer( $deck ) );
+		self::assertIsArray( $own );
+		self::assertSame( 'Shoe size', $own['shoe'], 'not the plugin\'s US sizes' );
+		self::assertSame(
+			array(
+				array( 'shoe' => 'EU 38 to 40', 'width' => '7.75″ to 8″' ),
+				array( 'shoe' => 'EU 41 et plus', 'width' => '8.25″ and wider' ),
+			),
+			$own['rows']
+		);
+
+		$this->kit = $this->whole( null, null, array( 'schema_version' => 1, 'width_guide' => array( 'shown' => false, 'rows' => $rows ) ) )['kit'];
+		$body      = (string) wp_json_encode( $this->answer( $deck ) );
+		self::assertSame( array( 'shown' => false, 'summary' => '', 'caption' => '', 'shoe' => '', 'width' => '', 'rows' => array() ), $guide( json_decode( $body, true ) ) );
+		self::assertStringNotContainsString( 'EU 38', $body, 'nothing of the rows in the answer' );
+		self::assertStringNotContainsString( 'Not sure of your width?', $body );
+	}
+
 	public function test_the_schema_refuses_an_answer_that_is_not_its_own(): void {
 		$body = $this->answer();
 		unset( $body['total'] );
@@ -735,12 +780,36 @@ final class StateRouteTest extends IntegrationTestCase {
 		wp_set_current_user( self::factory()->user->create( array( 'role' => 'shop_manager' ) ) );
 		$response = $this->ask( $query );
 		$timing   = $response->get_headers()['Server-Timing'] ?? '';
-		self::assertMatchesRegularExpression( '#^cbuild-route;dur=\d+\.\d, cbuild-queries;desc="\d+"$#', $timing );
+		self::assertMatchesRegularExpression( '#^cbuild-route;dur=\d+\.\d, cbuild-queries;desc="\d+"(, cbuild-[a-z]+;dur=\d+\.\d)*$#', $timing );
 		preg_match( '#dur=([\d.]+).*desc="(\d+)"#', $timing, $read );
 		self::assertGreaterThan( 0.0, (float) $read[1], 'the route takes some time' );
 		self::assertGreaterThan( 0, (int) $read[2], 'and asks the database something' );
 		self::assertSame( 'no-store', $response->get_headers()['Cache-Control'] ?? null, 'the other headers as they were' );
 		self::assertArrayNotHasKey( 'Server-Timing', $this->ask( array( 'picks' => array( 'deck' => 1 ) ), 999999999 )->get_headers(), 'an error is not timed' );
+		wp_set_current_user( 0 );
+	}
+
+	/**
+	 * #125: the deck step's phases in the same header, the shelf, the cards and the decks' boards (D-365), so a shop
+	 * manager sees where the route's time goes; still no one else is sent them.
+	 */
+	public function test_a_shop_manager_is_told_the_deck_steps_phases_and_no_one_else_is(): void {
+		$query = array(
+			'cbuild' => array( 'step' => 'deck' ),
+			'page'   => $this->kit,
+			'width'  => '8in',
+		);
+		self::assertArrayNotHasKey( 'Server-Timing', $this->ask( $query )->get_headers(), 'a visitor' );
+		wp_set_current_user( self::factory()->user->create( array( 'role' => 'customer' ) ) );
+		self::assertArrayNotHasKey( 'Server-Timing', $this->ask( $query )->get_headers(), 'a customer' );
+
+		wp_set_current_user( self::factory()->user->create( array( 'role' => 'shop_manager' ) ) );
+		$timing = $this->ask( $query )->get_headers()['Server-Timing'] ?? '';
+		self::assertMatchesRegularExpression( '#^cbuild-route;dur=\d+\.\d, cbuild-queries;desc="\d+", cbuild-shelf;dur=\d+\.\d, cbuild-cards;dur=\d+\.\d, cbuild-boards;dur=\d+\.\d$#', $timing );
+		preg_match_all( '#cbuild-([a-z]+);dur=([\d.]+)#', $timing, $read );
+		$took = array_combine( $read[1], array_map( 'floatval', $read[2] ) );
+		// Each phase is this request's alone, inside the route's time: none is carried over from the requests before.
+		self::assertLessThanOrEqual( $took['route'] + 0.2, $took['shelf'] + $took['cards'] + $took['boards'], 'the phases are within the route' );
 		wp_set_current_user( 0 );
 	}
 
@@ -1318,6 +1387,26 @@ final class StateRouteTest extends IntegrationTestCase {
 		// Picked all the same, it is refused as any product that is not the slot's.
 		$picked = $this->answer( array( 'picks' => array( 'trucks' => $out ) ) );
 		self::assertSame( 'part_not_in_slot', $picked['refused'][0]['code'] );
+	}
+
+	// Issue #116: a part ticked Not offered in the builder leaves the route as a plugin's false does, and a link or a
+	// saved build that names it is refused as any part that is not the slot's.
+	public function test_a_part_the_shop_keeps_out_is_taken_from_the_route_and_refused_when_picked(): void {
+		$query = array(
+			'picks' => array( 'deck' => $this->parts['deck 8.5'] ),
+			'step'  => 'trucks',
+		);
+		$out   = $this->parts['truck 149'];
+		self::assertSame( array( $out ), array_column( $this->answer( $query )['options'], 'id' ) );
+
+		$truck = wc_get_product( $out );
+		$truck->update_meta_data( Options::META_NOT_OFFERED, 'yes' );
+		$truck->save();
+		do_action( 'cbuild_parts_changed', array( $out ) ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- The plugin's own prefix.
+
+		self::assertSame( array(), $this->answer( $query )['options'], 'kept out of the slot' );
+		$picked = $this->answer( array( 'picks' => array( 'deck' => $this->parts['deck 8.5'], 'trucks' => $out ) ) );
+		self::assertSame( 'part_not_in_slot', $picked['refused'][0]['code'], 'and refused when a link names it' );
 	}
 
 	public function test_a_plugin_that_prices_some_shoppers_apart_says_so_and_each_gets_their_own_card(): void {

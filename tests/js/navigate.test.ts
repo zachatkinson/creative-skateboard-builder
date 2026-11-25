@@ -6,7 +6,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
 	Navigator,
+	FRESH,
 	HOLD,
+	LIMIT,
 	SLOW,
 	WAIT,
 	type Deps,
@@ -15,6 +17,8 @@ import {
 } from '../../assets/src/builder/navigate';
 
 const ENDPOINT = 'https://shop.example/wp-json/cbuild/v1/kits/7/state';
+
+const LATE_WORDS = 'The shop did not answer in time. Try again in a moment.';
 
 function view( url: string ): View {
 	return { url, step: 'deck' };
@@ -76,6 +80,7 @@ function harness( endpoint = ENDPOINT ): Harness {
 			endpoint,
 			page: 25,
 			locale: 'fr_CA',
+			late: LATE_WORDS,
 			fetch: ( input, init ) => {
 				h.asked.push( new URL( String( input ) ) );
 				h.inits.push( init );
@@ -370,6 +375,23 @@ describe( 'Navigator', () => {
 		).toEqual( [ 'https://shop.example/?stuck' ] );
 	} );
 
+	it( 'leaves no timer running once the answer is shown with its pictures ready', async () => {
+		const h = harness();
+		h.deps.settle = () => Promise.resolve();
+		new Navigator( h.deps ).go( {
+			fields: STEP,
+			history: 'push',
+			fallback: () => undefined,
+		} );
+		h.reply( answer( { view: view( 'https://shop.example/?deck' ) } ) );
+		await settle();
+		await settle();
+		expect( h.shown.map( ( v ) => v.url ) ).toEqual( [
+			'https://shop.example/?deck',
+		] );
+		expect( vi.getTimerCount() ).toBe( 0 );
+	} );
+
 	it( 'drops an answer overtaken while its pictures were readied', async () => {
 		const h = harness();
 		const nav = new Navigator( h.deps );
@@ -474,6 +496,71 @@ describe( 'Navigator', () => {
 
 	// The auditor's M10 review, 19: a key typed in the search drops the answer already asked for, which would put the
 	// search box back to the letters it was asked with.
+	it( 'stops waiting once the route has not answered in LIMIT ms: keeps the view and says so, as past the rate limit (D-364)', async () => {
+		const h = harness();
+		const nav = new Navigator( h.deps );
+		nav.go( {
+			fields: STEP,
+			history: 'push',
+			fallback: () => h.fallbacks.push( 'form' ),
+		} );
+		await vi.advanceTimersByTimeAsync( LIMIT - 1 );
+		expect( h.inits[ 0 ]?.signal?.aborted ).toBe( false );
+		expect( h.limited ).toEqual( [] );
+		await vi.advanceTimersByTimeAsync( 1 );
+		await settle();
+		expect( h.inits[ 0 ]?.signal?.aborted, 'the request is given up' ).toBe(
+			true
+		);
+		expect( h.limited ).toEqual( [ LATE_WORDS ] );
+		expect( h.pending ).toEqual( [ true, false ] );
+		expect( h.shown, 'no view, so no moment' ).toEqual( [] );
+		expect( h.fallbacks ).toEqual( [] );
+		expect( h.pushed ).toEqual( [] );
+	} );
+
+	// The auditor's second pass on M12, minor 8: a page cached before 1.2.0 has no words for the limit in its config,
+	// so past it the form is sent, as past a 429 with nothing to say.
+	it( 'sends the form past LIMIT where the page has no words for it', async () => {
+		const h = harness();
+		const nav = new Navigator( { ...h.deps, late: '' } );
+		nav.go( {
+			fields: STEP,
+			history: 'push',
+			fallback: () => h.fallbacks.push( 'form' ),
+		} );
+		await vi.advanceTimersByTimeAsync( LIMIT );
+		await settle();
+		expect( h.limited, 'nothing said' ).toEqual( [] );
+		expect( h.fallbacks ).toEqual( [ 'form' ] );
+		expect( h.pending ).toEqual( [ true, false ] );
+	} );
+
+	it( 'gives up nothing once the answer is in, nor a request a later one overtook', async () => {
+		const h = harness();
+		const nav = new Navigator( h.deps );
+		nav.go( { fields: STEP, history: 'push', fallback: () => undefined } );
+		await vi.advanceTimersByTimeAsync( LIMIT - 1 );
+		h.reply( answer( { view: view( 'https://shop.example/build/?a' ) } ) );
+		await settle();
+		await vi.advanceTimersByTimeAsync( LIMIT );
+		expect( h.inits[ 0 ]?.signal?.aborted ).toBe( false );
+		expect( h.limited ).toEqual( [] );
+
+		nav.go( { fields: STEP, history: 'push', fallback: () => undefined } );
+		await vi.advanceTimersByTimeAsync( LIMIT - 1 );
+		nav.go( { fields: STEP, history: 'push', fallback: () => undefined } );
+		await vi.advanceTimersByTimeAsync( LIMIT - 1 );
+		expect(
+			h.inits[ 2 ]?.signal?.aborted,
+			'the later request has its own time'
+		).toBe( false );
+		expect( h.limited ).toEqual( [] );
+		await vi.advanceTimersByTimeAsync( 1 );
+		await settle();
+		expect( h.limited ).toEqual( [ LATE_WORDS ] );
+	} );
+
 	it( 'drops the answer it waits for once the shopper types on, and says it waits no more', async () => {
 		const h = harness();
 		const nav = new Navigator( h.deps );
@@ -622,5 +709,184 @@ describe( 'Navigator', () => {
 			fallback: () => undefined,
 		} );
 		expect( h.asked[ 0 ]!.searchParams.get( 'cbuild' ) ).toBe( '' );
+	} );
+
+	// Cowork's review of 1.1.0, F20 (#118; D-355): the store asks ahead for the step's lit Next, so the next step shows at
+	// the press, not after a route that answers past CLS's 500 ms.
+	describe( 'asked ahead', () => {
+		const NEXT_STEP: Array< [ string, string ] > = [
+			[ 'cbuild[deck]', '12' ],
+			[ 'cbuild[step]', 'trucks' ],
+		];
+		const move = ( h: Harness, fields = NEXT_STEP ): Move => ( {
+			fields,
+			history: 'push',
+			fallback: () => h.fallbacks.push( 'form' ),
+		} );
+
+		it( 'asks once, says and shows nothing, and the move made with the same fields takes its answer at once', async () => {
+			expect( FRESH ).toBe( 60_000 );
+			const h = harness();
+			const navigator = new Navigator( h.deps );
+			navigator.prefetch( NEXT_STEP );
+			expect( h.asked ).toHaveLength( 1 );
+			expect( h.asked[ 0 ]!.searchParams.get( 'cbuild[step]' ) ).toBe(
+				'trucks'
+			);
+			h.reply(
+				answer( { view: view( 'https://shop.example/?trucks' ) } )
+			);
+			await settle();
+			vi.advanceTimersByTime( SLOW );
+			expect( h.shown ).toEqual( [] );
+			expect( h.pending ).toEqual( [] );
+			expect( h.pushed ).toEqual( [] );
+
+			navigator.go( move( h ) );
+			await settle();
+			expect( h.asked, 'nothing asked again' ).toHaveLength( 1 );
+			expect( h.shown ).toEqual( [
+				view( 'https://shop.example/?trucks' ),
+			] );
+			expect( h.pushed ).toEqual( [ 'https://shop.example/?trucks' ] );
+			expect( h.pending ).toEqual( [ false ] );
+		} );
+
+		it( 'waits for an answer asked ahead and still on its way, rather than asking again', async () => {
+			const h = harness();
+			const navigator = new Navigator( h.deps );
+			navigator.prefetch( NEXT_STEP );
+			navigator.go( move( h ) );
+			expect( h.asked ).toHaveLength( 1 );
+			vi.advanceTimersByTime( SLOW );
+			expect( h.pending, 'the press waits as any does' ).toEqual( [
+				true,
+			] );
+			h.reply(
+				answer( { view: view( 'https://shop.example/?trucks' ) } )
+			);
+			await settle();
+			expect( h.shown ).toHaveLength( 1 );
+			expect( h.pending ).toEqual( [ true, false ] );
+		} );
+
+		it( 'asks ahead once for the same fields while fresh, and again once past FRESH', () => {
+			const h = harness();
+			const navigator = new Navigator( h.deps );
+			navigator.prefetch( NEXT_STEP );
+			vi.advanceTimersByTime( FRESH - 1 );
+			navigator.prefetch( NEXT_STEP );
+			expect( h.asked ).toHaveLength( 1 );
+			vi.advanceTimersByTime( 1 );
+			navigator.prefetch( NEXT_STEP );
+			expect( h.asked ).toHaveLength( 2 );
+			navigator.prefetch( [ ...NEXT_STEP, [ 'cbuild[trucks]', '30' ] ] );
+			expect( h.asked, 'other fields asked for at once' ).toHaveLength(
+				3
+			);
+		} );
+
+		it( 'asks the route again for a move past FRESH, or with other fields, and forgets what it asked ahead', async () => {
+			const stale = harness();
+			const late = new Navigator( stale.deps );
+			late.prefetch( NEXT_STEP );
+			stale.reply(
+				answer( { view: view( 'https://shop.example/?stale' ) } )
+			);
+			await settle();
+			vi.advanceTimersByTime( FRESH );
+			late.go( move( stale ) );
+			expect( stale.asked ).toHaveLength( 2 );
+
+			const h = harness();
+			const navigator = new Navigator( h.deps );
+			navigator.prefetch( NEXT_STEP );
+			h.reply(
+				answer( { view: view( 'https://shop.example/?trucks' ) } )
+			);
+			await settle();
+			navigator.go( move( h, [ [ 'cbuild[deck]', '11' ] ] ) );
+			expect( h.asked ).toHaveLength( 2 );
+			h.reply(
+				answer( { view: view( 'https://shop.example/?other' ) } )
+			);
+			await settle();
+			navigator.go( move( h ) );
+			expect( h.asked, 'what was asked ahead is forgotten' ).toHaveLength(
+				3
+			);
+		} );
+
+		it( 'asks the route again where what it asked ahead was no view, or the rate limit', async () => {
+			for ( const failed of [
+				answer( null, 500 ),
+				answer( { message: 'Try again in a minute.' }, 429 ),
+			] ) {
+				const h = harness();
+				const navigator = new Navigator( h.deps );
+				navigator.prefetch( NEXT_STEP );
+				h.reply( failed );
+				await settle();
+				expect( h.limited, 'nothing said for it' ).toEqual( [] );
+				navigator.go( move( h ) );
+				await settle();
+				expect( h.asked ).toHaveLength( 2 );
+				h.reply(
+					answer( { view: view( 'https://shop.example/?trucks' ) } )
+				);
+				await settle();
+				expect( h.shown ).toEqual( [
+					view( 'https://shop.example/?trucks' ),
+				] );
+				expect( h.fallbacks ).toEqual( [] );
+			}
+		} );
+
+		it( 'lets no later move abort what it asked ahead', () => {
+			const h = harness();
+			const navigator = new Navigator( h.deps );
+			navigator.prefetch( NEXT_STEP );
+			navigator.go( move( h, [ [ 'cbuild[deck]', '11' ] ] ) );
+			expect( h.inits[ 0 ]?.signal?.aborted ).toBe( false );
+			navigator.go( move( h, [ [ 'cbuild[deck]', '13' ] ] ) );
+			expect( h.inits[ 0 ]?.signal?.aborted ).toBe( false );
+			expect( h.inits[ 1 ]?.signal?.aborted ).toBe( true );
+		} );
+
+		it( 'gives up nothing it asked ahead once answered, however long it is kept', async () => {
+			const h = harness();
+			new Navigator( h.deps ).prefetch( NEXT_STEP );
+			h.reply(
+				answer( { view: view( 'https://shop.example/?trucks' ) } )
+			);
+			await settle();
+			await vi.advanceTimersByTimeAsync( LIMIT );
+			expect( h.inits[ 0 ]?.signal?.aborted ).toBe( false );
+			expect( vi.getTimerCount() ).toBe( 0 );
+		} );
+
+		it( 'gives up what it asked ahead past LIMIT, so a move waiting for it stops waiting and says so (D-364)', async () => {
+			const h = harness();
+			const navigator = new Navigator( h.deps );
+			navigator.prefetch( NEXT_STEP );
+			navigator.go( move( h ) );
+			expect(
+				h.asked,
+				'the move waits for what was asked ahead'
+			).toHaveLength( 1 );
+			await vi.advanceTimersByTimeAsync( LIMIT - 1 );
+			expect( h.inits[ 0 ]?.signal?.aborted ).toBe( false );
+			expect( h.limited ).toEqual( [] );
+			await vi.advanceTimersByTimeAsync( 1 );
+			await settle();
+			expect(
+				h.inits[ 0 ]?.signal?.aborted,
+				'what was asked ahead is given up'
+			).toBe( true );
+			expect( h.limited ).toEqual( [ LATE_WORDS ] );
+			expect( h.pending ).toEqual( [ true, false ] );
+			expect( h.shown ).toEqual( [] );
+			expect( h.fallbacks ).toEqual( [] );
+		} );
 	} );
 } );

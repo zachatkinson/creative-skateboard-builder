@@ -157,4 +157,47 @@ final class BuilderPlaceTest extends TestCase {
 		self::assertTrue( $place->holds( 7, 7 ), 'a kit\'s own page holds it' );
 		self::assertFalse( $place->holds( 7, 9 ) );
 	}
+
+	// #113 (D-348): the pages a kit's Build tab may choose for its builder, and the check made each time one is used:
+	// a published page a visitor may see, other than the kit's own, that holds the kit's Builder block.
+	public function test_a_kits_builder_may_be_sent_only_to_a_shown_page_that_holds_its_block(): void {
+		$place = new BuilderPlace(
+			new FakeBuilderPosts(
+				array(
+					20 => array( self::group( array( self::builder( 7 ) ) ) ),
+					21 => array( self::builder( 9 ) ),
+					22 => array(),
+					23 => array( self::synced( 30 ) ),
+					24 => array( self::builder( 7 ) ),
+					25 => array( self::builder( 9 ), self::builder( 7 ) ),
+					30 => array( self::builder( 7 ) ),
+				),
+				array( 7 ),
+				array( 25, 20, 21, 22, 23, 7 )
+			)
+		);
+		self::assertSame( array( 25, 20, 23 ), $place->pages( 7 ), 'in the site\'s order, a pattern\'s block and a second block included' );
+		self::assertSame( array( 25, 21 ), $place->pages( 9 ) );
+		self::assertTrue( $place->opens( 20, 7 ) );
+		self::assertFalse( $place->opens( 21, 7 ), 'another kit\'s builder' );
+		self::assertFalse( $place->opens( 22, 7 ), 'no builder' );
+		self::assertFalse( $place->opens( 24, 7 ), 'a page a visitor may not see' );
+		self::assertFalse( $place->opens( 7, 7 ), 'the kit itself' );
+		self::assertFalse( $place->opens( 0, 7 ) );
+		self::assertFalse( $place->opens( -20, 7 ) );
+		self::assertFalse( $place->opens( 20, 0 ), 'no kit' );
+		self::assertSame( array(), $place->pages( 0 ) );
+	}
+
+	// #113 (D-348): a Builder page that names no post is no page, and the site is not asked about it.
+	public function test_no_post_is_asked_whether_it_is_a_page_for_a_builder_page_of_none(): void {
+		$posts = new FakeBuilderPosts( array( 0 => array( self::builder( 7 ) ) ), array( 7 ), array( 0, 20 ) );
+		$place = new BuilderPlace( $posts );
+		self::assertFalse( $place->opens( 0, 7 ) );
+		self::assertFalse( $place->opens( -20, 7 ) );
+		self::assertSame( array(), $posts->pagesAsked );
+		self::assertSame( array(), $posts->asked );
+		self::assertFalse( $place->opens( 20, 7 ), 'a page that holds no builder' );
+		self::assertSame( array( 20 ), $posts->pagesAsked, 'a page is asked about' );
+	}
 }

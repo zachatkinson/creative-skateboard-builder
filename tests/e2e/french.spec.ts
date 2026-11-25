@@ -26,6 +26,35 @@ test.describe( 'The builder in French', () => {
 		} );
 	} );
 
+	test( 'says in French that the answer did not come in time (D-364)', async ( {
+		page,
+		javaScriptEnabled,
+	} ) => {
+		test.skip( ! javaScriptEnabled, "The limit is the store's." );
+		test.slow();
+		await page.goto(
+			fixture().page + '?cbuild%5B_on%5D=deck&cbuild%5B_width%5D=8.25in'
+		);
+		await page.locator( '.cbuild[data-ready]' ).waitFor( {
+			state: 'attached',
+		} );
+		// Held past the store's 10 s, then let go.
+		await page.route( /cbuild\/v1\/kits\/\d+\/state/, async ( route ) => {
+			await new Promise( ( done ) => setTimeout( done, 12000 ) );
+			await route.continue().catch( () => undefined );
+		} );
+		await page
+			.getByRole( 'radio', { name: /^Choisir Builder test deck 8\.25/ } )
+			.check();
+		await expect( page.locator( '.cbuild__limited' ) ).toHaveText(
+			'La boutique n’a pas répondu à temps. Réessayez dans un instant.',
+			{ timeout: 20000 }
+		);
+		await expect( page.locator( '.cbuild__status' ) ).toHaveText(
+			'La boutique n’a pas répondu à temps. Réessayez dans un instant.'
+		);
+	} );
+
 	test( 'says each step, pick and total in French, and the next step is drawn in French', async ( {
 		page,
 		javaScriptEnabled,

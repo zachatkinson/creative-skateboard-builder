@@ -22,13 +22,15 @@
  *   Mini-Cart refreshes) and says so; without the Store API, the form goes to WooCommerce's own handler (D-155).
  * - **Two events** on the builder's element, bubbling, for a shop's own analytics under its own consent (spec:
  *   Privacy): `cbuild:pick`, with the kit, the slot and the part, and `cbuild:added`, with the kit, its picks and
- *   assembly. They carry IDs alone.
+ *   assembly. They carry IDs alone. A third, `cbuild:rendered`, with the kit and the step, tells another plugin the
+ *   builder has drawn a view: once hydrated, and after each answer (#143, D-376).
  * - **The phone bar** never covers the control in focus: one the bar overlaps is scrolled clear of it (D-160).
  * - **Copy link** writes the build's shared link to the clipboard and says so. It is offered only where the browser
  *   has a clipboard to write to; the address is in the page as a field either way, and a refused copy selects it.
- * - **The board turns over** (#46). Each view says which side its step shows (the grip step, the top); the button by
- *   the board turns it, and from then on the side the shopper chose is kept on every view that can draw it. The
- *   picture and the phone bar show the same side, and the stylesheet turns the board only where motion is allowed.
+ * - **The board turns over** (#46). Each view says which side its step opens on, the side its part is seen on (F27,
+ *   #127); the two buttons by the board, Underside and Top, turn it (F28, #128), and the side the shopper chose is kept on every view of that step that
+ *   can draw it, until the step changes. The picture and the phone bar show the same side, and the stylesheet turns
+ *   the board only where motion is allowed.
  */
 import {
 	getConfig,
@@ -62,6 +64,8 @@ interface Config {
 	page: number;
 	locale: string;
 	title: { before: string; after: string };
+	/** What the step says when the route has not answered in time (D-364). */
+	late: string;
 }
 
 /**
@@ -120,7 +124,8 @@ interface Chipped {
 let navigator: Navigator | undefined;
 
 /**
- * Whether the shopper turned the board to its top with the button, once they have: it then holds over each step's own.
+ * Whether the shopper turned the board to its top with the button, once they have on the step shown: it then holds
+ * over the step's own side until the step changes (F27, #127).
  */
 let top: boolean | undefined;
 
@@ -139,6 +144,25 @@ function sided( view: Shown ): void {
  * The builder's own element, as its init callback found it.
  */
 let root: HTMLElement | null = null;
+
+/**
+ * Tell the page the builder has drawn a view (#143, D-376): `cbuild:rendered`, bubbling, with the kit and the step as
+ * the build link names it, the review as `review`.
+ *
+ * @param builder The builder's element.
+ * @param view    The view drawn.
+ */
+function rendered( builder: Element | null, view: Shown ): void {
+	builder?.dispatchEvent(
+		new CustomEvent( 'cbuild:rendered', {
+			bubbles: true,
+			detail: {
+				kit: view.kit,
+				step: true === view.isReview ? 'review' : view.step.slot,
+			},
+		} )
+	);
+}
 
 /**
  * The control under a press, from the pointer going down to its coming up.
@@ -173,6 +197,12 @@ function release(): void {
 let early: { control: HTMLElement; clicked: boolean } | null = null;
 
 /**
+ * The builder's controls a press can land on.
+ */
+const CONTROLS =
+	'.cbuild :is(button, a, summary, label, input[type="radio"], input[type="checkbox"], input[type="submit"])';
+
+/**
  * Notes the control a mouse press goes down on, inside the builder.
  *
  * @param event The pointer going down.
@@ -180,13 +210,10 @@ let early: { control: HTMLElement; clicked: boolean } | null = null;
 function pressEarly( event: PointerEvent ): void {
 	// No control waits on a moment: a press ends every one at once (spec: Milestone 11).
 	cut();
+	// A mouse's main button alone: the pointer's up says whether it was a mouse's.
 	const control =
-		'mouse' === event.pointerType &&
-		0 === event.button &&
-		event.target instanceof Element
-			? event.target.closest< HTMLElement >(
-					'.cbuild :is(button, a, summary, label, input[type="radio"], input[type="checkbox"], input[type="submit"])'
-				)
+		0 === event.button && event.target instanceof Element
+			? event.target.closest< HTMLElement >( CONTROLS )
 			: null;
 	early = control ? { control, clicked: false } : null;
 }
@@ -214,7 +241,9 @@ function clickEarly( event: MouseEvent ): void {
  */
 function releaseEarly( event: PointerEvent ): void {
 	const pressed = early;
-	if ( ! pressed ) {
+	// A press taken up as the script started may have been a finger's, whose tap the browser never drops.
+	if ( ! pressed || 'mouse' !== event.pointerType ) {
+		early = null;
 		return;
 	}
 	const over = document.elementFromPoint( event.clientX, event.clientY );
@@ -234,6 +263,13 @@ function releaseEarly( event: PointerEvent ): void {
 document.addEventListener( 'pointerdown', pressEarly, true );
 document.addEventListener( 'click', clickEarly, true );
 document.addEventListener( 'pointerup', releaseEarly, true );
+
+/**
+ * A press that went down before this script ran, so before the listener above, is taken up as one that went down
+ * after (#120, D-363): while the button is down, the control and the elements around it are `:active`.
+ */
+const already = document.querySelector< HTMLElement >( CONTROLS + ':active' );
+early = already ? { control: already, clicked: false } : null;
 
 /**
  * Each panel the shopper scrolled before its builder was ready, and where they left it (#94). Hydrating a region takes
@@ -542,6 +578,23 @@ function turnOver( toTop: boolean ): void {
 }
 
 /**
+ * Turn the board to a side, from the buttons by it (#46, F28): the side the shopper chose is kept until the step
+ * changes (F27, #127). The side already shown, or a board with no top, is left as it is.
+ *
+ * @param toTop Whether the top is to be shown.
+ */
+function turnTo( toTop: boolean ): void {
+	const picture = state.view.picture;
+	if ( ! picture?.turnable || picture.turned === toTop ) {
+		return;
+	}
+	top = toTop;
+	state.turning = true;
+	picture.turned = toTop;
+	window.requestAnimationFrame( () => turnOver( toTop ) );
+}
+
+/**
  * Whether a view takes a part off the stage that the last one had.
  *
  * @param before The view before.
@@ -661,6 +714,11 @@ function steady( change: () => void ): void {
 					'.cbuild-step input[type="radio"]:checked'
 				) );
 	const before = anchor?.getBoundingClientRect().top ?? 0;
+	// The view that answers a width folded at its press leaves the widths as they are: the press closed them, so they
+	// are open only where the shopper pressed Change before the answer came. Read before the change, since the press's
+	// own fold sets it.
+	const kept = pressFolded;
+	pressFolded = false;
 	change();
 	window.requestAnimationFrame( () => {
 		// Once a width is chosen the widths fold behind its line after every answer. Change opens them natively, and
@@ -672,7 +730,7 @@ function steady( change: () => void ): void {
 			.forEach( ( fold ) => {
 				const line =
 					fold.querySelector< HTMLElement >( ':scope > summary' );
-				if ( line ) {
+				if ( line && ! ( kept && fold.open ) ) {
 					fold.open = true === line.hidden;
 				}
 			} );
@@ -720,13 +778,18 @@ function measure( element: HTMLElement ): void {
 	const bar = element.querySelector( '.cbuild-bar' );
 	const shown = element.querySelector( '.cbuild__stage' );
 	if ( bar ) {
-		const sized = new window.ResizeObserver( () => size( element ) );
+		// The control in focus keeps it while the bar or a line over it grows: the limit's line comes 10 s after a
+		// press, over a card picked with Space just above the bar, and nothing else scrolls it clear (D-383).
+		const sized = new window.ResizeObserver( () => {
+			size( element );
+			clear( element.ownerDocument.activeElement );
+		} );
 		sized.observe( bar );
-		// What a press of the dimmed Next says sits over the bar, outside its box: its height counts as the bar's.
-		const said = bar.querySelector( '.cbuild-bar__missing' );
-		if ( said ) {
-			sized.observe( said );
-		}
+		// What a press of the dimmed Next says, and the limit's line, sit over the bar, outside its box: their
+		// heights count as the bar's (D-383).
+		bar.querySelectorAll(
+			'.cbuild-bar__missing, .cbuild__limited'
+		).forEach( ( said ) => sized.observe( said ) );
 	}
 	// The stage sticks on top, or stands beside the panel, as the builder's width changes its size.
 	if ( shown ) {
@@ -827,6 +890,227 @@ function chosen( view: Shown, value: string ): void {
 		view.bar.next.ready = true;
 	}
 }
+
+/**
+ * Make at a pick what the store already knows its answer will show, so that the answer, which on a real host comes
+ * after the 500 ms CLS leaves out after a press, moves nothing on the page (F20, #118; D-356). The answer then says
+ * the same, or what the server found instead.
+ *
+ * - The ready builds are offered at the start alone: a build begun is the shopper's own.
+ * - The deck step's line ("Start with a width") goes once its deck is chosen.
+ * - Once the step has a part picked, each card says its price against it under its own (D-249): the line is kept,
+ *   empty, for the server's words. Left empty, as by No risers, the step says no such prices.
+ * - A step recommends a part only while it has none picked.
+ * - The bar keeps the estimate's line once the build has a part, so the estimate the answer brings moves nothing.
+ *
+ * @param view  The view shown.
+ * @param value The radio's value: a part's ID, or "0" for leaving the slot empty.
+ */
+function foretell( view: Shown, value: string ): void {
+	const known = view as {
+		presets?: { shown?: boolean };
+		bar?: { started?: boolean };
+		step: { slot: string; hasLead?: boolean; options?: unknown };
+	};
+	if ( known.presets ) {
+		known.presets.shown = false;
+	}
+	const part = '0' !== value;
+	// The build has a part: the bar keeps the line for the estimate its answer brings (D-374).
+	if ( known.bar && part ) {
+		known.bar.started = true;
+	}
+	if ( 'deck' === known.step.slot && part ) {
+		known.step.hasLead = false;
+	}
+	if ( Array.isArray( known.step.options ) ) {
+		for ( const option of known.step.options as unknown[] ) {
+			if ( option instanceof Object ) {
+				const card = option as {
+					hasDelta?: boolean;
+					recommended?: boolean;
+				};
+				card.hasDelta = part;
+				// A step recommends a part only while it has none picked.
+				card.recommended = true === card.recommended && ! part;
+			}
+		}
+	}
+}
+
+/**
+ * Fold the width question to its chosen line at the press of a width, as its answer will: the widths behind the line
+ * that says the one pressed, with Change, and the step's list, which the answer fills, under it (F20, #118; D-356).
+ * The ready builds wait for the answer out of sight, in their place (`data-folded`), so the decks it brings take it
+ * rather than push them down, and the page under the builder does not move twice. Null where the press is no width
+ * the step asks for.
+ *
+ * @param view   The view shown.
+ * @param button The button pressed.
+ */
+function folding(
+	view: Shown,
+	button: HTMLElement | null | undefined
+): ( () => void ) | null {
+	const known = view as {
+		step: {
+			more?: { count?: string };
+			shelf?: {
+				width?: {
+					name?: string;
+					asking?: boolean;
+					chosen?: string;
+					options: {
+						value: string;
+						text: string;
+						pressed: string;
+					}[];
+				};
+			};
+		};
+	};
+	const width = known.step.shelf?.width;
+	if (
+		! button ||
+		true !== width?.asking ||
+		button.getAttribute( 'name' ) !== width.name
+	) {
+		return null;
+	}
+	const value = button.getAttribute( 'value' );
+	const pressed = width.options.find( ( option ) => option.value === value );
+	if ( ! pressed ) {
+		return null;
+	}
+	return () => {
+		const said = width.chosen ?? '';
+		const was = width.options.map( ( option ) => option.pressed );
+		const more = known.step.more;
+		const counted = more?.count ?? '';
+		// A press the rate limit or the store's limit stops asks the question again, with the width it pressed (D-364).
+		unfold = () => {
+			pressFolded = false;
+			width.asking = true;
+			width.chosen = said;
+			width.options.forEach( ( option, at ) => {
+				option.pressed = was[ at ] ?? 'false';
+			} );
+			if ( more ) {
+				more.count = counted;
+			}
+			window.requestAnimationFrame( () => button.focus() );
+		};
+		width.asking = false;
+		width.chosen = pressed.text;
+		for ( const option of width.options ) {
+			option.pressed = option === pressed ? 'true' : 'false';
+		}
+		root?.setAttribute( 'data-folded', '' );
+		pressFolded = true;
+		// "Showing 0 of 0" until the answer lists the decks: a line the cards would push down.
+		if ( more ) {
+			more.count = '';
+		}
+	};
+}
+
+/** Undo a width's fold made at its press, until the answer comes. */
+let unfold: ( () => void ) | undefined;
+
+/** Whether the next view shown answers a width folded at its press, whose widths the shopper may have opened since. */
+let pressFolded = false;
+
+/** The pick whose board is being drawn at its press, until a view is shown, so one decoded late draws over nothing. */
+let swapping: object | undefined;
+
+/**
+ * Draw the pressed deck's board at the press, from its card's image, which pointing at the card fetched (F23, #121;
+ * D-357), once it is decoded, so the board never shows half drawn. The rest of the picture keeps the cue that its
+ * answer is on its way. The answer then confirms the deck, or brings the change panel or a refusal, and the board is
+ * drawn as it says: put back, where the server refused the deck. The server still decides fit and price; this shows.
+ *
+ * @param view  The view shown.
+ * @param value The radio's value.
+ */
+function swap( view: Shown, value: string ): void {
+	const now = {};
+	swapping = now;
+	// Anything in the list that is not a card is no deck.
+	const options = ( view.step.options ?? [] ) as Array< {
+		id?: number;
+		preload?: Preload;
+	} | null >;
+	const preload = options.find(
+		( option ) => String( option?.id ) === value
+	)?.preload;
+	const layers = view.picture?.board?.layers ?? [];
+	const deck = layers.find( ( layer ) => 'deck-1' === layer.key );
+	if (
+		! preload?.shown ||
+		true === view.picture?.turned ||
+		! deck ||
+		deck.src === preload.src
+	) {
+		return;
+	}
+	const image = fetchBoard( preload );
+	void image?.decode().then(
+		() => {
+			if ( now !== swapping ) {
+				return;
+			}
+			const before = layers.map( ( layer ) => ( { ...layer } ) );
+			deck.src = preload.src;
+			deck.sizes = preload.sizes;
+			for ( const source of deck.sources ?? [] ) {
+				source.srcset =
+					'image/avif' === source.type ? preload.avif : preload.webp;
+				source.sizes = preload.sizes;
+			}
+			root?.setAttribute( 'data-swapped', '' );
+			window.requestAnimationFrame( () =>
+				build( board( false ), before, layers, calm( root ) )
+			);
+		},
+		// Not decoded: the old board stays whole until the answer.
+		() => undefined
+	);
+}
+
+/**
+ * Ask ahead for the step's Next once it is lit, so the next step can be shown at the press of it (F20, #118; D-355):
+ * on a real host its answer comes after the 500 ms CLS leaves out after a press, and the new step it brings would be
+ * counted as layout shift. Its fields are the form's, sent by the bar's Next, as a press of it sends them. Not on a
+ * view a search, a chip or Sort brought: a shopper narrowing the shelf asks often, and the route counts each request.
+ */
+function foresee(): void {
+	const view = state.view;
+	const next = view.bar?.next as
+		| { ready?: boolean; onStep?: boolean; name?: string; value?: string }
+		| undefined;
+	const form = root?.querySelector< HTMLFormElement >( 'form.cbuild-step' );
+	if (
+		true !== next?.ready ||
+		true !== next.onStep ||
+		view.isChanges ||
+		! form
+	) {
+		return;
+	}
+	const button = [ ...form.elements ].find(
+		( control ): control is HTMLButtonElement =>
+			control instanceof HTMLButtonElement &&
+			control.classList.contains( 'cbuild-bar__next' ) &&
+			control.name === next.name &&
+			control.value === next.value
+	);
+	if ( button ) {
+		nav( state ).prefetch( fields( form, button ) );
+	}
+}
+
+/** Whether the last move narrowed the shelf: its answer asks nothing ahead. */
+let narrowing: boolean | undefined;
 
 /**
  * How long, in ms, a pointer rests on a deck's card before its board's image is fetched: one passing over the shelf
@@ -946,6 +1230,7 @@ function nav( state: State ): Navigator {
 			endpoint: String( config.endpoint ),
 			page: Number( config.page ?? 0 ),
 			locale: String( config.locale ?? '' ),
+			late: String( config.late ?? '' ),
 			fetch: ( input, init ) => window.fetch( input, init ),
 			show: ( view, history ) => {
 				const shown = view as Shown;
@@ -960,6 +1245,13 @@ function nav( state: State ): Navigator {
 				const before = state.view;
 				// A new answer ends whatever moment the last one started.
 				cut();
+				const moved =
+					shown.step.slot !== before.step.slot ||
+					shown.isChanges !== before.isChanges;
+				// A new step opens on its own side: the shopper's turn was the last step's (F27, #127).
+				if ( moved ) {
+					top = undefined;
+				}
 				sided( shown );
 				// A side shown that was not is a turn the shopper sees, where motion is allowed; the same side ends the
 				// last turn, so a board shown again later is not turned.
@@ -976,6 +1268,10 @@ function nav( state: State ): Navigator {
 								),
 							] )
 						: undefined;
+				// A deck drawn at its press is the view's to confirm or put back from now (D-357).
+				swapping = undefined;
+				unfold = undefined;
+				const ahead = ! narrowing;
 				const change = () => {
 					state.view = shown;
 					state.added = false;
@@ -983,16 +1279,18 @@ function nav( state: State ): Navigator {
 					state.missing = '';
 					say( state, shown, turned, config, before );
 					priced( before, shown );
-					window.requestAnimationFrame( () =>
-						moments( before, shown, was )
-					);
+					window.requestAnimationFrame( () => {
+						moments( before, shown, was );
+						if ( ahead ) {
+							foresee();
+						}
+						// The Interactivity API has drawn the view by this frame.
+						rendered( root, shown );
+					} );
 				};
 				// Only a new step crosses over (spec: Motion): a transition takes the screen's taps while it
 				// runs, so one for a view on the same step would lose a Next tapped straight after a pick.
-				if (
-					shown.step.slot !== before.step.slot ||
-					shown.isChanges !== before.isChanges
-				) {
+				if ( moved ) {
 					motion( change, before, shown );
 				} else {
 					steady( change );
@@ -1004,10 +1302,15 @@ function nav( state: State ): Navigator {
 				state.drawing = on && picking;
 				if ( ! on ) {
 					picking = false;
+					// The answer is in, or failed: what the press foretold gives way to it.
+					root?.removeAttribute( 'data-folded' );
+					root?.removeAttribute( 'data-swapped' );
 				}
 			},
 			settle: ( view ) => ready( view ),
 			limited: ( message ) => {
+				unfold?.();
+				unfold = undefined;
 				state.limited = message;
 				state.status = message;
 			},
@@ -1029,6 +1332,8 @@ export function reset(): void {
 	boards.clear();
 	pressed = Number.NEGATIVE_INFINITY;
 	picking = false;
+	narrowing = undefined;
+	swapping = undefined;
 	window.clearTimeout( resting );
 }
 
@@ -1064,6 +1369,7 @@ let typing: number | undefined;
  * @param form The step's form.
  */
 function narrowed( form: HTMLFormElement ): void {
+	narrowing = true;
 	nav( state ).go( {
 		fields: [ ...fields( form ), [ 'cbuild[step]', state.view.step.slot ] ],
 		history: 'replace',
@@ -1082,13 +1388,42 @@ function send( form: HTMLFormElement, submitter?: HTMLElement | null ): void {
 }
 
 /**
+ * The top of what the bar covers: its own top, or the top of what it says over itself while it says something, what
+ * a press of the dimmed Next says (#100) and the limit's line (D-383), as `size()` counts them for the page's scroll
+ * padding (D-388). Empty or hidden, each has no height.
+ *
+ * @param bar The bar.
+ */
+function covers( bar: HTMLElement ): number {
+	let at = bar.getBoundingClientRect().top;
+	for ( const line of bar.querySelectorAll(
+		'.cbuild-bar__missing, .cbuild__limited'
+	) ) {
+		const said = line.getBoundingClientRect();
+		if ( said.height > 0 ) {
+			at = Math.min( at, said.top );
+		}
+	}
+	return at;
+}
+
+/**
  * Keep a focused control clear of the phone bar at the foot and the stage that sticks on top: the builder's focusin.
  *
  * @param event The focus that came in.
  */
 function reveal( event: FocusEvent ): void {
-	const target = event.target;
-	if ( ! ( target instanceof HTMLElement ) ) {
+	clear( event.target );
+}
+
+/**
+ * Bring a control clear of the bar and the stage where either covers it: the one focus comes to, or the one that keeps
+ * it while the bar grows or says something over itself (D-383).
+ *
+ * @param target The control.
+ */
+function clear( target: EventTarget | null ): void {
+	if ( ! ( target instanceof HTMLElement ) || ! root?.contains( target ) ) {
 		return;
 	}
 	const bar = root?.querySelector< HTMLElement >( '.cbuild-bar' );
@@ -1101,7 +1436,7 @@ function reveal( event: FocusEvent ): void {
 		!! bar &&
 		0 !== bar.getClientRects().length &&
 		! bar.contains( target ) &&
-		place.bottom > bar.getBoundingClientRect().top;
+		place.bottom > covers( bar );
 	const behind =
 		!! shown &&
 		! shown.contains( target ) &&
@@ -1218,6 +1553,7 @@ const { state } = store(
 					builder.setAttribute( 'data-ready', '' );
 					scrollReady( builder );
 				}
+				rendered( builder ?? null, state.view );
 			},
 			init(): void {
 				// The builder's pieces are regions of their own, each hydrated in its own task (D-296), so the root
@@ -1279,6 +1615,12 @@ const { state } = store(
 				// A search still waiting from the keys typed would go out after this and undo it, as Clear search was.
 				// The form carries the box as it is, so nothing typed is lost.
 				window.clearTimeout( typing );
+				narrowing = false;
+				// The width pressed folds behind its line, which takes focus from it as an answer's fold does.
+				const fold = folding( state.view, event.submitter );
+				if ( fold ) {
+					steady( fold );
+				}
 				const move: Move = {
 					fields: fields( form, event.submitter ),
 					history: 'push',
@@ -1351,10 +1693,14 @@ const { state } = store(
 					return;
 				}
 				cut();
+				narrowing = false;
 				chosen( state.view, input.value );
-				state.missing = '';
-				// The stylesheet settles the card picked under this mark alone, never as a page or a step is drawn.
+				foretell( state.view, input.value );
+				// The stylesheet settles the card picked under this mark alone, never as a page or a step is drawn. The
+				// phone's stage does not stick at this mark: it starts to stick at the answer (D-303, D-356).
 				root?.setAttribute( 'data-picked', '' );
+				swap( state.view, input.value );
+				state.missing = '';
 				root?.dispatchEvent(
 					new CustomEvent( 'cbuild:pick', {
 						bubbles: true,
@@ -1458,19 +1804,16 @@ const { state } = store(
 				window.requestAnimationFrame( () => shown?.focus() );
 			},
 			/**
-			 * Show the top, or the underside again: the button by the board, its pressed state the side shown (#46).
-			 * The shopper's side is kept from now on.
+			 * Show the underside: its button by the board, pressed while it is shown (F28, #128).
 			 */
-			turn(): void {
-				const picture = state.view.picture;
-				if ( ! picture?.turnable ) {
-					return;
-				}
-				top = ! picture.turned;
-				state.turning = true;
-				picture.turned = ! picture.turned;
-				const shown = picture.turned;
-				window.requestAnimationFrame( () => turnOver( shown ) );
+			under(): void {
+				turnTo( false );
+			},
+			/**
+			 * Show the top: its button by the board, pressed while it is shown (F28, #128).
+			 */
+			over(): void {
+				turnTo( true );
 			},
 			/**
 			 * The screen changed: fit the phone bar into the theme again (D-163).
@@ -1516,6 +1859,7 @@ const { state } = store(
 					return;
 				}
 				event.preventDefault();
+				narrowing = false;
 				nav( state ).go( {
 					fields: [ ...url.searchParams ],
 					history: 'push',
@@ -1523,6 +1867,7 @@ const { state } = store(
 				} );
 			},
 			back(): void {
+				narrowing = false;
 				nav( state ).go( {
 					fields: [
 						...new URLSearchParams( window.location.search ),

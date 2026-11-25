@@ -11,8 +11,10 @@ namespace CreativeBranding\SkateboardBuilder\Front;
 
 use CreativeBranding\SkateboardBuilder\Domain\Fit\BuildProblem;
 use CreativeBranding\SkateboardBuilder\Domain\Fit\Problem;
+use CreativeBranding\SkateboardBuilder\Domain\Kit\SizeGuide;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\SlotKey;
 use CreativeBranding\SkateboardBuilder\Domain\Look\Shelf;
+use CreativeBranding\SkateboardBuilder\Domain\Picture\Layout;
 use CreativeBranding\SkateboardBuilder\Service\State;
 use CreativeBranding\SkateboardBuilder\Support\Cast;
 use CreativeBranding\SkateboardBuilder\Support\Options;
@@ -267,13 +269,18 @@ final class BuilderView {
 				// The deck's photo in the board's place (#82).
 				'hero'        => $hero,
 				'board'       => $board,
-				// The board's top (#46): shown on the grip step, where the shopper sees the grip go on, and turned to
-				// with the button by the board, which the store offers and keeps to once pressed. A deck with no layer
-				// image has no outline to draw the top from.
+				// The board's top (#46): each step opens on the side its part is seen on, the top for the hardware and
+				// the grip and the underside for the rest and the review (F27, #127). The control by the board turns it,
+				// with the script, until the shopper changes step. A deck with no layer image has no outline to draw the
+				// top from.
 				'top'         => $top,
 				'turnable'    => $top['shown'],
-				'turned'      => $top['shown'] && SlotKey::GRIP === $state->step,
-				'turn'        => __( 'Show the top', 'creative-skateboard-builder' ),
+				'turned'      => $top['shown'] && Layout::onTop( $state->step ),
+				// The control by the board (F28, #128): a button a side, the side shown pressed.
+				'sides'       => array(
+					'under' => _x( 'Underside', 'the side of the board shown', 'creative-skateboard-builder' ),
+					'top'   => _x( 'Top', 'the side of the board shown', 'creative-skateboard-builder' ),
+				),
 				'sided'       => $board['shown'],
 				'seen'        => array(
 					'under' => __( 'Seen from underneath.', 'creative-skateboard-builder' ),
@@ -348,7 +355,7 @@ final class BuilderView {
 	 * @param int                                                          $kit     The kit product's ID.
 	 * @param array<string, mixed>                                         $board   The board, drawn at the bar's size.
 	 * @param array{shown: bool, url: string, text: string, label: string} $back The footer's Back.
-	 * @return array{shown: bool, seen: bool, board: array<string, mixed>, photo: array{hasImage: bool, src: string, srcset: string, sizes: string, width: int, height: int, classes: string}, picture: string, total: string, amount: string, parts: string, hide: string, back: array{shown: bool, url: string, text: string, label: string}, next: array{shown: bool, onStep: bool, onReview: bool, text: string, form: string, name: string, value: string, disabled: bool, ready: bool, missing: string}}
+	 * @return array{shown: bool, seen: bool, board: array<string, mixed>, photo: array{hasImage: bool, src: string, srcset: string, sizes: string, width: int, height: int, classes: string}, picture: string, total: string, amount: string, parts: string, hide: string, started: bool, back: array{shown: bool, url: string, text: string, label: string}, next: array{shown: bool, onStep: bool, onReview: bool, text: string, form: string, name: string, value: string, disabled: bool, ready: bool, missing: string}}
 	 */
 	private static function bar( array $summary, array $step, array $shown, bool $review, bool $panel, array $first, int $kit, array $board, array $back ): array {
 		$next  = Cast::map( $step['next'] ?? null );
@@ -373,6 +380,10 @@ final class BuilderView {
 			// own under the amount, while one is given (Cowork's 0.8.0 review, F2; D-230). The status region says it
 			// already, so the line is not read again.
 			'hasEstimate' => Cast::bool( $summary['hasEstimate'] ?? null ),
+			// Whether the build has a part: only then can an answer bring an estimate, so only then does the bar keep the
+			// estimate's line while there is none. A blank build keeps no line, and the first pick keeps it at its press
+			// (F20 and F24; D-356, D-374).
+			'started'     => ! Cast::bool( $summary['empty'] ?? true ),
 			/* translators: %s: an amount of money, such as $184.00. Short: it sits under the total in the phone's bar. */
 			'estimate'    => sprintf( __( 'Complete from about %s', 'creative-skateboard-builder' ), Cast::str( $summary['estimateAmount'] ?? null ) ),
 			'parts'       => __( 'Show the parts', 'creative-skateboard-builder' ),
@@ -1019,8 +1030,9 @@ final class BuilderView {
 			'value' => null === $more ? '' : (string) $more,
 			/* translators: %s: how many more the button lists: parts, or looks on the shelf. */
 			'text'  => null === $more ? '' : sprintf( __( 'Show %s more', 'creative-skateboard-builder' ), number_format_i18n( $more - $listed ) ),
+			// None of none is not said: the step says why it lists nothing (#124).
 			/* translators: 1: how many parts are listed. 2: how many match. */
-			'count' => sprintf( _n( '%1$s of %2$s part shown', '%1$s of %2$s parts shown', $matching, 'creative-skateboard-builder' ), number_format_i18n( $listed ), number_format_i18n( $matching ) ),
+			'count' => 0 === $matching ? '' : sprintf( _n( '%1$s of %2$s part shown', '%1$s of %2$s parts shown', $matching, 'creative-skateboard-builder' ), number_format_i18n( $listed ), number_format_i18n( $matching ) ),
 			'added' => '',
 		);
 	}
@@ -1046,8 +1058,9 @@ final class BuilderView {
 			'value' => null === $more ? '' : (string) ( $shown + Shelf::SHOWN ),
 			/* translators: %s: how many more the button lists: parts, or looks on the shelf. */
 			'text'  => null === $more ? '' : sprintf( __( 'Show %s more', 'creative-skateboard-builder' ), number_format_i18n( min( Shelf::SHOWN, $matching - $listed ) ) ),
+			// "Showing 0 of 0" is not said: the step says why it lists nothing (#124).
 			/* translators: 1: how many looks are listed. 2: how many match. */
-			'count' => sprintf( _n( 'Showing %1$s of %2$s', 'Showing %1$s of %2$s', $matching, 'creative-skateboard-builder' ), number_format_i18n( $listed ), number_format_i18n( $matching ) ),
+			'count' => 0 === $matching ? '' : sprintf( _n( 'Showing %1$s of %2$s', 'Showing %1$s of %2$s', $matching, 'creative-skateboard-builder' ), number_format_i18n( $listed ), number_format_i18n( $matching ) ),
 			/* translators: 1: how many Show more added. 2: how many are listed. 3: how many match. No noun: decks, wheels and so on (#84). */
 			'added' => $shown > Shelf::SHOWN && $added > 0 ? sprintf( _n( '%1$s more shown, %2$s of %3$s.', '%1$s more shown, %2$s of %3$s.', $added, 'creative-skateboard-builder' ), number_format_i18n( $added ), number_format_i18n( $listed ), number_format_i18n( $matching ) ) : '',
 		);
@@ -1085,9 +1098,10 @@ final class BuilderView {
 	 * @param string                     $slot   The step's slot.
 	 * @param list<array<string, mixed>> $folded The sold-out looks' cards.
 	 * @param int                        $kit    The kit product's ID, for the width guide's filter.
+	 * @param SizeGuide|null             $sizes  The kit's width guide (1.2.0); none where there is no step.
 	 * @return array<string, mixed>
 	 */
-	private static function shelf( array $shelf, string $slot, array $folded, int $kit ): array {
+	private static function shelf( array $shelf, string $slot, array $folded, int $kit, ?SizeGuide $sizes = null ): array {
 		$offered = Cast::int( $shelf['offered'] ?? null );
 		$widths  = array();
 		$none    = array();
@@ -1150,7 +1164,11 @@ final class BuilderView {
 		$asking = $asking && array() !== $widths;
 		$tools  = $offered > self::CARDS_ALONE;
 		// "Not sure of your width?" under the question, asked only where there is a question (spec: The deck's width).
-		$guide = array() === $widths ? array() : WidthGuide::rows( $kit );
+		// From 1.2.0 as the kit sets it (#114): its own rows, or none where it hides the guide.
+		$guide = array() === $widths ? array() : WidthGuide::rows( $kit, $sizes );
+		$shown = array() !== $guide;
+		// The plugin's rows are US sizes; a shop's own say which sizes they are in their own words.
+		$shoe = null === $sizes?->rows ? __( 'Shoe size (US)', 'creative-skateboard-builder' ) : __( 'Shoe size', 'creative-skateboard-builder' );
 		return array(
 			'width'   => array(
 				'shown'   => array() !== $widths,
@@ -1165,12 +1183,14 @@ final class BuilderView {
 				'hasNone' => array() !== $none,
 				/* translators: %s: widths, such as 7.75″, 8.125″ or 9″. */
 				'none'    => array() === $none ? '' : sprintf( __( 'Nothing in %s is in stock right now.', 'creative-skateboard-builder' ), Words::either( $none ) ),
+				// A guide with no rows is gone from the view, words and all, so the page draws an empty, hidden box and
+				// the state route's answer carries nothing of it (#114).
 				'guide'   => array(
-					'shown'   => array() !== $guide,
-					'summary' => __( 'Not sure of your width?', 'creative-skateboard-builder' ),
-					'caption' => __( 'Deck width by shoe size', 'creative-skateboard-builder' ),
-					'shoe'    => __( 'Shoe size (US)', 'creative-skateboard-builder' ),
-					'width'   => __( 'Deck width', 'creative-skateboard-builder' ),
+					'shown'   => $shown,
+					'summary' => $shown ? __( 'Not sure of your width?', 'creative-skateboard-builder' ) : '',
+					'caption' => $shown ? __( 'Deck width by shoe size', 'creative-skateboard-builder' ) : '',
+					'shoe'    => $shown ? $shoe : '',
+					'width'   => $shown ? __( 'Deck width', 'creative-skateboard-builder' ) : '',
 					'rows'    => $guide,
 				),
 			),
@@ -1189,8 +1209,10 @@ final class BuilderView {
 				// A phone folds the chips behind this button (spec: Phone); it says how many narrow the cards.
 				'toggle' => self::toggle( $groups ),
 			),
+			// Nothing listed, nothing to sort: a search or chips that find nothing say so, with no Sort under it (#124).
+			// Beside the chips, out of the step's fieldset, so hidden as well while the deck step asks its width (#122).
 			'sort'    => array(
-				'shown'   => $tools,
+				'shown'   => $tools && ! $asking && Cast::int( $shelf['matching'] ?? null ) > 0,
 				'label'   => __( 'Sort', 'creative-skateboard-builder' ),
 				'name'    => BuildLink::PARAM . '[_sort]',
 				'options' => array_map(
@@ -1606,7 +1628,8 @@ final class BuilderView {
 			'help'      => Cast::str( $step['help'] ?? null ),
 			'hasHelp'   => '' !== Cast::str( $step['help'] ?? null ),
 			'lead'      => '' !== $lead ? $lead : __( 'Start with a width. Every later step offers only what fits the deck you choose.', 'creative-skateboard-builder' ),
-			'hasLead'   => '' !== $lead || ( SlotKey::DECK === $slot && ! isset( $counted[ $slot ] ) ),
+			// The deck step's lead until a width is chosen: then the width says it, and its line goes to the cards (#122).
+			'hasLead'   => '' !== $lead || ( SlotKey::DECK === $slot && ! isset( $counted[ $slot ] ) && '' === self::shown( $shelf ?? array() ) ),
 			'name'      => BuildLink::PARAM . '[' . $slot . ']',
 			'before'    => self::fields( BuildLink::PARAM, $link->picks, $link->none, $before ),
 			'after'     => self::fields( BuildLink::PARAM, $link->picks, $link->none, $after ),
@@ -1617,7 +1640,7 @@ final class BuilderView {
 			'hidden'    => self::hidden( $answer, $step ),
 			'filters'   => null === $shelf ? self::filters( $answer, $slot ) : self::filters( array(), '' ),
 			'more'      => null === $shelf ? self::more( $answer, count( $options ) ) : self::page( $shelf, count( $options ), $link ),
-			'shelf'     => self::shelf( $shelf ?? array(), $slot, $folded, $state->id ),
+			'shelf'     => self::shelf( $shelf ?? array(), $slot, $folded, $state->id, $state->kit->settings->guide ),
 			// The deck step asking its width lists nothing yet, and says nothing is missing; a search that lists nothing
 			// says so itself, so the fit rule is not given as the reason (#83).
 			'empty'     => array() === $options && ! ( null !== $shelf && SlotKey::DECK === $slot && '' === $link->shelf->width ) && true !== $found['shown'],

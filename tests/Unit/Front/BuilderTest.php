@@ -463,7 +463,7 @@ final class BuilderTest extends TestCase {
 		$picture = $view['picture'];
 		self::assertTrue( $picture['turnable'] );
 		self::assertTrue( $picture['turned'], 'the grip step shows the top' );
-		self::assertSame( 'Show the top', $picture['turn'] );
+		self::assertSame( array( 'under' => 'Underside', 'top' => 'Top' ), $picture['sides'], 'a button a side (F28, #128)' );
 		self::assertSame( array( 'under' => 'Seen from underneath.', 'top' => 'Seen from the top.' ), $picture['seen'] );
 
 		$top = $picture['top'];
@@ -491,6 +491,31 @@ final class BuilderTest extends TestCase {
 		$before = $this->show( new BuildLink( array( SlotKey::DECK => 101 ), null, SlotKey::TRUCKS ) )['view']['picture'];
 		self::assertSame( array( true, false ), array( $before['turnable'], $before['turned'] ), 'a step before the grip shows the underside' );
 		self::assertSame( array( 'deck-1' ), array_column( $before['top']['layers'], 'key' ), 'the plain top, maple in the deck\'s shape' );
+	}
+
+	// Cowork's review of 1.1.0, F27 (#127): "Each step opens on its part's side: deck, trucks and wheels underneath;
+	// hardware and grip on top; review underneath." The hardware step showed the underside, where no bolt head is drawn.
+	public function test_each_step_of_the_kit_opens_on_the_side_its_part_is_seen_on(): void {
+		$this->topArt();
+		$picks = array( SlotKey::DECK => 101, SlotKey::TRUCKS => 139, SlotKey::WHEELS => 301, SlotKey::BEARINGS => 501, SlotKey::HARDWARE => 601, SlotKey::GRIP => 701 );
+		$sides = array();
+		foreach ( array_merge( array_column( KitDocuments::slots()['slots'], 'key' ), array( BuildLink::REVIEW ) ) as $step ) {
+			$picture        = $this->show( new BuildLink( $picks, null, $step ) )['view']['picture'];
+			$sides[ $step ] = $picture['turnable'] ? ( $picture['turned'] ? 'top' : 'underside' ) : 'no top';
+		}
+		self::assertSame(
+			array(
+				SlotKey::DECK     => 'underside',
+				SlotKey::TRUCKS   => 'underside',
+				SlotKey::WHEELS   => 'underside',
+				SlotKey::RISERS   => 'underside',
+				SlotKey::BEARINGS => 'underside',
+				SlotKey::HARDWARE => 'top',
+				SlotKey::GRIP     => 'top',
+				BuildLink::REVIEW => 'underside',
+			),
+			$sides
+		);
 	}
 
 	/**
@@ -802,6 +827,8 @@ final class BuilderTest extends TestCase {
 				// The bar shows the amount alone, and reads the sentence to a screen reader: beside the board's
 				// picture "Total:" broke the line at 412 pixels, and the bar grew under the thumb (Zach, 16 Nov).
 				'amount' => $view['summary']['total'],
+				// A part is picked, so the bar keeps the estimate's line while there is none (D-374).
+				'started' => true,
 				'parts'  => 'Show the parts',
 				'hide'  => 'Hide the parts',
 				// The footer holds Back beside Next, as the prototype has it; the step's own Back is hidden.
@@ -1154,12 +1181,13 @@ final class BuilderTest extends TestCase {
 				'options' => array(),
 				'hasNone' => false,
 				'none'    => '',
+				// A guide not shown has no words either, from 1.2.0 (#114).
 				'guide'   => array(
 					'shown'   => false,
-					'summary' => 'Not sure of your width?',
-					'caption' => 'Deck width by shoe size',
-					'shoe'    => 'Shoe size (US)',
-					'width'   => 'Deck width',
+					'summary' => '',
+					'caption' => '',
+					'shoe'    => '',
+					'width'   => '',
 					'rows'    => array(),
 				),
 			),
@@ -1228,7 +1256,8 @@ final class BuilderTest extends TestCase {
 					'name'  => 'cbuild[_shown]',
 					'value' => '',
 					'text'  => '',
-					'count' => '0 of 0 parts shown',
+					// None of none is not said (#124).
+					'count' => '',
 					'added' => '',
 				),
 				'shelf'     => self::emptyShelf(),
@@ -1326,6 +1355,10 @@ final class BuilderTest extends TestCase {
 		$whole = $this->show( new BuildLink( self::STREET, null, BuildLink::REVIEW ) )['view'];
 		self::assertFalse( $whole['bar']['hasEstimate'], 'every slot picked: no estimate' );
 		self::assertFalse( $this->show( new BuildLink() )['view']['bar']['hasEstimate'], 'nothing before the deck' );
+		// F24 (D-374): only a build with a part can be given an estimate, so only it keeps the estimate's line.
+		self::assertTrue( $view['bar']['started'] );
+		self::assertTrue( $whole['bar']['started'] );
+		self::assertFalse( $this->show( new BuildLink() )['view']['bar']['started'], 'a blank build keeps no line' );
 	}
 
 	public function test_a_card_lists_its_notes_and_the_summary_what_other_plugins_add(): void {

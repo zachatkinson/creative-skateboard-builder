@@ -7,6 +7,7 @@
  * @var list<array{label: string, open: bool, fields: list<array{id: string, name: string, label: string, value: string, note: string, options: array<int|string, string>|null, charts: array<string, array<string, string>>}>}> $groups The groups of fields. None on the tab of a product no kit takes.
  * @var bool $whole Whether this is the tab's panel (true) or a variation's fields (false).
  * @var array{id: string, name: string, value: string, open: bool, note: string, src: string, box: array{int, int}|null, caption: string, choose: string, title: string, types: list<string>}|null $layer The Layer image field (from 0.7.0). None where the panel has no groups.
+ * @var array{id: string, name: string, checked: bool, label: string, note: string}|null $offer "Not offered in the builder" (from 1.2.0). None where the panel has no groups and it is not ticked.
  */
 
 declare( strict_types=1 );
@@ -36,6 +37,23 @@ $cbuild_row = $whole ? 'form-field' : 'form-row form-row-full';
 			<?php esc_html_e( 'A field left blank takes the parent product\'s value.', 'creative-skateboard-builder' ); ?>
 		<?php endif; ?>
 	</p>
+	<?php if ( null !== $offer ) : ?>
+		<?php // A box not ticked sends nothing, so it adds no field to a page of variations (issue #23). ?>
+		<?php // The label first, as woocommerce_wp_checkbox() writes it: the panel floats both, and a label after the box lay over it (M12's walkthrough). ?>
+		<p class="<?php echo esc_attr( $cbuild_row ); ?> cbuild-not-offered">
+			<label for="<?php echo esc_attr( $offer['id'] ); ?>"><?php echo esc_html( $offer['label'] ); ?></label>
+			<input
+				type="checkbox"
+				class="checkbox"
+				id="<?php echo esc_attr( $offer['id'] ); ?>"
+				name="<?php echo esc_attr( $offer['name'] ); ?>"
+				value="1"
+				<?php checked( $offer['checked'] ); ?>
+				aria-describedby="<?php echo esc_attr( $offer['id'] . '-note' ); ?>"
+			/>
+			<span class="description" id="<?php echo esc_attr( $offer['id'] . '-note' ); ?>"><?php echo esc_html( $offer['note'] ); ?></span>
+		</p>
+	<?php endif; ?>
 	<?php // A closed group holds nothing, so its fields are disabled and add nothing to the product's form; the screen's script enables them when the group opens (issue #23). ?>
 	<?php foreach ( $groups as $cbuild_group ) : ?>
 		<details<?php echo $cbuild_group['open'] ? ' open' : ''; ?>>

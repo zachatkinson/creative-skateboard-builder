@@ -1,6 +1,8 @@
 # Roadmap
 
-The whole Creative Skateboard Builder project: ten milestones to 1.0 (D-236), then what follows it. `SPEC.md` says what each part must do; this file says what each milestone builds, what proves it, and where its audit looks hardest. The milestones are in order. Don't start one until Zach approves the last. Milestones 1 to 9 are tagged `v0.1.0` to `v0.9.0`; milestone 10 is `v1.0.0`.
+The whole Creative Skateboard Builder project: ten milestones to 1.0 (D-236), then what follows it. `SPEC.md` says what each part must do; this file says what each milestone builds, what proves it, and where its audit looks hardest. The milestones are in order.
+
+Don't start one until Zach approves the last. Milestones 1 to 9 are tagged `v0.1.0` to `v0.9.0`; milestone 10 is `v1.0.0`.
 
 **Every milestone runs the same way** (`AUDIT.md`):
 
@@ -10,11 +12,46 @@ The whole Creative Skateboard Builder project: ten milestones to 1.0 (D-236), th
 4. A draft pull request using the template, with a `CHANGELOG.md` entry, marked ready once the gates pass locally (D-041).
 5. Zach sends the summary to Claude in Cowork for the independent review. Its fixes land, Claude merges once the full CI run is green, and the next milestone's `/plan-milestone` tags the merge (`v0.<n>.0`; `v1.0.0` for milestone 10).
 
+## Contents
+
+- [Milestone 1: Foundation (0.1.0)](#milestone-1-foundation-010)
+  - [Builds](#builds)
+  - [Tests that must pass](#tests-that-must-pass)
+- [Milestone 2: Domain (0.2.0)](#milestone-2-domain-020)
+  - [Tests that must pass](#tests-that-must-pass-1)
+- [Milestone 3: Specs (0.3.0)](#milestone-3-specs-030)
+  - [Builds](#builds-1)
+  - [Tests that must pass](#tests-that-must-pass-2)
+- [Milestone 4: Kits (0.4.0)](#milestone-4-kits-040)
+  - [Builds](#builds-2)
+  - [Tests that must pass](#tests-that-must-pass-3)
+- [Milestone 5: Cart and checkout (0.5.0)](#milestone-5-cart-and-checkout-050)
+  - [Tests that must pass](#tests-that-must-pass-4)
+- [Milestone 6: The builder (0.6.0)](#milestone-6-the-builder-060)
+  - [Tests that must pass](#tests-that-must-pass-5)
+- [Milestone 7: The picture (0.7.0)](#milestone-7-the-picture-070)
+  - [Builds](#builds-3)
+  - [Tests that must pass](#tests-that-must-pass-6)
+- [Milestone 8: Orders and after (0.8.0)](#milestone-8-orders-and-after-080)
+  - [Tests that must pass](#tests-that-must-pass-7)
+- [Milestone 9: Hardening (0.9.0)](#milestone-9-hardening-090)
+  - [Builds and checks](#builds-and-checks)
+- [Milestone 10: The configurator and 1.0 (1.0.0)](#milestone-10-the-configurator-and-10-100)
+  - [Tests that must pass](#tests-that-must-pass-8)
+- [Milestone 11: The motion (1.1.0)](#milestone-11-the-motion-110)
+  - [Tests that must pass](#tests-that-must-pass-9)
+- [After 1.0](#after-10)
+  - [Companion releases](#companion-releases)
+  - [Skatehouse's setup](#skatehouses-setup)
+  - [Module A: your own graphic](#module-a-your-own-graphic)
+  - [Module B: 3D on a tap](#module-b-3d-on-a-tap)
+  - [Later ideas, not planned](#later-ideas-not-planned)
+
 ---
 
 ## Milestone 1: Foundation (0.1.0)
 
-**Builds**
+### Builds
 
 - The repository as `CLAUDE.md` describes it, set up like Creative Search's:
   - Composer, with PHPUnit 9.6 in `tools/integration/`;
@@ -48,7 +85,7 @@ The whole Creative Skateboard Builder project: ten milestones to 1.0 (D-236), th
 - wp-env on ports 8898 and 8899, newest and oldest.
 - `docs/` started: HOOKS, SETTINGS, SECURITY, PRIVACY, A11Y, BENCHMARK, `reviews/M1.md`; `readme.txt`; `CHANGELOG.md`.
 
-**Tests that must pass**
+### Tests that must pass
 
 - **Lifecycle:** activation, deactivation and uninstall on a single site and on multisite.
 - **Migrations:**
@@ -82,7 +119,7 @@ The whole Creative Skateboard Builder project: ten milestones to 1.0 (D-236), th
 - **The build validator** the cart will use.
 - **The picture's layout**: from the specs to each layer's scale and position. The deck by its width and length, the trucks by the wheelbase or the shape's usual one, the wheels at the axles.
 
-**Tests that must pass**
+### Tests that must pass
 
 - Every case under Compatibility rules, written first, and every boundary: both ends of a range, each tolerance, a missing spec, unit conversions and fractions.
 - The change list, the recommendations and the layout, case by case.
@@ -102,7 +139,7 @@ The whole Creative Skateboard Builder project: ten milestones to 1.0 (D-236), th
 
 ## Milestone 3: Specs (0.3.0)
 
-**Builds**
+### Builds
 
 - The specs index table and its repository.
 - The jobs: `cbuild_index_part` and `cbuild_reindex` (100 parts a batch, from a saved cursor), unique and idempotent.
@@ -120,7 +157,7 @@ The whole Creative Skateboard Builder project: ten milestones to 1.0 (D-236), th
 - The ability `creative-skateboard-builder/catalogue-check`, for those who can manage WooCommerce.
 - Site Health tests: the index up to date, failed jobs.
 
-**Tests that must pass**
+### Tests that must pass
 
 - **Indexing:** from each source, which source wins, disagreements flagged.
 - **Jobs:** idempotent; a reindex stopped halfway resumes.
@@ -138,7 +175,7 @@ The whole Creative Skateboard Builder project: ten milestones to 1.0 (D-236), th
 
 ## Milestone 4: Kits (0.4.0)
 
-**Builds**
+### Builds
 
 - **The kit product type** (`KitProduct`). It is virtual and can't be bought outside the builder. It's kept out of the catalogue, search, feeds and sitemaps (WordPress's and Yoast's), and prints no product markup.
 - **The Build tab**, with schema validation and a notice that links each problem to its field:
@@ -155,7 +192,7 @@ The whole Creative Skateboard Builder project: ten milestones to 1.0 (D-236), th
 - The filters the route's answer runs through: `cbuild_part_available`, `cbuild_price_context`, and the owner's own words through `cbuild_slot_label`, `cbuild_preset_label` and `cbuild_kit_text`.
 - The settings page under WooCommerce > Settings > Builder.
 
-**Tests that must pass**
+### Tests that must pass
 
 - **The kit:** saves and loads through CRUD.
 - **The Build tab:** each validation error.
@@ -194,7 +231,7 @@ The whole Creative Skateboard Builder project: ten milestones to 1.0 (D-236), th
 - **Express pay:** buttons hidden on kit pages, and a bare kit refused.
 - **Delivery data:** `cbuild_arrival_estimate` and `cbuild_delivery_line`, and the returns notice.
 
-**Tests that must pass**
+### Tests that must pass
 
 - The spec's integration list:
   - every refusal with its message;
@@ -248,7 +285,7 @@ Shop Kit can't run in CI, so Claude in Cowork checks its checkout with a build i
 - **Motion:** view transitions between steps, a settling card, nothing under reduced motion.
 - **SEO:** state pages `noindex, follow` with a canonical to the clean page; `rel="nofollow"` on step links; the clean page's content in the HTML.
 
-**Tests that must pass**
+### Tests that must pass
 
 - **Browser, on Chromium, WebKit and Firefox at both widths:**
   - every way in built so far (saved builds arrive in milestone 8);
@@ -279,7 +316,7 @@ Shop Kit can't run in CI, so Claude in Cowork checks its checkout with a build i
 
 ## Milestone 7: The picture (0.7.0)
 
-**Builds**
+### Builds
 
 - **The renderer interface**, and its two renderers, both from the domain's layout:
   - **In the page:** layered `<picture>` elements with explicit sizes, AVIF and WebP sources, the deck at `fetchpriority="high"`, and `cbuild_part_classes` on each layer. The written description is updated and announced once per pick, and a layer is swapped with a view transition.
@@ -294,7 +331,7 @@ Shop Kit can't run in CI, so Claude in Cowork checks its checkout with a build i
 - **The fallback:** parts without layer images keep milestone 6's labelled photos within the same picture.
 - `docs/PICTURE.md`, the shot template for the agency's photographer: camera height and lens, scale, the nose up, the background, and the export settings for a transparent master.
 
-**Tests that must pass**
+### Tests that must pass
 
 - **Layout:** in the domain (from milestone 2), now drawn by both renderers alike; GD and Imagick agreeing within a set tolerance.
 - **Caching and limits:** the cache keys, the pruning, and the queue cap.
@@ -326,7 +363,7 @@ Shop Kit can't run in CI, so Claude in Cowork checks its checkout with a build i
 - the suggested privacy policy text;
 - the refund help text.
 
-**Tests that must pass**
+### Tests that must pass
 
 - **Emails** in English and French.
 - **Print:** the ticket's print styles.
@@ -345,7 +382,7 @@ Shop Kit can't run in CI, so Claude in Cowork checks its checkout with a build i
 
 Planned as 1.0.0. On 18 November 2026 Zach moved 1.0.0 to milestone 10, the configurator, so the checks a person makes on the screens, and the API freeze, are made on the front end that ships (D-236). The items marked "moved" are milestone 10's now.
 
-**Builds and checks**
+### Builds and checks
 
 - **French:** complete (`.po`, `.mo`, `.l10n.php`). Read by a person: moved.
 - **Accessibility:** the manual pass in `docs/A11Y.md`, with VoiceOver and NVDA, by someone who didn't write the code. Moved.
@@ -404,7 +441,7 @@ Planned as 1.0.0. On 18 November 2026 Zach moved 1.0.0 to milestone 10, the conf
 - **CI:** the newest leg split into parallel jobs, with the ruleset's required checks updated to match (D-258).
 - **The release:** tagged 1.0.0 and published.
 
-**Tests that must pass**
+### Tests that must pass
 
 - **The spec's cases, in the domain first:**
   - a look's size picked by the deck's width, by R1, R3 and R4;
@@ -451,6 +488,7 @@ Planned as 1.0.0. On 18 November 2026 Zach moved 1.0.0 to milestone 10, the conf
 **Done when** a shopper can find a part in a step of 500 as quickly as in one of 20, build, change, save, reopen a changed build, share and buy a board on a phone, a tablet and a desktop with or without JavaScript, by keyboard, touch or screen reader, within every budget, and the 1.0 checks moved from milestone 9 are done, with Zach's approval of the release.
 
 **Where the audit looks hardest:**
+
 - UX and content: Baymard's product-list and configurator research, P1 to P12, screen by screen, with the walkthrough;
 - accessibility: the rail, the chips, the sheet, the manual pass;
 - performance: the route's paging and search at 500, the largest paint on the stage;
@@ -464,12 +502,13 @@ Planned as 1.0.0. On 18 November 2026 Zach moved 1.0.0 to milestone 10, the conf
 ## Milestone 11: The motion (1.1.0)
 
 **Builds**, the Motion section of `docs/SPEC-CONFIGURATOR.md`:
+
 - the ten moments in its table, through view transitions and the Web Animations API, each cut short by a new pick;
 - reduced motion and the Motion setting's subtle as cross-fades (D-256);
 - the counting total (D-257);
 - Add to cart aiming at the Mini-Cart's button.
 
-**Tests that must pass**
+### Tests that must pass
 
 - **Each moment:** its end state as a visual baseline; its duration, and its fade under reduced motion and subtle, read from the animation's own timing in the browser test.
 - **Speed:**
@@ -500,11 +539,12 @@ Each is a small release of its own, once the hooks it needs are in a tagged buil
 | Plugin | Who builds it | What it does with the builder |
 | --- | --- | --- |
 | Creative Checkout | Claude in Cowork | Answers `cbuild_arrival_estimate` and `cbuild_delivery_line`; adds the assembly lead time wherever a cart or order holds an assembled build, Apple Pay's and Google Pay's sheets included; adds an assembly step to "What happens next" |
-| Mature Content | Claude in Cowork | Blurs a flagged part on its card, in the picture's layers and in the review, through `cbuild_part_classes` and `mcw_image_selectors` |
+| Mature Content | Claude in Cowork | Blurs a flagged part on its card, in the picture's layers and in the review, through `cbuild_part_classes` and `mcw_image_selectors`; from 1.3.0 that includes the review's thumbnails (#132) |
 | Creative Shipment Tracking | Claude Code | Shows a build under the kit's name in "In this parcel" |
-| Creative Reviews | Claude Code | Leaves the kit out of review requests |
+| Creative Reviews | Claude Code | Leaves the kit out of review requests. Its `creviews_should_send_request` (1.0.3) decides per order, so this needs a per-line filter in a Reviews release. The ratings shown in each step (#137) need nothing from it: its reviews are WooCommerce's own, read through the product |
 | Creative Loyalty | Claude Code, from its own brief (Phase 3) | Points per part line; a points line under the builder's total through `cbuild_summary_notes` |
-| Creative Schema | Claude in Cowork | Skips kits, if its markup ever reaches them |
+
+Creative Schema needs no release: a kit prints no product markup, and from 1.3.0 a browser test holds the kit's page to carrying none, so Schema's markup can't reach it unnoticed.
 
 ### Skatehouse's setup
 

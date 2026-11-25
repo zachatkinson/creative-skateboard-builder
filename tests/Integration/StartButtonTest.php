@@ -137,6 +137,89 @@ final class StartButtonTest extends IntegrationTestCase {
 		self::assertSame( $few, $count() );
 	}
 
+	// #115: a kit's Show on its parts' pages off leaves it out when the button picks its kit. Another kit that offers
+	// the deck still places it, the lowest menu order first; with every kit off there is none.
+	public function test_a_kit_turned_off_is_skipped_and_the_next_kit_by_menu_order_places_the_button(): void {
+		$off = static function ( int $kit ): void {
+			$product = wc_get_product( $kit );
+			self::assertInstanceOf( \CreativeBranding\SkateboardBuilder\Adapter\KitProduct::class, $product );
+			$product->setDocument( Options::META_KIT_SETTINGS, array( 'schema_version' => 1, 'start_button' => false ) );
+			$product->save();
+		};
+		$off( $this->first );
+		$html = $this->shown( $this->deck );
+		self::assertStringContainsString( '>Build a complete with this deck</a>', $html );
+		self::assertStringStartsWith( BuilderUrl::of( $this->second ), html_entity_decode( (string) preg_replace( '/\A.*href="([^"]*)".*\z/s', '$1', $html ) ), 'the next kit by menu order' );
+
+		remove_all_actions( 'woocommerce_after_add_to_cart_form' );
+		$off( $this->second );
+		self::assertSame( '', $this->shown( $this->deck ), 'no kit places it' );
+
+		// The filter answers last: a shop may still place it for a kit that is off.
+		remove_all_actions( 'woocommerce_after_add_to_cart_form' );
+		$asked = null;
+		add_filter(
+			'cbuild_start_button',
+			function ( $button ) use ( &$asked ) {
+				$asked = $button;
+				return array(
+					'kit'      => $this->second,
+					'part'     => $this->deck,
+					'slot'     => 'deck',
+					'text'     => 'Build a complete with this deck',
+					'hook'     => 'woocommerce_after_add_to_cart_form',
+					'priority' => 10,
+				);
+			}
+		);
+		$html = $this->shown( $this->deck );
+		self::assertFalse( $asked, 'the filter is told no kit places it' );
+		self::assertStringContainsString( html_entity_decode( BuilderUrl::of( $this->second ) ), html_entity_decode( $html ), 'and its answer is followed' );
+	}
+
+	// #115: a kit saved before 1.2.0 has no start_button, and places the button as 1.1.0 did; on, as the tab saves it,
+	// the same.
+	public function test_a_kit_with_no_setting_or_with_it_on_places_the_button_as_before(): void {
+		$product = wc_get_product( $this->first );
+		self::assertInstanceOf( \CreativeBranding\SkateboardBuilder\Adapter\KitProduct::class, $product );
+		self::assertNull( $product->documents()[ Options::META_KIT_SETTINGS ], 'saved before 1.2.0' );
+		$before = $this->shown( $this->deck );
+		self::assertStringStartsWith( BuilderUrl::of( $this->first ), html_entity_decode( (string) preg_replace( '/\A.*href="([^"]*)".*\z/s', '$1', $before ) ) );
+		remove_all_actions( 'woocommerce_after_add_to_cart_form' );
+		$product->setDocument( Options::META_KIT_SETTINGS, array( 'schema_version' => 1, 'start_button' => true ) );
+		$product->save();
+		self::assertSame( $before, $this->shown( $this->deck ) );
+	}
+
+	// #113 (D-348): the button opens the builder on the page the kit's Build tab chose, while that page is published
+	// and holds the kit's Builder block; otherwise the kit's own page.
+	public function test_the_button_opens_the_builder_on_the_kits_builder_page(): void {
+		$page    = self::factory()->post->create(
+			array(
+				'post_type'    => 'page',
+				'post_status'  => 'publish',
+				'post_content' => '<!-- wp:creative-skateboard-builder/builder {"kit":' . $this->first . '} /-->',
+			)
+		);
+		$product = wc_get_product( $this->first );
+		self::assertInstanceOf( \CreativeBranding\SkateboardBuilder\Adapter\KitProduct::class, $product );
+		$product->setDocument( Options::META_KIT_SETTINGS, array( 'schema_version' => 1, 'builder_page' => $page ) );
+		$product->save();
+		$href = static fn( string $html ): string => html_entity_decode( (string) preg_replace( '/\A.*href="([^"]*)".*\z/s', '$1', $html ) );
+		$link = $href( $this->shown( $this->deck ) );
+		self::assertStringStartsWith( (string) get_permalink( $page ), $link );
+		self::assertStringContainsString( 'cbuild[deck]=' . $this->deck, rawurldecode( $link ), 'with the deck picked' );
+
+		remove_all_actions( 'woocommerce_after_add_to_cart_form' );
+		wp_update_post(
+			array(
+				'ID'          => $page,
+				'post_status' => 'draft',
+			)
+		);
+		self::assertStringStartsWith( (string) get_permalink( $this->first ), $href( $this->shown( $this->deck ) ), 'a page taken down: the kit\'s own' );
+	}
+
 	public function test_a_part_no_kits_first_slot_offers_gets_no_button(): void {
 		self::assertSame( '', $this->shown( $this->truck ) );
 	}
@@ -203,11 +286,29 @@ final class StartButtonTest extends IntegrationTestCase {
 		self::assertSame( array( (string) $ids['8.0'], (string) $ids['8.5'] ), array_map( 'strval', array_keys( $starts ) ), 'each variation the kit offers in stock' );
 		self::assertStringContainsString( 'cbuild[deck]=' . $ids['8.5'], rawurldecode( (string) $starts[ $ids['8.5'] ] ) );
 		self::assertStringContainsString( 'data-cbuild-start="', $html, 'the button\'s own link, for a choice cleared' );
+		self::assertStringContainsString( '<a class="button wp-element-button cbuild-start__link"', $html, 'the theme\'s button, as on a simple deck\'s page (#133)' );
 		// The script that follows the form's choice, after WooCommerce's own.
 		do_action( 'wp_enqueue_scripts' );
 		self::assertStringContainsString( 'found_variation reset_data', implode( '', (array) wp_scripts()->get_data( 'wc-add-to-cart-variation', 'after' ) ) );
 
 		remove_all_actions( 'woocommerce_after_add_to_cart_form' );
 		self::assertStringNotContainsString( 'data-cbuild-starts', $this->shown( $this->deck ), 'a simple deck has its one link' );
+	}
+
+	// #133 (D-377): the theme draws the button as its own. A block theme styles `wp-element-button`, which WooCommerce's
+	// buttons carry; without it Twenty Twenty-Five drew an underlined link. Never `single_add_to_cart_button`, which
+	// WooCommerce's scripts bind to, nor `alt`, a classic theme's primary: the button is the page's second action. A
+	// variable deck's button is checked in the test above.
+	public function test_the_button_carries_the_themes_button_classes_and_none_of_add_to_carts(): void {
+		$html = $this->shown( $this->deck );
+		self::assertSame( 1, preg_match( '/<a class="([^"]*)"/', $html, $found ), $html );
+		$classes = explode( ' ', $found[1] );
+		self::assertContains( 'button', $classes, 'a classic theme\'s button' );
+		self::assertContains( 'wp-element-button', $classes, 'a block theme\'s button' );
+		self::assertNotContains( 'single_add_to_cart_button', $classes, 'WooCommerce\'s scripts bind to Add to cart\'s class' );
+		self::assertNotContains( 'alt', $classes, 'not the page\'s first action' );
+		// What matches Add to cart's weight and height: one script straight after each button the hook prints.
+		self::assertSame( 1, preg_match( '#</p><script[^>]*>\\s*\\(function\\(s\\)#', $html ), 'the script that matches Add to cart, after the button' );
+		self::assertSame( substr_count( $html, '<p class="cbuild-start">' ), substr_count( $html, '<script' ), 'one script a button' );
 	}
 }

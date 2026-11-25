@@ -14,16 +14,20 @@ use CreativeBranding\SkateboardBuilder\Domain\Kit\Kit;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Preset;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\KitLayout;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\RuleSettings;
+use CreativeBranding\SkateboardBuilder\Domain\Kit\SizeGuide;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Slot;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\SlotKey;
 use CreativeBranding\SkateboardBuilder\Domain\Picture\Layout;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Slots;
+use CreativeBranding\SkateboardBuilder\Front\BuilderPlace;
+use CreativeBranding\SkateboardBuilder\Front\WidthGuide;
 use CreativeBranding\SkateboardBuilder\Port\ShopSettings;
 use CreativeBranding\SkateboardBuilder\Service\KitEditor;
 use CreativeBranding\SkateboardBuilder\Support\Options;
 use CreativeBranding\SkateboardBuilder\Support\StoredKit;
 use WC_Admin_Meta_Boxes;
 use WC_Product;
+use WP_Post;
 use WP_Term;
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -92,12 +96,22 @@ final class BuildTab {
 		. '.cbuild-kit p.form-field label{float:none;display:block;width:auto;margin:0 0 4px}'
 		. '.cbuild-kit p.form-field input.checkbox{float:none;margin:0;margin-inline-end:6px}'
 		. '.cbuild-kit p.form-field input.checkbox+label{display:inline}'
-		. '.cbuild-kit p.form-field .short,.cbuild-kit p.form-field .select2-container{float:none;width:100%!important;max-width:30em;box-sizing:border-box}'
+		. '.cbuild-kit p.form-field .short,.cbuild-kit p.form-field .select2-container{float:none;max-width:30em;box-sizing:border-box}'
+		// The full width is for every field but a list that takes one option. Select2 sets its box's width inline.
+		. '.cbuild-kit p.form-field .short:not(select:not([multiple])),.cbuild-kit p.form-field .select2-container{width:100%!important}'
+		// A list cannot wrap its option: one is as wide as its longest option, 30em at the least, up to the field's
+		// width, so no option is cut short where there is room (the walkthrough of M12, finding 9; D-387). Its
+		// selector outranks WooCommerce's widths for the panel's fields, 0,4,1 at most, without a forced priority.
+		. '.cbuild-kit p.form-field select.short:not([multiple]){width:auto;min-width:min(30em,100%);max-width:100%}'
 		. '.cbuild-kit p.form-field .description{display:block;clear:both;margin:4px 0 0}'
 		. '.cbuild-kit-moves{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:0;padding:8px 12px}'
 		. '.cbuild-kit-moves .button{min-height:30px}'
 		. '.cbuild-kit-handle{cursor:move;padding:6px}'
 		. '.cbuild-kit-problems{margin:0 12px 12px;padding:8px 12px;border-inline-start:4px solid #d63638;background:#fcf0f1}'
+		// A field not saved is marked where it is, in WordPress's error red and twice as thick, so it is seen apart from
+		// the fields that saved by its border's weight as well as its colour (WCAG 1.4.1, 3.3.1; D-386). Focus keeps
+		// WordPress's own ring.
+		. '.cbuild-kit [aria-invalid="true"]:not(:focus){border-color:#d63638;box-shadow:0 0 0 1px #d63638}'
 		. '.cbuild-kit summary{padding:8px 12px;cursor:pointer;font-weight:600}';
 
 	/**
@@ -116,6 +130,18 @@ final class BuildTab {
 	private const LINES = array( 'help', 'returns_notice' );
 
 	/**
+	 * The width guide's section, which is kept in the settings document (1.2.0, #114, D-354): its name after the prefix
+	 * of every control's ID, as a problem's path gives it.
+	 */
+	private const GUIDE = 'settings-width_guide';
+
+	/**
+	 * The assembly time's field, kept in the settings document (1.2.0, #142) and shown in the Assembly section beside
+	 * the lead time: its name after the prefix of every control's ID.
+	 */
+	private const DAYS = 'settings-lead_days';
+
+	/**
 	 * What was not saved, by the ID of the field or of the row it belongs to: the ID of the sentence that says why.
 	 *
 	 * @var array<string, string>
@@ -131,6 +157,27 @@ final class BuildTab {
 	 * @param ShopSettings $settings The shop's settings, for what a new kit's assembly starts from.
 	 */
 	public function __construct( private KitEditor $editor, private ShopSettings $settings ) {}
+
+	/**
+	 * Which pages hold a kit's builder, for the Builder page (1.2.0, #113): none in a copy an earlier release's
+	 * container built, whose tab has no Builder page and keeps the kit's as it is (D-208).
+	 *
+	 * @var BuilderPlace|null
+	 */
+	private ?BuilderPlace $place = null;
+
+	/**
+	 * The same tab, with the Builder page (#113, D-348). Only this release's container calls it (D-208).
+	 *
+	 * @since 1.2.0
+	 *
+	 * @param BuilderPlace $place Which pages hold a kit's builder.
+	 */
+	public function withPlace( BuilderPlace $place ): self {
+		$tab        = clone $this;
+		$tab->place = $place;
+		return $tab;
+	}
 
 	/**
 	 * Style the tab and load its script.
@@ -214,7 +261,7 @@ final class BuildTab {
 		unset( $sent[ self::END ] );
 
 		$stored = StoredKit::named( $product );
-		$draft  = $this->editor->draft( $sent, $stored, wc_get_price_decimal_separator() );
+		$draft  = $this->editor->draft( $sent, $stored, wc_get_price_decimal_separator(), $this->place?->pages( $product->get_id() ) );
 		if ( ! $whole ) {
 			// Cut short on its way here: nothing is saved, and what did arrive is kept as typed.
 			$text     = __( 'The Build tab was not saved, since only part of this product\'s form reached the server. PHP\'s max_input_vars setting caps how many fields one save may send. Ask the host to raise it, then save again.', 'creative-skateboard-builder' );
@@ -223,7 +270,7 @@ final class BuildTab {
 			foreach ( array_keys( $typed ) as $name ) {
 				$problems[] = array(
 					'document' => $name,
-					'field'    => self::IDS . '-' . $name,
+					'field'    => self::section( $name ),
 					'error'    => self::IDS . '-error-cut-' . $name,
 					'text'     => $text,
 				);
@@ -248,7 +295,14 @@ final class BuildTab {
 		$shown    = array_replace( $stored, $draft->documents, $draft->refused );
 		$problems = array();
 		foreach ( array_keys( $draft->refused ) as $name ) {
-			self::notice( self::IDS . '-' . $name, self::refused( $name ) );
+			if ( KitEditor::SETTINGS === $name && isset( $draft->documents[ $name ] ) ) {
+				// The rest of the settings was saved: each field refused is named alone, and leads to itself (D-385).
+				foreach ( self::refusedFields( $draft->problems ) as $field => $path ) {
+					self::notice( self::id( KitEditor::SETTINGS, $path ), self::refusedField( $field ) );
+				}
+				continue;
+			}
+			self::notice( self::section( $name, $draft->problems ), self::refused( $name ) );
 		}
 		foreach ( $draft->problems as $at => $problem ) {
 			$field      = self::id( $problem['document'], $problem['path'] );
@@ -260,6 +314,12 @@ final class BuildTab {
 				'text'     => $text,
 			);
 			self::notice( $field, $text );
+		}
+		if ( self::typedOver( $sent ) ) {
+			self::notice(
+				self::IDS . '-' . self::GUIDE . '-plugins',
+				__( 'Width guide: the rows you typed were not saved, since "Use the builder\'s rows" is ticked. Untick it and save again to keep them.', 'creative-skateboard-builder' )
+			);
 		}
 		foreach ( $draft->unoffered as $kept ) {
 			$part = (int) ( $kept['values']['part'] ?? 0 );
@@ -311,7 +371,7 @@ final class BuildTab {
 	 * The tab's sections, each with its groups of fields.
 	 *
 	 * @param WC_Product $product The kit.
-	 * @return list<array{id: string, title: string, intro: string, refused: bool, problems: list<array{error: string, field: string, text: string}>, groups: list<array{id: string, legend: string, moves: bool, fold: string, open: bool, fields: list<array<string, mixed>>, more: list<array<string, mixed>>}>}>
+	 * @return list<array{id: string, title: string, intro: string, refused: bool, problems: list<array{error: string, field: string, text: string}>, groups: list<array{id: string, legend: string, moves: bool, fold: string, open: bool, fields: list<array<string, mixed>>, more: list<array<string, mixed>>, hidden?: bool, remove?: string}>, add: string}>
 	 */
 	private function sections( WC_Product $product ): array {
 		$stored = StoredKit::named( $product );
@@ -360,7 +420,7 @@ final class BuildTab {
 			KitEditor::ASSEMBLY => array(
 				__( 'Assembly', 'creative-skateboard-builder' ),
 				__( 'What the shop charges to put a build together, and what the shopper is told of it.', 'creative-skateboard-builder' ),
-				$this->assembly( $shown[ KitEditor::ASSEMBLY ] ),
+				$this->assembly( $shown[ KitEditor::ASSEMBLY ], $shown[ KitEditor::SETTINGS ] ),
 			),
 			KitEditor::PICTURE  => array(
 				__( 'Picture', 'creative-skateboard-builder' ),
@@ -369,17 +429,33 @@ final class BuildTab {
 			),
 			KitEditor::LAYOUT   => array(
 				__( 'Layout', 'creative-skateboard-builder' ),
-				__( 'How the builder is laid out on a desktop, and which search its steps use. A phone always shows the board above the step.', 'creative-skateboard-builder' ),
-				$this->layout( $shown[ KitEditor::LAYOUT ] ),
+				__( 'How the builder is laid out on a desktop, which search its steps use, and where shoppers find it. A phone always shows the board above the step.', 'creative-skateboard-builder' ),
+				$this->layout( $shown[ KitEditor::LAYOUT ], $shown[ KitEditor::SETTINGS ], $product->get_id() ),
+			),
+			self::GUIDE         => array(
+				__( 'Width guide', 'creative-skateboard-builder' ),
+				__( 'Under the deck step\'s question "What width do you ride?", "Not sure of your width?" opens a table of shoe sizes and the deck widths each rides.', 'creative-skateboard-builder' ),
+				$this->guide( $shown[ KitEditor::SETTINGS ] ),
 			),
 		) as $name => $section ) {
+			// The settings document (1.2.0, D-354) is shown in three sections: the Builder page and the start button in
+			// Layout, the width guide in a section of its own, and the assembly time in Assembly (#142). Each lists the
+			// problems in its own fields, and is shown as typed where the settings were refused for one of them.
+			$problems = self::GUIDE === $name ? array() : ( $listed[ $name ] ?? array() );
+			$typed    = isset( $refused[ $name ] );
+			if ( KitEditor::LAYOUT === $name || self::GUIDE === $name || KitEditor::ASSEMBLY === $name ) {
+				$own      = array_values( array_filter( $listed[ KitEditor::SETTINGS ] ?? array(), static fn( array $problem ): bool => self::home( $problem['field'] ) === $name ) );
+				$problems = array( ...$problems, ...$own );
+				$typed    = $typed || ( isset( $refused[ KitEditor::SETTINGS ] ) && array() !== $own );
+			}
 			$sections[] = array(
 				'id'       => self::IDS . '-' . $name,
 				'title'    => $section[0],
 				'intro'    => $section[1],
-				'refused'  => isset( $refused[ $name ] ),
-				'problems' => $listed[ $name ] ?? array(),
+				'refused'  => $typed,
+				'problems' => $problems,
 				'groups'   => $section[2],
+				'add'      => self::GUIDE === $name ? __( 'Add a row', 'creative-skateboard-builder' ) : '',
 			);
 		}
 		return $sections;
@@ -741,12 +817,26 @@ final class BuildTab {
 	}
 
 	/**
-	 * The assembly settings.
+	 * The section a settings field is shown in, by its control's ID: Width guide, Assembly or Layout.
+	 *
+	 * @param string $field The control's ID.
+	 */
+	private static function home( string $field ): string {
+		return match ( true ) {
+			str_starts_with( $field, self::IDS . '-' . self::GUIDE ) => self::GUIDE,
+			self::IDS . '-' . self::DAYS === $field => KitEditor::ASSEMBLY,
+			default => KitEditor::LAYOUT,
+		};
+	}
+
+	/**
+	 * The assembly settings, with the assembly time from the settings document (#142).
 	 *
 	 * @param array<mixed> $document The assembly document to show.
+	 * @param array<mixed> $settings The settings document to show.
 	 * @return list<array{id: string, legend: string, moves: bool, fold: string, open: bool, fields: list<array<string, mixed>>, more: list<array<string, mixed>>}>
 	 */
-	private function assembly( array $document ): array {
+	private function assembly( array $document, array $settings ): array {
 		$id   = self::IDS . '-assembly';
 		$name = self::FIELD . '[assembly]';
 		return array(
@@ -769,6 +859,17 @@ final class BuildTab {
 						array(
 							'max'  => Assembly::MAX_LEAD_TIME,
 							'note' => __( 'How long putting a build together takes, such as 2 business days. The review says it after "Assembly time:".', 'creative-skateboard-builder' ),
+						)
+					),
+					$this->field(
+						self::IDS . '-' . self::DAYS,
+						self::FIELD . '[settings][lead_days]',
+						__( 'Assembly time in business days', 'creative-skateboard-builder' ),
+						'text',
+						self::text( $settings, 'lead_days' ),
+						array(
+							'class' => 'short',
+							'note'  => __( 'A number of business days, such as 2, or a range, such as 2-4, from 0 to 60. Shoppers do not see it. A plugin that gives a delivery date can count it. Leave it empty for none.', 'creative-skateboard-builder' ),
 						)
 					),
 					$this->field( $id . '-returns_notice', $name . '[returns_notice]', __( 'Returns notice', 'creative-skateboard-builder' ), 'textarea', self::text( $document, 'returns_notice' ), array( 'max' => Assembly::MAX_RETURNS_NOTICE ) ),
@@ -843,17 +944,21 @@ final class BuildTab {
 	}
 
 	/**
-	 * The Layout section's fields (D-255): the stage's side and the board's size on a desktop, the steps' search, and
-	 * from 1.1.0 the motion.
+	 * The Layout section's fields (D-255): the stage's side and the board's size on a desktop, the steps' search, from
+	 * 1.1.0 the motion, and from 1.2.0 where shoppers find the builder, kept in the settings document (D-354): the
+	 * Builder page (#113, D-348) and whether the kit's parts' pages show "Build a complete with this deck" (#115, D-349).
+	 * A kit saved before 1.2.0 has no settings, and shows the button.
 	 *
 	 * @param array<mixed> $document The layout document to show.
+	 * @param array<mixed> $settings The settings document to show.
+	 * @param int          $kit      The kit's ID.
 	 * @return list<array{id: string, legend: string, moves: bool, fold: string, open: bool, fields: list<array<string, mixed>>, more: list<array<string, mixed>>}>
 	 */
-	private function layout( array $document ): array {
-		$id     = self::IDS . '-layout';
-		$name   = self::FIELD . '[layout]';
-		$chosen = static fn( string $key, array $choices ): string => is_string( $document[ $key ] ?? null ) ? $document[ $key ] : $choices[0];
-		$fields = array(
+	private function layout( array $document, array $settings, int $kit ): array {
+		$id      = self::IDS . '-layout';
+		$name    = self::FIELD . '[layout]';
+		$chosen  = static fn( string $key, array $choices ): string => is_string( $document[ $key ] ?? null ) ? $document[ $key ] : $choices[0];
+		$fields  = array(
 			$this->field(
 				$id . '-stage-side',
 				$name . '[stage_side]',
@@ -909,6 +1014,15 @@ final class BuildTab {
 				)
 			),
 		);
+		$found   = null === $this->place ? array() : array( $this->builderPage( $settings, $kit ) );
+		$found[] = $this->field(
+			self::IDS . '-settings-start_button',
+			self::FIELD . '[settings][start_button]',
+			__( 'Show "Build a complete with this deck" on its parts\' pages', 'creative-skateboard-builder' ),
+			'checkbox',
+			false !== ( $settings['start_button'] ?? true ) ? '1' : '',
+			array( 'note' => __( 'Puts "Build a complete with this deck" on the page of each part the kit\'s first slot offers. Where several kits offer a part, the one with the lowest menu order shows it, and the Products screen\'s Sorting sets that order. Off, the next of them shows it.', 'creative-skateboard-builder' ) )
+		);
 		return array(
 			array(
 				'id'     => $id . '-fields',
@@ -919,7 +1033,177 @@ final class BuildTab {
 				'fields' => $fields,
 				'more'   => array(),
 			),
+			array(
+				'id'     => $id . '-found',
+				'legend' => __( 'Where shoppers find it', 'creative-skateboard-builder' ),
+				'moves'  => false,
+				'fold'   => '',
+				'open'   => true,
+				'fields' => $found,
+				'more'   => array(),
+			),
 		);
+	}
+
+	/**
+	 * The Builder page (#113, D-348): the kit's own page, then each published page that holds the kit's Builder block.
+	 * A page the kit has that is no longer one of them is listed too, said to be not in use, so that saving the tab
+	 * keeps it and nothing changes while the owner is not looking.
+	 *
+	 * @param array<mixed> $document The settings document to show.
+	 * @param int          $kit      The kit's ID.
+	 * @return array<string, mixed>
+	 */
+	private function builderPage( array $document, int $kit ): array {
+		$options = array( '' => __( 'The kit\'s own page', 'creative-skateboard-builder' ) );
+		$pages   = null === $this->place ? array() : $this->place->pages( $kit );
+		foreach ( $pages as $page ) {
+			$options[ $page ] = self::pageTitle( $page );
+		}
+		$chosen = $document['builder_page'] ?? '';
+		if ( is_int( $chosen ) && ! isset( $options[ $chosen ] ) ) {
+			/* translators: %s: a page's title. */
+			$options[ $chosen ] = sprintf( __( '%s (not in use now)', 'creative-skateboard-builder' ), self::pageTitle( $chosen ) );
+		}
+		return $this->field(
+			self::IDS . '-settings-builder_page',
+			self::FIELD . '[settings][builder_page]',
+			__( 'Builder page', 'creative-skateboard-builder' ),
+			'select',
+			is_int( $chosen ) || is_string( $chosen ) ? (string) $chosen : '',
+			array(
+				'options' => $options,
+				'note'    => __( 'The page shoppers build on. The kit\'s own page, "Build a complete with this deck" and the cart\'s Edit build send them there. The list holds the published pages that hold this kit\'s Builder block. A page that is taken down or loses the block is not used, and shoppers go to the kit\'s own page.', 'creative-skateboard-builder' ),
+			)
+		);
+	}
+
+	/**
+	 * A page's title as a list shows it, or its number where it has none or is gone.
+	 *
+	 * @param int $page The page's ID.
+	 */
+	private static function pageTitle( int $page ): string {
+		$title = get_post( $page ) instanceof WP_Post ? trim( wp_strip_all_tags( get_the_title( $page ) ) ) : '';
+		/* translators: %d: a page's ID. */
+		return '' === $title ? sprintf( __( 'Page %d', 'creative-skateboard-builder' ), $page ) : $title;
+	}
+
+	/**
+	 * The Width guide section's fields (1.2.0, #114, D-350): whether the guide is shown, whether it has the builder's
+	 * rows, and a group for each row, twelve at most. A kit with the builder's rows shows them in the rows, to start
+	 * the shop's own from. The rows it has, and one empty one, are shown; the rest wait, hidden, for Add a row.
+	 *
+	 * @param array<mixed> $document The settings document to show.
+	 * @return list<array{id: string, legend: string, moves: bool, fold: string, open: bool, fields: list<array<string, mixed>>, more: list<array<string, mixed>>, hidden?: bool, remove?: string}>
+	 */
+	private function guide( array $document ): array {
+		$id      = self::IDS . '-' . self::GUIDE;
+		$name    = self::FIELD . '[settings][width_guide]';
+		$guide   = is_array( $document['width_guide'] ?? null ) ? $document['width_guide'] : array();
+		$plugins = ! isset( $guide['rows'] );
+		$rows    = self::rows( $guide, 'rows' );
+		if ( $plugins ) {
+			$rows = self::pluginRows();
+		}
+		$groups = array(
+			array(
+				'id'     => $id . '-fields',
+				'legend' => '',
+				'moves'  => false,
+				'fold'   => '',
+				'open'   => true,
+				'fields' => array(
+					$this->field(
+						$id . '-shown',
+						$name . '[shown]',
+						__( 'Show the width guide', 'creative-skateboard-builder' ),
+						'checkbox',
+						false !== ( $guide['shown'] ?? true ) ? '1' : '',
+						array( 'note' => __( 'Off, the guide is left out of the page, and its rows are kept.', 'creative-skateboard-builder' ) )
+					),
+					$this->field(
+						$id . '-plugins',
+						$name . '[plugins]',
+						__( 'Use the builder\'s rows', 'creative-skateboard-builder' ),
+						'checkbox',
+						$plugins ? '1' : '',
+						array( 'note' => __( 'The builder\'s rows go by US shoe size and are shown in the shopper\'s language. Ticked, the rows below are not saved: untick it to save your own. With no rows, the guide has the builder\'s.', 'creative-skateboard-builder' ) )
+					),
+				),
+				'more'   => array(),
+			),
+		);
+		$shown  = count( $rows ) + 1;
+		for ( $at = 0; $at < SizeGuide::MAX_ROWS; ++$at ) {
+			$row = $rows[ $at ] ?? array();
+			/* translators: %d: the row's number in the chart. */
+			$legend   = sprintf( __( 'Row %d', 'creative-skateboard-builder' ), $at + 1 );
+			$groups[] = array(
+				'id'     => $id . '-rows-' . $at,
+				'legend' => $legend,
+				'moves'  => false,
+				'fold'   => '',
+				'open'   => true,
+				'fields' => array(
+					$this->field( $id . '-rows-' . $at . '-shoe', $name . '[rows][' . $at . '][shoe]', __( 'Shoe size', 'creative-skateboard-builder' ), 'text', self::text( $row, 'shoe' ), array( 'max' => SizeGuide::MAX_SHOE ) ),
+					$this->field( $id . '-rows-' . $at . '-from', $name . '[rows][' . $at . '][from]', __( 'Deck width from (in)', 'creative-skateboard-builder' ), 'text', self::measure( $row['from'] ?? '' ) ),
+					$this->field(
+						$id . '-rows-' . $at . '-to',
+						$name . '[rows][' . $at . '][to]',
+						__( 'Deck width to (in)', 'creative-skateboard-builder' ),
+						'text',
+						self::measure( $row['to'] ?? '' ),
+						array( 'note' => __( 'Leave it empty for that width and wider.', 'creative-skateboard-builder' ) )
+					),
+				),
+				'more'   => array(),
+				'hidden' => $at >= $shown,
+				'remove' => __( 'Remove', 'creative-skateboard-builder' ),
+			);
+		}
+		return $groups;
+	}
+
+	/**
+	 * The plugin's rows of the width guide, as the editor starts from them.
+	 *
+	 * @return list<array{shoe: string, from: string, to: string}>
+	 */
+	private static function pluginRows(): array {
+		return array_map(
+			static fn( array $row ): array => array(
+				'shoe' => $row['shoe'],
+				'from' => $row['from']->decimal(),
+				'to'   => null === $row['to'] ? '' : $row['to']->decimal(),
+			),
+			WidthGuide::defaults()
+		);
+	}
+
+	/**
+	 * Whether the width guide's rows were typed in while "Use the builder's rows" was ticked, so they are not saved. The
+	 * script unticks the box as a row is typed in; without it, the rows come back as typed, and are held to the plugin's
+	 * rows as the editor drew them. A row left empty is no row.
+	 *
+	 * @param array<mixed> $sent The tab's fields.
+	 */
+	private static function typedOver( array $sent ): bool {
+		$settings = is_array( $sent['settings'] ?? null ) ? $sent['settings'] : array();
+		$guide    = is_array( $settings['width_guide'] ?? null ) ? $settings['width_guide'] : array();
+		if ( '' === self::text( $guide, 'plugins' ) || ! is_array( $guide['rows'] ?? null ) ) {
+			return false;
+		}
+		$typed = array();
+		foreach ( $guide['rows'] as $row ) {
+			$row    = is_array( $row ) ? $row : array();
+			$fields = array( self::text( $row, 'shoe' ), self::text( $row, 'from' ), self::text( $row, 'to' ) );
+			if ( array( '', '', '' ) !== $fields ) {
+				$typed[] = $fields;
+			}
+		}
+		$drawn = array_map( static fn( array $row ): array => array( trim( $row['shoe'] ), self::measure( $row['from'] ), self::measure( $row['to'] ) ), self::pluginRows() );
+		return $typed !== $drawn;
 	}
 
 	/**
@@ -986,7 +1270,7 @@ final class BuildTab {
 		if ( KitEditor::ASSEMBLY === $name ) {
 			return $this->settings->terms()->assembly;
 		}
-		if ( KitEditor::PICTURE === $name || KitEditor::LAYOUT === $name ) {
+		if ( KitEditor::PICTURE === $name || KitEditor::LAYOUT === $name || KitEditor::SETTINGS === $name ) {
 			return array( 'schema_version' => 1 );
 		}
 		if ( KitEditor::SLOTS !== $name ) {
@@ -1075,6 +1359,7 @@ final class BuildTab {
 			'description'        => __( 'Description', 'creative-skateboard-builder' ),
 			'fee'                => __( 'Fee', 'creative-skateboard-builder' ),
 			'lead_time'          => __( 'Lead time', 'creative-skateboard-builder' ),
+			'lead_days'          => __( 'Assembly time in business days', 'creative-skateboard-builder' ),
 			'returns_notice'     => __( 'Returns notice', 'creative-skateboard-builder' ),
 			'range_tolerance'    => __( 'Allowed outside the maker\'s deck range', 'creative-skateboard-builder' ),
 			'axle_fit'           => __( 'The axle fits within', 'creative-skateboard-builder' ),
@@ -1085,8 +1370,31 @@ final class BuildTab {
 			'over'               => __( 'Wheel over the limit by up to', 'creative-skateboard-builder' ),
 			'riser'              => __( 'The riser to suggest', 'creative-skateboard-builder' ),
 			'wheelbase'          => __( 'Wheelbase where a deck gives none', 'creative-skateboard-builder' ),
+			'start_button'       => __( 'Show "Build a complete with this deck" on its parts\' pages', 'creative-skateboard-builder' ),
+			'builder_page'       => __( 'Builder page', 'creative-skateboard-builder' ),
+			'stage_side'         => __( 'Stage side on a desktop', 'creative-skateboard-builder' ),
+			'board_size'         => __( 'Board size on a desktop', 'creative-skateboard-builder' ),
+			'search'             => __( 'Search in the steps', 'creative-skateboard-builder' ),
+			'motion'             => __( 'Motion', 'creative-skateboard-builder' ),
+			'show_presets'       => __( 'Show ready builds', 'creative-skateboard-builder' ),
+			'width_guide'        => __( 'Width guide', 'creative-skateboard-builder' ),
+			'width_guide.rows'   => __( 'Width guide', 'creative-skateboard-builder' ),
+			'width_guide.shown'  => __( 'Show the width guide', 'creative-skateboard-builder' ),
 		);
 		$found  = array();
+		if ( 1 === preg_match( '/\Awidth_guide\.rows\[(\d+)\]\.?(.*)\z/', $path, $found ) ) {
+			$label = array(
+				'shoe' => __( 'Shoe size', 'creative-skateboard-builder' ),
+				'from' => __( 'Deck width from', 'creative-skateboard-builder' ),
+				'to'   => __( 'Deck width to', 'creative-skateboard-builder' ),
+			)[ $found[2] ] ?? '';
+			if ( '' === $label ) {
+				/* translators: %d: a row's number in the width guide, 1 to 12. */
+				return sprintf( __( 'Width guide, row %d', 'creative-skateboard-builder' ), (int) $found[1] + 1 );
+			}
+			/* translators: 1: a row's number in the width guide, 1 to 12. 2: a field's label, such as Shoe size. */
+			return sprintf( __( 'Width guide, row %1$d, %2$s', 'creative-skateboard-builder' ), (int) $found[1] + 1, $label );
+		}
 		if ( 1 === preg_match( '/\A(slots|presets)\[(\d+)\]\.?(.*)\z/', $path, $found ) ) {
 			$at    = (int) $found[2];
 			$row   = self::rows( $shown[ $document ] ?? null, $found[1] )[ $at ] ?? array();
@@ -1136,6 +1444,7 @@ final class BuildTab {
 			KitEditor::RULES   => __( 'Rules', 'creative-skateboard-builder' ),
 			KitEditor::PRESETS => __( 'Presets', 'creative-skateboard-builder' ),
 			KitEditor::PICTURE => __( 'Picture', 'creative-skateboard-builder' ),
+			KitEditor::LAYOUT, KitEditor::SETTINGS => __( 'Layout', 'creative-skateboard-builder' ),
 			default            => __( 'Assembly', 'creative-skateboard-builder' ),
 		};
 	}
@@ -1152,7 +1461,39 @@ final class BuildTab {
 			KitEditor::PRESETS => __( 'The kit\'s presets were not saved. The Build tab shows them as you typed them, with what to put right.', 'creative-skateboard-builder' ),
 			KitEditor::PICTURE => __( 'The kit\'s picture settings were not saved. The Build tab shows them as you typed them, with what to put right.', 'creative-skateboard-builder' ),
 			KitEditor::LAYOUT  => __( 'The kit\'s layout was not saved. The Build tab shows it as you chose it, with what to put right.', 'creative-skateboard-builder' ),
+			KitEditor::SETTINGS => __( 'The kit\'s Builder page, the button on its parts\' pages, its width guide and its assembly time in business days were not saved. The Build tab shows them as you chose them, with what to put right.', 'creative-skateboard-builder' ),
 			default            => __( 'The kit\'s assembly settings were not saved. The Build tab shows them as you typed them, with what to put right.', 'creative-skateboard-builder' ),
+		};
+	}
+
+	/**
+	 * The settings' fields refused, each with the path of its first problem (D-385).
+	 *
+	 * @param list<array{document: string, code: string, path: string, values: array<string, string>}> $problems What the save found.
+	 * @return array<string, string>
+	 */
+	private static function refusedFields( array $problems ): array {
+		$fields = array();
+		foreach ( $problems as $problem ) {
+			if ( KitEditor::SETTINGS === $problem['document'] ) {
+				$fields[ KitEditor::fieldOf( $problem['path'] ) ] ??= $problem['path'];
+			}
+		}
+		return $fields;
+	}
+
+	/**
+	 * That one of the settings' fields was not saved, while the rest was (D-385).
+	 *
+	 * @param string $field The field's key in the settings.
+	 */
+	private static function refusedField( string $field ): string {
+		return match ( $field ) {
+			'builder_page' => __( 'The kit\'s Builder page was not saved. The Build tab shows it as you chose it, with what to put right.', 'creative-skateboard-builder' ),
+			'width_guide'  => __( 'The kit\'s width guide was not saved. The Build tab shows it as you typed it, with what to put right.', 'creative-skateboard-builder' ),
+			'lead_days'    => __( 'The kit\'s assembly time in business days was not saved. The Build tab shows it as you typed it, with what to put right.', 'creative-skateboard-builder' ),
+			// A field the editor never refuses alone: the sentence for the whole settings is true of it.
+			default        => self::refused( KitEditor::SETTINGS ),
 		};
 	}
 
@@ -1169,6 +1510,22 @@ final class BuildTab {
 			}
 		}
 		return $key;
+	}
+
+	/**
+	 * The section a document's notice leads to. The settings document (D-354) is shown in three: the Width guide where
+	 * each of its problems is the guide's, Assembly where each is the assembly time's (#142), and Layout otherwise.
+	 *
+	 * @param string                                                                                   $document The document's name.
+	 * @param list<array{document: string, code: string, path: string, values: array<string, string>}> $problems What the save found.
+	 */
+	private static function section( string $document, array $problems = array() ): string {
+		if ( KitEditor::SETTINGS !== $document ) {
+			return self::IDS . '-' . $document;
+		}
+		$paths = array_column( array_filter( $problems, static fn( array $problem ): bool => KitEditor::SETTINGS === $problem['document'] ), 'path' );
+		$homes = array_unique( array_map( static fn( string $path ): string => self::home( self::id( KitEditor::SETTINGS, $path ) ), $paths ) );
+		return self::IDS . '-' . ( 1 === count( $homes ) ? $homes[ array_key_first( $homes ) ] : KitEditor::LAYOUT );
 	}
 
 	/**

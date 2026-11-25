@@ -51,6 +51,11 @@ final class SiteHealth implements Hookable {
 	public const SECTION        = 'creative-skateboard-builder';
 
 	/**
+	 * How many of the parts with no resized copies the pictures' test names.
+	 */
+	private const NAMED = 5;
+
+	/**
 	 * The Catalogue check's route, for Site Health's page.
 	 */
 	private const NAMESPACE = 'cbuild/v1';
@@ -251,7 +256,8 @@ final class SiteHealth implements Hookable {
 			return self::result( self::TEST_PICTURES, $verdict['status'], __( 'The skateboard builder cannot save composed pictures', 'creative-skateboard-builder' ), __( 'The uploads folder cannot be written, so carts and share cards show the deck\'s photo instead of the built board. Your host can make wp-content/uploads writable by the web server.', 'creative-skateboard-builder' ), '' );
 		}
 		// Cowork's M7 review, F2: a part whose layer image has no resized copy is drawn from the full-size file (D-209).
-		$unrendered = null === $this->renditions ? 0 : ( $this->renditions )()->unrendered();
+		$parts      = null === $this->renditions ? array() : ( $this->renditions )()->unrenderedParts();
+		$unrendered = count( $parts );
 		if ( $unrendered > 0 ) {
 			/* translators: %s: a number of parts. */
 			$label = sprintf( _n( '%s part\'s layer image has no resized copies', '%s parts\' layer images have no resized copies', $unrendered, 'creative-skateboard-builder' ), number_format_i18n( $unrendered ) );
@@ -267,9 +273,36 @@ final class SiteHealth implements Hookable {
 			} else {
 				$says .= ' ' . __( '"Read every part again" on the Catalogue check makes the missing copies in the background, a part at a time.', 'creative-skateboard-builder' );
 			}
+			$says = trim( $says . ' ' . self::named( $parts ) );
 			return self::result( self::TEST_PICTURES, Health::RECOMMENDED, $label, $says, sprintf( '<a href="%s">%s</a>', esc_url( CheckScreen::url() ), esc_html__( 'Open the Catalogue check', 'creative-skateboard-builder' ) ) );
 		}
 		return self::result( self::TEST_PICTURES, $verdict['status'], __( 'The skateboard builder can compose pictures', 'creative-skateboard-builder' ), __( 'Each build added to a cart gets pictures of the built board for the cart and share cards, made in the background. Pictures not shown for 30 days are deleted.', 'creative-skateboard-builder' ), '' );
+	}
+
+	/**
+	 * The parts whose layer images have no resized copies, by name, so the shop knows which they are (issue #129,
+	 * D-372): all of them up to five, else the first five the kits offer. Nothing where none can be read.
+	 *
+	 * @param list<int> $parts The parts' IDs.
+	 */
+	private static function named( array $parts ): string {
+		$names = array();
+		foreach ( array_slice( $parts, 0, self::NAMED ) as $part ) {
+			$product = wc_get_product( $part );
+			if ( $product instanceof \WC_Product ) {
+				$names[] = $product->get_name();
+			}
+		}
+		if ( array() === $names ) {
+			return '';
+		}
+		$list = wp_sprintf_l( '%l', $names );
+		if ( count( $parts ) > self::NAMED ) {
+			/* translators: %s: the names of five parts, as a list. */
+			return sprintf( __( 'Among them: %s.', 'creative-skateboard-builder' ), $list );
+		}
+		/* translators: %s: the names of the parts, as a list. */
+		return sprintf( _n( 'The part without them: %s.', 'The parts without them: %s.', count( $names ), 'creative-skateboard-builder' ), $list );
 	}
 
 	/**

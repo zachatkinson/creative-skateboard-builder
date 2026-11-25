@@ -55,6 +55,22 @@
 }
 
 /*
+ * Muted words are the text at 72 %, unless that would read under WCAG's 4.5:1 (1.4.3; D-380). A theme whose text is
+ * near the limit already, as Storefront's #6d6d6d is at 5.2:1 on white, leaves no room: at 72 % it read at 2.95:1.
+ * `Y` is the text's lightness from its channels, 0 to 255, and the opacity is the least that keeps the words on
+ * their side of the middle: dark words no lighter than 45 % laid on white, about 4.7:1, and light words no darker
+ * than 50 % laid on black, about 5.3:1. Of the two, the smaller is the one for the text's side. Words with room, as
+ * every block theme's, Kadence's and a dark scheme's have, keep 72 %; where the browser has no relative colours, so
+ * do Storefront's.
+ */
+@supports (color: rgb(from red r g b / clamp(0.5 * alpha, alpha, alpha))) {
+	.cbuild {
+		// prettier-ignore
+		--cbuild-muted: rgb(from currentcolor r g b / clamp(0.72 * alpha, alpha * min(140.25 / max(255 - (0.2126 * r + 0.7152 * g + 0.0722 * b), 1), 127.5 / max(0.2126 * r + 0.7152 * g + 0.0722 * b, 1)), alpha));
+	}
+}
+
+/*
  * A fill in the accent. Where the theme names no colour presets (a classic theme), the accent is the text's colour,
  * `currentcolor`, which a custom property resolves where it is used: a fill that set its own `color` would paint its
  * ground the colour of its words. So a fill keeps the text as its `color`, and so as its ground, and paints its words
@@ -99,6 +115,12 @@
 /* Outside `:where()`: a theme's `display` must not show what the builder hides. */
 .cbuild [hidden] {
 	display: none;
+}
+
+/* The ready builds, while a width pressed waits for its answer: their place kept, out of sight, so the decks the answer
+   brings take it rather than push them down (F20, #118; D-356). */
+:where(.cbuild[data-folded] .cbuild-presets) {
+	visibility: hidden;
 }
 
 /*
@@ -282,10 +304,11 @@
 	color: var(--cbuild-muted);
 }
 
-/* Full width, as the block is unless the editor chose otherwise (D-283), the stacked panel has no theme column to
-   hold it off the screen's edges: it keeps the theme's own padding, and never less than 16 px. */
+/* Full width, as the block is unless the editor chose otherwise (D-283), the stacked builder has no theme column to
+   hold it off the screen's edges: the panel and the stage keep the theme's own padding, and never less than 16 px
+   (D-384). */
 @container cbuild (max-width: 63.99rem) {
-	:where(.cbuild[class~="alignfull"] .cbuild__body) {
+	:where(.cbuild[class~="alignfull"]) :where(.cbuild__body, .cbuild__stage) {
 		// prettier-ignore
 		padding-inline: max(1rem, var(--wp--style--root--padding-left, 0px)) max(1rem, var(--wp--style--root--padding-right, 0px));
 	}
@@ -295,7 +318,7 @@
 	:where(.cbuild__layout) {
 		display: grid;
 		grid-template-columns: minmax(0, 1fr) max(23.75rem, 40%);
-		grid-template-rows: minmax(0, 1fr);
+		grid-template-rows: minmax(0, 1fr) auto;
 		// The screen's height under the rail: one row a target high, its list's padding, its own and its rule.
 		// prettier-ignore
 		block-size: calc(100svh - var(--cbuild-top, 0px) - var(--cbuild-target) - 2 * var(--cbuild-gap-small) - 0.5rem - 1px);
@@ -305,14 +328,23 @@
 		order: 0;
 		position: relative;
 		inset-block-start: auto;
+		grid-area: 1 / 1 / span 2;
 		block-size: auto;
 		padding: var(--cbuild-gap);
 	}
 
+	/* The panel, and the footer pinned under it: a row of the frame's own, after the panel in the markup so that,
+	   stacked, its sticky foot may rise as high as the builder's top (D-382). */
 	:where(.cbuild__panel) {
-		grid-template-rows: minmax(0, 1fr) auto;
+		grid-area: 1 / 2;
+		grid-template-rows: minmax(0, 1fr);
 		align-content: stretch;
 		min-block-size: 0;
+		border-inline-start: 1px solid var(--cbuild-line);
+	}
+
+	:where(.cbuild__layout > .cbuild-bar) {
+		grid-area: 2 / 2;
 		border-inline-start: 1px solid var(--cbuild-line);
 	}
 
@@ -339,10 +371,12 @@
 	}
 
 	:where(.cbuild--stage-right .cbuild__stage) {
-		order: 1;
+		grid-column: 2;
 	}
 
-	:where(.cbuild--stage-right .cbuild__panel) {
+	:where(.cbuild--stage-right .cbuild__panel),
+	:where(.cbuild--stage-right .cbuild__layout > .cbuild-bar) {
+		grid-column: 1;
 		border-inline-start: 0;
 		border-inline-end: 1px solid var(--cbuild-line);
 	}
@@ -459,12 +493,34 @@
 		> [aria-hidden="true"] {
 		display: none;
 	}
+
+	/*
+	 * The page's gutter at either end where the row has room (F25, #123; D-361), 16 px or the theme's own, as the
+	 * panel's: a spacer at each end that only takes space the pills leave, its margin giving back the gap beside it, so
+	 * it never wraps the row, and shrinks to nothing where seven pills fill a 320 px screen.
+	 */
+	:where(.cbuild-progress__list)::before,
+	:where(.cbuild-progress__list)::after {
+		content: "";
+		flex: 1 0 0;
+		max-inline-size: max(1rem, var(--wp--style--root--padding-left, 0px));
+	}
+
+	:where(.cbuild-progress__list)::before {
+		margin-inline-end: -0.125rem;
+	}
+
+	:where(.cbuild-progress__list)::after {
+		margin-inline-start: -0.125rem;
+	}
 }
 
 /* Narrower than seven pills and a name: the step shown is a pill of its number too, its name under it, kept inside
    the row at either end. */
 @container cbuild (max-width: 25.99rem) {
-	:where(.cbuild-progress__list) {
+	/* Room for the name above the rail's border. Two classes, as the list's other resets: a theme's rule for a list in
+	   its content (Kadence's) took the padding, and the name hung under the border (F25, #123). */
+	.cbuild.cbuild .cbuild-progress__list {
 		padding-block-end: 1.5em;
 	}
 
@@ -1026,6 +1082,33 @@
 	min-block-size: var(--cbuild-target);
 }
 
+/*
+ * The chips and Sort (#122, D-360). Sort sits at the end of the chips' last line, the brands' on the deck step, so the
+ * cards start a line higher. The chips keep 20rem at least, the "N more" button and a chip or two, and where the two
+ * do not fit beside each other Sort takes a line of its own under them, as before. With neither shown the row takes
+ * no place in the step.
+ */
+:where(.cbuild-step__tools) {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: flex-end;
+	gap: var(--cbuild-gap);
+}
+
+:where(.cbuild-step__tools > .cbuild-chips) {
+	flex: 1 1 20rem;
+	min-inline-size: 0;
+}
+
+:where(.cbuild-step__tools > .cbuild-step__bar) {
+	flex: none;
+	margin-inline-start: auto;
+}
+
+.cbuild .cbuild-step__tools:not(:has(> :not([hidden]))) {
+	display: none;
+}
+
 :where(.cbuild-step__bar) {
 	display: flex;
 	flex-wrap: wrap;
@@ -1196,6 +1279,12 @@
 	font-variant-numeric: tabular-nums;
 }
 
+/* From a pick's press to its answer the line is kept, empty, for the server's words, so the answer moves nothing
+   under it (F20, #118; D-356). */
+:where(.cbuild-card__delta:empty)::before {
+	content: "\a0";
+}
+
 :where(
 	.cbuild-card__also,
 	.cbuild-card__stock,
@@ -1231,7 +1320,8 @@
  * and the stock, about 134 px high. At most two columns, so six show at once on a desktop, and one in a panel
  * narrower than two of them, a phone's. The picture's box is the column's width and 7rem tall, whatever the image
  * (BuilderView's CARD_DECK), so nothing moves as it loads; the image is fitted into it. The words keep clear of the
- * chosen card's tick, picked or not, so a pick moves nothing.
+ * chosen card's tick, picked or not, so a pick moves nothing. The picture and the words are the builder's gap apart,
+ * the space the cards keep, so the words do not press against a tall deck (#130, D-377).
  */
 :where(.cbuild-cards--compact) {
 	grid-template-columns: repeat(
@@ -1245,7 +1335,7 @@
 
 :where(.cbuild-cards--compact) :where(.cbuild-card__body) {
 	grid-template-columns: 3.5rem minmax(0, 1fr);
-	column-gap: var(--cbuild-gap-small);
+	column-gap: var(--cbuild-gap);
 	align-content: center;
 	padding-inline-end: 1.75rem;
 }
@@ -1466,6 +1556,44 @@
 	margin-block-end: var(--cbuild-gap-small);
 }
 
+/*
+ * The board's two sides (F28, #128; D-369): a button a side, side by side. The side shown is filled in the accent, in
+ * bold, with a tick before its name, so it is marked by more than its colour; the other is the plain button.
+ */
+:where(.cbuild-picture__sides) {
+	display: inline-flex;
+	flex-wrap: wrap;
+	gap: 0.25rem;
+}
+
+/* Narrow enough that the pair sits on one line in a phone held sideways' words column, 13rem, in a theme's larger
+   type: the tick's gap is the type's, not the theme's spacing. */
+.cbuild.cbuild .cbuild-picture__sides .cbuild-button {
+	gap: 0.375em;
+	padding-inline: 0.625rem;
+	font-weight: 400;
+}
+
+.cbuild.cbuild .cbuild-picture__sides .cbuild-button[aria-pressed="true"] {
+	border-color: var(--cbuild-accent);
+	background: var(--cbuild-accent);
+	color: var(--cbuild-text);
+	-webkit-text-fill-color: var(--cbuild-on-accent);
+	font-weight: 600;
+}
+
+/* A tick drawn by its outline, which a mirrored stylesheet leaves as it is. */
+.cbuild.cbuild
+	.cbuild-picture__sides
+	.cbuild-button[aria-pressed="true"]::before {
+	content: "";
+	flex: none;
+	inline-size: 0.75em;
+	block-size: 0.75em;
+	background: var(--cbuild-on-accent);
+	clip-path: polygon(14% 44%, 0 59%, 39% 100%, 100% 22%, 86% 8%, 39% 72%);
+}
+
 :where(.cbuild-picture__heading) {
 	margin: 0;
 }
@@ -1535,12 +1663,31 @@
 }
 
 /* A phone held sideways leaves the stage about 133 px: too short for the heading, the side line, the board and the
-   button stacked. The button goes up beside the heading and the side line, so the board keeps its own row. */
+   button stacked. The button goes up beside the heading and the side line, so the board keeps its own row. The two
+   are placed in their rows: left to the grid, they went after the button's, the heading took the board's row with a
+   box 1 px high, and the side line was drawn over it (F21, #119). */
 @media (orientation: landscape) and (max-height: 30rem) {
 	:where(.cbuild__stage .cbuild-picture__turn) {
 		grid-row: 1 / span 2;
 		align-self: start;
 		padding-block-end: 0;
+	}
+
+	:where(.cbuild__stage .cbuild-picture__heading) {
+		grid-area: 1 / 1;
+	}
+
+	:where(.cbuild__stage .cbuild-picture__side) {
+		grid-area: 2 / 1;
+	}
+
+	/* Each a line high and no more: a theme's margins for a heading and a paragraph, and Storefront's heading's
+	   line-height of 1.6, took 142 px of a strip 109 px high on Storefront. Two classes, over a theme's rule for them in
+	   its content, as Kadence's `.single-content h3` and `.single-content p` (D-321). */
+	.cbuild.cbuild :where(.cbuild__stage .cbuild-picture__heading),
+	.cbuild.cbuild :where(.cbuild__stage .cbuild-picture__side) {
+		margin-block: 0;
+		line-height: 1.25;
 	}
 }
 
@@ -1670,6 +1817,57 @@
 		position: static;
 		block-size: auto;
 		padding-block-end: var(--cbuild-gap-small);
+	}
+}
+
+/*
+ * A phone held sideways (F21, #119; D-359). The strip on top was about 116 px high, and the board in it 47 by 13 px on
+ * Kadence: the heading, the side line, the board and the button in one column left the board a row a few pixels high.
+ * The words take a column of their own at the strip's start, the heading, the side line and the button under them, and
+ * the board has the rest, as long as it is wide and as thick as the strip is high. The stage shows the board alone:
+ * the labelled photos of the parts with no layer image have no room beside it, and the caption, the bar's parts and the
+ * review name them, as for a deck's photo (D-303).
+ */
+@media (orientation: landscape) and (max-height: 30rem) {
+	/* Below the desktop's two columns, where the stage is the strip on top. */
+	@container cbuild (width < 64rem) {
+		/* The words' column: as wide as "Show the underside" on one line in a theme's larger type (Twenty Twenty-Five's
+		   19.7 px), which holds the two buttons, Underside and Top, side by side (D-369). */
+		:where(.cbuild__stage .cbuild-picture) {
+			grid-template-columns: minmax(0, 13rem) minmax(0, 1fr);
+			grid-template-rows: auto auto auto minmax(0, 1fr);
+			column-gap: var(--cbuild-gap-small);
+		}
+
+		:where(.cbuild__stage .cbuild-picture__turn) {
+			grid-area: 3 / 1;
+			justify-self: start;
+			max-inline-size: 100%;
+		}
+
+		:where(.cbuild__stage)
+			:where(
+				.cbuild-board:not(.cbuild-board--bar),
+				.cbuild-picture__empty,
+				.cbuild-picture--hero .cbuild-picture__items
+			) {
+			grid-area: 1 / 2 / -1 / 3;
+		}
+
+		:where(.cbuild__stage) :where(.cbuild-board:not(.cbuild-board--bar)) {
+			/* Beside the board: the words' 13rem with the strip's padding, 16rem, and the gap. No custom property for
+			   them, so none joins the public API. */
+			--cbuild-board-size: min(
+				calc(100cqi - 16rem - var(--cbuild-gap-small)),
+				32rem,
+				calc(100% / (var(--cbuild-board-ratio, 1 / 4)))
+			);
+		}
+
+		:where(.cbuild__stage .cbuild-picture:not(.cbuild-picture--hero))
+			:where(.cbuild-picture__items) {
+			display: none;
+		}
 	}
 }
 
@@ -1807,7 +2005,7 @@
 	}
 }
 
-:where(.cbuild-review__item--wrong, .cbuild__limited) {
+:where(.cbuild-review__item--wrong) {
 	border-inline-start: 0.25rem solid var(--cbuild-wrong);
 	padding-inline-start: var(--cbuild-gap-small);
 }
@@ -1907,6 +2105,19 @@
 	transform: translateX(-100%);
 }
 
+/* A deck drawn at its press (D-357): the deck shows whole, and the rest of the board keeps the dim until the answer. */
+:where(.cbuild[data-swapped] .cbuild-picture--drawing) :where(.cbuild-board) {
+	opacity: 1;
+}
+
+:where(.cbuild[data-swapped] .cbuild-picture--drawing)
+	:where(
+		.cbuild-board > .cbuild-board__layer:not(.cbuild-board__layer--deck)
+	) {
+	opacity: 0.55;
+	transition: opacity var(--cbuild-duration, 0.2s) ease;
+}
+
 @keyframes cbuild-drawing {
 	to {
 		transform: translateX(250%);
@@ -1920,7 +2131,8 @@
 		display: none;
 	}
 
-	:where(.cbuild-picture--drawing) :where(.cbuild-board) {
+	:where(.cbuild-picture--drawing)
+		:where(.cbuild-board, .cbuild-board__layer) {
 		transition-duration: 150ms;
 	}
 }
@@ -1929,7 +2141,8 @@
 	display: none;
 }
 
-:where(.cbuild--subtle .cbuild-picture--drawing) :where(.cbuild-board) {
+:where(.cbuild--subtle .cbuild-picture--drawing)
+	:where(.cbuild-board, .cbuild-board__layer) {
 	transition-duration: 150ms;
 }
 
@@ -1971,6 +2184,14 @@
 	/* Over a plain button's reset, which sets its border at two classes' weight (#96). */
 	.cbuild.cbuild .cbuild-picture__turn .cbuild-button[aria-pressed="true"] {
 		border: 3px solid Highlight;
+	}
+
+	/* The side shown keeps its tick where the system takes its fill (D-369). */
+	.cbuild.cbuild
+		.cbuild-picture__sides
+		.cbuild-button[aria-pressed="true"]::before {
+		background: ButtonText;
+		forced-color-adjust: none;
 	}
 }
 
@@ -2072,6 +2293,17 @@
 	line-height: 1.25;
 }
 
+/* Its line is kept on a step while there is no estimate, so the one an answer brings, or takes away, moves neither
+   the total nor the buttons beside it (F20, #118; D-356). Over the builder's own `[hidden]`, as the turn's row is. Only
+   once the build has a part, which the store marks at the first pick's press: a blank build can have no estimate, and
+   the line would take a row of decks from the first view (F24; D-374). */
+.cbuild
+	.cbuild-bar--started:not(.cbuild-bar--review)
+	.cbuild-bar__estimate[hidden] {
+	display: block;
+	visibility: hidden;
+}
+
 :where(.cbuild-bar__more) {
 	color: var(--cbuild-muted);
 	font-size: var(--cbuild-small);
@@ -2162,6 +2394,34 @@
 	border: 0;
 }
 
+/*
+ * The limit's line (D-364): over the bar, across the panel's column, where a shopper scrolled to the card they pressed
+ * sees it. Drawn at the builder's top it was off the screen above them, and at full width it had no gutter. Out of the
+ * page's flow, it moves nothing as it comes or goes, and a press passes through it (D-383).
+ */
+:where(.cbuild__limited) {
+	position: absolute;
+	inset-block-end: calc(100% + var(--cbuild-gap-small));
+	inset-inline: var(--cbuild-gap-small);
+	box-sizing: border-box;
+	margin: 0;
+	padding: 0.5rem 0.75rem;
+	border: 1px solid var(--cbuild-line);
+	border-inline-start: 0.25rem solid var(--cbuild-wrong);
+	border-radius: var(--cbuild-radius);
+	background: var(--cbuild-ground);
+	color: var(--cbuild-on-ground);
+	pointer-events: none;
+}
+
+/* Full width, the panel's words keep the page's gutter (D-283), and so does the line. */
+@container cbuild (max-width: 63.99rem) {
+	:where(.cbuild[class~="alignfull"] .cbuild__limited) {
+		// prettier-ignore
+		inset-inline: max(1rem, var(--wp--style--root--padding-left, 0px)) max(1rem, var(--wp--style--root--padding-right, 0px));
+	}
+}
+
 /* The delivery line and notes, on a line of their own under the total and the buttons. */
 :where(.cbuild-bar__more-lines) {
 	order: 1;
@@ -2180,6 +2440,25 @@
 	/* At Next's end, inside the bar's wider padding. */
 	:where(.cbuild-bar__missing) {
 		inset-inline-end: var(--cbuild-gap);
+	}
+
+	/* The panel's column, as its words are set in it (#97, D-321). */
+	:where(.cbuild__limited) {
+		inset-inline: max(var(--cbuild-gap), (100% - 40rem) / 2);
+	}
+}
+
+/* Full width and stacked, the bar's total and buttons keep the page's gutter as the panel's words do: the theme's own
+   padding, and never less than 16 px (D-384). */
+@container cbuild (max-width: 63.99rem) {
+	:where(.cbuild[class~="alignfull"] .cbuild-bar) {
+		// prettier-ignore
+		padding-inline: max(1rem, var(--wp--style--root--padding-left, 0px)) max(1rem, var(--wp--style--root--padding-right, 0px));
+	}
+
+	/* What the dimmed Next says, at Next's end. */
+	:where(.cbuild[class~="alignfull"] .cbuild-bar__missing) {
+		inset-inline-end: max(1rem, var(--wp--style--root--padding-right, 0px));
 	}
 }
 
@@ -2269,6 +2548,12 @@
 		view-transition-name: cbuild-panel;
 	}
 
+	/* The footer stays where it is, and over the panel's words where it sticks over them on a phone: after the panel
+	   since D-382, it has a group of its own, drawn after the panel's. */
+	:root.cbuild-crossing:not(.cbuild-calm) :where(.cbuild-bar) {
+		view-transition-name: cbuild-bar;
+	}
+
 	:root.cbuild-crossing:not(.cbuild-calm)
 		:where(.cbuild-progress__step--current) {
 		view-transition-name: cbuild-marker;
@@ -2294,6 +2579,16 @@
 	:root.cbuild-crossing::view-transition-group(cbuild-marker),
 	:root.cbuild-crossing::view-transition-group(*.cbuild-part) {
 		animation-name: none;
+	}
+
+	/* The bar does not move: its group neither grows nor fades, and shows its new state from the start (D-382). */
+	:root.cbuild-crossing::view-transition-group(cbuild-bar),
+	:root.cbuild-crossing::view-transition-new(cbuild-bar) {
+		animation: none;
+	}
+
+	:root.cbuild-crossing::view-transition-old(cbuild-bar) {
+		display: none;
 	}
 
 	:root.cbuild-crossing::view-transition-new(cbuild-panel),

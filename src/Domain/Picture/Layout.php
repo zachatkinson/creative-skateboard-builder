@@ -18,6 +18,7 @@ use CreativeBranding\SkateboardBuilder\Domain\Spec\HolePattern;
 use CreativeBranding\SkateboardBuilder\Domain\Spec\SpecKey;
 use CreativeBranding\SkateboardBuilder\Domain\Spec\Specs;
 
+use function in_array;
 use function intdiv;
 use function max;
 use function usort;
@@ -37,6 +38,12 @@ final readonly class Layout {
 	 * The slots the picture draws, in the order it stacks them when the kit sets none.
 	 */
 	public const array DRAWN = array( SlotKey::DECK, SlotKey::GRIP, SlotKey::TRUCKS, SlotKey::WHEELS );
+
+	/**
+	 * The slots the top draws and the underside does not: the grip, laid over the deck, and the hardware, whose bolt
+	 * heads come up through it (F27, #127).
+	 */
+	private const array ON_TOP = array( SlotKey::HARDWARE, SlotKey::GRIP );
 
 	/**
 	 * The length of a deck that gives none: 32 in.
@@ -302,6 +309,20 @@ final readonly class Layout {
 			}
 		}
 		return Measure::inches( self::NARROW_WHEELBASE );
+	}
+
+	/**
+	 * Whether a slot's part is seen on the board's top: the top draws it and the underside does not (F27, #127). A
+	 * step for one opens on the top, so the shopper sees the part they are choosing. Every other slot opens underneath,
+	 * where the deck, the trucks and the wheels are, and so do the review and any slot of a shop's own, which the picture
+	 * does not draw.
+	 *
+	 * @since 1.2.0
+	 *
+	 * @param string $slot The slot's key, or the review's.
+	 */
+	public static function onTop( string $slot ): bool {
+		return in_array( $slot, self::ON_TOP, true );
 	}
 
 	/**

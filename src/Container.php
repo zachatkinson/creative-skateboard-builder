@@ -63,6 +63,7 @@ final class Container {
 			Port\BuilderPosts::class    => Adapter\WpBuilderPosts::class,
 			Port\KitMeta::class         => Adapter\WooKitMeta::class,
 			Port\LayerImages::class     => Adapter\WpLayerImages::class,
+			Port\PartsKeptOut::class    => Adapter\WooPartsKeptOut::class,
 			Port\PartLayers::class      => Adapter\WooPartLayers::class,
 			Port\LayerRenditions::class => Adapter\WpLayerRenditions::class,
 			Port\PictureFiles::class    => Adapter\WpPictureFiles::class,
@@ -87,6 +88,14 @@ final class Container {
 			},
 			Install\Migrations\RenditionsMigration::class => static function ( Container $c ): object {
 				return new Install\Migrations\RenditionsMigration(
+					static function () use ( $c ): Port\Reindex {
+						return $c->get( Port\Reindex::class );
+					},
+					$c->get( Port\Logger::class )
+				);
+			},
+			Install\Migrations\UnsizedRenditionsMigration::class => static function ( Container $c ): object {
+				return new Install\Migrations\UnsizedRenditionsMigration(
 					static function () use ( $c ): Port\Reindex {
 						return $c->get( Port\Reindex::class );
 					},
@@ -308,6 +317,15 @@ final class Container {
 					}
 				);
 			},
+			// Where a kit's builder is (1.2.0): the kits are read when an address is asked for.
+			Front\BuilderAddress::class                   => static function ( Container $c ): object {
+				return new Front\BuilderAddress(
+					static function () use ( $c ): Port\Kits {
+						return $c->get( Port\Kits::class );
+					},
+					$c->get( Front\BuilderPlace::class )
+				);
+			},
 			Front\StartButton::class                      => static function ( Container $c ): object {
 				return new Front\StartButton(
 					static function () use ( $c ): Port\Kits {
@@ -460,14 +478,22 @@ final class Container {
 	private static function additions(): array {
 		return array(
 			Service\IndexJobs::class        => static fn( object $jobs, Container $c ): object => $jobs instanceof Service\IndexJobs ? $jobs->withRenditions( $c->get( Service\PartRenditions::class ) ) : $jobs,
-			Service\CatalogueCheck::class   => static fn( object $check, Container $c ): object => $check instanceof Service\CatalogueCheck ? $check->withLayers( $c->get( Port\LayerImages::class ) )->withLooks( $c->get( Port\PartLooks::class ) ) : $check,
-			Front\StateAnswer::class        => static fn( object $answer, Container $c ): object => $answer instanceof Front\StateAnswer ? $answer->withArtwork( $c->get( Service\LayerArtwork::class ) )->withShelf( $c->get( Service\StepShelf::class ) )->withPictures( self::tiles( $c ) ) : $answer,
+			Service\CatalogueCheck::class   => static fn( object $check, Container $c ): object => $check instanceof Service\CatalogueCheck ? $check->withLayers( $c->get( Port\LayerImages::class ) )->withLooks( $c->get( Port\PartLooks::class ) )->withKeptOut( $c->get( Port\PartsKeptOut::class ) ) : $check,
+			Front\StateAnswer::class        => static fn( object $answer, Container $c ): object => $answer instanceof Front\StateAnswer ? $answer->withArtwork( $c->get( Service\LayerArtwork::class ) )->withShelf( $c->get( Service\StepShelf::class ) )->withPictures( self::tiles( $c ) )->withPhases( $c->get( Service\Phases::class ) ) : $answer,
 			Admin\PartSpecsPanel::class     => static fn( object $panel, Container $c ): object => $panel instanceof Admin\PartSpecsPanel ? $panel->withImages( $c->get( Port\LayerImages::class ) ) : $panel,
 			Front\BuilderPage::class        => static fn( object $page, Container $c ): object => $page instanceof Front\BuilderPage ? $page->withSaved( $c->get( Service\SavedBuilds::class ) ) : $page,
 			Front\Builder::class            => static fn( object $builder, Container $c ): object => $builder instanceof Front\Builder ? $builder->withSaved( $c->get( Front\RememberedWidth::class ), $c->get( Service\SavedBuilds::class ) )->withShelf( $c->get( Service\StepShelf::class ) ) : $builder,
 			Service\SpecImport::class       => static fn( object $import, Container $c ): object => $import instanceof Service\SpecImport ? $import->withLayers( $c->get( Service\LayerCheck::class ), $c->get( Port\PartLayers::class ) ) : $import,
 			Service\SpecExport::class       => static fn( object $export, Container $c ): object => $export instanceof Service\SpecExport ? $export->withLayers( $c->get( Port\PartLayers::class ) ) : $export,
+			Adapter\WooKits::class          => static fn( object $kits, Container $c ): object => $kits instanceof Adapter\WooKits ? $kits->withMeta( $c->get( Port\ProductMeta::class ) ) : $kits,
 			Service\ComposedPictures::class => static fn( object $pictures, Container $c ): object => $pictures instanceof Service\ComposedPictures ? $pictures->withLayers( $c->get( Port\ComposedLayers::class ) ) : $pictures,
+			// 1.2.0: the Builder page each kit's Build tab chose (#113, D-348).
+			Front\PageHooks::class          => static fn( object $hooks, Container $c ): object => $hooks instanceof Front\PageHooks ? $hooks->withAddress( $c->get( Front\BuilderAddress::class ) ) : $hooks,
+			Front\StartButton::class        => static fn( object $button, Container $c ): object => $button instanceof Front\StartButton ? $button->withAddress( $c->get( Front\BuilderAddress::class ) ) : $button,
+			Front\MyBuildsView::class       => static fn( object $view, Container $c ): object => $view instanceof Front\MyBuildsView ? $view->withAddress( $c->get( Front\BuilderAddress::class ) )->withMeta( $c->get( Port\ProductMeta::class ) ) : $view,
+			Cart\ShowHooks::class           => static fn( object $hooks, Container $c ): object => $hooks instanceof Cart\ShowHooks ? $hooks->withAddress( $c->get( Front\BuilderAddress::class ) ) : $hooks,
+			Rest\StateRoute::class          => static fn( object $route, Container $c ): object => $route instanceof Rest\StateRoute ? $route->withAddress( $c->get( Front\BuilderAddress::class ) )->withPhases( $c->get( Service\Phases::class ) ) : $route,
+			Admin\BuildTab::class           => static fn( object $tab, Container $c ): object => $tab instanceof Admin\BuildTab ? $tab->withPlace( $c->get( Front\BuilderPlace::class ) ) : $tab,
 		);
 	}
 

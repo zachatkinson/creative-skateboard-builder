@@ -307,6 +307,67 @@ final class CheckScreenTest extends IntegrationTestCase {
 		self::assertSame( 0, substr_count( substr( $page, 0, (int) strpos( $page, 'id="cbuild-shared"' ) ), 'share a photo' ) );
 	}
 
+	// #116: parts the shop keeps out are listed apart, not as a fix, each with a link to the box that keeps it out.
+	public function test_parts_kept_out_are_said_in_a_list_of_their_own_with_a_link_to_their_box(): void {
+		$product = new \WC_Product_Simple();
+		$product->set_name( 'Kept deck' );
+		$product->set_regular_price( '50' );
+		$product->update_meta_data( Options::META_NOT_OFFERED, 'yes' );
+		$product->save();
+		$parent = new \WC_Product_Variable();
+		$parent->set_name( 'Kept trucks' );
+		$parent->update_meta_data( Options::META_NOT_OFFERED, 'yes' );
+		$parent->save();
+		$variation = new \WC_Product_Variation();
+		$variation->set_parent_id( $parent->get_id() );
+		$variation->set_regular_price( '30' );
+		$variation->save();
+		$kits  = new InMemoryKits();
+		$check = ( new CatalogueCheck( $kits, $this->service( PartCatalogue::class ), $this->service( SpecIndexer::class ), $this->service( ReindexStore::class ), $this->service( ImportStore::class ), $this->service( Queue::class ) ) )->withKeptOut( $this->service( \CreativeBranding\SkateboardBuilder\Port\PartsKeptOut::class ) );
+
+		$this->as( 'shop_manager' );
+		$page = self::checked( new CheckScreen( $check, $kits, $this->service( Reindex::class ) ) );
+		self::assertStringContainsString( '<h3 id="cbuild-kept">Parts kept out of the builder</h3>', $page );
+		self::assertStringContainsString( 'The check found nothing to fix.', $page );
+		self::assertDoesNotMatchRegularExpression( '/found \d+ things? to fix/', $page, 'not counted among the things to fix' );
+		self::assertStringContainsString( 'post=' . $product->get_id() . '&#038;action=edit#cbuild-spec-not-offered">Kept deck</a>', $page );
+		self::assertStringContainsString( 'post=' . $parent->get_id() . '&#038;action=edit#cbuild-spec-not-offered">', $page, 'the variation\'s link is to its product\'s box' );
+		self::assertStringContainsString( 'so no kit offers it or the product&#039;s other variations.', $page );
+		self::assertSame( 0, substr_count( substr( $page, 0, (int) strpos( $page, 'id="cbuild-kept"' ) ), 'Not offered in the builder is ticked' ) );
+		// A part kept out is in no kit, so its list has no Kit column of empty cells.
+		self::assertStringNotContainsString( '<th scope="col">Kit</th>', substr( $page, (int) strpos( $page, 'id="cbuild-kept"' ) ), 'no Kit column' );
+	}
+
+	// The auditor's M12 minor 6: with parts kept out and other lists below, the notice does not say there is nothing to
+	// fix above a list of things to look at, and says once what it says.
+	public function test_parts_kept_out_beside_another_list_leave_the_notice_that_list_reads_with(): void {
+		$product = new \WC_Product_Simple();
+		$product->set_name( 'Kept deck' );
+		$product->set_regular_price( '50' );
+		$product->update_meta_data( Options::META_NOT_OFFERED, 'yes' );
+		$product->save();
+		$kits  = new InMemoryKits();
+		$looks = new InMemoryPartLooks();
+		// A kit of the deck alone, so the shared card is all the check finds.
+		$deck = array(
+			'schema_version' => 1,
+			'slots'          => array( array_values( KitDocuments::slots()['slots'] )[0] ),
+		);
+		$kits->add( 5, KitDocuments::kit( $deck ), array( 'deck' => array( Builds::deck( '8.0', 11 ), Builds::deck( '8.25', 12 ) ) ) );
+		$looks->facts = array(
+			11 => new LookFact( 10, 1, 0, 'Board', array(), array(), false, 0, 0 ),
+			12 => new LookFact( 10, 1, 0, 'Board', array(), array(), false, 0, 0 ),
+		);
+		$check = ( new CatalogueCheck( $kits, $this->service( PartCatalogue::class ), $this->service( SpecIndexer::class ), $this->service( ReindexStore::class ), $this->service( ImportStore::class ), $this->service( Queue::class ) ) )->withLooks( $looks )->withKeptOut( $this->service( \CreativeBranding\SkateboardBuilder\Port\PartsKeptOut::class ) );
+
+		$this->as( 'shop_manager' );
+		$page = self::checked( new CheckScreen( $check, $kits, $this->service( Reindex::class ) ) );
+		self::assertStringContainsString( '<h3 id="cbuild-shared">Variations that share a card</h3>', $page );
+		self::assertStringContainsString( '<h3 id="cbuild-kept">Parts kept out of the builder</h3>', $page );
+		self::assertStringNotContainsString( 'The check found nothing to fix.', $page );
+		self::assertSame( 1, substr_count( $page, 'Nothing the check found keeps a part out of the builder.' ), (string) preg_replace( '/\s+/', ' ', substr( $page, (int) strpos( $page, 'notice' ) - 20, 600 ) ) );
+	}
+
 	public function test_parts_with_no_layer_image_have_their_own_list_cut_at_its_own_length(): void {
 		// Cowork's M7 review, F4: on a large catalogue, the layer lines are reached however many other findings there are.
 		$decks = array();

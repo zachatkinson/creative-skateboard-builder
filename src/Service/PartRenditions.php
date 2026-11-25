@@ -157,8 +157,10 @@ final class PartRenditions {
 
 	/**
 	 * A part's layer image and the sizes the picture draws it at: those of every slot that offers it, in any kit. A
-	 * slot the picture does not draw gives no size, and two kits' decks give the same sizes, listed once. Null where
-	 * there is nothing to make: no layer image, no specs, or no slot that draws it.
+	 * slot the picture does not draw gives no size, and two kits' decks give the same sizes, listed once. A part with no
+	 * row in the index is read as the page reads it, with no specs, so a grip that gives no size is the usual sheet and
+	 * wheels that give none are the usual wheel (issue #129, D-371); a deck still needs its width. Null where there is
+	 * nothing to make: no layer image, or no slot that draws it at a size.
 	 *
 	 * @param int               $part   The part's ID.
 	 * @param array<int, Kit>   $kits   Every kit.
@@ -170,13 +172,13 @@ final class PartRenditions {
 	private function drawn( int $part, array $kits, array $specs, bool $stored = false ): ?array {
 		$image = $this->layers->attachment( $part );
 		$facts = null === $image ? null : ( $stored ? $this->layers->image( $image ) : $this->layers->facts( $image ) );
-		if ( null === $image || null === $facts || ! isset( $specs[ $part ] ) ) {
+		if ( null === $image || null === $facts ) {
 			return null;
 		}
 		[ $width, $height ] = is_array( $facts ) ? array( $facts['width'], $facts['height'] ) : array( $facts->width, $facts->height );
 		$sizes              = array();
 		foreach ( $this->kits->slotsOf( $part, ...$kits ) as $slot ) {
-			array_push( $sizes, ...Renditions::drawn( $slot, $specs[ $part ], $width, $height ) );
+			array_push( $sizes, ...Renditions::drawn( $slot, $specs[ $part ] ?? Specs::none(), $width, $height ) );
 		}
 		$sizes = array_values( array_unique( $sizes, SORT_REGULAR ) );
 		return array() === $sizes ? null : array( $image, $sizes );

@@ -771,6 +771,7 @@
 					"required": ["amount", "next"],
 					"properties": {
 						"amount": { "description": "The total as the bar shows it: the server's string, which the counting total writes its frames over and ends on (1.1.0).", "type": "string" },
+						"started": { "description": "Whether the build has a part, so the bar keeps the estimate's line while there is none. The store sets it at a part's press, before the answer (1.2.0, D-374).", "type": "boolean" },
 						"next": {
 							"type": "object",
 							"required": ["ready", "missing"],

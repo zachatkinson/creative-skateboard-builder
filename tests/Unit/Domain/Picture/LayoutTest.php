@@ -328,4 +328,36 @@ final class LayoutTest extends TestCase {
 		self::assertCount( 1, $layout->layers );
 		self::assertSame( array( SlotKey::DECK, SlotKey::HARDWARE ), array_values( array_unique( array_column( self::table( $layout->top ), 0 ) ) ), 'the hardware shows on the top alone' );
 	}
+
+	// Cowork's review of 1.1.0, F27 (#127): "Each step opens on its part's side: deck, trucks and wheels underneath;
+	// hardware and grip on top". A part is on the top when the top draws it and the underside does not, so the side a
+	// step opens on follows what the layout draws, and every slot it does not draw opens underneath.
+	public function test_a_slot_is_seen_on_the_top_when_the_top_draws_it_and_the_underside_does_not(): void {
+		$every  = Parts::picks(
+			array(
+				SlotKey::DECK     => self::deck(),
+				SlotKey::TRUCKS   => Parts::indy( '144' ),
+				SlotKey::WHEELS   => Parts::of( array( 'wheel_diameter' => '54' ), 300 ),
+				SlotKey::RISERS   => Parts::of( array( 'riser_thickness' => '0.125' ), 400 ),
+				SlotKey::BEARINGS => Parts::of( array( 'bearing_bore' => '8' ), 500 ),
+				SlotKey::HARDWARE => Parts::of( array( 'bolt_length' => '1' ), 600 ),
+				SlotKey::GRIP     => Parts::of( array(), 700 ),
+				SlotKey::SPACERS  => Parts::of( array(), 800 ),
+			)
+		);
+		$layout = Layout::of( $every );
+		$under  = array_column( self::table( $layout->layers ), 0 );
+		$top    = array_column( self::table( $layout->top ), 0 );
+		$slots  = array_values( ( new \ReflectionClass( SlotKey::class ) )->getConstants() );
+		self::assertCount( 8, $slots );
+
+		$seen = array();
+		foreach ( $slots as $slot ) {
+			$seen[ $slot ] = Layout::onTop( $slot );
+			self::assertSame( in_array( $slot, $top, true ) && ! in_array( $slot, $under, true ), $seen[ $slot ], $slot );
+		}
+		self::assertSame( array( SlotKey::HARDWARE, SlotKey::GRIP ), array_keys( array_filter( $seen ) ), 'the hardware and the grip, the rest underneath' );
+		self::assertFalse( Layout::onTop( '' ), 'the review' );
+		self::assertFalse( Layout::onTop( 'stickers' ), 'a slot of a shop\'s own, which the picture does not draw' );
+	}
 }

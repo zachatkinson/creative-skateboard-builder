@@ -328,9 +328,11 @@ final class OrderHooks implements Hookable {
 			$names,
 			$skus,
 			'' === $lead ? '' : StateAnswer::text( $lead, 'lead_time', $build->kit ),
-			'' === $notice ? '' : StateAnswer::text( $notice, 'returns_notice', $build->kit )
+			'' === $notice ? '' : StateAnswer::text( $notice, 'returns_notice', $build->kit ),
+			// The assembly time in business days, as the shopper's delivery date was counted from it (#142).
+			$kit?->settings->leadDays?->stored() ?? ''
 		);
-		$told     = array();
+		$told = array();
 		foreach ( $snapshot['picks'] as $pick ) {
 			/* translators: 1: a slot's label, such as Trucks; 2: the part's name; 3: how many of it a build takes. */
 			$told[] = sprintf( __( '%1$s: %2$s × %3$s', 'creative-skateboard-builder' ), $pick['label'], $pick['name'], number_format_i18n( $pick['quantity'] ) );

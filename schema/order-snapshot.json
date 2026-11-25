@@ -1,9 +1,8 @@
 {
 	"$schema": "http://json-schema.org/draft-04/schema#",
 	"title": "cbuild_snapshot",
-	"description": "A build as it was sold, stored in the _cbuild_snapshot meta of the kit's order item and kept for as long as the order is.",
+	"description": "A build as it was sold, stored in the _cbuild_snapshot meta of the kit's order item and kept for as long as the order is. From 1.2.0 no object with properties closes: a later release may add keys, which a reader passes over.",
 	"type": "object",
-	"additionalProperties": false,
 	"required": [
 		"schema_version",
 		"kit",
@@ -38,7 +37,6 @@
 			"patternProperties": {
 				"^[a-z][a-z0-9_]{0,31}(?!\\n)$": {
 					"type": "object",
-					"additionalProperties": false,
 					"required": [
 						"label",
 						"name",
@@ -88,6 +86,11 @@
 		"returns_notice": {
 			"description": "The kit's returns notice, as the shopper read it. Empty for a build the shop does not assemble.",
 			"type": "string"
+		},
+		"lead_days": {
+			"description": "From 1.2.0 (#142): the kit's assembly time in business days when it was sold, such as 2 or 2-4. Empty for a build the shop does not assemble, or a kit with none. A snapshot made before 1.2.0 has no key.",
+			"type": "string",
+			"pattern": "^(([0-9]|[1-5][0-9]|60)(-([0-9]|[1-5][0-9]|60))?)?(?!\\n)$"
 		}
 	}
 }

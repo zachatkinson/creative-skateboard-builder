@@ -15,6 +15,7 @@ use CreativeBranding\SkateboardBuilder\Domain\Spec\Origin;
 use CreativeBranding\SkateboardBuilder\Domain\Spec\SpecKey;
 use CreativeBranding\SkateboardBuilder\Install\Migrations\Cursor;
 use CreativeBranding\SkateboardBuilder\Install\Migrations\RenditionsMigration;
+use CreativeBranding\SkateboardBuilder\Install\Migrations\UnsizedRenditionsMigration;
 use CreativeBranding\SkateboardBuilder\Port\Logger;
 use CreativeBranding\SkateboardBuilder\Service\IndexJobs;
 use CreativeBranding\SkateboardBuilder\Service\PartRenditions;
@@ -74,18 +75,48 @@ final class RenditionsMigrationTest extends TestCase {
 		$migration = new RenditionsMigration( static fn(): IndexJobs => self::jobs( $kits, $index, $queue )->withRenditions( $parts ), $logger );
 		self::assertSame( 'layer_renditions_1', $migration->key() );
 		self::assertTrue( $migration->run( Cursor::start() )->done );
-		self::assertSame( array( array( IndexJobs::JOB_PART, array( 'part' => 101 ) ) ), $queue->distinct, 'the 101 alone: the 102 has no layer image and the 103 its copies' );
+		self::assertSame( array( array( IndexJobs::JOB_PART, array( 'part' => 101 ), 1_800_000_000 + IndexJobs::AFTER_UPDATE ) ), $queue->scheduledDistinct, 'the 101 alone: the 102 has no layer image and the 103 its copies' );
 		self::assertSame( Logger::INFO, $logger->lines[0]['level'] );
 		self::assertSame( array( 'parts' => 1 ), $logger->lines[0]['context'] );
 
 		$migration->run( Cursor::start() );
-		self::assertCount( 1, $queue->distinct, 'run again while the job waits, nothing is queued twice' );
+		self::assertCount( 1, $queue->scheduledDistinct, 'run again while the job waits, nothing is queued twice' );
 
 		$bare  = new InMemoryKits();
 		$quiet = new RenditionsMigration( static fn(): IndexJobs => self::jobs( $bare, $index, new FakeQueue() )->withRenditions( new PartRenditions( $bare, $index, $layers, $renditions ) ), $silent = new FakeLogger() );
 		$quiet->run( Cursor::start() );
 		self::assertSame( array(), $silent->lines, 'a site from before 0.7.0, with no layer images, queues nothing and says nothing' );
 		self::assertSame( 0, self::jobs( $bare, $index, new FakeQueue() )->requestRenditions(), 'jobs built without renditions (D-208) queue nothing' );
+	}
+
+	// Issue #129 (D-373): 1.2.0 runs the same step again, under a key of its own, for the grips 1.1.0 never made copies of.
+	public function test_the_update_to_1_2_0_queues_the_job_of_a_grip_with_no_spec_and_nothing_on_a_shop_with_none_missing(): void {
+		$kits = new InMemoryKits();
+		$grip = Builds::grip();
+		$kits->add( 7, KitDocuments::kit(), array( 'grip' => array( $grip ) ) );
+		$kits->slotsOf       = array( $grip->id => array( 'grip' ) );
+		$index               = new InMemorySpecIndex();
+		$layers              = new InMemoryLayerImages();
+		$layers->attachments = array( $grip->id => 21 );
+		$layers->images      = array( 21 => new ImageFacts( 'image/webp', 572, 2096, true ) );
+		$renditions          = new InMemoryLayerRenditions();
+		$parts               = new PartRenditions( $kits, $index, $layers, $renditions );
+		$queue               = new FakeQueue();
+		$logger              = new FakeLogger();
+
+		$migration = new UnsizedRenditionsMigration( static fn(): IndexJobs => self::jobs( $kits, $index, $queue )->withRenditions( $parts ), $logger );
+		self::assertSame( 'layer_renditions_2', $migration->key() );
+		self::assertTrue( $migration->run( Cursor::start() )->done );
+		self::assertSame( array( array( IndexJobs::JOB_PART, array( 'part' => $grip->id ), 1_800_000_000 + IndexJobs::AFTER_UPDATE ) ), $queue->scheduledDistinct, 'the grip, which has no row in the index, its job due once a runner the earlier release started has stopped' );
+		self::assertSame( array(), $queue->distinct, 'nothing due now, for that runner to claim (D-378)' );
+		self::assertSame( array( 'parts' => 1 ), $logger->lines[0]['context'] ?? null );
+
+		$parts->make( $grip->id );
+		$after = new FakeQueue();
+		$quiet = new UnsizedRenditionsMigration( static fn(): IndexJobs => self::jobs( $kits, $index, $after )->withRenditions( $parts ), $silent = new FakeLogger() );
+		self::assertTrue( $quiet->run( Cursor::start() )->done );
+		self::assertSame( array(), $after->scheduledDistinct, 'nothing missing, nothing queued' );
+		self::assertSame( array(), $silent->lines );
 	}
 
 	/**

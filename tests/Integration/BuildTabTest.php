@@ -13,6 +13,7 @@ use CreativeBranding\SkateboardBuilder\Adapter\KitProduct;
 use CreativeBranding\SkateboardBuilder\Admin\BuildTab;
 use CreativeBranding\SkateboardBuilder\Admin\BuildTabHooks;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Kit;
+use CreativeBranding\SkateboardBuilder\Domain\Kit\KitSettings;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\RuleSettings;
 use CreativeBranding\SkateboardBuilder\Port\DocumentSchemas;
 use CreativeBranding\SkateboardBuilder\Port\ShopSettings;
@@ -45,7 +46,7 @@ final class BuildTabTest extends IntegrationTestCase {
 	}
 
 	private function hooks(): BuildTabHooks {
-		$tab = new BuildTab( $this->service( KitEditor::class ), $this->service( ShopSettings::class ) );
+		$tab = ( new BuildTab( $this->service( KitEditor::class ), $this->service( ShopSettings::class ) ) )->withPlace( $this->service( \CreativeBranding\SkateboardBuilder\Front\BuilderPlace::class ) );
 		return new BuildTabHooks( static fn(): BuildTab => $tab );
 	}
 
@@ -147,6 +148,15 @@ final class BuildTabTest extends IntegrationTestCase {
 				'search'       => 'creative_search',
 				// Ticked, as the tab shows it on a kit saved before 1.1.0 (#104).
 				'show_presets' => '1',
+			),
+			// The settings from 1.2.0, in a document of their own (D-354).
+			'settings' => array(
+				// Ticked, as the tab shows it on a kit saved before 1.2.0 (#115).
+				'start_button' => '1',
+				// The kit's own page, as the tab shows it on a kit saved before 1.2.0 (#113).
+				'builder_page' => '',
+				// Empty, as the tab shows it on a kit saved before 1.2.0 (#142).
+				'lead_days'    => '',
 			),
 		);
 	}
@@ -250,7 +260,7 @@ final class BuildTabTest extends IntegrationTestCase {
 		foreach ( Options::kitDocumentNames() as $name => $key ) {
 			self::assertNull( $this->service( DocumentSchemas::class )->refusal( $name, $stored[ $key ] ), $name );
 		}
-		Kit::fromDocuments( $stored[ Options::META_KIT_SLOTS ], $stored[ Options::META_KIT_RULES ], $stored[ Options::META_KIT_PRESETS ], $stored[ Options::META_KIT_ASSEMBLY ], $stored[ Options::META_KIT_PICTURE ], $stored[ Options::META_KIT_LAYOUT ] );
+		Kit::fromDocuments( $stored[ Options::META_KIT_SLOTS ], $stored[ Options::META_KIT_RULES ], $stored[ Options::META_KIT_PRESETS ], $stored[ Options::META_KIT_ASSEMBLY ], $stored[ Options::META_KIT_PICTURE ], $stored[ Options::META_KIT_LAYOUT ], $stored[ Options::META_KIT_SETTINGS ] );
 	}
 
 	public function test_a_new_kits_assembly_starts_from_the_shops_settings_and_a_kit_that_has_its_own_keeps_it(): void {
@@ -848,6 +858,442 @@ final class BuildTabTest extends IntegrationTestCase {
 		$sent['layout']['show_presets'] = '1';
 		$this->send( $kit, $sent );
 		self::assertTrue( self::stored( $kit->get_id() )[ Options::META_KIT_LAYOUT ]['show_presets'] );
+	}
+
+	// #115: Show on its parts' pages, in the Layout section and kept in `_cbuild_settings` (D-354). Ticked on a kit
+	// saved before 1.2.0; unticked, the kit places no "Build a complete with this deck". Saved by who may manage the
+	// shop alone, through WooCommerce's product save, from wp-admin with no WP-CLI.
+	public function test_show_on_its_parts_pages_is_ticked_for_a_kit_saved_before_and_saved_by_who_may_manage_the_shop(): void {
+		$this->as( 'shop_manager' );
+		$kit   = KitFactory::kit();
+		$panel = $this->panel( $kit );
+		self::assertMatchesRegularExpression( '/name="cbuild_kit\[settings\]\[start_button\]"[^>]*checked/', $panel, 'a kit saved before 1.2.0 places the button' );
+		self::assertMatchesRegularExpression( '#id="cbuild-kit-layout".*?<input\s+type="checkbox"[^>]*id="cbuild-kit-settings-start_button"[^>]*name="cbuild_kit\[settings\]\[start_button\]"#s', $panel, 'in the Layout section' );
+		self::assertMatchesRegularExpression( '#<label for="cbuild-kit-settings-start_button">Show &quot;Build a complete with this deck&quot; on its parts&\#039; pages</label>#', $panel, 'labelled with what it shows (M12 audit)' );
+		self::assertMatchesRegularExpression( '#id="cbuild-kit-settings-start_button"[^>]*aria-describedby="cbuild-kit-settings-start_button-note"#', $panel, 'and described' );
+		self::assertStringContainsString( 'lowest menu order', $panel, 'the note says which kit wins where several offer a part' );
+		// One switch, in the Layout section: a second, in Picture, sent `cbuild_kit[picture][start_button]` and did nothing (M12's walkthrough).
+		self::assertSame( 1, preg_match_all( '/\[start_button\]"/', $panel ), 'one Show on its parts\' pages' );
+		self::assertSame( 1, substr_count( $panel, 'Where shoppers find it' ), 'one Where shoppers find it' );
+
+		$sent = self::form();
+		unset( $sent['settings']['start_button'] );
+		$this->send( $kit, $sent );
+		self::assertSame( array(), self::notices() );
+		self::assertFalse( self::stored( $kit->get_id() )[ Options::META_KIT_SETTINGS ]['start_button'] );
+		$read = $this->service( \CreativeBranding\SkateboardBuilder\Port\Kits::class )->kit( $kit->get_id() );
+		self::assertFalse( $read?->settings->startButton, 'the kit the button reads' );
+		self::assertTrue( $read?->layout->showPresets, 'and nothing else' );
+		self::assertDoesNotMatchRegularExpression( '/name="cbuild_kit\[settings\]\[start_button\]"[^>]*checked/', $this->panel( $kit ) );
+
+		// A customer's post is not saved, whatever it says.
+		$this->as( 'customer' );
+		$sent['settings']['start_button'] = '1';
+		$this->send( $kit, $sent );
+		self::assertFalse( self::stored( $kit->get_id() )[ Options::META_KIT_SETTINGS ]['start_button'], 'not saved by a customer' );
+
+		$this->as( 'shop_manager' );
+		$sent['settings']['start_button'] = '<b>yes</b>';
+		$this->send( $kit, $sent );
+		self::assertTrue( self::stored( $kit->get_id() )[ Options::META_KIT_SETTINGS ]['start_button'], 'any value ticked is on, stored as true and never as what was sent' );
+	}
+
+	/**
+	 * A page holding a kit's Builder block.
+	 *
+	 * @param int                  $kit  The kit.
+	 * @param array<string, mixed> $more The page's other fields.
+	 */
+	private function builderPage( int $kit, array $more = array() ): int {
+		return self::factory()->post->create(
+			$more + array(
+				'post_type'    => 'page',
+				'post_status'  => 'publish',
+				'post_title'   => 'Build a board ' . $kit,
+				'post_content' => '<!-- wp:creative-skateboard-builder/builder {"kit":' . $kit . '} /-->',
+			)
+		);
+	}
+
+	// #113: the Builder page, a select in the Layout section that lists the published pages holding this kit's Builder
+	// block, the kit's own page first and chosen on a kit saved before 1.2.0. Only a page it lists is saved; one that
+	// has since been taken down is shown as not in use, and kept while the owner leaves it.
+	public function test_the_builder_page_lists_the_pages_that_hold_the_kits_block_and_saves_only_one_of_them(): void {
+		$this->as( 'shop_manager' );
+		$kit     = KitFactory::kit();
+		$other   = KitFactory::kit( 'Cruiser complete' );
+		$listed  = $this->builderPage( $kit->get_id() );
+		$draft   = $this->builderPage( $kit->get_id(), array( 'post_status' => 'draft', 'post_title' => 'Draft board' ) );
+		$theirs  = $this->builderPage( $other->get_id(), array( 'post_title' => 'Cruiser board' ) );
+		$without = self::factory()->post->create(
+			array(
+				'post_type'   => 'page',
+				'post_status' => 'publish',
+				'post_title'  => 'About us',
+			)
+		);
+		$select  = static function ( string $panel ): string {
+			self::assertSame( 1, preg_match( '#<select[^>]*id="cbuild-kit-settings-builder_page"[^>]*>.*?</select>#s', $panel, $found ), 'the select' );
+			return $found[0];
+		};
+		$panel = $this->panel( $kit );
+		self::assertMatchesRegularExpression( '#id="cbuild-kit-layout".*?<label for="cbuild-kit-settings-builder_page">Builder page</label>#s', $panel, 'labelled, in the Layout section' );
+		self::assertMatchesRegularExpression( '#id="cbuild-kit-settings-builder_page"[^>]*aria-describedby="cbuild-kit-settings-builder_page-note"#s', $panel, 'and described' );
+		$shown = $select( $panel );
+		self::assertMatchesRegularExpression( '#<option value=""\s+selected=\'selected\'>The kit&\#039;s own page</option>#', $shown, 'a kit saved before 1.2.0: its own page' );
+		self::assertStringContainsString( '<option value="' . $listed . '" >Build a board ' . $kit->get_id() . '</option>', $shown );
+		foreach ( array( $draft, $theirs, $without ) as $page ) {
+			self::assertStringNotContainsString( 'value="' . $page . '"', $shown, 'only published pages holding this kit\'s block' );
+		}
+
+		$sent                           = self::form();
+		$sent['settings']['builder_page'] = (string) $listed;
+		$this->send( $kit, $sent );
+		self::assertSame( array(), self::notices() );
+		self::assertSame( $listed, self::stored( $kit->get_id() )[ Options::META_KIT_SETTINGS ]['builder_page'] );
+		$read = $this->service( \CreativeBranding\SkateboardBuilder\Port\Kits::class )->kit( $kit->get_id() );
+		self::assertSame( $listed, $read?->settings->builderPage, 'the kit the builder reads' );
+		self::assertMatchesRegularExpression( '#<option value="' . $listed . '"\s+selected=\'selected\'>#', $select( $this->panel( $kit ) ) );
+
+		foreach ( array( $draft, $theirs, $without, $other->get_id() ) as $page ) {
+			$sent['settings']['builder_page'] = (string) $page;
+			$this->send( $kit, $sent );
+			self::assertStringContainsString( 'Builder page: choose one of the pages listed, or the kit&#039;s own page.', implode( '', self::notices() ), 'refused: ' . $page );
+			self::assertSame( $listed, self::stored( $kit->get_id() )[ Options::META_KIT_SETTINGS ]['builder_page'], 'the page in force stays' );
+			\WC_Admin_Meta_Boxes::$meta_box_errors = array();
+			$this->panel( $kit );
+		}
+		$sent['settings']['builder_page'] = '<b>about-us</b>';
+		$this->send( $kit, $sent );
+		self::assertStringContainsString( '<a href="#cbuild-kit-settings-builder_page">The kit&#039;s Builder page was not saved. The Build tab shows it as you chose it, with what to put right.</a>', implode( '', self::notices() ), 'what is no page is refused, and named alone (D-385)' );
+		\WC_Admin_Meta_Boxes::$meta_box_errors = array();
+		$this->panel( $kit );
+
+		// Taken down after it was chosen: the tab says so, and saving the tab as it is keeps it.
+		wp_update_post(
+			array(
+				'ID'          => $listed,
+				'post_status' => 'draft',
+			)
+		);
+		self::assertMatchesRegularExpression( '#<option value="' . $listed . '"\s+selected=\'selected\'>Build a board ' . $kit->get_id() . ' \(not in use now\)</option>#', $select( $this->panel( $kit ) ) );
+		$sent['settings']['builder_page'] = (string) $listed;
+		$this->send( $kit, $sent );
+		self::assertSame( array(), self::notices() );
+		self::assertSame( $listed, self::stored( $kit->get_id() )[ Options::META_KIT_SETTINGS ]['builder_page'], 'kept, and used again once it is published' );
+
+		$sent['settings']['builder_page'] = '';
+		$this->send( $kit, $sent );
+		self::assertSame( array(), self::notices() );
+		self::assertArrayNotHasKey( 'builder_page', self::stored( $kit->get_id() )[ Options::META_KIT_SETTINGS ], 'the kit\'s own page' );
+		self::assertNull( $this->service( \CreativeBranding\SkateboardBuilder\Port\Kits::class )->kit( $kit->get_id() )?->settings->builderPage );
+	}
+
+	// #115 and #113: the kit's settings go through WooCommerce's own product save, which checks its nonce and who may
+	// edit the product before the tab's hook fires (includes/admin/class-wc-admin-meta-boxes.php:228 and :238).
+	public function test_the_layout_is_saved_through_woocommerces_product_save_and_only_with_its_nonce(): void {
+		$this->as( 'shop_manager' );
+		$kit = KitFactory::kit();
+		$this->hooks()->register();
+		$page = $this->builderPage( $kit->get_id() );
+		$sent = self::form();
+		unset( $sent['settings']['start_button'] );
+		$sent['settings']['builder_page'] = (string) $page;
+		$posted = $_POST;
+		$save   = static function ( string $nonce ) use ( $kit, $sent ): void {
+			( new \ReflectionProperty( \WC_Admin_Meta_Boxes::class, 'saved_meta_boxes' ) )->setValue( null, false );
+			$_POST = array(
+				'woocommerce_meta_nonce' => $nonce,
+				'post_ID'                => (string) $kit->get_id(),
+				BuildTab::FIELD          => wp_slash( $sent + array( BuildTab::END => '1' ) ),
+			);
+			( new \WC_Admin_Meta_Boxes() )->save_meta_boxes( $kit->get_id(), get_post( $kit->get_id() ) );
+		};
+		try {
+			$save( 'not-the-nonce' );
+			self::assertNull( self::stored( $kit->get_id() )[ Options::META_KIT_SETTINGS ], 'nothing saved without the nonce' );
+			$save( wp_create_nonce( 'woocommerce_save_data' ) );
+			self::assertSame( array(), self::notices() );
+			self::assertFalse( self::stored( $kit->get_id() )[ Options::META_KIT_SETTINGS ]['start_button'] ?? null, 'saved with it' );
+			self::assertSame( $page, self::stored( $kit->get_id() )[ Options::META_KIT_SETTINGS ]['builder_page'] ?? null, 'the Builder page too' );
+			self::assertSame( Options::PRODUCT_TYPE_KIT, \WC_Product_Factory::get_product_type( $kit->get_id() ), 'and still a kit' );
+		} finally {
+			$_POST = $posted;
+			( new \ReflectionProperty( \WC_Admin_Meta_Boxes::class, 'saved_meta_boxes' ) )->setValue( null, false );
+		}
+	}
+
+	/**
+	 * A width guide's row, as the tab draws its field.
+	 *
+	 * @param string $panel The panel.
+	 * @param int    $row   The row's place, from 0.
+	 * @param string $field shoe, from or to.
+	 */
+	private static function guideField( string $panel, int $row, string $field ): ?string {
+		$found = array();
+		return 1 === preg_match( '#name="cbuild_kit\[settings\]\[width_guide\]\[rows\]\[' . $row . '\]\[' . $field . '\]"\s+value="([^"]*)"#', $panel, $found ) ? $found[1] : null;
+	}
+
+	// #114: the Build tab's Width guide section. A kit saved before 1.2.0 shows the guide with the plugin's rows, which
+	// the editor starts from; the shop's own rows are kept as plain text in `_cbuild_settings`, "Use the builder's rows"
+	// stores none again, and unticking Show takes the guide away. All from wp-admin, with no WP-CLI.
+	public function test_the_width_guide_section_keeps_the_shops_rows_restores_the_plugins_and_hides_the_guide(): void {
+		$this->as( 'shop_manager' );
+		$kit   = KitFactory::kit();
+		$panel = $this->panel( $kit );
+		self::assertMatchesRegularExpression( '#<div class="options_group" id="cbuild-kit-settings-width_guide"[^>]*>\s*<h3>Width guide</h3>#', $panel );
+		self::assertMatchesRegularExpression( '/name="cbuild_kit\[settings\]\[width_guide\]\[shown\]"[^>]*checked/', $panel, 'shown, on a kit saved before 1.2.0' );
+		self::assertMatchesRegularExpression( '/name="cbuild_kit\[settings\]\[width_guide\]\[plugins\]"[^>]*checked/', $panel, 'with the plugin\'s rows' );
+		self::assertSame( array( '6.5 or smaller', '7', '7.75' ), array( self::guideField( $panel, 0, 'shoe' ), self::guideField( $panel, 0, 'from' ), self::guideField( $panel, 0, 'to' ) ), 'the editor starts from them' );
+		self::assertSame( array( '9.5 and larger', '8.25', '' ), array( self::guideField( $panel, 3, 'shoe' ), self::guideField( $panel, 3, 'from' ), self::guideField( $panel, 3, 'to' ) ) );
+		self::assertSame( '', self::guideField( $panel, 4, 'shoe' ), 'a row to add one, shown' );
+		self::assertMatchesRegularExpression( '#<fieldset id="cbuild-kit-settings-width_guide-rows-4" class="cbuild-kit-group cbuild-kit-adds">#', $panel );
+		self::assertMatchesRegularExpression( '#<fieldset id="cbuild-kit-settings-width_guide-rows-5" class="cbuild-kit-group cbuild-kit-adds" hidden>#', $panel, 'the rest wait for Add a row' );
+		self::assertSame( 12, preg_match_all( '#id="cbuild-kit-settings-width_guide-rows-\d+-shoe"#', $panel ), 'twelve rows at most' );
+		self::assertSame( 1, preg_match_all( '#<button type="button" class="button" data-cbuild-add data-cbuild-removed="%s removed. The rows after it moved up." data-cbuild-unticked="&quot;Use the builder&\#039;s rows&quot; is now unticked, so the rows you type are saved." hidden>Add a row</button>#', $panel ), 'shown by the script, with what it says' );
+		self::assertSame( 1, preg_match_all( '#<button type="button" class="button" data-cbuild-remove id="cbuild-kit-settings-width_guide-rows-1-remove" hidden>Remove <span class="screen-reader-text">Row 2</span></button>#', $panel ), 'each Remove named with its row' );
+		self::assertMatchesRegularExpression( '#<input\s+type="text"\s+class="short"\s+id="cbuild-kit-settings-width_guide-rows-0-shoe"\s+name="[^"]+"\s+value="[^"]*"\s+autocomplete="off"\s+maxlength="40"#', $panel );
+
+		// The shop's own rows, typed with its separator and with markup, which is kept as plain text.
+		update_option( 'woocommerce_price_decimal_sep', ',' );
+		$sent                          = self::form();
+		$sent['settings']['width_guide'] = array(
+			'shown' => '1',
+			'rows'  => array(
+				array( 'shoe' => '<b>EU 38</b> to 40', 'from' => '7,75', 'to' => '8' ),
+				array( 'shoe' => '', 'from' => '', 'to' => '' ),
+				array( 'shoe' => 'EU 41 and up', 'from' => '8 1/4', 'to' => '' ),
+			),
+		);
+		$this->send( $kit, $sent );
+		self::assertSame( array(), self::notices() );
+		self::assertSame(
+			array(
+				'shown' => true,
+				'rows'  => array(
+					array( 'shoe' => 'EU 38 to 40', 'from' => '7.75', 'to' => '8' ),
+					array( 'shoe' => 'EU 41 and up', 'from' => '8.25' ),
+				),
+			),
+			self::stored( $kit->get_id() )[ Options::META_KIT_SETTINGS ]['width_guide']
+		);
+		$read = $this->service( \CreativeBranding\SkateboardBuilder\Port\Kits::class )->kit( $kit->get_id() );
+		self::assertSame( 'EU 41 and up', $read?->settings->guide->rows[1]->shoe ?? null, 'the kit the builder reads' );
+		$panel = $this->panel( $kit );
+		self::assertDoesNotMatchRegularExpression( '/name="cbuild_kit\[settings\]\[width_guide\]\[plugins\]"[^>]*checked/', $panel );
+		self::assertSame( array( 'EU 41 and up', '8,25', '' ), array( self::guideField( $panel, 1, 'shoe' ), self::guideField( $panel, 1, 'from' ), self::guideField( $panel, 1, 'to' ) ), 'shown with the shop\'s separator' );
+		self::assertMatchesRegularExpression( '#<fieldset id="cbuild-kit-settings-width_guide-rows-2" class="cbuild-kit-group cbuild-kit-adds">#', $panel );
+		self::assertMatchesRegularExpression( '#<fieldset id="cbuild-kit-settings-width_guide-rows-3" class="cbuild-kit-group cbuild-kit-adds" hidden>#', $panel );
+
+		// Hidden: its rows are kept for when it is shown again.
+		unset( $sent['settings']['width_guide']['shown'] );
+		$this->send( $kit, $sent );
+		self::assertFalse( self::stored( $kit->get_id() )[ Options::META_KIT_SETTINGS ]['width_guide']['shown'] );
+		self::assertCount( 2, self::stored( $kit->get_id() )[ Options::META_KIT_SETTINGS ]['width_guide']['rows'] );
+		self::assertDoesNotMatchRegularExpression( '/name="cbuild_kit\[settings\]\[width_guide\]\[shown\]"[^>]*checked/', $this->panel( $kit ) );
+
+		// Restored: the plugin's rows, stored as none, whatever the rows hold.
+		$sent['settings']['width_guide'] += array(
+			'shown'   => '1',
+			'plugins' => '1',
+		);
+		$this->send( $kit, $sent );
+		self::assertSame( array( 'shown' => true ), self::stored( $kit->get_id() )[ Options::META_KIT_SETTINGS ]['width_guide'] );
+	}
+
+	// M12's audit: without the script, rows typed while "Use the builder's rows" is ticked are not saved, and the tab
+	// says so with a link to the box. Rows sent as the tab drew them, the builder's own, say nothing.
+	public function test_rows_typed_while_the_builders_rows_are_ticked_are_not_saved_and_the_tab_says_so(): void {
+		$this->as( 'shop_manager' );
+		update_option( 'woocommerce_price_decimal_sep', ',' );
+		$kit   = KitFactory::kit();
+		$panel = $this->panel( $kit );
+		$rows  = array();
+		for ( $at = 0; $at < 12; $at++ ) {
+			$rows[] = array(
+				'shoe' => (string) self::guideField( $panel, $at, 'shoe' ),
+				'from' => (string) self::guideField( $panel, $at, 'from' ),
+				'to'   => (string) self::guideField( $panel, $at, 'to' ),
+			);
+		}
+		$sent                            = self::form();
+		$sent['settings']['width_guide'] = array(
+			'shown'   => '1',
+			'plugins' => '1',
+			'rows'    => $rows,
+		);
+		$this->send( $kit, $sent );
+		self::assertSame( array(), self::notices(), 'the builder\'s rows sent back as drawn say nothing' );
+
+		$sent['settings']['width_guide']['rows'][4] = array( 'shoe' => 'EU 46', 'from' => '9', 'to' => '' );
+		$this->send( $kit, $sent );
+		self::assertSame(
+			array( '<a href="#cbuild-kit-settings-width_guide-plugins">Width guide: the rows you typed were not saved, since &quot;Use the builder&#039;s rows&quot; is ticked. Untick it and save again to keep them.</a>' ),
+			self::notices()
+		);
+		self::assertSame( array( 'shown' => true ), self::stored( $kit->get_id() )[ Options::META_KIT_SETTINGS ]['width_guide'], 'the builder\'s rows kept, as the box says' );
+		\WC_Admin_Meta_Boxes::$meta_box_errors = array();
+
+		$sent['settings']['width_guide']['rows'][0]['shoe'] = 'EU 38';
+		unset( $sent['settings']['width_guide']['rows'][4] );
+		$this->send( $kit, $sent );
+		self::assertCount( 1, self::notices(), 'a row of the builder\'s changed is said too' );
+	}
+
+	// #114: a row that is wrong is named at its field, in the Width guide section, and the settings in force stay.
+	public function test_a_width_guide_row_that_is_wrong_is_not_saved_and_the_notice_names_its_field(): void {
+		$this->as( 'shop_manager' );
+		$kit                           = KitFactory::kit();
+		$sent                          = self::form();
+		$sent['settings']['width_guide'] = array(
+			'shown' => '1',
+			'rows'  => array(
+				array( 'shoe' => 'EU 38', 'from' => '7.75', 'to' => '' ),
+				array( 'shoe' => 'EU 50', 'from' => '8', 'to' => '21' ),
+			),
+		);
+		$sent['settings']['start_button'] = '';
+		$sent['assembly']['fee']       = '9';
+		$this->send( $kit, $sent );
+		self::assertSame(
+			array(
+				'<a href="#cbuild-kit-settings-width_guide-rows-1-to">The kit&#039;s width guide was not saved. The Build tab shows it as you typed it, with what to put right.</a>',
+				'<a href="#cbuild-kit-settings-width_guide-rows-1-to">Width guide, row 2, Deck width to: type a width from 5 to 12 in.</a>',
+			),
+			self::notices()
+		);
+		$stored = self::stored( $kit->get_id() );
+		self::assertSame( array( 'schema_version' => 1, 'start_button' => false ), $stored[ Options::META_KIT_SETTINGS ], 'the rest of the settings saved, with no guide, as the kit had (D-385)' );
+		self::assertSame( 'left', $stored[ Options::META_KIT_LAYOUT ]['stage_side'] ?? null, 'the layout saved: it is a document of its own (D-354)' );
+		self::assertSame( '9', $stored[ Options::META_KIT_ASSEMBLY ]['fee'], 'the rest of the kit saved' );
+
+		$panel = $this->panel( $kit );
+		self::assertSame( '21', self::guideField( $panel, 1, 'to' ), 'shown as typed' );
+		self::assertMatchesRegularExpression( '/id="cbuild-kit-settings-width_guide-rows-1-to"[^>]*aria-describedby="cbuild-kit-settings-width_guide-rows-1-to-note cbuild-kit-error-0"\s+aria-invalid="true"/', $panel );
+		self::assertMatchesRegularExpression( '#id="cbuild-kit-settings-width_guide".*?Not saved\. This is what you typed.*?<li id="cbuild-kit-error-0"><a href="\#cbuild-kit-settings-width_guide-rows-1-to">#s', $panel, 'listed in the Width guide section' );
+		self::assertDoesNotMatchRegularExpression( '#id="cbuild-kit-layout"(?:(?!id="cbuild-kit-settings-width_guide").)*cbuild-kit-error-0#s', $panel, 'and not in the Layout section' );
+	}
+
+	/**
+	 * The assembly time's field as drawn: its value, or null where it is not drawn.
+	 *
+	 * @param string $panel The tab's panel.
+	 */
+	private static function daysField( string $panel ): ?string {
+		$found = array();
+		return 1 === preg_match( '#name="cbuild_kit\[settings\]\[lead_days\]"\s+value="([^"]*)"#', $panel, $found ) ? $found[1] : null;
+	}
+
+	// #142: the assembly time in business days, a field beside the lead time in the Assembly section, kept in
+	// `_cbuild_settings` (D-354). Each form an owner types is kept as "2-4"; left empty there is none; a kit saved
+	// before 1.2.0 shows it empty.
+	public function test_the_assembly_time_is_beside_the_lead_time_and_kept_as_business_days_in_the_settings(): void {
+		$this->as( 'shop_manager' );
+		$kit   = KitFactory::kit();
+		$panel = $this->panel( $kit );
+		self::assertSame( '', self::daysField( $panel ), 'a kit saved before 1.2.0' );
+		self::assertMatchesRegularExpression( '#id="cbuild-kit-assembly".*?id="cbuild-kit-assembly-lead_time".*?<label for="cbuild-kit-settings-lead_days">Assembly time in business days</label>.*?id="cbuild-kit-assembly-returns_notice"#s', $panel, 'in Assembly, after the lead time' );
+		self::assertMatchesRegularExpression( '#id="cbuild-kit-settings-lead_days"[^>]*aria-describedby="cbuild-kit-settings-lead_days-note"#', $panel, 'with its note' );
+
+		foreach ( array( '2' => '2', '2-4' => '2-4', ' 2 - 4 ' => '2-4', '2–4' => '2-4', '0' => '0', '60' => '60' ) as $typed => $kept ) {
+			\WC_Admin_Meta_Boxes::$meta_box_errors = array();
+			$sent                                  = self::form();
+			$sent['settings']['lead_days']         = (string) $typed;
+			$this->send( $kit, $sent );
+			self::assertSame( array(), self::notices(), (string) $typed );
+			self::assertSame( $kept, self::stored( $kit->get_id() )[ Options::META_KIT_SETTINGS ]['lead_days'] ?? null, (string) $typed );
+			self::assertSame( $kept, self::daysField( $this->panel( $kit ) ) );
+		}
+		self::assertSame( '60', KitSettings::fromDocument( self::stored( $kit->get_id() )[ Options::META_KIT_SETTINGS ] )->leadDays?->stored(), 'read back by the domain' );
+
+		$sent = self::form();
+		$this->send( $kit, $sent );
+		self::assertArrayNotHasKey( 'lead_days', self::stored( $kit->get_id() )[ Options::META_KIT_SETTINGS ] ?? array(), 'left empty, none' );
+		self::assertArrayNotHasKey( 'lead_days', self::stored( $kit->get_id() )[ Options::META_KIT_ASSEMBLY ] ?? array(), 'and nothing of it in the assembly document' );
+	}
+
+	// #142: an assembly time that is not business days from 0 to 60 is not saved; the notice leads to the field in
+	// the Assembly section, which shows it as typed, and the rest of the kit is saved.
+	public function test_an_assembly_time_that_is_not_business_days_is_not_saved_and_the_notice_names_its_field(): void {
+		$this->as( 'shop_manager' );
+		$kit = KitFactory::kit();
+		foreach ( array(
+			'61'       => 'Assembly time in business days: type business days from 0 to 60, such as 2 or 2-4.',
+			'2 - 90'   => 'Assembly time in business days: type business days from 0 to 60, such as 2 or 2-4.',
+			// No word joins a range, in any language (D-389).
+			'2 to 4'   => 'Assembly time in business days: type a number of business days, such as 2, or a range with the fewer first, such as 2-4.',
+			'two days' => 'Assembly time in business days: type a number of business days, such as 2, or a range with the fewer first, such as 2-4.',
+			'4-2'      => 'Assembly time in business days: type a number of business days, such as 2, or a range with the fewer first, such as 2-4.',
+		) as $typed => $sentence ) {
+			\WC_Admin_Meta_Boxes::$meta_box_errors = array();
+			$sent                                  = self::form();
+			$sent['settings']['lead_days']         = (string) $typed;
+			$sent['settings']['start_button']      = '';
+			$sent['assembly']['fee']               = '9';
+			$this->send( $kit, $sent );
+			// The walkthrough of M12, finding 6 (D-385): the notice names the assembly time alone and leads to it.
+			self::assertSame(
+				array(
+					'<a href="#cbuild-kit-settings-lead_days">The kit&#039;s assembly time in business days was not saved. The Build tab shows it as you typed it, with what to put right.</a>',
+					'<a href="#cbuild-kit-settings-lead_days">' . esc_html( $sentence ) . '</a>',
+				),
+				self::notices(),
+				(string) $typed
+			);
+			$stored = self::stored( $kit->get_id() );
+			self::assertSame( array( 'schema_version' => 1, 'start_button' => false ), $stored[ Options::META_KIT_SETTINGS ], 'the button saved off, and no time, as the kit had (D-385)' );
+			self::assertSame( '9', $stored[ Options::META_KIT_ASSEMBLY ]['fee'], 'the rest of the kit saved' );
+
+			$panel = $this->panel( $kit );
+			self::assertSame( esc_attr( (string) $typed ), self::daysField( $panel ), 'shown as typed' );
+			self::assertMatchesRegularExpression( '/id="cbuild-kit-settings-lead_days"[^>]*aria-describedby="cbuild-kit-settings-lead_days-note cbuild-kit-error-0"\s+aria-invalid="true"/', $panel );
+			self::assertMatchesRegularExpression( '#id="cbuild-kit-assembly".*?Not saved\. This is what you typed.*?<li id="cbuild-kit-error-0"><a href="\#cbuild-kit-settings-lead_days">#s', $panel, 'listed in the Assembly section' );
+			self::assertDoesNotMatchRegularExpression( '#id="cbuild-kit-layout"(?:(?!id="cbuild-kit-settings-width_guide").)*cbuild-kit-error-0#s', $panel, 'and not in the Layout section' );
+		}
+	}
+
+	// #114, Security: the guide is saved only through WooCommerce's product save, which checks its nonce first, and
+	// only for who may manage the shop.
+	public function test_the_width_guide_is_saved_through_woocommerces_product_save_with_its_nonce_by_who_may_manage_the_shop(): void {
+		$kit  = KitFactory::kit();
+		$sent = self::form();
+		$sent['settings']['width_guide'] = array(
+			'shown' => '1',
+			'rows'  => array( array( 'shoe' => 'EU 40', 'from' => '8', 'to' => '' ) ),
+		);
+		$hooks = $this->hooks();
+		$hooks->register();
+		$save = function ( ?string $nonce ) use ( $kit, $sent ): void {
+			$property = new \ReflectionProperty( \WC_Admin_Meta_Boxes::class, 'saved_meta_boxes' );
+			$property->setValue( null, false );
+			$_POST = array(
+				'post_ID'      => (string) $kit->get_id(),
+				'product-type' => Options::PRODUCT_TYPE_KIT,
+				BuildTab::FIELD => wp_slash( $sent + array( BuildTab::END => '1' ) ),
+			) + ( null === $nonce ? array() : array( 'woocommerce_meta_nonce' => $nonce ) );
+			( new \WC_Admin_Meta_Boxes() )->save_meta_boxes( $kit->get_id(), get_post( $kit->get_id() ) );
+		};
+		try {
+			$this->as( 'shop_manager' );
+			$save( null );
+			self::assertNull( self::stored( $kit->get_id() )[ Options::META_KIT_SETTINGS ], 'no nonce, nothing saved' );
+			$save( 'not-a-nonce' );
+			self::assertNull( self::stored( $kit->get_id() )[ Options::META_KIT_SETTINGS ], 'a wrong nonce, nothing saved' );
+
+			$user = new \WP_User( $this->as( 'author' ) );
+			$user->add_cap( 'edit_products' );
+			$user->add_cap( 'edit_others_products' );
+			$user->add_cap( 'edit_published_products' );
+			$save( wp_create_nonce( 'woocommerce_save_data' ) );
+			self::assertNull( self::stored( $kit->get_id() )[ Options::META_KIT_SETTINGS ], 'who may edit products and not manage the shop saves nothing' );
+
+			$this->as( 'shop_manager' );
+			$save( wp_create_nonce( 'woocommerce_save_data' ) );
+			self::assertSame( 'EU 40', self::stored( $kit->get_id() )[ Options::META_KIT_SETTINGS ]['width_guide']['rows'][0]['shoe'] ?? null );
+		} finally {
+			$_POST = array();
+		}
 	}
 
 	public function test_a_wheelbase_outside_what_a_deck_has_is_not_saved_and_the_notice_says_the_range(): void {

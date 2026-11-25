@@ -1,0 +1,36 @@
+name: Docs
+
+# Markdown lint for a change CI leaves out (#111, D-345 addendum). CI's paths-ignore skips docs/, Markdown and LICENSE,
+# so a push or pull request of docs alone ran no lint at all: this workflow runs `npm run lint:md` on exactly those. A
+# change that also touches code runs CI, whose `npm run check` lints the Markdown too. Every action is pinned to a
+# commit SHA (docs/STANDARDS.md: CI hygiene).
+on:
+  push:
+    branches: [main]
+    paths: ['docs/**', '**.md', '.markdownlint-cli2.jsonc']
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths: ['docs/**', '**.md', '.markdownlint-cli2.jsonc']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: docs-${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.pull_request.number) || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  markdown:
+    name: Markdown lint (markdownlint-cli2)
+    runs-on: ubuntu-26.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: npm run lint:md

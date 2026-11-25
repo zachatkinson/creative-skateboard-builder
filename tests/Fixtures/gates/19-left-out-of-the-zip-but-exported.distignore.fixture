@@ -1,0 +1,2 @@
+# The release zip leaves docs out, and nothing tells git archive to.
+docs

@@ -50,6 +50,7 @@ final class OrderBuilds {
 	 * kept here (milestone 8).
 	 *
 	 * @since 0.5.0
+	 * @since 1.2.0 Takes the assembly time in business days, kept as `lead_days` (#142).
 	 *
 	 * @param Build                 $build  The build.
 	 * @param array<string, string> $labels Each slot's label, by its key.
@@ -57,9 +58,11 @@ final class OrderBuilds {
 	 * @param array<string, string> $skus   Each slot's part's SKU, by the slot's key; none where the part has none.
 	 * @param string                $lead   The kit's lead time, as the shopper read it.
 	 * @param string                $notice The kit's returns notice, as the shopper read it.
-	 * @return array{schema_version: int, kit: int, assembly: bool, picks: array<string, array{label: string, name: string, sku: string, part: int, quantity: int, specs: array<string, string>}>, lead_time: string, returns_notice: string}
+	 * @param string                $days   The kit's assembly time in business days, "2" or "2-4", or empty for none
+	 *                                      (from 1.2.0, #142).
+	 * @return array{schema_version: int, kit: int, assembly: bool, picks: array<string, array{label: string, name: string, sku: string, part: int, quantity: int, specs: array<string, string>}>, lead_time: string, returns_notice: string, lead_days: string}
 	 */
-	public function snapshot( Build $build, array $labels, array $names, array $skus, string $lead, string $notice ): array {
+	public function snapshot( Build $build, array $labels, array $names, array $skus, string $lead, string $notice, string $days = '' ): array {
 		$slots = $this->kits->kit( $build->kit )?->slots;
 		$asked = array();
 		foreach ( $build->picks as $key => $part ) {
@@ -88,6 +91,8 @@ final class OrderBuilds {
 			// Both are about assembly, and are kept for a build the shop assembles alone.
 			'lead_time'      => $build->assembly ? $lead : '',
 			'returns_notice' => $build->assembly ? $notice : '',
+			// From 1.2.0, after 1.1.0's keys, and so too about assembly (#142).
+			'lead_days'      => $build->assembly ? $days : '',
 		);
 	}
 

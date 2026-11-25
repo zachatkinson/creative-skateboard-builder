@@ -129,26 +129,41 @@ export function size( root: Element ): void {
 	const bar = root.querySelector( '.cbuild-bar' );
 	const page = root.ownerDocument.documentElement;
 	const view = root.ownerDocument.defaultView;
+	const shown = !! bar && !! view && 0 !== bar.getClientRects().length;
+	// What a press of the dimmed Next says, and the limit's line (D-383), sit over the bar while they say something,
+	// and cover what is under them as the bar does (WCAG 2.4.11). Empty or hidden, each has no height.
+	let above = 0;
+	if ( bar && shown ) {
+		const top = bar.getBoundingClientRect().top;
+		for ( const line of bar.querySelectorAll(
+			'.cbuild-bar__missing, .cbuild__limited'
+		) ) {
+			const said = line.getBoundingClientRect();
+			if ( said.height > 0 ) {
+				above = Math.max( above, top - said.top );
+			}
+		}
+	}
+	// Under the panel on a desktop, the lines lie over the foot of the panel, which scrolls inside itself: its own
+	// scroll padding keeps focus clear of them, sticky or not (D-383).
+	const panel = root.querySelector< HTMLElement >( '.cbuild__body' );
+	if ( panel && above > 0 ) {
+		panel.style.scrollPaddingBlockEnd = `${ Math.ceil( above ) }px`;
+	} else if ( panel ) {
+		panel.style.removeProperty( 'scroll-padding-block-end' );
+	}
 	if (
 		! bar ||
 		! view ||
-		0 === bar.getClientRects().length ||
+		! shown ||
 		'sticky' !== view.getComputedStyle( bar ).position
 	) {
 		page.style.removeProperty( '--cbuild-bar-size' );
 		return;
 	}
-	const box = bar.getBoundingClientRect();
-	// What a press of the dimmed Next says sits over the bar while it says something, and covers what is under it as
-	// the bar does (WCAG 2.4.11). Empty, it has no height.
-	const said = bar
-		.querySelector( '.cbuild-bar__missing' )
-		?.getBoundingClientRect();
-	const above =
-		said && said.height > 0 ? Math.max( 0, box.top - said.top ) : 0;
 	page.style.setProperty(
 		'--cbuild-bar-size',
-		`${ Math.ceil( box.height + above ) }px`
+		`${ Math.ceil( bar.getBoundingClientRect().height + above ) }px`
 	);
 }
 

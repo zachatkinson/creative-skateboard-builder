@@ -36,7 +36,7 @@ final class PageHooks implements Hookable {
 	 *
 	 * @since 0.6.0
 	 */
-	public const string BLOCK = 'creative-skateboard-builder/builder';
+	public const string BLOCK = Options::BLOCK;
 
 	/**
 	 * The block template kits take in a block theme: a slug no product can be read as, since a product's own
@@ -78,6 +78,28 @@ final class PageHooks implements Hookable {
 	 * @param BuilderPlace           $place Which kit a page shows.
 	 */
 	public function __construct( private Closure $page, private BuilderPlace $place ) {}
+
+	/**
+	 * Where each kit's builder is, as its Build tab chose (1.2.0, #113): none in a copy an earlier release's container
+	 * built, which asks `BuilderUrl::of()` as 1.1.0 did (D-208).
+	 *
+	 * @var BuilderAddress|null
+	 */
+	private ?BuilderAddress $address = null;
+
+	/**
+	 * The same, sending shoppers to the Builder page each kit's Build tab chose (#113, D-348). Only this release's
+	 * container calls it (D-208).
+	 *
+	 * @since 1.2.0
+	 *
+	 * @param BuilderAddress $address Where each kit's builder is.
+	 */
+	public function withAddress( BuilderAddress $address ): self {
+		$copy          = clone $this;
+		$copy->address = $address;
+		return $copy;
+	}
 
 	/**
 	 * The renderer, made once.
@@ -210,7 +232,7 @@ final class PageHooks implements Hookable {
 		if ( $kit < 1 ) {
 			return null;
 		}
-		$url = BuilderUrl::of( $kit );
+		$url = $this->address?->of( $kit ) ?? BuilderUrl::of( $kit );
 		if ( (string) get_permalink( $kit ) === $url ) {
 			return null;
 		}

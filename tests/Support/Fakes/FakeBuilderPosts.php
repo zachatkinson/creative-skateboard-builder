@@ -24,12 +24,20 @@ final class FakeBuilderPosts implements BuilderPosts {
 	public array $asked = array();
 
 	/**
+	 * The posts asked whether they are pages, in order.
+	 *
+	 * @var list<int>
+	 */
+	public array $pagesAsked = array();
+
+	/**
 	 * Constructor.
 	 *
 	 * @param array<int, array<mixed>> $blocks Each post's parsed blocks.
 	 * @param list<int>                $kits   The posts that are kits.
+	 * @param list<int>                $pages  The published pages a visitor may see, in the site's order.
 	 */
-	public function __construct( private array $blocks = array(), private array $kits = array() ) {}
+	public function __construct( private array $blocks = array(), private array $kits = array(), private array $pages = array() ) {}
 
 	public function blocks( int $post ): array {
 		$this->asked[ $post ] = ( $this->asked[ $post ] ?? 0 ) + 1;
@@ -38,5 +46,14 @@ final class FakeBuilderPosts implements BuilderPosts {
 
 	public function isKit( int $post ): bool {
 		return in_array( $post, $this->kits, true );
+	}
+
+	public function isPage( int $post ): bool {
+		$this->pagesAsked[] = $post;
+		return in_array( $post, $this->pages, true );
+	}
+
+	public function pages(): array {
+		return $this->pages;
 	}
 }

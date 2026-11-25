@@ -1,11 +1,13 @@
 #!/usr/bin/env bash
-# Before a commit: phpcbf on the staged PHP files and Prettier on the staged JavaScript, TypeScript, styles and JSON,
-# each file re-staged as fixed; then PHPCS on the PHP files, so the commit stops only on what neither tool can fix.
+# Before a commit: phpcbf on the staged PHP files, Prettier on the staged JavaScript, TypeScript, styles and JSON, and
+# markdownlint-cli2's fixes on the staged Markdown, each file re-staged as fixed; then PHPCS on the PHP files and
+# markdownlint-cli2 on the Markdown, so the commit stops only on what no tool can fix.
 # Turned on with `composer hooks` (git config core.hooksPath .githooks); `git commit --no-verify` skips it.
 #
 # - Only staged files, and only those the project's own runs cover: the PHP that phpcs.xml lists (`composer lint`) and
 #   the files package.json's `format` script names (`npm run format`), so a generated file (schema/, the API snapshot,
-#   the translations' JSON) or a tool script the standards leave alone is never rewritten.
+#   the translations' JSON) or a tool script the standards leave alone is never rewritten. Every Markdown file is in
+#   `npm run lint:md`'s scope (.markdownlint-cli2.jsonc), as every one that can be staged is not ignored.
 # - A file staged in part, with other changes to it not staged, is never rewritten: fixing it would mix the two. Its
 #   staged text is checked instead, and the commit stops if it needs fixing, naming the file.
 # - Names are read NUL-separated, so a file name with spaces is one file. Bash 3.2, as macOS ships it.
@@ -50,6 +52,8 @@ php_whole=()
 php_part=()
 pretty_whole=()
 pretty_part=()
+md_whole=()
+md_part=()
 while IFS= read -r -d '' file; do
 	case "$file" in
 		*.php) in_scope "$file" ${php_scope[@]+"${php_scope[@]}"} || continue; kind=php ;;
@@ -57,21 +61,23 @@ while IFS= read -r -d '' file; do
 			in_scope "$file" ${format_scope[@]+"${format_scope[@]}"} || continue
 			kind=pretty
 			;;
+		*.md) kind=md ;;
 		*) continue ;;
 	esac
 	if git diff --quiet -- "$file"; then
-		if [ "$kind" = php ]; then php_whole+=("$file"); else pretty_whole+=("$file"); fi
+		case "$kind" in php) php_whole+=("$file") ;; pretty) pretty_whole+=("$file") ;; md) md_whole+=("$file") ;; esac
 	else
-		if [ "$kind" = php ]; then php_part+=("$file"); else pretty_part+=("$file"); fi
+		case "$kind" in php) php_part+=("$file") ;; pretty) pretty_part+=("$file") ;; md) md_part+=("$file") ;; esac
 	fi
 done < <(git diff --cached --name-only --diff-filter=ACMR -z)
 
-total=$(( ${#php_whole[@]} + ${#php_part[@]} + ${#pretty_whole[@]} + ${#pretty_part[@]} ))
+total=$(( ${#php_whole[@]} + ${#php_part[@]} + ${#pretty_whole[@]} + ${#pretty_part[@]} + ${#md_whole[@]} + ${#md_part[@]} ))
 [ "$total" -gt 0 ] || exit 0
 
 phpcbf=vendor/bin/phpcbf
 phpcs=vendor/bin/phpcs
 prettier=node_modules/.bin/prettier
+markdownlint=node_modules/.bin/markdownlint-cli2
 if [ $(( ${#php_whole[@]} + ${#php_part[@]} )) -gt 0 ] && [ ! -x "$phpcbf" ]; then
 	echo "pre-commit: $phpcbf is missing; run composer install." >&2
 	exit 1
@@ -80,8 +86,14 @@ if [ $(( ${#pretty_whole[@]} + ${#pretty_part[@]} )) -gt 0 ] && [ ! -x "$prettie
 	echo "pre-commit: $prettier is missing; run npm ci." >&2
 	exit 1
 fi
+if [ $(( ${#md_whole[@]} + ${#md_part[@]} )) -gt 0 ] && [ ! -x "$markdownlint" ]; then
+	echo "pre-commit: $markdownlint is missing; run npm ci." >&2
+	exit 1
+fi
 
 failed=0
+scratch="$(mktemp -d)"
+trap 'rm -rf "$scratch"' EXIT
 
 if [ ${#php_whole[@]} -gt 0 ]; then
 	# phpcbf exits 1 when it fixed something and 2 when it could not fix all it found; PHPCS below says what is left.
@@ -106,9 +118,22 @@ if [ ${#pretty_whole[@]} -gt 0 ]; then
 	git add -- "${pretty_whole[@]}"
 fi
 
+if [ ${#md_whole[@]} -gt 0 ]; then
+	# A leading colon makes each name a literal path; --no-globs leaves out the config's own glob of every file. It
+	# exits 1 when issues are left after its fixes, which it lists, and 2 when it could not run.
+	md_paths=()
+	for file in "${md_whole[@]}"; do md_paths+=(":$file"); done
+	status=0
+	"$markdownlint" --no-globs --fix "${md_paths[@]}" > /dev/null 2> "$scratch/markdownlint.txt" || status=$?
+	git add -- "${md_whole[@]}"
+	if [ "$status" -ne 0 ]; then
+		cat "$scratch/markdownlint.txt" >&2
+		echo "pre-commit: markdownlint-cli2 still finds the problems above, which it cannot fix." >&2
+		failed=1
+	fi
+fi
+
 # Staged in part: the staged text alone is checked, and nothing is written.
-scratch="$(mktemp -d)"
-trap 'rm -rf "$scratch"' EXIT
 if [ ${#php_part[@]} -gt 0 ]; then
 	for file in "${php_part[@]}"; do
 		if ! git show ":$file" | "$phpcs" -q --stdin-path="$file" - > "$scratch/phpcs.txt"; then
@@ -123,6 +148,21 @@ if [ ${#pretty_part[@]} -gt 0 ]; then
 		git show ":$file" > "$scratch/staged"
 		if ! "$prettier" --stdin-filepath "$file" < "$scratch/staged" > "$scratch/formatted" || ! cmp -s "$scratch/staged" "$scratch/formatted"; then
 			echo "pre-commit: $file is staged in part and its staged text is not formatted: run $prettier --write on it, and stage it again." >&2
+			failed=1
+		fi
+	done
+fi
+# Markdown's staged text is checked at its own path beside a copy of the config, so the config's per-file overrides
+# (the readme, the pull request template) still apply.
+if [ ${#md_part[@]} -gt 0 ]; then
+	mkdir -p "$scratch/md"
+	cp .markdownlint-cli2.jsonc "$scratch/md/"
+	for file in "${md_part[@]}"; do
+		mkdir -p "$scratch/md/$(dirname "$file")"
+		git show ":$file" > "$scratch/md/$file"
+		if ! ( cd "$scratch/md" && "$OLDPWD/$markdownlint" --no-globs ":$file" ) > /dev/null 2> "$scratch/markdownlint.txt"; then
+			cat "$scratch/markdownlint.txt" >&2
+			echo "pre-commit: $file is staged in part and its staged text needs fixing: run $markdownlint --fix on it, and stage it again." >&2
 			failed=1
 		fi
 	done

@@ -17,6 +17,8 @@ use CreativeBranding\SkateboardBuilder\Domain\Kit\DocumentError;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Fields;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\InvalidDocument;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\KitLayout;
+use CreativeBranding\SkateboardBuilder\Domain\Kit\KitSettings;
+use CreativeBranding\SkateboardBuilder\Domain\Kit\LeadDays;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Kit;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Part;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Picks;
@@ -62,11 +64,52 @@ final class KitEditor {
 	public const LAYOUT   = 'layout';
 
 	/**
+	 * The kit's settings from 1.2.0 on: the Builder page, the start button and the width guide (D-354). A new kit
+	 * setting goes in this document, which the release before never reads, never as a new key in an older one.
+	 *
+	 * @since 1.2.0
+	 */
+	public const SETTINGS = 'settings';
+
+	/**
 	 * The picture's wheelbase anchor is outside what a deck has: 10 to 20 in.
 	 *
 	 * @since 0.7.0
 	 */
 	public const WHEELBASE_RANGE = 'picture_wheelbase_range';
+
+	/**
+	 * A width guide's row names a deck width outside 5 to 12 in (#114).
+	 *
+	 * @since 1.2.0
+	 */
+	public const GUIDE_WIDTH = 'width_guide_width_range';
+
+	/**
+	 * A width guide names a shoe size twice (#114).
+	 *
+	 * @since 1.2.0
+	 */
+	public const GUIDE_SHOE_TWICE = 'width_guide_shoe_twice';
+
+	/**
+	 * The assembly time is not a count of business days or a range of them, the fewer first (#142).
+	 *
+	 * @since 1.2.0
+	 */
+	public const LEAD_DAYS_FORM = 'settings_lead_days_form';
+
+	/**
+	 * The assembly time names more than 60 business days (#142).
+	 *
+	 * @since 1.2.0
+	 */
+	public const LEAD_DAYS_RANGE = 'settings_lead_days_range';
+
+	/**
+	 * The settings' fields refused alone where wrong (D-385). The start button is a box, which is never wrong.
+	 */
+	private const OWN_FIELDS = array( 'width_guide', 'builder_page', 'lead_days' );
 
 	/**
 	 * A document the domain read and its schema still refused. The schemas and the domain agree
@@ -108,6 +151,14 @@ final class KitEditor {
 	public const SET_SIZE = 'set_size_missing';
 
 	/**
+	 * The settings name a Builder page the tab does not offer: not a published page that holds the kit's Builder
+	 * block, nor the one the kit has (1.2.0, #113).
+	 *
+	 * @since 1.2.0
+	 */
+	public const BUILDER_PAGE = 'layout_builder_page_not_offered';
+
+	/**
 	 * The slots the rules read, which a new slot may be made as. Any other new slot gets its key from its label.
 	 *
 	 * @since 0.4.0
@@ -147,8 +198,11 @@ final class KitEditor {
 	 * @param array<mixed>                             $sent      The tab's fields: `slots`, `rules`, `presets` and `assembly`.
 	 * @param array<string, array<string, mixed>|null> $stored    The kit's documents as stored, by name; null where there is none.
 	 * @param string                                   $separator The shop's decimal separator.
+	 * @param list<int>|null                           $pages     The pages the settings' Builder page may be, from
+	 *                                                            1.2.0: those that hold the kit's Builder block. The
+	 *                                                            one it has is kept too. Null checks none.
 	 */
-	public function draft( array $sent, array $stored, string $separator = '.' ): KitDraft {
+	public function draft( array $sent, array $stored, string $separator = '.', ?array $pages = null ): KitDraft {
 		$built = array();
 		if ( is_array( $sent['slots'] ?? null ) ) {
 			$built[ self::SLOTS ] = self::slots( $sent['slots'], self::keysOf( $stored[ self::SLOTS ] ?? null ) );
@@ -165,12 +219,24 @@ final class KitEditor {
 		if ( is_array( $sent['layout'] ?? null ) ) {
 			$built[ self::LAYOUT ] = self::layout( $sent['layout'] );
 		}
+		if ( is_array( $sent['settings'] ?? null ) ) {
+			$built[ self::SETTINGS ] = self::settings( $sent['settings'], $stored[ self::SETTINGS ] ?? null, $separator );
+		}
 
 		$problems = array();
 		$inForce  = array();
-		foreach ( array( self::SLOTS, self::RULES, self::ASSEMBLY, self::PICTURE, self::LAYOUT ) as $key ) {
+		$saving   = null;
+		foreach ( array( self::SLOTS, self::RULES, self::ASSEMBLY, self::PICTURE, self::LAYOUT, self::SETTINGS ) as $key ) {
 			$inForce[ $key ] = $stored[ $key ] ?? null;
 			if ( ! isset( $built[ $key ] ) ) {
+				continue;
+			}
+			if ( self::SETTINGS === $key ) {
+				[ $saving, $found ] = $this->settled( $built[ $key ], $stored[ $key ] ?? null, $pages );
+				if ( null !== $saving ) {
+					$inForce[ $key ] = $saving;
+				}
+				$problems = array( ...$problems, ...$found );
 				continue;
 			}
 			$found = $this->held( $key, $built[ $key ], self::read( $key, $built[ $key ] ) );
@@ -228,7 +294,83 @@ final class KitEditor {
 				$documents[ $key ] = $document;
 			}
 		}
+		// The settings' fields that read are saved beside the ones refused, which keep what the kit has (D-385).
+		if ( null !== $saving ) {
+			$documents[ self::SETTINGS ] = $saving;
+		}
 		return new KitDraft( $documents, $refused, $problems, $this->notes( $inForce, $parts ), $unoffered );
+	}
+
+	/**
+	 * The settings to save, and what is wrong with them. The settings hold four things shown in three sections (D-354):
+	 * the Builder page, the start button, the width guide and the assembly time. A field that is wrong is refused
+	 * alone and keeps what the kit has, and the rest is saved (D-385). The domain names one problem at a time, so each
+	 * wrong field is put back in turn until the rest reads. A problem that is no one field's refuses them all.
+	 *
+	 * @param array<string, mixed>      $built  The settings as sent.
+	 * @param array<string, mixed>|null $stored The settings as stored.
+	 * @param list<int>|null            $pages  The pages the Builder page may be; null checks none.
+	 * @return array{0: array<string, mixed>|null, 1: list<array{document: string, code: string, path: string, values: array<string, string>}>}
+	 */
+	private function settled( array $built, ?array $stored, ?array $pages ): array {
+		$saving   = $built;
+		$problems = array();
+		$back     = array();
+		while ( true ) {
+			$found = $this->held( self::SETTINGS, $saving, self::read( self::SETTINGS, $saving ) );
+			if ( array() === $found ) {
+				break;
+			}
+			$field = self::fieldOf( $found[0]['path'] );
+			// What the kit has for a field put back fails too: the problem is the field's, named once already.
+			if ( in_array( $field, $back, true ) ) {
+				return array( null, $problems );
+			}
+			$problems = array( ...$problems, ...$found );
+			if ( ! in_array( $field, self::OWN_FIELDS, true ) ) {
+				return array( null, $problems );
+			}
+			$back[] = $field;
+			$saving = self::kept( $saving, $stored, $field );
+		}
+		$page = $saving['builder_page'] ?? null;
+		// The page the kit has is kept while the owner leaves it, though it may be one the tab offers no longer: it is
+		// checked again each time it is used.
+		$has = $stored['builder_page'] ?? null;
+		if ( null !== $pages && is_int( $page ) && $has !== $page && ! in_array( $page, $pages, true ) ) {
+			$problems[] = self::problem( self::SETTINGS, self::BUILDER_PAGE, 'builder_page' );
+			$saving     = self::kept( $saving, $stored, 'builder_page' );
+		}
+		return array( $saving, $problems );
+	}
+
+	/**
+	 * The settings with one field as the kit has it, in its place, or without it where the kit has none.
+	 *
+	 * @param array<string, mixed>      $settings The settings.
+	 * @param array<string, mixed>|null $stored   The settings as stored.
+	 * @param string                    $field    The field.
+	 * @return array<string, mixed>
+	 */
+	private static function kept( array $settings, ?array $stored, string $field ): array {
+		if ( is_array( $stored ) && array_key_exists( $field, $stored ) ) {
+			$settings[ $field ] = $stored[ $field ];
+		} else {
+			unset( $settings[ $field ] );
+		}
+		return $settings;
+	}
+
+	/**
+	 * The settings field a problem's path is in: its key before the first "." or "[", "width_guide" for
+	 * "width_guide.rows[0].from" (D-385). The editor refuses that field alone, and the Build tab names it.
+	 *
+	 * @since 1.2.0
+	 *
+	 * @param string $path A problem's path in the settings.
+	 */
+	public static function fieldOf( string $path ): string {
+		return (string) preg_replace( '/[.\[].*\z/s', '', $path );
 	}
 
 	/**
@@ -287,10 +429,19 @@ final class KitEditor {
 				self::RULES => RuleSettings::fromDocument( $document ),
 				self::PICTURE => PictureSettings::fromDocument( $document ),
 				self::LAYOUT => KitLayout::fromDocument( $document ),
+				self::SETTINGS => KitSettings::fromDocument( $document ),
 				default                 => Assembly::fromDocument( $document ),
 			};
 		} catch ( InvalidDocument $refused ) {
-			$code = self::PICTURE === $key && DocumentError::OutOfRange === $refused->reason ? self::WHEELBASE_RANGE : $refused->reason->value;
+			// Only the settings document has a width guide and an assembly time, so neither needs a check of the key.
+			$code = match ( true ) {
+				'lead_days' === $refused->path => DocumentError::OutOfRange === $refused->reason ? self::LEAD_DAYS_RANGE : self::LEAD_DAYS_FORM,
+				self::SETTINGS === $key && DocumentError::Duplicate === $refused->reason => self::GUIDE_SHOE_TWICE,
+				DocumentError::OutOfRange !== $refused->reason => $refused->reason->value,
+				self::PICTURE === $key => self::WHEELBASE_RANGE,
+				(bool) preg_match( '/\Awidth_guide\.rows\[\d+\]\.(from|to)\z/', $refused->path ) => self::GUIDE_WIDTH,
+				default => $refused->reason->value,
+			};
 			return array( self::problem( $key, $code, $refused->path ) );
 		}
 		return array();
@@ -627,7 +778,8 @@ final class KitEditor {
 
 	/**
 	 * The layout document from the tab's fields (D-255): each choice sent as text, which the domain then holds to its
-	 * choices. Show ready builds (1.1.0, #104) is a checkbox: one not ticked is not sent, and is off.
+	 * choices. Show ready builds (1.1.0, #104) is a checkbox: one not ticked is not sent, and is off. It holds 1.1.0's
+	 * keys alone: a later setting goes in the settings document (D-354).
 	 *
 	 * @param array<mixed> $sent The fields.
 	 * @return array<string, mixed>
@@ -641,6 +793,96 @@ final class KitEditor {
 		}
 		$document['show_presets'] = self::on( $sent, 'show_presets' );
 		return $document;
+	}
+
+	/**
+	 * The settings document from the tab's fields (D-354). Show "Build a complete with this deck" on its parts' pages
+	 * (#115) is a checkbox: one not ticked is not sent, and is off. The Builder page (#113) is a page's ID, or empty for
+	 * the kit's own page; a form that does not send it at all keeps the one the kit has. The width guide (#114) is
+	 * stored only where its section was sent. The assembly time (#142) is kept as "2-4" however it was typed, left out
+	 * where it is empty, and kept as the kit has it where a form does not send it; what is not business days is kept
+	 * as typed, for the domain to refuse.
+	 *
+	 * @param array<mixed>              $sent      The fields.
+	 * @param array<string, mixed>|null $stored    The settings as stored.
+	 * @param string                    $separator The shop's decimal separator.
+	 * @return array<string, mixed>
+	 */
+	private static function settings( array $sent, ?array $stored, string $separator ): array {
+		$document = array(
+			'schema_version' => 1,
+			'start_button'   => self::on( $sent, 'start_button' ),
+		);
+		if ( is_array( $sent['width_guide'] ?? null ) ) {
+			$document['width_guide'] = self::guide( $sent['width_guide'], $separator );
+		}
+		$page = array_key_exists( 'builder_page', $sent ) ? self::text( $sent, 'builder_page' ) : null;
+		if ( null === $page && isset( $stored['builder_page'] ) ) {
+			$document['builder_page'] = $stored['builder_page'];
+		} elseif ( null !== $page && '' !== $page && '0' !== $page ) {
+			// Anything but an ID is kept as typed, for the domain to refuse.
+			$document['builder_page'] = 1 === preg_match( '/\A[1-9]\d{0,17}\z/', $page ) ? (int) $page : $page;
+		}
+		$days = array_key_exists( 'lead_days', $sent ) ? self::text( $sent, 'lead_days' ) : null;
+		if ( null === $days && isset( $stored['lead_days'] ) ) {
+			$document['lead_days'] = $stored['lead_days'];
+		} elseif ( null !== $days && '' !== $days ) {
+			$document['lead_days'] = self::days( $days );
+		}
+		return $document;
+	}
+
+	/**
+	 * Business days as the settings keep them, "2-4" (#142). Text that is not business days is returned as typed.
+	 *
+	 * @param string $typed What was typed.
+	 */
+	private static function days( string $typed ): string {
+		try {
+			return LeadDays::read( $typed )->stored();
+		} catch ( InvalidDocument ) {
+			return $typed;
+		}
+	}
+
+	/**
+	 * The width guide from its section's fields (#114, D-350): whether it is shown, and the shop's own rows unless the
+	 * plugin's are ticked. A row left empty is no row, and no rows at all is the plugin's, which are stored as none so
+	 * they keep their translatable words. A field left empty in a row that has others is left out, so the domain names
+	 * it as missing.
+	 *
+	 * @param array<mixed> $sent      The section's fields.
+	 * @param string       $separator The shop's decimal separator.
+	 * @return array<string, mixed>
+	 */
+	private static function guide( array $sent, string $separator ): array {
+		$guide = array( 'shown' => self::on( $sent, 'shown' ) );
+		$rows  = array();
+		// The plugin's rows ticked, any typed are not kept.
+		foreach ( self::on( $sent, 'plugins' ) ? array() : self::map( $sent['rows'] ?? null ) as $row ) {
+			$row    = self::map( $row );
+			$fields = array_filter(
+				array(
+					'shoe' => self::text( $row, 'shoe' ),
+					'from' => self::text( $row, 'from' ),
+					'to'   => self::text( $row, 'to' ),
+				),
+				static fn( string $text ): bool => '' !== $text
+			);
+			if ( array() === $fields ) {
+				continue;
+			}
+			foreach ( array( 'from', 'to' ) as $width ) {
+				if ( isset( $fields[ $width ] ) ) {
+					$fields[ $width ] = self::measure( $fields[ $width ], Unit::Inch, $separator );
+				}
+			}
+			$rows[] = $fields;
+		}
+		if ( array() !== $rows ) {
+			$guide['rows'] = $rows;
+		}
+		return $guide;
 	}
 
 	/**

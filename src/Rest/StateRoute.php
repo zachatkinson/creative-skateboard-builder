@@ -16,6 +16,7 @@ use CreativeBranding\SkateboardBuilder\Domain\Look\Chips;
 use CreativeBranding\SkateboardBuilder\Domain\Look\Shelf;
 use CreativeBranding\SkateboardBuilder\Domain\Look\ShelfAsk;
 use CreativeBranding\SkateboardBuilder\Front\Builder;
+use CreativeBranding\SkateboardBuilder\Front\BuilderAddress;
 use CreativeBranding\SkateboardBuilder\Front\BuilderPlace;
 use CreativeBranding\SkateboardBuilder\Front\BuilderUrl;
 use CreativeBranding\SkateboardBuilder\Front\BuildLink;
@@ -28,6 +29,7 @@ use CreativeBranding\SkateboardBuilder\Port\Clock;
 use CreativeBranding\SkateboardBuilder\Port\Kits;
 use CreativeBranding\SkateboardBuilder\Service\BuildState;
 use CreativeBranding\SkateboardBuilder\Service\ComposedPictures;
+use CreativeBranding\SkateboardBuilder\Service\Phases;
 use CreativeBranding\SkateboardBuilder\Service\RateLimit;
 use CreativeBranding\SkateboardBuilder\Service\ShelfQuery;
 use CreativeBranding\SkateboardBuilder\Support\Cast;
@@ -99,6 +101,50 @@ final class StateRoute implements Hookable {
 	 * @param Clock|null                         $clock    Times an answer for a shop manager's Server-Timing header (1.1.0); none in tests that leave it out.
 	 */
 	public function __construct( private Kits $kits, private Closure $state, private Closure $writer, private Closure $limit, private Closure $cart, private Closure $builder, private BuilderPlace $place, private ?Closure $pictures = null, private ?Clock $clock = null ) {}
+
+	/**
+	 * Where each kit's builder is, as its Build tab chose (1.2.0, #113): none in a copy an earlier release's container
+	 * built, which asks `BuilderUrl::of()` as 1.1.0 did (D-208).
+	 *
+	 * @var BuilderAddress|null
+	 */
+	private ?BuilderAddress $address = null;
+
+	/**
+	 * The answer's phases, timed, for a shop manager's Server-Timing header (1.2.0, #125): none in a copy an earlier
+	 * release's container built, whose header has the route's time and queries alone.
+	 *
+	 * @var Phases|null
+	 */
+	private ?Phases $phases = null;
+
+	/**
+	 * The same, telling a shop manager the answer's phases beside the route's time (#125, D-365). Only this release's
+	 * container calls it (D-208).
+	 *
+	 * @since 1.2.0
+	 *
+	 * @param Phases $phases The answer's phases, as `Front\StateAnswer` times them.
+	 */
+	public function withPhases( Phases $phases ): self {
+		$copy         = clone $this;
+		$copy->phases = $phases;
+		return $copy;
+	}
+
+	/**
+	 * The same, sending shoppers to the Builder page each kit's Build tab chose (#113, D-348). Only this release's
+	 * container calls it (D-208).
+	 *
+	 * @since 1.2.0
+	 *
+	 * @param BuilderAddress $address Where each kit's builder is.
+	 */
+	public function withAddress( BuilderAddress $address ): self {
+		$copy          = clone $this;
+		$copy->address = $address;
+		return $copy;
+	}
 
 	/**
 	 * Add the hooks.
@@ -232,13 +278,18 @@ final class StateRoute implements Hookable {
 	public function state( WP_REST_Request $request ) {
 		$start   = $this->clock?->now();
 		$queries = get_num_queries();
-		$answer  = $this->limited( $request );
+		$this->phases?->forget();
+		$answer = $this->limited( $request );
 		// The route's own time and queries, to a shop manager alone, so the priming work can be measured on a real
-		// host (#90): `cbuild-route` in milliseconds, from the callback's start, and `cbuild-queries`.
+		// host (#90): `cbuild-route` in milliseconds, from the callback's start, and `cbuild-queries`. Then each phase
+		// of the answer that ran, in milliseconds, in the order it first ran: the shelf, the cards and the decks'
+		// boards (#125, D-365).
 		if ( null !== $this->clock && null !== $start && $answer instanceof WP_REST_Response && current_user_can( 'manage_woocommerce' ) ) {
-			$end  = $this->clock->now();
-			$took = ( (int) $end->format( 'U' ) - (int) $start->format( 'U' ) ) * 1000 + ( (int) $end->format( 'u' ) - (int) $start->format( 'u' ) ) / 1000;
-			$answer->header( 'Server-Timing', sprintf( 'cbuild-route;dur=%.1F, cbuild-queries;desc="%d"', $took, get_num_queries() - $queries ) );
+			$timing = sprintf( 'cbuild-route;dur=%.1F, cbuild-queries;desc="%d"', Phases::between( $start, $this->clock->now() ), get_num_queries() - $queries );
+			foreach ( $this->phases?->took() ?? array() as $phase => $took ) {
+				$timing .= sprintf( ', cbuild-%s;dur=%.1F', $phase, $took );
+			}
+			$answer->header( 'Server-Timing', $timing );
 		}
 		return $answer;
 	}
@@ -399,7 +450,7 @@ final class StateRoute implements Hookable {
 		if ( null !== $post && is_post_publicly_viewable( $post ) && ! post_password_required( $post ) && $this->place->holds( $post->ID, $kit ) ) {
 			return (string) get_permalink( $post );
 		}
-		return BuilderUrl::of( $kit );
+		return $this->address?->of( $kit ) ?? BuilderUrl::of( $kit );
 	}
 
 	/**

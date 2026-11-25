@@ -2,11 +2,31 @@
 
 How the builder draws a board from its parts, and how to prepare the layer images it draws from. The first half is for a shop owner or the photographer who shoots the parts; the last section is for a developer. Every figure here is the code's, as of 0.8.0.
 
+## Contents
+
+- [What the picture is](#what-the-picture-is)
+- [The parts it draws](#the-parts-it-draws)
+- [The shooting template](#the-shooting-template)
+- [The file](#the-file)
+- [Where to set it](#where-to-set-it)
+- [The kit's Picture section](#the-kits-picture-section)
+- [The renditions](#the-renditions)
+- [The composed pictures](#the-composed-pictures)
+- [Finding parts without one](#finding-parts-without-one)
+- [For developers](#for-developers)
+
 ## What the picture is
 
 The picture is the board as the shopper builds it, seen from underneath with the nose at the top. It heads every step of the builder and the review, and is drawn again with each pick.
 
-From 0.8.0 the page also draws the board's top, the same board turned over about its length (#46). The grip tape step shows the top, and every other step the underside. With JavaScript a button by the board, "Show the top", turns it over on any step; it is pressed (`aria-pressed`) while the top is shown, and once the shopper has used it, their side is kept on every later step that can draw it. Without JavaScript the button is not shown, and each step shows its own side. The phone bar's board shows the same side as the picture, and the picture's description ends "Seen from underneath." or "Seen from the top.". The board turns over in the time of the builder's other movements, and not at all where the shopper asks for reduced motion. The composed pictures stay the underside.
+From 0.8.0 the page also draws the board's top, the same board turned over about its length (#46). From 1.2.0 each step opens on the side its part is seen on: the hardware and grip tape steps on the top, where the bolt heads and the grip are drawn, and every other step and the review underneath (#127, D-367). A slot of a shop's own, which the picture does not draw, opens underneath.
+
+- **With JavaScript** two buttons by the board, "Underside" and "Top", in a group named by the picture's heading, turn it over on any step. The side shown is pressed (`aria-pressed`), filled in the accent, bold and ticked; the other is a plain button (#128, D-369).
+- **A turn lasts for the step.** The side the shopper chose is kept while they stay on the step, through a pick or a filter, and the next step opens on its own side (#127, D-368).
+- **Without JavaScript** the buttons are not shown, and each step shows its own side.
+- **The phone bar's board** shows the same side as the picture, and the picture's description ends "Seen from underneath." or "Seen from the top.".
+- **Turning over.** The board turns over in the time of the builder's other movements, and not at all where the shopper asks for reduced motion.
+- **The composed pictures** stay the underside.
 
 It is drawn in two places from one layout:
 
@@ -139,6 +159,7 @@ For the page, the plugin makes smaller copies of each layer image, and leaves Wo
 - **Sizes.** The part's box at half a pixel, one pixel and two pixels to the millimetre, the image fitted into each and never enlarged. An image too small for a size is made once at its own size. The page offers them in `srcset`, and the browser picks.
 - **Types.** AVIF, then WebP, each through the image editor WordPress chooses. A type no editor on the host writes is not made. While a rendition is saved, an `image_editor_output_format` mapping of its own type is set aside, so a shop that maps WebP to AVIF still gets both; the shop's own uploads are as it set them. A rendition that is not made is logged, and Site Health counts the drawn parts whose layer image has none (D-209).
 - **When.** In the part's index job, `cbuild_index_part`, after its specs are indexed, since the specs give the box. Saving a new layer image queues the job. No page request makes a rendition: until the job has run, the page shows the image's own file.
+- **A part that gives no size.** The box is the one the page draws, so a part with no spec the layout reads gets the usual value's sizes: a grip with no width or length is made as the 9 by 33 in sheet, and wheels with no diameter as 54 mm wheels. Until 1.2.0 a part with no spec in the index got no rendition at all, and Site Health did not count it (#129, D-371). The update to 1.2.0 queues the index job of each part whose layer image has no copies, so the shop has nothing to press (D-373). A deck with no width is not drawn, so it gets none.
 - **Where.** `wp-content/uploads/creative-skateboard-builder/layers/`, named by the attachment's ID, a hash of its file's name and its size in bytes, then the pixels. An image edited or replaced in the Media Library gets new names, so the page never shows an old copy, and the old file's renditions are removed when the new ones are made. Deleting the image from the Media Library removes all of its renditions.
 
 In the page, the deck's layer is fetched first (`fetchpriority="high"`), and every layer has an explicit size. A pick swaps one layer in place.
@@ -158,13 +179,17 @@ In the page, the deck's layer is fetched first (`fetchpriority="high"`), and eve
 - **The cart.** The kit's line shows the 480 by 480 picture once it is made, and the deck's product photo until then, both with the kit's name as their alt text. A build with no deck keeps whatever the kit product shows. Each part keeps its own line with its own photo.
 - **Pruning.** `cbuild_prune_pictures` runs daily, from a day after the first picture is drawn. It deletes the pictures not shown for 30 days, with any file a draw left half-written, then the oldest of the rest until the folder holds 200 MB at most. Showing a picture marks it used, at most once a day.
 - **The libraries.** GD is tried first and Imagick second. Each must read PNG and WebP and write the canvas's type, and a picture with an AVIF layer is drawn by one that reads AVIF too. Imagick reads each layer by its type's own coder. A host with neither makes no composed picture: the cart and share cards show the deck's photo, and the page's own picture is not affected.
-- **Site Health.** Tools > Site Health runs "The skateboard builder's composed pictures". It recommends an action where neither library can make the pictures, where the uploads folder cannot be written, or where drawn parts' layer images have no resized copies, and passes otherwise.
+- **Site Health.** Tools > Site Health runs "The skateboard builder's composed pictures". It recommends an action where neither library can make the pictures, where the uploads folder cannot be written, or where drawn parts' layer images have no resized copies, and passes otherwise. From 1.2.0 it names those parts, up to five, and says how to make their copies (D-372).
 
 Uninstall removes `wp-content/uploads/creative-skateboard-builder/`, with the renditions and the composed pictures, and leaves the shop's own uploads.
 
 ## Finding parts without one
 
-WooCommerce > Builder > Catalogue check lists each part of a drawn slot with no layer image: one line per kit, slot and part, saying "It has no layer image, so the picture shows its labelled photo in the slot …". A variation that takes its parent's image is not listed, and an image deleted from the Media Library counts as none. These lines come after every other finding, since a part without a layer image still sells. The check's page lists them in a section of their own, "Parts with no layer image", with the number of parts and its own 500 rows, and Site Health counts them apart from the things to fix, in words of their own (D-211). Each links to the part's Layer image field.
+WooCommerce > Builder > Catalogue check lists each part of a drawn slot with no layer image: one line per kit, slot and part, saying "It has no layer image, so the picture shows its labelled photo in the slot …".
+
+- **What counts.** A variation that takes its parent's image is not listed, and an image deleted from the Media Library counts as none.
+- **Where they are listed.** These lines come after every other finding, since a part without a layer image still sells. The check's page lists them in a section of their own, "Parts with no layer image", with the number of parts and its own 500 rows, and Site Health counts them apart from the things to fix, in words of their own (D-211).
+- **A link to the field.** Each links to the part's Layer image field.
 
 ## For developers
 
@@ -173,4 +198,27 @@ WooCommerce > Builder > Catalogue check lists each part of a drawn slot with no 
 - **One layout, two renderers.** `Domain\Picture\Layout::of()` lays the board out from the picks and the kit's `PictureSettings`. `Port\PictureRenderer` takes that layout and the parts' `LayerArt`. `Front\PageRenderer` gives the page's layers, which the state route's `picture.layers` carries (see [HOOKS.md](HOOKS.md)). `Service\ComposedRenderer` gives a `Domain\Picture\Composition`, worked out to the pixel before any library is called, which `Adapter\WpPictureFiles` draws with GD or Imagick. The interface is internal and has no filter yet; a 3D view after 1.0 would be a third renderer.
 - **Names change with the drawing.** `Composition::VERSION` is in every composed picture's name, so a change to how a picture is drawn gives new files rather than showing old ones.
 
-The decisions behind this page: D-060 (the layout), D-190 (the layer image), D-192 (the kit's settings), D-193 (the Catalogue check), D-194 (the renditions), D-195 (the renderer and the page), D-196 (the composer), D-197 (the job), D-198 (pruning and Site Health), D-199 (the cart's thumbnail), D-200 (the share card), D-201 (the renditions' cleanup), D-208 (updating from an earlier release), D-209 (renditions under an output format), D-210 (AVIF layer images), D-211 (the missing layers, counted apart) and D-212 (the share card's name and caching), in [DECISIONS.md](DECISIONS.md).
+The decisions behind this page, in [DECISIONS.md](DECISIONS.md):
+
+| Decision | What it settled |
+| --- | --- |
+| D-060 | The layout |
+| D-190 | The layer image |
+| D-192 | The kit's settings |
+| D-193 | The Catalogue check |
+| D-194 | The renditions |
+| D-195 | The renderer and the page |
+| D-196 | The composer |
+| D-197 | The job |
+| D-198 | Pruning and Site Health |
+| D-199 | The cart's thumbnail |
+| D-200 | The share card |
+| D-201 | The renditions' cleanup |
+| D-208 | Updating from an earlier release |
+| D-209 | Renditions under an output format |
+| D-210 | AVIF layer images |
+| D-211 | The missing layers, counted apart |
+| D-212 | The share card's name and caching |
+| D-371 | Renditions of a part that gives no size |
+| D-372 | Site Health names the parts without copies |
+| D-373 | The update to 1.2.0 queues the missing copies |

@@ -22,6 +22,7 @@ use CreativeBranding\SkateboardBuilder\Port\Kits;
 use CreativeBranding\SkateboardBuilder\Port\LayerImages;
 use CreativeBranding\SkateboardBuilder\Port\PartCatalogue;
 use CreativeBranding\SkateboardBuilder\Port\PartLooks;
+use CreativeBranding\SkateboardBuilder\Port\PartsKeptOut;
 use CreativeBranding\SkateboardBuilder\Port\Queue;
 use CreativeBranding\SkateboardBuilder\Port\ReindexStore;
 
@@ -75,6 +76,12 @@ final class CatalogueCheck {
 	 * tells them apart after the pick (since 1.0.0, D-281). Said, not a fix.
 	 */
 	public const LOOK_SHARED = 'look_shared';
+
+	/**
+	 * The shop ticked "Not offered in the builder" on a part, or on a variation's product, so no kit offers it (since
+	 * 1.2.0, #116, D-351). Its `values` say whose box: `from` is `part` or `product`. Said, not a fix.
+	 */
+	public const NOT_OFFERED = 'part_not_offered';
 
 
 	/**
@@ -148,6 +155,27 @@ final class CatalogueCheck {
 	public function withLooks( PartLooks $looks ): self {
 		$check        = clone $this;
 		$check->looks = $looks;
+		return $check;
+	}
+
+	/**
+	 * The parts the shop keeps out, since 1.2.0, given by the container through `withKeptOut()`. A check an earlier
+	 * release's container builds has none, and lists none (D-208).
+	 *
+	 * @var PartsKeptOut|null
+	 */
+	private ?PartsKeptOut $kept = null;
+
+	/**
+	 * The same check, listing the parts the shop keeps out of the builder.
+	 *
+	 * @since 1.2.0
+	 *
+	 * @param PartsKeptOut $kept The parts the shop keeps out.
+	 */
+	public function withKeptOut( PartsKeptOut $kept ): self {
+		$check       = clone $this;
+		$check->kept = $kept;
 		return $check;
 	}
 
@@ -351,6 +379,9 @@ final class CatalogueCheck {
 	 */
 	private function parts( int ...$ids ): array {
 		$found = array();
+		foreach ( null === $this->kept ? array() : $this->kept->keptOut( ...$ids ) as $id => $from ) {
+			$found[] = new CheckFinding( self::NOT_OFFERED, $id, values: array( 'from' => $from ) );
+		}
 		foreach ( $this->indexer->resolve( ...$ids ) as $id => $sourced ) {
 			foreach ( $sourced->resolution->disagreements as $disagreement ) {
 				foreach ( $disagreement->others as $other ) {

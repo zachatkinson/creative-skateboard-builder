@@ -45,10 +45,29 @@ upload="$copy-$version.zip"
 from="$(sed -n "s/^define( 'CBUILD_VERSION', '\([^']*\)' );/\1/p" "tmp/upgrade/old/$copy/$slug.php")"
 
 here=wp-content/plugins/$slug
-# WP-CLI prints a deprecation of its own on PHP 8.5 after the answer (php-cli-tools), which is not the plugin's.
-wp() { npx wp-env run cli -- wp "$@" 2>/dev/null | tr -d '\r' | grep -v 'php-cli-tools' || true; }
+# WP-CLI prints a deprecation of its own on PHP 8.5 (vendor/wp-cli/php-cli-tools/lib/cli/Colors.php:95, "Using null as an
+# array offset"), which is not the plugin's. It can land in the middle of the next line, so it is cut out where it is,
+# not by dropping its line; its "Deprecated: " can even be split from the rest by a line of WP-CLI's, so the rest is cut
+# alone too. A PHP deprecation, warning or notice from the plugin's own files fails the run (noise()).
+noise_file="tmp/upgrade-noise.txt"
+: > "$noise_file"
+quiet() { sed -E 's#((PHP )?Deprecated: )?Using null as an array offset is deprecated, use an empty string instead in phar://[^ ]*php-cli-tools/lib/cli/Colors\.php on line [0-9]+##g'; }
+noted() { tee >(grep -E '(Deprecated|Warning|Notice|Fatal error):' >> "$noise_file" || true); }
+noise() {
+	[ -s "$noise_file" ] || return 0
+	# The plugin's own files, either copy: a notice from them fails the run. Another's (WordPress, WooCommerce, WP-CLI) is listed.
+	# A notice is PHP's shape, "<kind>: <message> in <file> on line <n>": a WP-CLI line that only names a file of the plugin's,
+	# with a stray "Deprecated: " in front of it, is not one.
+	local own="(Deprecated|Warning|Notice|Fatal error): .* in [^ ]*/plugins/($slug|$copy)/[^ ]+ on line [0-9]+"
+	if grep -qE "$own" "$noise_file"; then
+		grep -E "$own" "$noise_file" | sort -u | sed 's/^/   /' >&2
+		fail "a WP-CLI call printed the plugin's PHP notices above"
+	fi
+	sort -u "$noise_file" | sed 's/^/   not the plugin'"'"'s: /'
+}
+wp() { npx wp-env run cli -- wp "$@" 2> >(tr -d '\r' | quiet | noted > /dev/null) | tr -d '\r' | quiet | noted || true; }
 # WP-CLI's own error lines matter here, so stderr is kept, less wp-env's progress and a WP-CLI deprecation of its own.
-wp_said() { npx wp-env run cli -- wp "$@" 2>&1 | tr -d '\r' | grep -v '^ℹ\|^✔\|^✖\|^Command failed\|php-cli-tools' || true; }
+wp_said() { npx wp-env run cli -- wp "$@" 2>&1 | tr -d '\r' | quiet | noted | grep -v '^ℹ\|^✔\|^✖\|^Command failed\|^\s*$' || true; }
 fail() { echo "upgrade: $1" >&2; exit 1; }
 restore() {
 	# What the seed made goes with the run, so a browser run after it meets the site as it was (audit of 1.0.0, M8).
@@ -115,8 +134,12 @@ kits="$(wp eval-file "$here/tools/upgrade/seed.php" kits | tail -n 1)"
 kits="${kits#kits:}"
 saved="$(wp eval-file "$here/tools/upgrade/seed.php" saved | tail -n 1)"
 user="${saved#saved:}"; [ "$user" = none ] && user=0
+# A grip with a layer image and no spec, as the demo's were, from 0.7.0 (#129, D-373): until 1.2.0 it got no copies.
+layer="$(wp eval-file "$here/tools/upgrade/seed.php" layer | tail -n 1)"
+case "$layer" in layer:*) ;; *) fail "the grip with a layer image was not made on $from: $layer" ;; esac
+layer="${layer#layer:}"; [ "$layer" = none ] && layer=0
 wp action-scheduler run --group=creative-skateboard-builder >/dev/null
-echo "   on $from: $seed; kits $from reads: $kits; $saved"
+echo "   on $from: $seed; kits $from reads: $kits; $saved; layer image $layer"
 before="$(errors)"
 [ "$clean" = 1 ] || wp plugin deactivate "$copy" >/dev/null
 page="$(node tools/upgrade/upload.mjs "tmp/upgrade/$upload")"
@@ -137,7 +160,11 @@ echo "   version|status|schema: $state; no zip left in uploads."
 # The release's own jobs after the update, then the data read by this release: the order with its lines, the old
 # release's kits and their presets, its saved build, and no failed job of the plugin's.
 wp action-scheduler run --group=creative-skateboard-builder >/dev/null
-read="$(wp eval-file "$here/tools/upgrade/seed.php" read "${seed#order:}" "$user" | tail -n 1)"
+# The update's own jobs are due a few minutes on, past any runner the old release started (D-378): run them as the
+# queue will once they are due.
+later="$(wp action-scheduler action list --group=creative-skateboard-builder --status=pending --field=id --format=ids | tail -n 1)"
+[ -z "$later" ] || wp action-scheduler action run $later >/dev/null
+read="$(wp eval-file "$here/tools/upgrade/seed.php" read "${seed#order:}" "$user" "$layer" | tail -n 1)"
 case "$read" in read:*) ;; *) fail "after the update, the shop's data did not read: $read" ;; esac
 # Every preset is priced, and the old release's saved build is listed.
 # Every kit the old release read, this one reads too.
@@ -152,10 +179,14 @@ if [ "$(printf '%s\n' 1.0.0 "$from" | sort -V | head -n 1)" = 1.0.0 ]; then
 else
 	[ "$user" = 0 ] || case "$read" in *"saved builds 1, 1 reopened with no prices then"*) ;; *) fail "after the update, $from's saved build reopened with prices it never kept: $read" ;; esac
 fi
+# The update leaves no part without its resized copies, and the old release's grip has its own (#129, D-373).
+case "$read" in *"parts missing copies 0"*) ;; *) fail "after the update, a part has no resized copies of its layer image: $read" ;; esac
+[ "$layer" = 0 ] || case "$read" in *"layer copies 0,"*) fail "after the update, $from's grip has no resized copies: $read" ;; esac
 failed="$(wp action-scheduler action list --group=creative-skateboard-builder --status=failed --format=count 2>/dev/null | tail -n 1)"
 case "$failed" in ''|*[!0-9]*) fail "the plugin's failed jobs could not be counted: '$failed'" ;; esac
 [ "$failed" = 0 ] || fail "after the update, $failed of the plugin's jobs failed"
 [ "$(errors)" = "$before" ] || fail "the jobs after the update logged a PHP error naming the plugin"
+noise
 echo "   after: $read; no failed job."
 if [ "$clean" = 1 ]; then
 	echo "Upgrade: $from updates to $version through the upload screen, and its container fits $version's files."

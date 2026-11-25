@@ -4,6 +4,20 @@ How Creative Skateboard Builder's code is written: the industry standards for ea
 
 These follow the agency's other Claude Code builds (Creative Search, Stockroom, Restock, Shipment Tracking and Reviews). Where a sibling repo already solved something, do it the same way unless this file says otherwise.
 
+## Contents
+
+- [Sources, in order](#sources-in-order)
+- [Layout](#layout)
+- [PHP](#php)
+- [WordPress](#wordpress)
+- [WooCommerce](#woocommerce)
+- [Front end: HTML, CSS, TypeScript, the Interactivity API](#front-end-html-css-typescript-the-interactivity-api)
+- [Testing](#testing)
+- [Git, versions and releases](#git-versions-and-releases)
+- [Documentation](#documentation)
+- [Writing docs](#writing-docs)
+- [Copy: the words shoppers and admins read](#copy-the-words-shoppers-and-admins-read)
+
 ## Sources, in order
 
 When two sources disagree, the one higher on this list wins.
@@ -66,7 +80,12 @@ tools/                    gates.sh, integration/ (PHPUnit 9.6), build, release, 
 ## PHP
 
 - PHP 8.5 is the floor (as Creative Search, D-023). `composer.json` pins `platform.php` to `8.5.99`, so no dependency can need more than the floor.
-- `declare( strict_types=1 );` in every file. Every file under `src/` outside the domain stops when requested directly (`if ( ! defined( 'ABSPATH' ) ) { exit; }`, after its `use` lines); gate 17 holds both. Classes are `final` unless built to be extended. Value objects are `readonly`. Enums stand in for string constants. Use typed constants, `#[\Override]` and property hooks where they make the code clearer, and PHP 8.5's pipe operator where it reads better.
+- **Every file:** `declare( strict_types=1 );` in every file. Every file under `src/` outside the domain stops when requested directly (`if ( ! defined( 'ABSPATH' ) ) { exit; }`, after its `use` lines); gate 17 holds both.
+- **Classes and types:**
+  - Classes are `final` unless built to be extended.
+  - Value objects are `readonly`.
+  - Enums stand in for string constants.
+  - Use typed constants, `#[\Override]` and property hooks where they make the code clearer, and PHP 8.5's pipe operator where it reads better.
 - No globals, no static state outside the bootstrap and the container, no service locator inside the domain.
 - Errors are typed exceptions in the domain, turned into `WP_Error` or notices at the edges. No `@` suppression, and no catch that hides an error.
 - **Naming:**
@@ -132,6 +151,11 @@ tools/                    gates.sh, integration/ (PHPUnit 9.6), build, release, 
   - `cart_checkout_blocks` true;
   - `product_block_editor` false, only if the installed WooCommerce still has that feature. Its beta was retired in 2026: check `FeaturesController` on the floor and record what you find.
 - **The product type:** `KitProduct extends WC_Product`, registered through `product_type_selector` and `woocommerce_product_class`. Its settings go through the product's own CRUD on save.
+- **Kit documents and rollback:**
+  - A kit's settings are JSON documents in its product meta, each held to a schema in `schema/`.
+  - The release before reads a kit only when each document it knows passes its own copy of that schema, and every document from `_cbuild_slots` to `_cbuild_layout` refuses a key it does not know.
+  - So a new kit setting goes in `_cbuild_settings` (`schema/kit-settings.json`), whose schema lets through what it does not know, never as a new key in an older document.
+  - `RollbackTest` holds each stored document to the previous release's schemas in `tests/Fixtures/previous-schemas/`, refreshed at each release (D-354).
 - **Cart and checkout:**
   - The Store API through its extension points: `woocommerce_store_api_register_endpoint_data()` and `ExtendSchema`.
   - The blocks through `registerCheckoutFilters`.
@@ -147,7 +171,7 @@ tools/                    gates.sh, integration/ (PHPUnit 9.6), build, release, 
 
 ## Front end: HTML, CSS, TypeScript, the Interactivity API
 
-**HTML**
+### HTML
 
 - Semantic and valid:
   - landmarks, one H1 per page, headings in order;
@@ -156,7 +180,7 @@ tools/                    gates.sh, integration/ (PHPUnit 9.6), build, release, 
   - images with `alt`, `width`, `height`, `decoding` and the right `loading`.
 - No inline event handlers. Inline `style` is used only to set the builder's custom properties.
 
-**CSS**
+### CSS
 
 - The block's stylesheet uses `@wordpress/stylelint-config` (SCSS) and Prettier.
 - Logical properties throughout.
@@ -166,7 +190,7 @@ tools/                    gates.sh, integration/ (PHPUnit 9.6), build, release, 
 - `:focus-visible` rings, `forced-colors` support and `prefers-reduced-motion`.
 - No `!important`, no IDs in selectors, nothing styled outside the builder's root.
 
-**TypeScript**
+### TypeScript
 
 - The builder's store, the Cart block filters and the admin scripts are TypeScript in `strict` mode, built by `@wordpress/scripts` and type-checked by `tsc --noEmit` in `npm run check`.
 - The state route's response types are generated from its JSON Schema (`json-schema-to-typescript`), so the store and the server can't drift.
@@ -174,7 +198,7 @@ tools/                    gates.sh, integration/ (PHPUnit 9.6), build, release, 
 - No jQuery and no framework.
 - The `@wordpress/*` packages are externals, provided by WordPress at run time, as Creative Search's ESLint config sets out.
 
-**The Interactivity API**
+### The Interactivity API
 
 - One store, `creative-skateboard-builder`, private (`lock: true`). Other code listens to the builder's DOM events instead.
 - State starts on the server with `wp_interactivity_state()`.
@@ -182,7 +206,7 @@ tools/                    gates.sh, integration/ (PHPUnit 9.6), build, release, 
 - Requests to the state route are debounced 150 ms. They carry a sequence number and an `AbortController`, so a stale answer is dropped. A failure hands over to the form's own submit.
 - Steps push the same URL the no-JavaScript form makes. Back and Forward re-render from the URL.
 - Focus and announcements follow the spec.
-- The router (`@wordpress/interactivity-router`) was considered for step changes. It fetches whole pages, which costs a full page render (0.7 to 1.1 s on the demo's host without a page cache), so the state route's JSON drives every step change instead. If a benchmark shows the router is fast enough, that's a decision for `DECISIONS.md`.
+- **No router:** the router (`@wordpress/interactivity-router`) was considered for step changes. It fetches whole pages, which costs a full page render (0.7 to 1.1 s on the demo's host without a page cache), so the state route's JSON drives every step change instead. If a benchmark shows the router is fast enough, that's a decision for `DECISIONS.md`.
 - **Motion:**
   - Same-document view transitions (`document.startViewTransition()`) between steps and for the picture's layers, where the browser supports them.
   - CSS transitions on `transform` and `opacity` only.
@@ -198,9 +222,9 @@ tools/                    gates.sh, integration/ (PHPUnit 9.6), build, release, 
 | Integration | PHPUnit 9.6 with the Yoast polyfills in `tools/integration/`, its own Composer project | The WordPress core test suite still calls an API PHPUnit 10 removed (Creative Search D-021; WordPress core ticket [#62004](https://core.trac.wordpress.org/ticket/62004) is open). Integration tests use `set_up()`/`tear_down()` and no PHPUnit 10+ attributes. Register the plugin's Composer loader behind PHPUnit 9.6's (Search D-023) |
 | PHP mutation | Infection 0.35 | `infection-domain.json5` at 100 %, `infection.json5` at 95 % |
 | JavaScript unit | Vitest, jsdom | The store's actions and derived state |
-| JavaScript mutation | StrykerJS with the Vitest runner | 90 % on the store |
+| JavaScript mutation | StrykerJS with the Vitest runner | 95 % on the store |
 | Browser | Playwright, `@axe-core/playwright` | Chromium, WebKit and Firefox at phone and desktop widths; projects for JavaScript off, fr_CA, right to left and visual snapshots. Firefox on macOS 27 needs the `CFFIXED_USER_HOME` workaround (Search D-022) |
-| Lab performance | Lighthouse CI | The builder page on wp-env, median of three |
+| Lab performance | Lighthouse CI | The builder page on wp-env, median of five (D-344) |
 | Benchmarks | PHPUnit's `benchmark` group | The server budgets, on a generated catalogue |
 
 - Test names say the behaviour: `test_an_8_5_inch_deck_blocks_indy_144_trucks`.
@@ -212,8 +236,14 @@ tools/                    gates.sh, integration/ (PHPUnit 9.6), build, release, 
 
 - **Branches:** `main` is protected. Each milestone works on its own branch (`m6-builder`) and lands through one pull request, using the template in `.github/`.
 - **Commits:** an area and an imperative summary (`Cart: keep a build's parts with their parent`), with D-numbers where a decision is involved, as the family's repositories do. Small, each green.
-- **Versions:** milestones tag `v0.<n>.0`; milestone 10 tags `v1.0.0` (D-236). Semantic Versioning from 1.0, with the public API rules in `AUDIT.md`. The version lives in the plugin header, `readme.txt`'s stable tag, `package.json` and a constant, kept in step by the build script, and in each block's `block.json`, which WordPress writes on the block's stylesheet and script as their `ver`: gate 16 holds it to the constant.
-- **Changelog:** `CHANGELOG.md` in Keep a Changelog's sections (Added, Changed, Deprecated, Removed, Fixed, Security), one entry per milestone. `readme.txt`'s `== Changelog ==` is written by hand for shop owners, a line or two per release in plain words, and is what the update's "View details" popup and the release's notes show (D-053).
+- **Versions:**
+  - Milestones tag `v0.<n>.0`; milestone 10 tags `v1.0.0` (D-236).
+  - Semantic Versioning from 1.0, with the public API rules in `AUDIT.md`.
+  - The version lives in the plugin header, `readme.txt`'s stable tag, `package.json` and a constant, kept in step by the build script.
+  - It also lives in each block's `block.json`, which WordPress writes on the block's stylesheet and script as their `ver`: gate 16 holds it to the constant.
+- **Changelog:**
+  - `CHANGELOG.md` in Keep a Changelog's sections (Added, Changed, Deprecated, Removed, Fixed, Security), one entry per milestone.
+  - `readme.txt`'s `== Changelog ==` is written by hand for shop owners, a line or two per release in plain words, and is what the update's "View details" popup and the release's notes show (D-053).
 - **Releases:** `.github/workflows/release.yml`, copied from Creative Search and kept the same:
   - It runs on a version tag once CI has passed on that commit.
   - It builds the zip and writes `info.json` with the SHA-256.
@@ -247,6 +277,25 @@ tools/                    gates.sh, integration/ (PHPUnit 9.6), build, release, 
 | `docs/reviews/M<n>.md`, `docs/AUDIT-<version>.md` | The audits | Per milestone and release |
 
 Comments in code say why, not what. A workaround names the issue it works around and when to remove it.
+
+## Writing docs
+
+The reference docs take the shape `README.md` sets (issue #126). The auditor and the spec-reviewer hold a new or changed doc to it.
+
+- **A contents list** under the opening paragraph of a doc with several sections, each entry linking to its heading.
+- **Short sections** under headings in sentence case. A section that runs long splits under subheadings.
+- **Bullets that lead with a bold phrase.** The phrase names the point, and the rest of the bullet makes it.
+- **Tables where there is data to compare:** versions, budgets, settings, or files and what each holds.
+- **Paragraphs of two or three sentences.** A longer run of points becomes a list or a table.
+- **Code, hooks, paths and keys in backticks:** `cbuild_start_button`, `src/Domain`, `_cbuild_settings`.
+- **One paragraph or list item per line,** unwrapped, as `.markdownlint-cli2.jsonc` sets out (D-345). `npm run lint:md` holds every doc to markdownlint's rules.
+- **The copy rules** below apply to the docs too: plain words, sentence case, no em dashes, superlatives or exclamation marks.
+
+**Reshaping keeps every fact.** Turning a doc into this shape changes its layout, not what it says. Every claim, number, D-number, issue number, file and line, hook name, version and `@since` stays, and none is softened or added.
+
+**Two docs keep their words.** `docs/SPEC.md` and `docs/ROADMAP.md` take a contents list and paragraph breaks only, since the spec-reviewer judges the code against their exact words. `docs/DECISIONS.md` takes an index at the top, and its entries are never rewritten.
+
+**`docs/HOOKS.md` keeps the layout `composer api:check` reads.** `tools/api-surface.php` takes an item's version from the first line that names it in backticks, or from the lines under a heading that names it. A reshape keeps each item's name and version on that line.
 
 ## Copy: the words shoppers and admins read
 

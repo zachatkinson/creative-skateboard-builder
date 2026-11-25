@@ -14,6 +14,7 @@ use CreativeBranding\SkateboardBuilder\Domain\Spec\Origin;
 use CreativeBranding\SkateboardBuilder\Domain\Spec\SpecKey;
 use CreativeBranding\SkateboardBuilder\Port\Kits;
 use CreativeBranding\SkateboardBuilder\Port\Reindex;
+use CreativeBranding\SkateboardBuilder\Port\PartsKeptOut;
 use CreativeBranding\SkateboardBuilder\Service\CatalogueCheck;
 use CreativeBranding\SkateboardBuilder\Service\CheckFinding;
 
@@ -124,12 +125,16 @@ final class CheckScreen {
 		$kits  = $this->kits->all();
 		// Parts with no layer image are listed apart, each list cut at its own length: on a large catalogue they would
 		// otherwise fill the page after what keeps a part out (Cowork's M7 review, F4; D-211).
-		$fixes  = array_values( array_filter( $found, static fn( CheckFinding $finding ): bool => ! in_array( $finding->code, array( CatalogueCheck::LAYER_MISSING, CatalogueCheck::LOOK_SHARED ), true ) ) );
+		$fixes  = array_values( array_filter( $found, static fn( CheckFinding $finding ): bool => ! in_array( $finding->code, array( CatalogueCheck::LAYER_MISSING, CatalogueCheck::LOOK_SHARED, CatalogueCheck::NOT_OFFERED ), true ) ) );
 		$layers = array_values( array_filter( $found, static fn( CheckFinding $finding ): bool => CatalogueCheck::LAYER_MISSING === $finding->code ) );
 		// Variations that share a card, in a list of their own after the layers: what the builder does, not a fix (D-281).
 		$looks  = array_values( array_filter( $found, static fn( CheckFinding $finding ): bool => CatalogueCheck::LOOK_SHARED === $finding->code ) );
 		$alike  = $this->rows( array_slice( $looks, 0, self::SHOWN ), $kits );
 		$beyond = count( $looks ) - count( $alike );
+		// Parts the shop keeps out, in a list of their own: what it chose, not a fix (#116).
+		$out    = array_values( array_filter( $found, static fn( CheckFinding $finding ): bool => CatalogueCheck::NOT_OFFERED === $finding->code ) );
+		$kept   = $this->rows( array_slice( $out, 0, self::SHOWN ), $kits );
+		$aside  = count( $out ) - count( $kept );
 		$rows   = $this->rows( array_slice( $fixes, 0, self::SHOWN ), $kits );
 		$more   = count( $fixes ) - count( $rows );
 		$count  = count( $fixes );
@@ -174,8 +179,13 @@ final class CheckScreen {
 				$owner = 0 === $product->get_parent_id() ? $product->get_id() : $product->get_parent_id();
 				$about = '' === $product->get_sku() ? $product->get_name() : $product->get_name() . ' (' . $product->get_sku() . ')';
 				// The product's screen opens the tab, or the variation, the address names (PartSpecsPanel).
-				$field = CatalogueCheck::LAYER_MISSING === $finding->code ? '#cbuild-spec-layer' : '#cbuild_part_specs';
-				$link  = (string) get_edit_post_link( $owner, 'raw' ) . ( $owner === $product->get_id() ? $field : '#cbuild_variation_' . $product->get_id() );
+				$field = array(
+					CatalogueCheck::LAYER_MISSING => '#cbuild-spec-layer',
+					CatalogueCheck::NOT_OFFERED   => '#cbuild-spec-not-offered',
+				)[ $finding->code ] ?? '#cbuild_part_specs';
+				// A variation kept out by its product's box is put right on the product's.
+				$there = $owner === $product->get_id() || PartsKeptOut::PRODUCT === ( $finding->values['from'] ?? '' );
+				$link  = (string) get_edit_post_link( $owner, 'raw' ) . ( $there ? $field : '#cbuild_variation_' . $product->get_id() );
 			} elseif ( 0 !== $finding->part ) {
 				/* translators: %s: a product's ID. */
 				$about = sprintf( __( 'Product %s', 'creative-skateboard-builder' ), (string) $finding->part );

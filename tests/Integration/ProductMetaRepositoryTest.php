@@ -69,6 +69,73 @@ final class ProductMetaRepositoryTest extends IntegrationTestCase {
 		self::assertSame( $queries, get_num_queries(), 'what WooCommerce already holds is not read again' );
 	}
 
+	// #116, D-351: a page of saved builds knows its parts, not their products; their meta comes in the same query.
+	public function test_parts_are_read_with_their_variations_products_in_one_query(): void {
+		$parent = new \WC_Product_Variable();
+		$parent->set_name( 'Trucks' );
+		$parent->update_meta_data( 'cbuild_test_note', 'parent' );
+		$parent->save();
+		$variation = new \WC_Product_Variation();
+		$variation->set_parent_id( $parent->get_id() );
+		$variation->update_meta_data( 'cbuild_test_note', 'variation' );
+		$variation->save();
+		$deck = self::product();
+		wp_cache_flush();
+
+		$queries = get_num_queries();
+		$this->service( ProductMeta::class )->primeWithParents( $variation->get_id(), $deck );
+		self::assertSame( $queries + 1, get_num_queries(), 'one query for the parts and the variation\'s product' );
+		foreach ( array( $parent->get_id() => 'parent', $variation->get_id() => 'variation', $deck => 'kept' ) as $id => $note ) {
+			$product = wc_get_product( $id );
+			$before  = get_num_queries();
+			self::assertSame( $note, $product->get_meta( 'cbuild_test_note', true ) );
+			self::assertSame( $before, get_num_queries(), 'WooCommerce reads it from its own cache' );
+		}
+
+		$queries = get_num_queries();
+		$this->service( ProductMeta::class )->primeWithParents( $variation->get_id(), $deck );
+		self::assertSame( $queries, get_num_queries(), 'what WooCommerce already holds is not read again' );
+	}
+
+	// The auditor's M12 should-fix 3: with the parents under an OR, MySQL read every row of postmeta to find them. Each
+	// part of the query must find its rows by an index.
+	public function test_the_parts_and_their_products_are_found_by_an_index_not_by_reading_all_of_postmeta(): void {
+		global $wpdb;
+		$parent = new \WC_Product_Variable();
+		$parent->set_name( 'Wheels' );
+		$parent->save();
+		$variation = new \WC_Product_Variation();
+		$variation->set_parent_id( $parent->get_id() );
+		$variation->save();
+		$deck = self::product();
+		// A shop's postmeta, not the test site's few dozen rows, for which MySQL reads the table whole whatever the query.
+		$other = self::product();
+		for ( $n = 0; $n < 2000; $n++ ) {
+			add_post_meta( $other, 'cbuild_test_row', (string) $n );
+		}
+		$wpdb->query( 'ANALYZE TABLE ' . $wpdb->postmeta ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.DirectDatabaseQuery -- The table's statistics, for EXPLAIN.
+		wp_cache_flush();
+
+		$read  = '';
+		$watch = static function ( string $query ) use ( &$read, $wpdb ): string {
+			if ( str_contains( $query, $wpdb->postmeta ) && str_contains( $query, 'meta_id' ) ) {
+				$read = $query;
+			}
+			return $query;
+		};
+		add_filter( 'query', $watch );
+		$this->service( ProductMeta::class )->primeWithParents( $variation->get_id(), $deck );
+		remove_filter( 'query', $watch );
+		self::assertNotSame( '', $read );
+
+		$plan = $wpdb->get_results( 'EXPLAIN ' . $read, ARRAY_A ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.DirectDatabaseQuery -- The query just made, prepared, explained.
+		$meta = array_filter( (array) $plan, static fn( array $row ): bool => in_array( $row['table'], array( $wpdb->postmeta, 'm' ), true ) );
+		self::assertNotSame( array(), $meta );
+		foreach ( $meta as $row ) {
+			self::assertNotContains( $row['type'], array( 'ALL', 'index' ), 'postmeta read whole: ' . wp_json_encode( $row ) );
+		}
+	}
+
 	public function test_a_boards_layer_images_are_read_in_a_few_queries_however_many_parts_it_draws(): void {
 		$images = array( LayerFiles::attachment( 40, 160 ), LayerFiles::attachment( 40, 20 ), LayerFiles::attachment( 20, 30 ) );
 		$parts  = array( self::product( (string) $images[0] ), self::product( (string) $images[1] ), self::product( (string) $images[2] ), self::product() );

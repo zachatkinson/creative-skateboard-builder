@@ -243,6 +243,20 @@ final class SpecTableEditorTest extends TestCase {
 		self::assertSame( array( '0:name:name_taken' ), self::codes( $this->editor->add( 'éCLAT' )->problems ) );
 	}
 
+	// #72: without mbstring a name folds as PHP's strtolower() does, so an ASCII letter still matches in either case and
+	// an accented one only in its own, as Words and WpTextFolding fall back.
+	public function test_without_mbstring_a_name_is_another_charts_in_any_case_of_its_ascii_letters(): void {
+		$this->editor->add( 'Éclat' );
+		$GLOBALS['cbuild_test_no_mbstring'] = true;
+		try {
+			self::assertSame( array( '0:name:name_taken' ), self::codes( $this->editor->add( 'ÉCLAT' )->problems ) );
+			self::assertTrue( $this->editor->add( 'éclat' )->saved(), 'its capital is not an ASCII letter' );
+		} finally {
+			unset( $GLOBALS['cbuild_test_no_mbstring'] );
+		}
+		self::assertSame( array( '0:name:name_taken' ), self::codes( $this->editor->add( 'ÉCLAT' )->problems ), 'and with it, as before' );
+	}
+
 	// Minor 2: two charts of one name made every import row naming either ambiguous, and the panel's list one group.
 	public function test_a_chart_cannot_take_a_name_another_chart_has_whatever_its_case(): void {
 		$indy    = $this->editor->add( 'Independent' )->id;

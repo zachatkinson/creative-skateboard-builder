@@ -4,7 +4,7 @@ Tags: woocommerce, skateboard, product builder, configurator, bundle
 Requires at least: 7.0
 Tested up to: 7.1
 Requires PHP: 8.5
-Stable tag: 1.1.0
+Stable tag: 1.2.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -14,9 +14,28 @@ Sells complete skateboards built from parts the shop stocks, with fit checked fr
 
 Creative Skateboard Builder lets a shopper put a complete skateboard together from the decks, trucks, wheels, bearings, hardware and grip a WooCommerce shop already sells. It checks that the parts fit from each part's specs, draws a picture of the build, keeps the total in view, and gives each part its own line in the cart and on the order, so stock, tax and refunds work as they do for any other product.
 
-This is version 1.1.0. A kit's page is the builder: the board on one side, the steps on the other, and the total at the foot, and the Builder block puts it on any other page. The shopper goes one step a slot, picks a deck by the width they ride, sees one card a look with only the parts that fit what they picked, can search, sort and filter a long step, can start from one of your rider builds, and reaches a review with the total, a link to the build and Add to cart. A deck's own page can open the builder with that deck picked. The builder draws the board to scale from each part's layer image, top and underside, and the cart, the order, its emails and a shared build link show a picture of it. A signed-in customer can save a build and find it again under My builds in My account. The workshop gets each order's build in a box on the order screen and a printed assembly ticket. From 1.1.0 the board's parts move into place as they are picked, the total counts to its new amount, and a kit can keep its motion to fades for every shopper; a shopper whose device asks for less motion always gets fades.
+= Features =
+
+This is version 1.2.0.
+
+* **The builder page.** A kit's page is the builder: the board on one side, the steps on the other, and the total at the foot. The Builder block puts it on any other page.
+* **One step a slot.** The shopper goes one step a slot, picks a deck by the width they ride, and sees one card a look with only the parts that fit what they picked.
+* **Long steps.** The shopper can search, sort and filter a long step.
+* **Rider builds.** The shopper can start from one of your rider builds.
+* **The review.** The shopper reaches a review with the total, a link to the build and Add to cart.
+* **From a deck's page.** A deck's own page can open the builder with that deck picked.
+* **A picture of the board.** The builder draws the board to scale from each part's layer image, top and underside. The cart, the order, its emails and a shared build link show a picture of it.
+* **Saved builds.** A signed-in customer can save a build and find it again under My builds in My account.
+* **For the workshop.** The workshop gets each order's build in a box on the order screen and a printed assembly ticket.
+* **Motion, from 1.1.0.** The board's parts move into place as they are picked, and the total counts to its new amount. A kit can keep its motion to fades for every shopper, and a shopper whose device asks for less motion always gets fades.
+* **The kit's choices, from 1.2.0.** A kit's Build tab also chooses the page its builder is on, whether its decks' pages offer "Build a complete with this deck" and the rows of its width guide.
+* **Parts kept out, from 1.2.0.** A part's Part specs can keep it out of the builder while it stays in the shop.
+
+= Accessibility and languages =
 
 It works with a keyboard and a screen reader, on a phone, without JavaScript, in English and French (Canada), and right to left.
+
+= Requirements =
 
 The plugin needs WooCommerce 11.2 or newer, WordPress 7.0 or newer and PHP 8.5 or newer. Below any of them it does nothing and says so on the Plugins screen.
 
@@ -29,15 +48,30 @@ The plugin needs WooCommerce 11.2 or newer, WordPress 7.0 or newer and PHP 8.5 o
 
 = Does it send anything off the site? =
 
-Nothing about the shop or its shoppers. The plugin makes two kinds of request, both for its own updates: when WordPress checks for plugin updates it reads its release notes, at most once in 12 hours, or once an hour after a read that failed, from the agency's public releases on GitHub, and when you install an update it downloads that release's zip from the same place. Neither sends the site's address. Turn both off with `define( 'CBUILD_DISABLE_UPDATES', true );` in wp-config.php.
+Nothing about the shop or its shoppers. The plugin makes two kinds of request, both for its own updates:
+
+* When WordPress checks for plugin updates, it reads its release notes from the agency's public releases on GitHub, at most once in 12 hours, or once an hour after a read that failed.
+* When you install an update, it downloads that release's zip from the same place.
+
+Neither sends the site's address. Turn both off with `define( 'CBUILD_DISABLE_UPDATES', true );` in wp-config.php.
 
 = What does deleting the plugin remove? =
 
-Everything the plugin made: its three tables, saved builds among them, its options and transients, its scheduled actions, the resized layer images and composed pictures in `uploads/creative-skateboard-builder/`, and on a network the must-use file it wrote. Products and orders are never touched, and the build details on past orders stay, because they are part of the shop's records.
+Everything the plugin made:
+
+* Its three tables, saved builds among them
+* Its options and transients
+* Its scheduled actions
+* The resized layer images and composed pictures in `uploads/creative-skateboard-builder/`
+* On a network, the must-use file it wrote
+
+Products and orders are never touched. The build details on past orders stay, because they are part of the shop's records.
 
 = Does it work on a multisite network? =
 
-Yes. Activating it for the network installs it on every site, and a site added later installs itself the first time an administrator opens its dashboard. On a network it writes a small must-use file, so that deleting a site drops the plugin's tables and deleting an account deletes its saved builds on every site, even where the plugin is not active. A network admin's visit to wp-admin writes it again after an update, and Site Health says if the folder cannot be written.
+Yes. Activating it for the network installs it on every site, and a site added later installs itself the first time an administrator opens its dashboard.
+
+On a network it writes a small must-use file, so that deleting a site drops the plugin's tables and deleting an account deletes its saved builds on every site, even where the plugin is not active. A network admin's visit to wp-admin writes it again after an update, and Site Health says if the folder cannot be written.
 
 = Is it translated? =
 
@@ -45,21 +79,35 @@ It ships in English and French (Canada). Every string goes through the text doma
 
 = How does a kit's page look in my theme? =
 
-In a block theme, a kit's page takes the plugin's own template, made of your theme's header and footer, which you can edit under Appearance > Editor > Templates. In a classic theme, the builder fills the width before the product's summary, and the summary's title, price and form are left out for kits; a slimmer header is your theme's own setting.
-
-A page builder's product template (Kadence's, Elementor's and the like) draws the builder in its add-to-cart block's column. For the full width, leave kits out of that template, by their category or a tag, so they take the theme's own product page, or give kits a template of their own whose add-to-cart block has a full-width row.
+* **A block theme.** A kit's page takes the plugin's own template, made of your theme's header and footer, which you can edit under Appearance > Editor > Templates.
+* **A classic theme.** The builder fills the width before the product's summary, and the summary's title, price and form are left out for kits. A slimmer header is your theme's own setting.
+* **A page builder.** A page builder's product template (Kadence's, Elementor's and the like) draws the builder in its add-to-cart block's column. For the full width, leave kits out of that template, by their category or a tag, so they take the theme's own product page. Or give kits a template of their own whose add-to-cart block has a full-width row.
 
 The kit's Build tab has a Layout section: the board on the left or the right of a desktop, large or balanced, and which search the steps use.
 
 = My theme shows a sticky add-to-cart bar on a kit's page =
 
-The builder has its own bar with the total, Back and Next, so a theme's bar on a kit's page is one too many. Leave kits out of it in your theme's settings. In Kadence Pro: Appearance > Elements, open the element that holds the bar, then Element Settings > Display Settings > Exclude Settings; set Hide On to Single Products, Select product by to Individually, pick each kit, and save. Kadence can't pick products by type, so add each new kit the same way, or give your kits a tag and pick it under Group.
+The builder has its own bar with the total, Back and Next, so a theme's bar on a kit's page is one too many. Leave kits out of it in your theme's settings. In Kadence Pro:
+
+1. Go to Appearance > Elements and open the element that holds the bar.
+2. Open Element Settings > Display Settings > Exclude Settings.
+3. Set Hide On to Single Products, and Select product by to Individually.
+4. Pick each kit, and save.
+
+Kadence can't pick products by type, so add each new kit the same way, or give your kits a tag and pick it under Group.
 
 = Can other plugins build on it? =
 
-Yes. Its hooks, REST routes, block attributes, settings keys, order item keys, CSS custom properties and DOM events are listed with the version each arrived in, and from 1.0.0 they follow Semantic Versioning: no minor or patch release removes or renames one, and a deprecation comes first.
+Yes. Its hooks, REST routes, block attributes, settings keys, order item keys, CSS custom properties and DOM events are listed with the version each arrived in. From 1.0.0 they follow Semantic Versioning: no minor or patch release removes or renames one, and a deprecation comes first.
 
 == Changelog ==
+
+= 1.2.0 =
+* A kit's Build tab chooses the page its builder is on. The kit's page, "Build a complete with this deck", the cart's Edit build and My builds open the builder there, while the page is published and holds the kit's Builder block.
+* A kit's Build tab can turn "Build a complete with this deck" off for that kit. Another kit that offers the deck may still show it.
+* A kit's Build tab edits the width guide under the deck step: your own shoe sizes and deck widths, the builder's rows back with one box, or the guide hidden.
+* A part's Part specs, and each variation's, have a "Not offered in the builder" box. Ticked, no kit offers the part, which stays in the shop, and the Catalogue check lists it.
+* A build's Add to cart keeps the cart before it answers, so a cart page opened straight after holds the build.
 
 = 1.1.0 =
 * The board's parts move into place as they are picked: the deck settles, the trucks and wheels slide on, the grip lays down and the board turns over like a card. The total counts to its new amount, and a new step slides in the way you are going.
@@ -78,7 +126,12 @@ Yes. Its hooks, REST routes, block attributes, settings keys, order item keys, C
 * A kit's Layout has Show ready builds. A ready build with a part gone or sold out has no tile; its link still opens it, and the Catalogue check lists it.
 * A theme's own styles for fieldsets, buttons and headings no longer restyle the builder, and Board size holds the board at 60 % or 50 % of a wide screen.
 * On a phone, Show the top has a row of its own under the board, and the rail shows every step in one row, the step you are on named.
-* Fixes: a press held while the builder loads goes through; a build link keeps a nofollow another plugin set; "Back to the shop" and "Sign in to save this build" are easier to tap on a phone; a slot's name in a sentence no longer needs mbstring; the cards no longer move as the builder loads; in Safari the panel keeps its scroll while the builder loads.
+* Fixed: a press held while the builder loads goes through.
+* Fixed: a build link keeps a nofollow another plugin set.
+* Fixed: "Back to the shop" and "Sign in to save this build" are easier to tap on a phone.
+* Fixed: a slot's name in a sentence no longer needs mbstring.
+* Fixed: the cards no longer move as the builder loads.
+* Fixed: in Safari the panel keeps its scroll while the builder loads.
 
 = 1.0.0 =
 * A kit's page is a configurator: the board beside the steps on a desktop, above them on a tablet or a phone, a rail of steps, and the total at the foot. A block theme gets a kit template of its own.
@@ -196,6 +249,9 @@ Yes. Its hooks, REST routes, block attributes, settings keys, order item keys, C
 * Foundation: the plugin skeleton, the two tables, the upgrade steps, uninstall, the update check, the test harness and the CI gates. Nothing a shopper or shop owner sees yet.
 
 == Upgrade Notice ==
+
+= 1.2.0 =
+Update from the updater or by uploading the zip; no step is needed. A kit saved before 1.2.0 keeps its builder on its own page, its button on its decks' pages and the builder's width guide, and every part stays offered.
 
 = 1.1.0 =
 Update from the updater or by uploading the zip; no step is needed. A kit saved before 1.1.0 keeps playful motion. A grip's layer image is now the whole sheet shot flat from above; grip strips saved under 1.0 still draw as before.

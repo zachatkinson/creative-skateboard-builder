@@ -1,0 +1,81 @@
+# How git stores, diffs and exports the repository's files (D-346).
+
+# Line endings: every text file is stored and checked out with LF, whatever the machine, so no checkout or editor turns
+# a shell script, the PHP or a snapshot into CRLF.
+* text=auto eol=lf
+
+# Binaries: never converted, never diffed as text. The PNGs include the visual baselines (tests/e2e/__snapshots__/).
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.avif binary
+*.ico binary
+*.mo binary
+*.zip binary
+*.woff binary
+*.woff2 binary
+
+# GitHub's views: the generated types fold in a pull request's diff (npm run types writes them), and the docs are not
+# counted as the project's code.
+assets/src/types/** linguist-generated
+docs/** linguist-documentation
+
+# Left out of `git archive` and GitHub's "Source code (zip)", so either holds what the release zip holds: these lines
+# are .distignore's, one for one, and gate 19 (composer gates) fails if the two lists differ.
+.git export-ignore
+.github export-ignore
+.githooks export-ignore
+.claude export-ignore
+.idea export-ignore
+.vscode export-ignore
+.distignore export-ignore
+.deptrac.cache export-ignore
+.editorconfig export-ignore
+.gitattributes export-ignore
+.gitignore export-ignore
+.markdownlint-cli2.jsonc export-ignore
+.nvmrc export-ignore
+.prettierrc.js export-ignore
+.prettierignore export-ignore
+.stylelintrc.json export-ignore
+.wp-env.json export-ignore
+.wp-env.override.json export-ignore
+.wp-env.tests.json export-ignore
+.wp-env.tests.override.json export-ignore
+CLAUDE.md export-ignore
+START.md export-ignore
+composer.lock export-ignore
+deptrac.yaml export-ignore
+docs export-ignore
+eslint.config.js export-ignore
+infection.json5 export-ignore
+infection-domain.json5 export-ignore
+lighthouserc.cjs export-ignore
+node_modules export-ignore
+package.json export-ignore
+package-lock.json export-ignore
+phpcs.xml export-ignore
+phpstan.neon export-ignore
+phpstan-domain.neon export-ignore
+phpunit.xml.dist export-ignore
+phpunit-domain.xml.dist export-ignore
+phpunit-integration.xml.dist export-ignore
+playwright.config.ts export-ignore
+stryker.config.mjs export-ignore
+tsconfig.json export-ignore
+vitest.config.mts export-ignore
+webpack.config.js export-ignore
+playwright-report export-ignore
+test-results export-ignore
+blob-report export-ignore
+tests export-ignore
+tools export-ignore
+tmp export-ignore
+vendor export-ignore
+*.zip export-ignore
+assets/src export-ignore
+CONTRIBUTING.md export-ignore
+CODE_OF_CONDUCT.md export-ignore
+SECURITY.md export-ignore

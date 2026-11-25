@@ -5,7 +5,7 @@
  * @package CreativeBranding\SkateboardBuilder
  *
  * @var string $marker The name of the panel's last field.
- * @var list<array{id: string, title: string, intro: string, refused: bool, problems: list<array{error: string, field: string, text: string}>, groups: list<array{id: string, legend: string, moves: bool, fold: string, open: bool, fields: list<array<string, mixed>>, more: list<array<string, mixed>>}>}> $sections The tab's sections. None on a product that is not a kit.
+ * @var list<array{id: string, title: string, intro: string, refused: bool, problems: list<array{error: string, field: string, text: string}>, groups: list<array{id: string, legend: string, moves: bool, fold: string, open: bool, fields: list<array<string, mixed>>, more: list<array<string, mixed>>, hidden?: bool, remove?: string}>, add: string}> $sections The tab's sections. None on a product that is not a kit.
  */
 
 declare( strict_types=1 );
@@ -52,7 +52,12 @@ if ( ! defined( 'ABSPATH' ) ) {
 					// a screen reader announces with no name (Cowork's M7 review, M5).
 					$cbuild_tag = '' === $cbuild_group['legend'] ? 'div' : 'fieldset';
 					?>
-					<<?php echo esc_html( $cbuild_tag ); ?> id="<?php echo esc_attr( $cbuild_group['id'] ); ?>" class="<?php echo esc_attr( trim( 'cbuild-kit-group ' . ( $cbuild_group['moves'] ? 'cbuild-kit-row' : '' ) ) ); ?>">
+					<?php
+					// A row added and removed by the screen's script (1.2.0, #114): the server draws every row the list
+					// takes, and those past what is kept, and one empty one, wait hidden for Add a row.
+					$cbuild_adds = isset( $cbuild_group['remove'] );
+					?>
+					<<?php echo esc_html( $cbuild_tag ); ?> id="<?php echo esc_attr( $cbuild_group['id'] ); ?>" class="<?php echo esc_attr( trim( 'cbuild-kit-group ' . ( $cbuild_group['moves'] ? 'cbuild-kit-row' : '' ) . ( $cbuild_adds ? 'cbuild-kit-adds' : '' ) ) ); ?>"<?php echo ( $cbuild_group['hidden'] ?? false ) ? ' hidden' : ''; ?>>
 						<?php if ( '' !== $cbuild_group['legend'] ) : ?>
 							<legend id="<?php echo esc_attr( $cbuild_group['id'] . '-legend' ); ?>"><?php echo esc_html( $cbuild_group['legend'] ); ?></legend>
 						<?php endif; ?>
@@ -208,9 +213,23 @@ if ( ! defined( 'ABSPATH' ) ) {
 						<?php if ( '' !== $cbuild_group['fold'] ) : ?>
 							</details>
 						<?php endif; ?>
+						<?php if ( $cbuild_adds ) : ?>
+							<?php // Shown by the script, which empties the row and hides it; without it, a row emptied is not saved. ?>
+							<p class="cbuild-kit-remove"><button type="button" class="button" data-cbuild-remove id="<?php echo esc_attr( $cbuild_group['id'] . '-remove' ); ?>" hidden><?php echo esc_html( $cbuild_group['remove'] ?? '' ); ?> <span class="screen-reader-text"><?php echo esc_html( $cbuild_group['legend'] ); ?></span></button></p>
+						<?php endif; ?>
 					</<?php echo esc_html( $cbuild_tag ); ?>>
 				<?php endforeach; ?>
 			</div>
+			<?php if ( '' !== $cbuild_section['add'] ) : ?>
+				<?php
+				// The screen's script says a row went, in these words, once it has removed it.
+				/* translators: %s: a row's name, such as Row 2. */
+				$cbuild_removed = __( '%s removed. The rows after it moved up.', 'creative-skateboard-builder' );
+				// And that typing in a row unticked the builder's rows, once.
+				$cbuild_unticked = __( '"Use the builder\'s rows" is now unticked, so the rows you type are saved.', 'creative-skateboard-builder' );
+				?>
+				<p class="cbuild-kit-add"><button type="button" class="button" data-cbuild-add data-cbuild-removed="<?php echo esc_attr( $cbuild_removed ); ?>" data-cbuild-unticked="<?php echo esc_attr( $cbuild_unticked ); ?>" hidden><?php echo esc_html( $cbuild_section['add'] ); ?></button></p>
+			<?php endif; ?>
 		</div>
 	<?php endforeach; ?>
 	<?php if ( array() !== $sections ) : ?>

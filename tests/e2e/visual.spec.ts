@@ -396,7 +396,7 @@ test.describe( 'The end state of each moment, Twenty Twenty-Five, light, desktop
 			async ( on ) => {
 				const turn = on
 					.locator( '#cbuild-picture' )
-					.getByRole( 'button', { name: 'Show the top' } );
+					.getByRole( 'button', { name: 'Top', exact: true } );
 				await turn.click();
 				await expect( turn ).toHaveAttribute( 'aria-pressed', 'true' );
 			},
