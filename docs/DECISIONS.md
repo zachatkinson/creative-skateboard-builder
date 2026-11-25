@@ -242,6 +242,7 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-399 · A deck's card counts its other widths past two, keeps its stock beside the price and its picture in its 7rem box](#d-399--a-decks-card-counts-its-other-widths-past-two-keeps-its-stock-beside-the-price-and-its-picture-in-its-7rem-box--2026-11-25)
 - [D-403 · Each row of the review shows its card's picture in a 3rem square, its place kept](#d-403--each-row-of-the-review-shows-its-cards-picture-in-a-3rem-square-its-place-kept--2026-11-25)
 - [D-416 · The start button is Add to cart's twin by its fill alone, its words read on its fill, and a hostile theme fixture tests the builder against a theme's rules](#d-416--the-start-button-is-add-to-carts-twin-by-its-fill-alone-its-words-read-on-its-fill-and-a-hostile-theme-fixture-tests-the-builder-against-a-themes-rules--2026-11-25)
+- [D-417 · The bar's Back and Next, and its delivery lines, hold their size and margins at two classes' weight](#d-417--the-bars-back-and-next-and-its-delivery-lines-hold-their-size-and-margins-at-two-classes-weight--2026-11-25)
 
 ### Accessibility
 
@@ -6162,6 +6163,22 @@ Cowork's review of 1.2.0, F32 (#149, should-fix, WCAG 1.4.3). On the demo's deck
 **Tests.** "The start button under a row's link colour (#149)", on each of the three themes: the words against the fill they sit on at 4.5:1 or more, at rest and focused, colours that are not Add to cart's, and axe on the button. D-377's tests are unchanged and pass. Without JavaScript the button is the theme's own as it stands, as D-377 says, so the test is skipped there.
 
 **Why:** a shopper must be able to read the page's second action whatever colours a theme's container gives its links; Add to cart's fill alone is what makes the two buttons look alike.
+
+**Status:** Accepted.
+
+### D-417 · The bar's Back and Next, and its delivery lines, hold their size and margins at two classes' weight · 2026-11-25
+
+Found with the hostile theme fixture (D-416), on the way to Cowork's F33 (#150).
+
+**Back and Next.** The bar sets its buttons at the reader's own base size and an inline padding of 0.875rem, so Back and Next fit beside the total on a phone. The rule was at no weight, `:where(.cbuild-bar__next, .cbuild-bar__back)`, and a theme's rule for every `button` outranks it: Next is a `button`, and the plain button's two-class reset (D-321) leaves out the primary button, whose fill is the theme's. On a phone at the review on Twenty Twenty-Five, the fixture's `button{padding:.6em 1.4em}` made Next's inline padding 22.4 px, Back and Next took a row under the total, and the bar grew from 143 to 261 px with the delivery lines shown (iPhone 13's 390 by 664). Storefront's own `button` padding already did the same with no fixture: its bar was 259 px.
+
+**Decision:** the rule is `.cbuild.cbuild :where(.cbuild-bar__next, .cbuild-bar__back)`, two classes, the plain button's reset's weight. Only the inline padding, the font size and `flex: none` are set there; the fill, the words, the border and the radius stay the theme's for the primary button, as D-321 has it.
+
+**Measured** on a phone at the review with the delivery lines: Twenty Twenty-Five with the fixture 261 to 207 px (the 64 px left are the delivery lines' margins, F33); Storefront without it 259 to 206 px, Back and Next beside the total. Next on Kadence is 112 px wide, not 129, and on Storefront 103, not 120: the bar's own padding, not the theme's, at every width.
+
+**Tests.** "A hostile theme › keeps Back and Next at the bar's own size under a theme's button padding": on a phone at the review, Back's and Next's inline padding and font size are the same with the fixture as without it.
+
+**Why:** the bar's buttons are sized to fit beside the total; a theme's padding for every button is not aimed at them.
 
 **Status:** Accepted.
 

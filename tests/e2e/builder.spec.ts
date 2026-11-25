@@ -11908,3 +11908,82 @@ test.describe( 'Smart swaps (#135)', () => {
 		).toBeCloseTo( plainBeside, 0 );
 	} );
 } );
+
+// A theme's rules that outrank the builder's own (Cowork's review of 1.2.0, F32 and F33, D-416): the hostile theme
+// fixture (tests/e2e/mu-plugins/cbuild-e2e-hostile.php) prints, after every stylesheet, a row's link colour, a
+// paragraph's and a heading's margins at a class and an element, and every button in its own padding and colours.
+test.describe( 'A hostile theme', () => {
+	/**
+	 * The fixture on or off for the next page, with the bar's delivery and arrival lines said, as another plugin says
+	 * them on the demo.
+	 *
+	 * @param context The browser context.
+	 * @param baseURL The site.
+	 * @param on      Whether the hostile rules are printed.
+	 */
+	const hostile = async (
+		context: BrowserContext,
+		baseURL: string | undefined,
+		on: boolean
+	): Promise< void > => {
+		const url = baseURL || SITE;
+		await context.clearCookies( { name: 'cbuild_e2e_hostile' } );
+		await context.addCookies( [
+			{ name: 'cbuild_e2e_delivery', value: '1', url },
+			...( on
+				? [ { name: 'cbuild_e2e_hostile', value: '1', url } ]
+				: [] ),
+		] );
+	};
+
+	const review = () =>
+		linkTo( {
+			deck: id( 'builder-test-deck-8-0' ),
+			trucks: id( 'builder-test-trucks-139' ),
+			wheels: id( 'builder-test-wheels-54' ),
+			bearings: id( 'builder-test-bearings' ),
+			hardware: id( 'builder-test-bolts-1-25' ),
+			grip: id( 'builder-test-grip' ),
+			step: 'review',
+		} );
+
+	/**
+	 * A phone's width, where the bar holds the delivery lines at the review (D-250): a desktop project's window
+	 * narrowed to an iPhone 13's, as Cowork measured.
+	 *
+	 * @param page    The page.
+	 * @param project The project's name.
+	 */
+	const phone = async ( page: Page, project: string ): Promise< void > => {
+		if ( ! project.includes( 'phone' ) ) {
+			await page.setViewportSize( { width: 390, height: 664 } );
+		}
+	};
+
+	// Back and Next are at the reader's own base size and a padding of their own, so they fit beside the total on a
+	// phone; a theme's padding for every `button` outranked that at no weight, and on Twenty Twenty-Five the bar's
+	// buttons went under the total, 54 px more of bar.
+	test( "keeps Back and Next at the bar's own size under a theme's button padding", async ( {
+		page,
+		context,
+		baseURL,
+	}, info ) => {
+		await phone( page, info.project.name );
+		const sizes = () =>
+			page.locator( '.cbuild-bar__actions' ).evaluate( ( actions ) =>
+				[ ...actions.querySelectorAll( '.cbuild-button' ) ]
+					.filter( ( button ) => button.checkVisibility() )
+					.map( ( button ) => {
+						const style = getComputedStyle( button );
+						return `${ button.className }: ${ style.paddingInlineStart } ${ style.paddingInlineEnd } ${ style.fontSize }`;
+					} )
+			);
+		await hostile( context, baseURL, false );
+		await page.goto( review() );
+		const own = await sizes();
+		expect( own.length, 'Back and Add to cart' ).toBe( 2 );
+		await hostile( context, baseURL, true );
+		await page.goto( review() );
+		expect( await sizes(), 'with the hostile theme' ).toEqual( own );
+	} );
+} );

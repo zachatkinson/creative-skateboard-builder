@@ -2541,8 +2541,9 @@
 }
 
 /* The footer's buttons at the reader's own base size, not a theme's larger body text, so Back and Next fit beside
-   the total on a phone. */
-:where(.cbuild-bar__next, .cbuild-bar__back) {
+   the total on a phone. At two classes' weight, as the plain button's reset (D-321): a theme's padding for every
+   `button` outweighed it at no weight and put the bar's buttons under the total (D-417). */
+.cbuild.cbuild :where(.cbuild-bar__next, .cbuild-bar__back) {
 	flex: none;
 	padding-inline: 0.875rem;
 	font-size: 1rem;
