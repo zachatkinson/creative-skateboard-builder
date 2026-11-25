@@ -12,7 +12,8 @@
  * - **Asked ahead.** The store may ask ahead for a move the shopper is likely to make next, a step's lit Next (D-355):
  *   nothing is shown or said for it, and the move, made with the same fields within FRESH, takes its answer, or waits
  *   for it, rather than asking again. Any other move forgets it.
- * - **Anything but a view is a failure,** and the form or link does what it does without JavaScript.
+ * - **Anything but a view is a failure,** and the form or link does what it does without JavaScript, save the rate
+ *   limit's refusal (spec: Search) and an answer past LIMIT (D-364), below.
  * - **An answer has LIMIT ms.** Past it the request is given up, and the step keeps what it shows and says so, as past
  *   the rate limit (D-364).
  * - **History.** A step change is a new entry, a pick replaces the current one, and going back makes none. The address

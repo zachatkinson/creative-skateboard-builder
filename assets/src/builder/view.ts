@@ -1652,8 +1652,8 @@ const { state } = store(
 				narrowing = false;
 				chosen( state.view, input.value );
 				foretell( state.view, input.value );
-				// The stylesheet settles the card picked under this mark alone, never as a page or a step is drawn; and
-				// the stage keeps the place a part picked will keep (D-303, D-356).
+				// The stylesheet settles the card picked under this mark alone, never as a page or a step is drawn. The
+				// phone's stage does not stick at this mark: it starts to stick at the answer (D-303, D-356).
 				root?.setAttribute( 'data-picked', '' );
 				swap( state.view, input.value );
 				state.missing = '';
