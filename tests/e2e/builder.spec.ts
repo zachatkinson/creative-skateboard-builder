@@ -1,4 +1,5 @@
 import { execSync } from 'node:child_process';
+import { randomUUID } from 'node:crypto';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import {
@@ -7982,7 +7983,11 @@ test.describe( 'Saved builds', () => {
 		page,
 		javaScriptEnabled,
 	}, info ) => {
-		await login( page );
+		// A customer of this test's own, with a cart nothing else writes. The administrator's session is also saved
+		// whole by requests the test doesn't make, each with the cart it read as it started: WordPress's heartbeat on
+		// an admin screen, and Action Scheduler's queue runner, sent with the administrator's cookies. Under load one
+		// ended seconds after the test that sent it, and the cart read 2 before the saves and 0 after (#145).
+		await customer( page );
 		// Saving is no add: the cart's lines are as they were after both saves (CI run 44119225891).
 		const lines = async () =>
 			(
@@ -8146,6 +8151,34 @@ function runPhp( code: string ): void {
 	writeFileSync( file, `<?php\n${ index }\n${ code }\n` );
 	wp(
 		'eval-file wp-content/plugins/creative-skateboard-builder/tmp/e2e-eval.php'
+	);
+}
+
+/**
+ * Makes the page's browser the saved builds test's own customer, made on the first run, with a password set for this
+ * run alone: no other test signs in as them, so their cart is theirs (#145).
+ *
+ * @param page The page.
+ */
+async function customer( page: Page ): Promise< void > {
+	const user = 'e2e-saver';
+	const pass = randomUUID();
+	runPhp(
+		`$u = get_user_by( 'login', '${ user }' ); if ( ! $u ) { wp_insert_user( array( 'user_login' => '${ user }', 'user_email' => 'shopper+40@example.com', 'user_pass' => '${ pass }', 'role' => 'customer' ) ); } else { wp_set_password( '${ pass }', $u->ID ); }`
+	);
+	// WordPress refuses a login from a client that did not take its test cookie, which the form's own page sets.
+	await page.request.get( '/wp-login.php' );
+	const answer = await page.request.post( '/wp-login.php', {
+		form: {
+			log: user,
+			pwd: pass,
+			'wp-submit': 'Log In',
+			redirect_to: '/my-account/',
+			testcookie: '1',
+		},
+	} );
+	expect( answer.url(), 'the customer is signed in' ).toContain(
+		'/my-account/'
 	);
 }
 
