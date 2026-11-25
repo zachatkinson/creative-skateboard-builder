@@ -2639,6 +2639,14 @@
 	font-size: var(--cbuild-small);
 }
 
+/* Their lines are spaced by the gap alone, at two classes' weight: a theme's margin for a paragraph or a list in its
+   content, as Kadence's `.single-content p` (a class and an element), outranked the reset at no weight, 32 px under
+   each line on a phone at the review (#150, D-417). */
+.cbuild-bar .cbuild-bar__more-lines > * {
+	margin: 0;
+	padding: 0;
+}
+
 @container cbuild (min-width: 64rem) {
 	:where(.cbuild-bar) {
 		margin-block-start: 0;

@@ -6176,9 +6176,18 @@ Found with the hostile theme fixture (D-416), on the way to Cowork's F33 (#150).
 
 **Measured** on a phone at the review with the delivery lines: Twenty Twenty-Five with the fixture 261 to 207 px (the 64 px left are the delivery lines' margins, F33); Storefront without it 259 to 206 px, Back and Next beside the total. Next on Kadence is 112 px wide, not 129, and on Storefront 103, not 120: the bar's own padding, not the theme's, at every width.
 
-**Tests.** "A hostile theme › keeps Back and Next at the bar's own size under a theme's button padding": on a phone at the review, Back's and Next's inline padding and font size are the same with the fixture as without it.
+**The delivery lines (Cowork's F33, #150, a nit).** At the review on a phone the bar holds "This build ships free to …" and the arrival line, each a `p`, and the notes' `ul`, in a grid whose gap spaces them. Cowork measured the demo's bar at 198 px on an iPhone 13, 64 of it margins, and read the computed `margin` as "0px 32px". That reading is `margin-block`: 0 above and 32 px below. Checked on the test site's Kadence, each line's own block margins carry the space (`margin-block-end` 32 px from `.single-content p`, `margin-top:0;margin-bottom:var(--global-md-spacing)` in assets/css/content.min.css), and neither the lines' box (`cbuild-bar__more-lines`) nor the bar has a margin. In a grid the two margins do not collapse into the gap. The reset that should have held them, `:where(.cbuild) :where(… p …)`, has no weight. Storefront's `ul` margin gave the notes 19.8 px below and 3em at the start, and its `p` the same 19.8 px.
 
-**Why:** the bar's buttons are sized to fit beside the total; a theme's padding for every button is not aimed at them.
+**Decision:** `.cbuild-bar .cbuild-bar__more-lines > *` sets each line's margin and padding to 0, two classes, over a theme's class and element. The gap of 0.25rem stays their only spacing.
+
+**Measured** at the review on an iPhone 13's width with the delivery lines: Kadence without the fixture 203 to 139 px; Storefront 206 to 147; Twenty Twenty-Five with the fixture 207 to 143, its height without it.
+
+**Tests.**
+
+- "A hostile theme › keeps Back and Next at the bar's own size under a theme's button padding": on a phone at the review, Back's and Next's inline padding and font size are the same with the fixture as without it.
+- "A hostile theme › keeps the bar no taller at the review on a phone under a theme's paragraph margin (#150)": the lines' block margins the same with the fixture as without, and the bar no taller.
+
+**Why:** the bar's buttons are sized to fit beside the total, and its lines are spaced by its gap; a theme's padding for every button and margin for every paragraph are not aimed at them.
 
 **Status:** Accepted.
 

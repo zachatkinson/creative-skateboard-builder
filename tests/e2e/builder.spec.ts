@@ -11986,4 +11986,45 @@ test.describe( 'A hostile theme', () => {
 		await page.goto( review() );
 		expect( await sizes(), 'with the hostile theme' ).toEqual( own );
 	} );
+
+	// Cowork's review of 1.2.0, F33 (#150): at the review on a phone the bar holds the delivery and arrival lines, and
+	// Kadence's `.single-content p`, a class and an element, gave each 32 px below over the builder's `:where()` reset:
+	// 64 px of the demo's 198 px bar on an iPhone 13.
+	test( "keeps the bar no taller at the review on a phone under a theme's paragraph margin (#150)", async ( {
+		page,
+		context,
+		baseURL,
+	}, info ) => {
+		await phone( page, info.project.name );
+		const bar = page.locator( '.cbuild-bar' );
+		const lines = page.locator( '.cbuild-bar__more-lines' );
+		const measured = () =>
+			bar.evaluate( ( element ) => ( {
+				height: element.getBoundingClientRect().height,
+				margins: [
+					...element.querySelectorAll(
+						'.cbuild-bar__more-lines > *'
+					),
+				].map(
+					( line ) =>
+						`${ line.className }: ${
+							getComputedStyle( line ).marginBlockStart
+						} ${ getComputedStyle( line ).marginBlockEnd }`
+				),
+			} ) );
+		await hostile( context, baseURL, false );
+		await page.goto( review() );
+		await expect( lines ).toContainText( 'This build ships free' );
+		await expect( lines ).toContainText( 'Arrives' );
+		const own = await measured();
+		await hostile( context, baseURL, true );
+		await page.goto( review() );
+		await expect( lines ).toContainText( 'This build ships free' );
+		const theirs = await measured();
+		expect( theirs.margins, "the lines' margins" ).toEqual( own.margins );
+		expect(
+			theirs.height,
+			`the bar, ${ own.height } px without the theme's rules`
+		).toBeLessThanOrEqual( own.height + 0.5 );
+	} );
 } );
