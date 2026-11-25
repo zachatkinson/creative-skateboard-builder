@@ -249,6 +249,7 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-369 · The side is chosen with two buttons, Underside and Top, the side shown pressed](#d-369--the-side-is-chosen-with-two-buttons-underside-and-top-the-side-shown-pressed--2026-11-24)
 - [D-380 · Muted words keep 4.5:1 on a theme whose text is near the limit](#d-380--muted-words-keep-451-on-a-theme-whose-text-is-near-the-limit--2026-11-24)
 - [D-386 · A Build tab field not saved is marked where it is](#d-386--a-build-tab-field-not-saved-is-marked-where-it-is--2026-11-24)
+- [D-387 · The Build tab's lists are as wide as their longest option, up to the field](#d-387--the-build-tabs-lists-are-as-wide-as-their-longest-option-up-to-the-field--2026-11-24)
 
 ### Motion
 
@@ -5508,5 +5509,21 @@ The walkthrough of milestone 12, finding 7: the assembly time refused showed "61
 **Red run.** chromium-desktop: "the field refused / Expected colour rgb(214, 54, 56), ring rgb(214, 54, 56) 0px 0px 0px 1px / Received rgb(148, 148, 148), rgba(0, 0, 0, 0) 0px 0px 0px 0px" (build-tab.spec.ts:345).
 
 **Why:** an owner looking for what to put right should find it at the field, as WordPress's own forms mark theirs.
+
+**Status:** Accepted.
+
+### D-387 · The Build tab's lists are as wide as their longest option, up to the field · 2026-11-24
+
+The walkthrough of milestone 12, finding 9, older than M12: "Search in the steps" showed "Creative Search where it is active, the builder's own otherw" at 1440 px, and on a phone Motion showed "Playful: parts move onto the bo".
+
+- **The cause, the plugin's CSS.** The tab's own rule gives every field `width: 100%` up to `max-width: 30em`, 420 px. A list cannot wrap its option, and "Search in the steps" needs 400 px of text beside 36 px of padding and arrow: it had 382.
+- **The fix.** A list that takes one option is as wide as its longest option (`width: auto`), at least 30em where there is room, as before, and never wider than its field (`max-width: 100%`). At 1440 px "Search in the steps" is wide enough for its options; the others keep 30em.
+- **A phone.** The field there is the screen's width less the panel's padding, 287 px at 390 by 844, and "Search in the steps"'s longest option needs 436. No CSS can fit it on one line, and the phone's own picker, which the list opens, shows each option whole. Shorter option words would fit it; they are copy, with their French, and left for a decision of their own.
+
+**Tests.** `build-tab.spec.ts` "each list shows its options whole on a desktop": at 1440 px no option of a list in the tab is wider than the room its list gives it.
+
+**Red run.** chromium-desktop: "options cut short / Received: cbuild-kit-layout-search: Creative Search where it is active, the builder's own otherwise".
+
+**Why:** a choice the owner cannot read whole is a choice they must open to make.
 
 **Status:** Accepted.

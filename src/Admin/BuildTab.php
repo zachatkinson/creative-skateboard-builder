@@ -97,6 +97,9 @@ final class BuildTab {
 		. '.cbuild-kit p.form-field input.checkbox{float:none;margin:0;margin-inline-end:6px}'
 		. '.cbuild-kit p.form-field input.checkbox+label{display:inline}'
 		. '.cbuild-kit p.form-field .short,.cbuild-kit p.form-field .select2-container{float:none;width:100%!important;max-width:30em;box-sizing:border-box}'
+		// A list cannot wrap its option: one is as wide as its longest option, 30em at the least, up to the field's
+		// width, so no option is cut short where there is room (the walkthrough of M12, finding 9; D-387).
+		. '.cbuild-kit p.form-field select.short:not([multiple]){width:auto!important;min-width:min(30em,100%);max-width:100%}'
 		. '.cbuild-kit p.form-field .description{display:block;clear:both;margin:4px 0 0}'
 		. '.cbuild-kit-moves{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:0;padding:8px 12px}'
 		. '.cbuild-kit-moves .button{min-height:30px}'

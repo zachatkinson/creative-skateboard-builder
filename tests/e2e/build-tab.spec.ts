@@ -282,6 +282,57 @@ test.describe( 'The Build tab', () => {
 		await expect( shoe( 4 ) ).toHaveValue( '' );
 	} );
 
+	// The walkthrough of M12, finding 9 (D-387): a list cut its chosen option short, "the builder's own otherw", at
+	// 1440 px. Each list is as wide as its longest option, up to the field's width.
+	test( 'each list shows its options whole on a desktop', async ( {
+		page,
+	}, info ) => {
+		test.skip(
+			info.project.name.includes( 'phone' ),
+			'A phone is narrower than the longest option; its own picker shows each whole.'
+		);
+		await page.setViewportSize( { width: 1440, height: 900 } );
+		await login( page );
+		await edit( page );
+		await tab( page );
+		const cut = await page
+			.locator( `${ PANEL } p.form-field select.short:not([multiple])` )
+			.evaluateAll( ( lists ) =>
+				lists
+					.filter(
+						( list ) =>
+							( list as HTMLElement ).offsetParent !== null
+					)
+					.flatMap( ( list ) => {
+						const pen = document
+							.createElement( 'canvas' )
+							.getContext( '2d' );
+						if ( ! pen ) {
+							return [];
+						}
+						const select = list as HTMLSelectElement;
+						const style = getComputedStyle( select );
+						pen.font = `${ style.fontWeight } ${ style.fontSize } ${ style.fontFamily }`;
+						const room =
+							select.clientWidth -
+							parseFloat( style.paddingInlineStart ) -
+							parseFloat( style.paddingInlineEnd );
+						return [ ...select.options ]
+							.filter(
+								( option ) =>
+									// A pixel for the canvas's measure against layout's: Firefox sizes the list to
+									// the text to within it.
+									pen.measureText( option.text ).width >
+									room + 1
+							)
+							.map(
+								( option ) => `${ select.id }: ${ option.text }`
+							);
+					} )
+			);
+		expect( cut, 'options cut short' ).toEqual( [] );
+	} );
+
 	// #142: the assembly time in business days, beside the lead time. Typed as "2 to 4", it is kept as "2-4"; past 60
 	// it is not saved, and the notice leads to the field in Assembly, which shows it as typed.
 	test( 'the assembly time in business days is typed beside the lead time, kept as 2-4, and refused past 60', async ( {
