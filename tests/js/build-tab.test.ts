@@ -698,6 +698,13 @@ describe( 'adds', () => {
 		);
 		expect( addButton().disabled ).toBe( false );
 		expect( plugins() ).toBe( false );
+		addButton().click();
+		expect( shown(), 'the row that waits again is empty' ).toEqual( [
+			'a|7|7.5',
+			'c|8|',
+			'||',
+			'||',
+		] );
 	} );
 
 	it( 'moves focus to the row before when the last is removed, and to Add a row when none is left', () => {
@@ -780,5 +787,76 @@ describe( 'adds', () => {
 			( document.querySelector( '.cbuild-kit-adds' ) as HTMLElement )
 				.hidden
 		).toBe( false );
+	} );
+	it( 'says the row removed by its legend alone, and nothing for a row with no legend', () => {
+		const section = guide( [
+			[ 'a', '7', '' ],
+			[ 'b', '8', '' ],
+		] );
+		section.querySelector( 'legend' )!.textContent = '\n\t\tRow 1\n\t';
+		section.querySelectorAll( 'legend' )[ 1 ]!.remove();
+		const speak = vi.fn();
+		adds( document, speak );
+		( document.getElementById( 'g1-remove' ) as HTMLButtonElement ).click();
+		expect( speak ).not.toHaveBeenCalled();
+		( document.getElementById( 'g0-remove' ) as HTMLButtonElement ).click();
+		expect( speak.mock.calls ).toEqual( [
+			[ 'Row 1 removed. The rows after it moved up.' ],
+		] );
+	} );
+
+	it( 'empties a field the row after it does not have', () => {
+		guide( [
+			[ 'a', '7', '7.5' ],
+			[ 'b', '8', '8.5' ],
+		] );
+		document.getElementById( 'g1-to' )!.remove();
+		adds( document );
+		( document.getElementById( 'g0-remove' ) as HTMLButtonElement ).click();
+		expect( shown() ).toEqual( [ 'b|8|', '|' ] );
+	} );
+
+	it( 'adds and removes rows in a section with no Add a row or no box for the builder’s rows, and says nothing of the box', () => {
+		const section = guide( [
+			[ 'a', '7', '' ],
+			[ 'b', '8', '' ],
+		] );
+		document
+			.getElementById( 'cbuild-kit-settings-width_guide-plugins' )!
+			.remove();
+		const speak = vi.fn();
+		adds( document, speak );
+		const shoe = document.getElementById( 'g0-shoe' ) as HTMLInputElement;
+		shoe.dispatchEvent( new Event( 'input', { bubbles: true } ) );
+		expect( speak, 'no box was unticked' ).not.toHaveBeenCalled();
+		addButton().remove();
+		( document.getElementById( 'g1-remove' ) as HTMLButtonElement ).click();
+		expect( shown() ).toEqual( [ 'a|7|', '||' ] );
+		( document.getElementById( 'g0-remove' ) as HTMLButtonElement ).click();
+		expect( shown() ).toEqual( [ '||' ] );
+		( document.getElementById( 'g0-remove' ) as HTMLButtonElement ).click();
+		expect( shown() ).toEqual( [] );
+		expect( speak ).not.toHaveBeenCalled();
+		expect( section.isConnected ).toBe( true );
+	} );
+
+	it( 'shows a row with no field to focus', () => {
+		const section = guide( [ [ 'a', '7', '' ] ] );
+		section
+			.querySelectorAll( '#cbuild-kit-settings-width_guide-rows-2 input' )
+			.forEach( ( input ) => input.remove() );
+		adds( document );
+		addButton().click();
+		expect( shown() ).toEqual( [ 'a|7|', '||', '' ] );
+	} );
+
+	it( 'leaves a click on text in the section alone', () => {
+		const section = guide( [ [ 'a', '7', '' ] ] );
+		adds( document );
+		const words = section.querySelector( 'legend' )!.firstChild!;
+		expect( () =>
+			words.dispatchEvent( new MouseEvent( 'click', { bubbles: true } ) )
+		).not.toThrow();
+		expect( shown() ).toEqual( [ 'a|7|', '||' ] );
 	} );
 } );
