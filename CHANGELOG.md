@@ -56,6 +56,7 @@ All notable changes to this project are documented here. The format follows [Kee
 - **A build's Add to cart keeps the cart in the session** before the add answers, so a cart page opened straight after holds the build; it read empty while WooCommerce saved the session at shutdown (#108, #51, D-352).
 - **The phone bar is whole at first view** on a page that holds the kit's Builder block under its title: on Kadence and Storefront up to 59 px of it was under the screen's foot once a part was picked. It now sticks from the builder's top, not the panel's (D-382).
 - **"The shop did not answer in time"** and the rate limit's words are drawn over the bar, in the panel's column, so a phone scrolled to the card pressed sees them, and nothing moves as they come. They were drawn at the builder's top, off the screen, and at full width with no gutter (D-383).
+- **The full-width builder keeps the page's gutter on a phone:** the picture, its heading and the bar's total and buttons sit as far from the screen's edge as the step's words, the theme's own padding and never under 16 px. They were 7 px from the edge on Kadence and 10 px on Twenty Twenty-Five (D-384).
 
 ## [1.1.0] - 2026-11-24
 

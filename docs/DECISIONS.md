@@ -228,6 +228,7 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-377 · A compact card's words sit the builder's gap from the deck, and the start button is the theme's second button](#d-377--a-compact-cards-words-sit-the-builders-gap-from-the-deck-and-the-start-button-is-the-themes-second-button--2026-11-24)
 - [D-382 · The bar follows the panel, not inside it, so its sticky foot can rise to the builder's top](#d-382--the-bar-follows-the-panel-not-inside-it-so-its-sticky-foot-can-rise-to-the-builders-top--2026-11-24)
 - [D-383 · The limit's line is drawn over the bar, in the panel's column](#d-383--the-limits-line-is-drawn-over-the-bar-in-the-panels-column--2026-11-24)
+- [D-384 · At full width the builder spans the theme's full width, and stacked its contents keep the page's gutter](#d-384--at-full-width-the-builder-spans-the-themes-full-width-and-stacked-its-contents-keep-the-pages-gutter--2026-11-24)
 
 ### Accessibility
 
@@ -5450,5 +5451,24 @@ M12's walkthrough, on the full-width builder on Kadence: after a deck press that
 **Deliberate break.** The line put back at the builder's top: chromium-desktop and chromium-phone failed with "on the screen: -397 to -325 on 844 px" on a phone and "on the screen: -74 to -29 on 900 px" on a desktop (builder.spec.ts:7952). Put back, all passed, on chromium, WebKit and Firefox at both sizes, fr-ca and rtl.
 
 **Why:** a shopper told nothing where they are looking reads the dimmed press as the shop ignoring them.
+
+**Status:** Accepted.
+
+### D-384 · At full width the builder spans the theme's full width, and stacked its contents keep the page's gutter · 2026-11-24
+
+M12's walkthrough, on the page that holds the kit's Builder block, which is full width by default (D-283): on Kadence the layout ran 0 to 1440 px past the content card that ends at 1341, and on a phone "Your board" and the picture were 7 px from the screen's edge while the step's heading had 16. On Twenty Twenty-Five the picture was 10 px from a phone's edge beside a heading at 30.
+
+- **What full width means.** The block offers wide and full (`block.json`). WordPress gives a full-width block the content's whole width, and each theme decides what that is: Kadence 1.6.0 takes `.alignfull` to the screen's width out of a boxed content card (`.entry-content .alignfull { width: var(--global-vw, 100vw) }`, assets/css/all.min.css), as it does a cover or a row layout, while its `.alignwide` in a boxed card stops at the card's edges (`.content-style-boxed .entry-content .alignwide`); Storefront 4.6.2 widens `.alignfull` only on its full-width template (assets/css/base/gutenberg-blocks.css), so on a default page the builder stays in its column; Twenty Twenty-Five takes it to the screen and pads the rest of the page by its root padding. The builder takes what the theme gives: a shop that wants it inside Kadence's card sets the block to wide.
+- **Stacked, the page's gutter.** Below 64rem the builder is a column, like the page's own, and its contents keep the page's gutter: the theme's root padding (`--wp--style--root--padding-left` and `-right`, which WordPress sets for a block theme), never under 16 px. The panel's words already did (D-283). Now the stage's padding, the bar's padding, what the dimmed Next says and the limit's line (D-383) do too. The board is centred as before.
+- **Beside the stage, the builder's gap.** From 64rem the builder is a frame of two panes, each with the builder's gap inside it (16 px on Kadence, 30 on Twenty Twenty-Five), and nothing in it is nearer the screen's edge than 16 px. Taking the theme's root padding there as well (50 px on Twenty Twenty-Five at 1280 px and wider) was tried and left out: it narrowed the panel's column by 20 px, which dropped Twenty Twenty-Five's trucks step at 1280 px from a card beside the count to one card across the column, and moved every desktop picture of the builder, for edges already clear of the screen.
+- **Not new in M12.** 1.1.0's stylesheet measured the same: the picture at 7 px on a Kadence phone.
+
+**Tests.** `builder.spec.ts`, "The full-width builder on a theme › keeps the page's gutter on each theme on a phone and a desktop": the picture's heading, the picture, the step's heading, the bar's total and Next each sit no nearer either edge of the screen than the gutter, read from the page's own root padding on a phone, and 16 px on a desktop.
+
+**Red runs.** Before the change, on chromium-desktop and chromium-phone (builder.spec.ts:8019): Kadence on a phone, ".cbuild-picture__heading: 7 to 383 px of 390, the gutter 16 and 16", and the picture, the total and Next the same; Twenty Twenty-Five on a phone, "10 to 380 px of 390, the gutter 30 and 30". Storefront, whose content column holds the builder, passed.
+
+**Deliberate break.** The stage taken out of the full-width rule: Kadence and Twenty Twenty-Five on a phone failed again with the picture and its heading at 7 and 10 px (builder.spec.ts:8022). Put back, all passed.
+
+**Why:** a stacked builder is read as the page's column, and a column whose picture and buttons touch the screen's edge beside words that keep their margin reads as a page that failed to lay out.
 
 **Status:** Accepted.

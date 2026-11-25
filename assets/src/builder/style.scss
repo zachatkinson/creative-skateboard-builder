@@ -304,10 +304,11 @@
 	color: var(--cbuild-muted);
 }
 
-/* Full width, as the block is unless the editor chose otherwise (D-283), the stacked panel has no theme column to
-   hold it off the screen's edges: it keeps the theme's own padding, and never less than 16 px. */
+/* Full width, as the block is unless the editor chose otherwise (D-283), the stacked builder has no theme column to
+   hold it off the screen's edges: the panel and the stage keep the theme's own padding, and never less than 16 px
+   (D-384). */
 @container cbuild (max-width: 63.99rem) {
-	:where(.cbuild[class~="alignfull"] .cbuild__body) {
+	:where(.cbuild[class~="alignfull"]) :where(.cbuild__body, .cbuild__stage) {
 		// prettier-ignore
 		padding-inline: max(1rem, var(--wp--style--root--padding-left, 0px)) max(1rem, var(--wp--style--root--padding-right, 0px));
 	}
@@ -2444,6 +2445,20 @@
 	/* The panel's column, as its words are set in it (#97, D-321). */
 	:where(.cbuild__limited) {
 		inset-inline: max(var(--cbuild-gap), (100% - 40rem) / 2);
+	}
+}
+
+/* Full width and stacked, the bar's total and buttons keep the page's gutter as the panel's words do: the theme's own
+   padding, and never less than 16 px (D-384). */
+@container cbuild (max-width: 63.99rem) {
+	:where(.cbuild[class~="alignfull"] .cbuild-bar) {
+		// prettier-ignore
+		padding-inline: max(1rem, var(--wp--style--root--padding-left, 0px)) max(1rem, var(--wp--style--root--padding-right, 0px));
+	}
+
+	/* What the dimmed Next says, at Next's end. */
+	:where(.cbuild[class~="alignfull"] .cbuild-bar__missing) {
+		inset-inline-end: max(1rem, var(--wp--style--root--padding-right, 0px));
 	}
 }
 

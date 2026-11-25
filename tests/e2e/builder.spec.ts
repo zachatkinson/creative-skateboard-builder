@@ -8083,6 +8083,74 @@ test.describe( 'The full-width builder on a theme', () => {
 			expect( seen.shift, 'nothing moved as it came' ).toBe( 0 );
 		} );
 	}
+
+	// At full width the builder spans what the theme gives a full-width block, the screen on Kadence and Twenty
+	// Twenty-Five. Stacked, its words, picture and buttons keep the page's gutter: on a phone "Your board" and the
+	// picture were 7 px from the edge on Kadence, and 10 px on Twenty Twenty-Five, beside a heading at 16 and 30. Beside
+	// the stage, the frame's panes keep the builder's gap, and nothing is under 16 px from the edge (D-384).
+	for ( const theme of [ 'kadence', 'storefront', 'twentytwentyfive' ] ) {
+		for ( const [ size, screen ] of [
+			[ 'phone', PHONE ],
+			[ 'desktop', { width: 1440, height: 900 } ],
+		] as const ) {
+			test( `keeps the page's gutter on ${ theme } on a ${ size }`, async ( {
+				page,
+				context,
+				baseURL,
+			} ) => {
+				await opened( page, context, theme, baseURL, screen );
+				await expect( page.locator( '.cbuild-bar' ) ).toBeVisible();
+				const near = await page.evaluate( ( stacked ) => {
+					// The page's gutter, as the stacked builder reads it: the theme's root padding, never under 16 px.
+					const probe = document.createElement( 'div' );
+					probe.style.paddingLeft = stacked
+						? 'max(1rem, var(--wp--style--root--padding-left, 0px))'
+						: '1rem';
+					probe.style.paddingRight = stacked
+						? 'max(1rem, var(--wp--style--root--padding-right, 0px))'
+						: '1rem';
+					document.body.append( probe );
+					const gutter = {
+						left: parseFloat(
+							getComputedStyle( probe ).paddingLeft
+						),
+						right: parseFloat(
+							getComputedStyle( probe ).paddingRight
+						),
+					};
+					probe.remove();
+					const width = document.documentElement.clientWidth;
+					return [
+						'.cbuild-picture__heading',
+						'.cbuild-picture',
+						'.cbuild__heading',
+						'.cbuild-bar__total',
+						'.cbuild-bar__next:not([hidden])',
+					].flatMap( ( selector ) => {
+						const box = document
+							.querySelector( selector )!
+							.getBoundingClientRect();
+						return box.left < gutter.left - 0.5 ||
+							width - box.right < gutter.right - 0.5
+							? [
+									`${ selector }: ${ Math.round(
+										box.left
+									) } to ${ Math.round(
+										box.right
+									) } px of ${ width }, the gutter ${
+										gutter.left
+									} and ${ gutter.right }`,
+								]
+							: [];
+					} );
+				}, 'phone' === size );
+				expect(
+					near,
+					'nothing nearer the edge than the gutter'
+				).toEqual( [] );
+			} );
+		}
+	}
 } );
 
 test.describe( 'Every control a name of its own (P11)', () => {
