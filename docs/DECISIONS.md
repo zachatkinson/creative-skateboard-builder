@@ -5279,6 +5279,12 @@ Put back, all passed.
 
 **Deliberate breaks.** `lead_days` given empty in the filters' context and the snapshot: `DeliveryTest.php:282` and `OrderTest.php:316`, "Failed asserting that two strings are identical." The filters given no `parts`: `DeliveryTest.php:283`, "Failed asserting that two arrays are identical." The assembly time's problems left to Layout: `BuildTabTest.php:1231`, "Failed asserting that two arrays are identical." The editor keeping "2 to 4" as typed: `build-tab.spec.ts:317` on chromium-desktop, "Expected: 0 / Received: 1" (a notice where none was due). Put back, all passed.
 
+**Digits of any script (the audit's third pass, 25 Nov).** The form read a count with `\d` under `/u`, which matches any script's decimal digit, and `(int)` reads such a digit as nought: "٢-٤", "２" and "٥" were saved as "0" with no error, and a plugin dating a delivery would have promised it early. Now each decimal digit of another script is read as its ASCII digit before the form is matched, so "٢-٤" is kept as "2-4" and an owner who types right to left, or on a full-width keyboard, keeps the days they typed; the form itself takes ASCII digits alone. A digit's value is found without mbstring or intl, which a host may lack (gate 18's reason): its code point from its UTF-8 bytes, then how many decimal digits run unbroken down to it, counted in tens, since Unicode assigns them only in runs of ten from 0 to 9 (its stability policy for Numeric_Type=Decimal). A superscript or a Roman numeral is no decimal digit and is still refused.
+
+- **Tests.** `LeadDaysTest`'s rows for Arabic-Indic, Extended Arabic-Indic, Devanagari and full-width digits, two beyond the first plane, the last of five runs of ten in a row (U+1D7FF, a nine), two scripts in one range, and refusals past 60, out of order, a superscript, a Roman numeral and bytes that are not UTF-8. `KitEditorTest` keeps "٢-٤", "٥" and "２".
+- **Red run.** "Arabic-Indic digits with data ('٢-٤', 2, 4, '2-4') / Failed asserting that two arrays are identical." (LeadDaysTest.php:59), and `KitEditorTest::test_the_assembly_time_is_kept_as_business_days_and_one_that_is_not_is_named_at_its_field` at KitEditorTest.php:687, the same.
+- **Deliberate break.** The value counted with the digit itself among those before it: nine rows failed, Devanagari's first (LeadDaysTest.php:58). Put back, all passed. Infection kills all 75 of the class's mutants.
+
 **Status:** Accepted.
 
 ### D-376 · A rendered event and five builder classes for other plugins · 2026-11-24

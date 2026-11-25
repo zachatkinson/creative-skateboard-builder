@@ -40,6 +40,17 @@ final class LeadDaysTest extends TestCase {
 		yield 'the whole range' => array( '0-60', 0, 60, '0-60' );
 		yield 'a range of one day is that day' => array( '5-5', 5, 5, '5' );
 		yield 'a zero in front' => array( '02-04', 2, 4, '2-4' );
+		// Any script's decimal digits are read as the digits they are, and kept in ASCII for a plugin to count: an
+		// owner typing right to left, or with a full-width keyboard, means the same days.
+		yield 'Arabic-Indic digits' => array( '٢-٤', 2, 4, '2-4' );
+		yield 'an Arabic-Indic digit alone' => array( '٥', 5, 5, '5' );
+		yield 'Extended Arabic-Indic digits' => array( '۱۲', 12, 12, '12' );
+		yield 'full-width digits' => array( '２-４', 2, 4, '2-4' );
+		yield 'Devanagari digits' => array( '०-९', 0, 9, '0-9' );
+		yield 'digits beyond the first plane' => array( "\u{1D7D0}\u{1D7CE}", 20, 20, '20' );
+		// Five sets of ten run unbroken from U+1D7CE: the last is a nine, not the fiftieth.
+		yield 'the last of five sets of digits in a row' => array( "\u{1D7FF}", 9, 9, '9' );
+		yield 'digits of two scripts' => array( '1٢-1３', 12, 13, '12-13' );
 	}
 
 	#[DataProvider( 'accepted' )]
@@ -71,6 +82,12 @@ final class LeadDaysTest extends TestCase {
 		yield 'three numbers' => array( '2-4-6', DocumentError::BadMeasure );
 		yield 'an em dash' => array( '2—4', DocumentError::BadMeasure );
 		yield 'a line after' => array( "2\n", DocumentError::BadMeasure );
+		yield 'Arabic-Indic digits past 60' => array( '٦١', DocumentError::OutOfRange );
+		yield 'full-width digits, the most first' => array( '４-２', DocumentError::OutOfOrder );
+		// A number that is not a decimal digit is no count: a superscript two or a Roman numeral.
+		yield 'a superscript' => array( "\u{00B2}", DocumentError::BadMeasure );
+		yield 'a Roman numeral' => array( "\u{2163}", DocumentError::BadMeasure );
+		yield 'bytes that are not UTF-8' => array( "\xFF2", DocumentError::BadMeasure );
 	}
 
 	#[DataProvider( 'refused' )]

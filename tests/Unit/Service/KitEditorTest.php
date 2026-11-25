@@ -673,6 +673,10 @@ final class KitEditorTest extends TestCase {
 			'2 to 4' => '2-4',
 			'0'      => '0',
 			'60'     => '60',
+			// Arabic-Indic and full-width digits are the days they say, not none (the audit's third pass).
+			'٢-٤'    => '2-4',
+			'٥'      => '5',
+			'２'      => '2',
 		) as $typed => $kept ) {
 			$sent['settings'] = array(
 				'start_button' => '1',
