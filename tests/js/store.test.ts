@@ -384,6 +384,7 @@ describe( 'the store', () => {
 			src: string;
 			srcset: string;
 			sizes: string;
+			decoding: string;
 			decoded: () => void;
 		} >;
 
@@ -456,6 +457,9 @@ describe( 'the store', () => {
 							},
 							get sizes() {
 								return self.sizes;
+							},
+							get decoding() {
+								return self.decoding;
 							},
 							decoded: () => undefined,
 						} );
@@ -824,6 +828,258 @@ describe( 'the store', () => {
 			} );
 		} );
 
+		it( 'fetches WebP where the stage draws nothing yet, and lets the browser decode it off the page', () => {
+			deckCards( 'avif' );
+			document.querySelector( '.cbuild-picture' )!.remove();
+			setElement(
+				document.querySelectorAll< HTMLElement >( 'li' )[ 0 ]!
+			);
+			actions.point( { type: 'pointerdown' } as PointerEvent );
+			expect(
+				made.map( ( image ) => [ image.srcset, image.decoding ] )
+			).toEqual( [ [ PRELOAD.webp, 'async' ] ] );
+		} );
+
+		it( 'fetches each deck with no files by type its own image, by its address alone', () => {
+			const card = deckCards( 'webp' );
+			const bare = { ...PRELOAD, avif: '', webp: '' };
+			state.view = {
+				...state.view,
+				step: {
+					slot: 'deck',
+					options: [
+						{ id: 12, value: '12', preload: bare },
+						{
+							id: 13,
+							value: '13',
+							preload: {
+								...bare,
+								src: 'https://shop.example/13.png',
+							},
+						},
+					],
+				},
+			};
+			setElement( card );
+			actions.point( { type: 'pointerdown' } as PointerEvent );
+			card.querySelector( 'input' )!.value = '13';
+			actions.point( { type: 'pointerdown' } as PointerEvent );
+			expect(
+				made.map( ( image ) => [
+					image.src,
+					image.srcset,
+					image.sizes,
+				] )
+			).toEqual( [
+				[ PRELOAD.src, '', '' ],
+				[ 'https://shop.example/13.png', '', '' ],
+			] );
+		} );
+
+		it( 'fetches only the card the pointer rests on last, once it moves on before INTENT', () => {
+			const card = deckCards( 'webp' );
+			setElement( card );
+			const radio = card.querySelector( 'input' )!;
+			actions.point( { type: 'pointerenter' } as PointerEvent );
+			vi.advanceTimersByTime( INTENT / 2 );
+			radio.value = '11';
+			actions.point( { type: 'pointerenter' } as PointerEvent );
+			vi.advanceTimersByTime( INTENT );
+			expect( made, 'deck 11 has no board image' ).toEqual( [] );
+		} );
+
+		it( 'fetches nothing, and throws nothing, for a pointer on no card, a card with no radio, or one the step does not list', () => {
+			const card = deckCards( 'webp' );
+			const radio = card.querySelector( 'input' )!;
+			radio.value = '99';
+			setElement( card );
+			actions.point( { type: 'pointerdown' } as PointerEvent );
+			radio.remove();
+			actions.point( { type: 'pointerdown' } as PointerEvent );
+			setElement( null );
+			actions.point( { type: 'pointerdown' } as PointerEvent );
+			actions.point( { type: 'pointerenter' } as PointerEvent );
+			vi.advanceTimersByTime( INTENT );
+			expect( made ).toEqual( [] );
+		} );
+
+		it( 'forgets a pointer resting on a card when the page is reset', () => {
+			setElement( deckCards( 'webp' ) );
+			actions.point( { type: 'pointerenter' } as PointerEvent );
+			reset();
+			vi.advanceTimersByTime( INTENT );
+			expect( made ).toEqual( [] );
+		} );
+
+		it( 'waits for a pick made a second after the press as for the arrows', () => {
+			const card = deckCards( 'webp' );
+			setElement( card );
+			actions.point( { type: 'pointerdown' } as PointerEvent );
+			vi.advanceTimersByTime( 1000 );
+			actions.pick( {
+				target: card.querySelector( 'input' )!,
+			} as unknown as Event );
+			expect( fetched ).toHaveLength( 0 );
+			vi.advanceTimersByTime( WAIT );
+			expect( fetched ).toHaveLength( 1 );
+		} );
+
+		it( 'never says the picture is drawn for a wait after a pick has been answered', async () => {
+			const card = deckCards( 'webp' );
+			setElement( card );
+			reply = () => answer( { ...START, url: START.url + '&picked' } );
+			actions.pick( {
+				target: card.querySelector( 'input' )!,
+			} as unknown as Event );
+			vi.advanceTimersByTime( WAIT );
+			await settle();
+			expect( state.view.url ).toBe( START.url + '&picked' );
+			reply = () => new Promise< Response >( () => undefined );
+			actions.back();
+			vi.advanceTimersByTime( SLOW );
+			expect( state.pending ).toBe( true );
+			expect( state.drawing ).toBe( false );
+		} );
+
+		describe( 'an answer that draws another deck', () => {
+			type Deck = {
+				key: string;
+				style: string;
+				src: string;
+				sizes?: string;
+				sources?: { type: string; srcset: string }[];
+			};
+			const boarded = ( layers: Deck[] ): Record< string, unknown > => ( {
+				...START,
+				url: window.location.origin + '/?answered',
+				picture: { turnable: false, turned: false, board: { layers } },
+			} );
+			const DECK = {
+				key: 'deck-1',
+				style: '',
+				src: PRELOAD.src,
+				sizes: PRELOAD.sizes,
+				sources: [
+					{ type: 'image/avif', srcset: PRELOAD.avif },
+					{ type: 'image/webp', srcset: PRELOAD.webp },
+				],
+			};
+
+			async function answered( view: unknown ): Promise< void > {
+				reply = () => answer( view );
+				actions.back();
+				await settle();
+			}
+
+			it( 'is shown at once where it draws the deck already drawn, wherever its layer sits, or no deck', async () => {
+				deckCards( 'webp' );
+				(
+					state.view as { picture: { board: { layers: Deck[] } } }
+				 ).picture.board.layers = [
+					{
+						key: 'trucks-1',
+						style: '',
+						src: 'https://shop.example/30.png',
+					},
+					{
+						key: 'deck-1',
+						style: '',
+						src: 'https://shop.example/11.png',
+					},
+				];
+				await answered(
+					boarded( [
+						{
+							key: 'wheels-1',
+							style: '',
+							src: 'https://shop.example/50.png',
+						},
+						{
+							key: 'deck-1',
+							style: '',
+							src: 'https://shop.example/11.png',
+						},
+					] )
+				);
+				expect( state.view.url ).toBe(
+					window.location.origin + '/?answered'
+				);
+
+				state.view = START;
+				await answered( {
+					...boarded( [
+						{
+							key: 'trucks-1',
+							style: '',
+							src: 'https://shop.example/30.png',
+						},
+					] ),
+					url: window.location.origin + '/?no-deck',
+				} );
+				expect( state.view.url ).toBe(
+					window.location.origin + '/?no-deck'
+				);
+				expect( made ).toEqual( [] );
+			} );
+
+			it( 'waits for its deck from a view with no picture', async () => {
+				deckCards( 'webp' );
+				state.view = START;
+				await answered( boarded( [ DECK ] ) );
+				expect( state.view ).toBe( START );
+				made[ 0 ]!.decoded();
+				await settle();
+				expect( state.view.url ).toBe(
+					window.location.origin + '/?answered'
+				);
+			} );
+
+			it( 'fetches its deck in the type the stage draws, at its sizes', async () => {
+				deckCards( 'avif' );
+				await answered( boarded( [ DECK ] ) );
+				expect(
+					made.map( ( image ) => [ image.srcset, image.sizes ] )
+				).toEqual( [ [ PRELOAD.avif, PRELOAD.sizes ] ] );
+			} );
+
+			it( 'fetches WebP for a deck with no AVIF, and its address alone for one with no files by type', async () => {
+				deckCards( 'avif' );
+				await answered(
+					boarded( [
+						{
+							key: 'deck-1',
+							style: '',
+							src: PRELOAD.src,
+							sources: [
+								{ type: 'image/webp', srcset: PRELOAD.webp },
+							],
+						},
+					] )
+				);
+				reset();
+				deckCards( 'avif' );
+				await answered(
+					boarded( [
+						{
+							key: 'deck-1',
+							style: '',
+							src: 'https://shop.example/13.png',
+						},
+					] )
+				);
+				expect(
+					made.map( ( image ) => [
+						image.src,
+						image.srcset,
+						image.sizes,
+					] )
+				).toEqual( [
+					[ PRELOAD.src, PRELOAD.webp, '' ],
+					[ 'https://shop.example/13.png', '', '' ],
+				] );
+			} );
+		} );
+
 		it( 'never says the picture is drawn for a wait that is no pick', async () => {
 			link( '/?page_id=25&cbuild%5Bstep%5D=trucks' );
 			reply = () => new Promise< Response >( () => undefined );
@@ -1043,6 +1299,19 @@ describe( 'the store', () => {
 		expect( fetched, 'no error summary asked for' ).toHaveLength( 0 );
 		expect( sent ).not.toHaveBeenCalled();
 		expect( state.view ).toBe( EMPTY );
+	} );
+
+	it( 'says nothing beside a dimmed Next whose bar gives no words for what is missing', () => {
+		state.view = { ...EMPTY, bar: { next: { ready: false } } };
+		state.live = true;
+		const { next } = dimmedForm( true );
+		actions.submit(
+			new SubmitEvent( 'submit', { submitter: next, cancelable: true } )
+		);
+		vi.advanceTimersToNextFrame();
+		expect( state.missing ).toBe( '' );
+		expect( state.status ).toBe( '' );
+		expect( fetched ).toHaveLength( 0 );
 	} );
 
 	// A polite live region says nothing when its text is set to what it already holds: a second press on the dimmed
@@ -2885,6 +3154,26 @@ describe( 'motion', () => {
 		expect( page.classList.contains( 'cbuild-back' ) ).toBe( true );
 	} );
 
+	it( 'crosses over to the change panel going on, as it stands at the step it opened over', async () => {
+		motion( false, true );
+		document.documentElement.classList.add( 'cbuild-back' );
+		state.view = { ...START, progress: [ { current: true } ] };
+		const { radio } = form();
+		reply = () =>
+			answer( {
+				...START,
+				isChanges: true,
+				progress: [ { current: true } ],
+			} );
+		actions.pick( { target: radio } as unknown as Event );
+		vi.advanceTimersByTime( WAIT );
+		await settle();
+		expect( state.view ).toMatchObject( { isChanges: true } );
+		expect(
+			document.documentElement.classList.contains( 'cbuild-back' )
+		).toBe( false );
+	} );
+
 	it( 'shows the next view at once where the browser has no view transitions', async () => {
 		motion( false, false );
 		await step();
@@ -3520,6 +3809,62 @@ describe( 'what a press foretells', () => {
 		expect( state.limited ).toBe( 'Later.' );
 	} );
 
+	it( 'puts back the line, the widths pressed and the count as they were, and focus on the width, when a press hits a limit', async () => {
+		const asked = structuredClone( ASKING ) as unknown as {
+			step: {
+				more?: { count?: string };
+				shelf: {
+					width: {
+						chosen?: string;
+						options: { pressed?: string }[];
+					};
+				};
+			};
+		};
+		// Asked again after Change: a width chosen and pressed before, one option the server marks neither way, and a
+		// count with no words.
+		asked.step.shelf.width.chosen = '8″';
+		asked.step.shelf.width.options[ 0 ]!.pressed = 'true';
+		delete asked.step.shelf.width.options[ 1 ]!.pressed;
+		asked.step.more = {};
+		const bare = structuredClone( ASKING ) as unknown as typeof asked;
+		delete bare.step.shelf.width.chosen;
+		delete bare.step.more;
+		const cases: Array< [ typeof asked, string, string[] ] > = [
+			[ asked, '8″', [ 'true', 'false' ] ],
+			[ bare, '', [ 'false', 'false' ] ],
+		];
+		for ( const [ view, chosen, pressed ] of cases ) {
+			const { width: button } = builder();
+			state.view = structuredClone(
+				view
+			) as unknown as typeof state.view;
+			reply = () =>
+				new Response( JSON.stringify( { message: 'Later.' } ), {
+					status: 429,
+					headers: { 'Content-Type': 'application/json' },
+				} );
+			actions.submit(
+				new SubmitEvent( 'submit', {
+					submitter: button,
+					cancelable: true,
+				} )
+			);
+			expect( width().chosen ).toBe( '8.5″' );
+			await settle();
+			await vi.advanceTimersByTimeAsync( 50 );
+			expect( width().asking ).toBe( true );
+			expect( width().chosen ).toBe( chosen );
+			expect(
+				width().options.map( ( option ) => option.pressed )
+			).toEqual( pressed );
+			expect(
+				( state.view.step as { more?: { count?: string } } ).more?.count
+			).toBe( view.step.more ? '' : undefined );
+			expect( button.ownerDocument.activeElement ).toBe( button );
+		}
+	} );
+
 	it( 'folds a step with no count, and a builder the script never started', () => {
 		const { width: button } = builder();
 		const view = structuredClone( ASKING );
@@ -3770,8 +4115,8 @@ describe( 'what a press foretells', () => {
 		expect( fetched, 'a search asks nothing ahead' ).toHaveLength( 1 );
 	} );
 
-	it( 'asks ahead again after a link or Back, once a search went before', async () => {
-		for ( const move of [ 'follow', 'back' ] as const ) {
+	it( 'asks ahead again after a link, Back or a form sent, once a search went before', async () => {
+		for ( const move of [ 'follow', 'back', 'submit' ] as const ) {
 			const { sheet } = builder();
 			fetched = [];
 			reply = () => answer( READY );
@@ -3792,8 +4137,12 @@ describe( 'what a press foretells', () => {
 				actions.follow(
 					new MouseEvent( 'click', { cancelable: true, button: 0 } )
 				);
-			} else {
+			} else if ( 'back' === move ) {
 				actions.back();
+			} else {
+				actions.submit(
+					new SubmitEvent( 'submit', { cancelable: true } )
+				);
 			}
 			await settle();
 			vi.advanceTimersToNextFrame();
@@ -3949,5 +4298,442 @@ describe( 'the rendered event', () => {
 		).not.toThrow();
 		stop();
 		expect( events ).toHaveLength( 0 );
+	} );
+} );
+
+// Spec: Milestone 11, the motion (D-256, D-257): each moment plays on an element the template drew, once the view that
+// brings it is drawn, and a press, a pick or a new answer ends it at once.
+describe( 'what the stage plays as a view comes in', () => {
+	interface Played {
+		element: Element;
+		animation: { id: string };
+		frames: Keyframe[];
+		finished: boolean;
+	}
+
+	const CURRENCY = {
+		symbol: '$',
+		decimals: 2,
+		decimal_separator: '.',
+		thousand_separator: ',',
+		format: '%1$s%2$s',
+	};
+
+	let played: Played[];
+	let reduce: boolean;
+
+	beforeEach( () => {
+		played = [];
+		reduce = false;
+		vi.stubGlobal( 'matchMedia', ( query: string ) => ( {
+			matches: reduce && '(prefers-reduced-motion: reduce)' === query,
+		} ) );
+		Object.defineProperty( Element.prototype, 'animate', {
+			configurable: true,
+			value( this: Element, frames: Keyframe[] ) {
+				const entry: Played = {
+					element: this,
+					animation: { id: '' },
+					frames,
+					finished: false,
+				};
+				played.push( entry );
+				return Object.assign( entry.animation, {
+					finished: new Promise( () => undefined ),
+					finish: () => {
+						entry.finished = true;
+					},
+				} );
+			},
+		} );
+	} );
+
+	afterEach( () => {
+		delete ( Element.prototype as { animate?: unknown } ).animate;
+	} );
+
+	/**
+	 * What played, each moment's name and the element it played on.
+	 */
+	function seen(): string[] {
+		return played.map(
+			( entry ) =>
+				`${ entry.animation.id } ${ entry.element.getAttribute(
+					'data-name'
+				) }`
+		);
+	}
+
+	/**
+	 * A started builder with its step's form, its stage's two sides of the board and two photos, and the bar.
+	 */
+	function builder(): {
+		root: HTMLElement;
+		sheet: HTMLFormElement;
+		radio: HTMLInputElement;
+		items: HTMLElement[];
+	} {
+		document.body.innerHTML = `
+			<div class="cbuild">
+				<form class="cbuild-step" method="get" action="/">
+					<input type="hidden" name="page_id" value="25">
+					<input type="radio" name="cbuild[deck]" value="12">
+				</form>
+				<figure class="cbuild-picture">
+					<div class="cbuild-board" data-name="underside"><template></template><img data-name="underside deck-1"><img data-name="underside trucks-1"></div>
+					<div class="cbuild-board cbuild-board--top" data-name="top"><img data-name="top deck-1"><img data-name="top grip-1"></div>
+					<ul>
+						<li class="cbuild-picture__item" data-name="photo deck">Deck</li>
+						<li class="cbuild-picture__item" data-name="photo trucks">Trucks</li>
+					</ul>
+				</figure>
+				<div class="cbuild-bar"><p class="cbuild-bar__estimate" data-name="estimate"></p></div>
+			</div>`;
+		const root = document.querySelector< HTMLElement >( '.cbuild' )!;
+		setElement( root );
+		(
+			defined.definition as { callbacks: { init: () => void } }
+		 ).callbacks.init();
+		const sheet = root.querySelector( 'form' )!;
+		setElement( sheet );
+		return {
+			root,
+			sheet,
+			radio: sheet.querySelector( 'input[type=radio]' )!,
+			items: [
+				...root.querySelectorAll< HTMLElement >(
+					'.cbuild-picture__item'
+				),
+			],
+		};
+	}
+
+	/**
+	 * The deck step's view of a board, its underside's layers and its top's, and the stage's photos by part.
+	 *
+	 * @param turned Whether the top is shown.
+	 * @param board  The underside's layers, by key.
+	 * @param top    The top's layers, by key.
+	 * @param items  The photos' parts, if the view lists any.
+	 */
+	function pictured(
+		turned: boolean,
+		board: string[],
+		top: string[],
+		items?: string[]
+	): Record< string, unknown > {
+		const layers = ( keys: string[] ) =>
+			keys.map( ( key ) => ( {
+				key,
+				style: '',
+				src: `https://shop.example/${ key }.png`,
+			} ) );
+		return {
+			...START,
+			picture: {
+				turnable: true,
+				turned,
+				board: { layers: layers( board ) },
+				top: { layers: layers( top ) },
+				...( items
+					? { items: items.map( ( key ) => ( { key } ) ) }
+					: {} ),
+			},
+		};
+	}
+
+	/**
+	 * Show the answer to a move that stays on the step, and draw it; the builder says it has drawn it.
+	 *
+	 * @param view The answer's view.
+	 */
+	async function shown( view: unknown ): Promise< void > {
+		let told = 0;
+		const hear = () => told++;
+		document.addEventListener( 'cbuild:rendered', hear );
+		reply = () => answer( view );
+		actions.back();
+		await settle();
+		vi.advanceTimersToNextFrame();
+		document.removeEventListener( 'cbuild:rendered', hear );
+		expect( told, 'the view is drawn' ).toBe( 1 );
+	}
+
+	it( 'plays a part new to the board on the side shown alone, once the view is drawn', async () => {
+		builder();
+		state.view = pictured( false, [ 'deck-1' ], [ 'deck-1' ] );
+		reply = () =>
+			answer(
+				pictured(
+					false,
+					[ 'deck-1', 'trucks-1' ],
+					[ 'deck-1', 'grip-1' ]
+				)
+			);
+		actions.back();
+		await settle();
+		expect( seen(), 'not before the frame that draws it' ).toEqual( [] );
+		vi.advanceTimersToNextFrame();
+		expect( seen() ).toEqual( [ 'cbuild-trucks underside trucks-1' ] );
+
+		played = [];
+		state.view = pictured( true, [ 'deck-1' ], [ 'deck-1' ] );
+		await shown(
+			pictured( true, [ 'deck-1', 'trucks-1' ], [ 'deck-1', 'grip-1' ] )
+		);
+		expect( seen() ).toEqual( [ 'cbuild-grip top grip-1' ] );
+	} );
+
+	it( 'turns the board to the side a new view shows, and plays nothing new on the side as it turns to it', async () => {
+		builder();
+		state.view = pictured( false, [ 'deck-1' ], [ 'deck-1' ] );
+		await shown( pictured( true, [ 'deck-1' ], [ 'deck-1', 'grip-1' ] ) );
+		expect( seen() ).toEqual( [ 'cbuild-turn top' ] );
+		expect( played[ 0 ]!.frames ).toEqual( [
+			{ transform: 'scaleX(0.1)' },
+			{ transform: 'none' },
+		] );
+
+		played = [];
+		await shown(
+			pictured( false, [ 'deck-1', 'trucks-1' ], [ 'deck-1' ] )
+		);
+		expect( seen() ).toEqual( [ 'cbuild-turn underside' ] );
+	} );
+
+	it( 'turns the board at the press of Top or Underside, on the next frame', () => {
+		builder();
+		state.view = pictured( false, [ 'deck-1' ], [ 'deck-1' ] );
+		actions.over();
+		expect( seen() ).toEqual( [] );
+		vi.advanceTimersToNextFrame();
+		expect( seen() ).toEqual( [ 'cbuild-turn top' ] );
+		actions.under();
+		vi.advanceTimersToNextFrame();
+		expect( seen() ).toEqual( [
+			'cbuild-turn top',
+			'cbuild-turn underside',
+		] );
+	} );
+
+	it( 'turns nothing, and throws nothing, where the page draws no board', async () => {
+		document.body.innerHTML = '<div class="cbuild"></div>';
+		setElement( document.querySelector< HTMLElement >( '.cbuild' )! );
+		(
+			defined.definition as { callbacks: { init: () => void } }
+		 ).callbacks.init();
+		state.view = pictured( false, [ 'deck-1' ], [ 'deck-1' ] );
+		actions.over();
+		expect( () => vi.advanceTimersToNextFrame() ).not.toThrow();
+		await shown( pictured( false, [ 'deck-1' ], [ 'deck-1' ] ) );
+		expect( played ).toEqual( [] );
+	} );
+
+	it( 'draws a view whose picture has a side with no layers, or a step with no picture', async () => {
+		builder();
+		state.view = { ...START, picture: { turnable: false, turned: false } };
+		await shown( {
+			...START,
+			picture: { turnable: false, turned: false },
+		} );
+		await shown( {
+			...START,
+			picture: { turnable: true, turned: true },
+		} );
+		expect( seen(), 'the top shown has nothing drawn on it' ).toEqual( [
+			'cbuild-turn top',
+		] );
+		await shown( START );
+	} );
+
+	it( 'closes the photos over a part taken off the stage, and moves none for a view that takes none off', async () => {
+		const { items } = builder();
+		const at = (
+			item: HTMLElement,
+			rects: Array< { left: number; top: number } >
+		): void => {
+			let asked = 0;
+			item.getBoundingClientRect = () =>
+				rects[ Math.min( asked++, rects.length - 1 ) ] as DOMRect;
+		};
+		const moving = (): void => {
+			at( items[ 0 ]!, [
+				{ left: 0, top: 0 },
+				{ left: 0, top: 0 },
+			] );
+			at( items[ 1 ]!, [
+				{ left: 0, top: 120 },
+				{ left: 0, top: 80 },
+			] );
+		};
+		moving();
+		state.view = pictured(
+			false,
+			[ 'deck-1' ],
+			[ 'deck-1' ],
+			[ 'deck', 'wheels', 'trucks' ]
+		);
+		await shown(
+			pictured( false, [ 'deck-1' ], [ 'deck-1' ], [ 'deck', 'trucks' ] )
+		);
+		expect( seen() ).toEqual( [ 'cbuild-removed photo trucks' ] );
+		expect( played[ 0 ]!.frames ).toEqual( [
+			{ transform: 'translate(0px, 40px)' },
+			{ transform: 'none' },
+		] );
+
+		for ( const before of [ [ 'deck', 'trucks' ], undefined ] ) {
+			moving();
+			played = [];
+			state.view = pictured( false, [ 'deck-1' ], [ 'deck-1' ], before );
+			await shown(
+				pictured(
+					false,
+					[ 'deck-1' ],
+					[ 'deck-1' ],
+					[ 'deck', 'trucks' ]
+				)
+			);
+			expect( [ before, seen() ] ).toEqual( [ before, [] ] );
+		}
+	} );
+
+	it( 'counts the total from the old amount to the new as the view comes in, and ends on the server’s string', async () => {
+		builder();
+		const amount = (): string =>
+			( state.view.bar as { amount: string } ).amount;
+		state.view = {
+			...START,
+			money: { amount: 9000, currency: CURRENCY },
+			bar: { amount: '$90.00', next: { ready: true } },
+		};
+		reply = () =>
+			answer( {
+				...START,
+				money: { amount: 9700, currency: CURRENCY },
+				bar: { amount: '$97.00', next: { ready: true } },
+			} );
+		actions.back();
+		await settle();
+		expect( amount(), 'from the old amount' ).toBe( '$90.00' );
+		vi.advanceTimersByTime( 150 );
+		expect( amount() ).toMatch( /^\$9\d\.\d\d$/ );
+		expect( [ '$90.00', '$97.00' ] ).not.toContain( amount() );
+		vi.advanceTimersByTime( 300 );
+		expect( amount() ).toBe( '$97.00' );
+
+		// From a view with no total, the server's string at once.
+		state.view = START;
+		await shown( {
+			...START,
+			money: { amount: 9700, currency: CURRENCY },
+			bar: { amount: '$97.00', next: { ready: true } },
+		} );
+		expect( amount() ).toBe( '$97.00' );
+	} );
+
+	it( 'fades the estimate in when it changes, and leaves it when it does not, where moments only fade, or with none drawn', async () => {
+		const { root } = builder();
+		const estimated = ( estimate: string ) => ( {
+			...START,
+			bar: { estimate, next: { ready: true } },
+		} );
+		state.view = estimated( 'Ships in 2 days' );
+		await shown( estimated( 'Ships in 3 days' ) );
+		expect( seen() ).toEqual( [ 'cbuild-total estimate' ] );
+		expect( played[ 0 ]!.frames ).toEqual( [
+			{ opacity: 0 },
+			{ opacity: 1 },
+		] );
+
+		played = [];
+		await shown( estimated( 'Ships in 3 days' ) );
+		expect( seen(), 'the same estimate' ).toEqual( [] );
+
+		reduce = true;
+		await shown( estimated( 'Ships in 4 days' ) );
+		expect( seen(), 'reduced motion' ).toEqual( [] );
+
+		reduce = false;
+		root.querySelector( '.cbuild-bar__estimate' )!.remove();
+		await shown( estimated( 'Ships in 5 days' ) );
+		expect( seen(), 'no estimate drawn' ).toEqual( [] );
+	} );
+
+	it( 'ends a moment still playing when the shopper presses, picks, or an answer comes', async () => {
+		const { radio } = builder();
+		const playing = async (): Promise< Played > => {
+			played = [];
+			state.view = {
+				...START,
+				bar: { estimate: 'Ships in 2 days', next: { ready: true } },
+			};
+			await shown( {
+				...START,
+				bar: { estimate: 'Ships in 3 days', next: { ready: true } },
+			} );
+			expect( played ).toHaveLength( 1 );
+			expect( played[ 0 ]!.finished ).toBe( false );
+			return played[ 0 ]!;
+		};
+
+		let moment = await playing();
+		document.dispatchEvent(
+			new MouseEvent( 'pointerdown', { button: 0 } )
+		);
+		expect( moment.finished, 'a press' ).toBe( true );
+
+		moment = await playing();
+		reply = () => new Promise< Response >( () => undefined );
+		actions.pick( { target: radio } as unknown as Event );
+		expect( moment.finished, 'a pick' ).toBe( true );
+
+		reset();
+		builder();
+		moment = await playing();
+		let answered: ( response: Response ) => void = () => undefined;
+		reply = () =>
+			new Promise< Response >( ( done ) => ( answered = done ) );
+		actions.back();
+		await settle();
+		expect( moment.finished, 'not while the answer is awaited' ).toBe(
+			false
+		);
+		answered( answer( START ) );
+		await settle();
+		expect( moment.finished, 'an answer' ).toBe( true );
+	} );
+
+	it( 'sends the board shown toward the cart at an add, its top where the top is shown', async () => {
+		for ( const turned of [ false, true ] ) {
+			const { sheet } = builder();
+			sheet.method = 'post';
+			sheet.insertAdjacentHTML(
+				'beforeend',
+				'<input type="hidden" name="add-to-cart" value="7"><input type="hidden" name="cbuild[picks][deck]" value="101">'
+			);
+			vi.stubGlobal( 'fetch', ( input: string ) =>
+				Promise.resolve(
+					input === CART
+						? new Response( '{}', { headers: { Nonce: 'n' } } )
+						: new Response( '{}', { status: 201 } )
+				)
+			);
+			played = [];
+			state.view = {
+				...REVIEW,
+				picture: (
+					pictured( turned, [ 'deck-1' ], [ 'deck-1' ] ) as {
+						picture: unknown;
+					}
+				 ).picture,
+			};
+			await actions.add(
+				new SubmitEvent( 'submit', { cancelable: true } )
+			);
+			expect( seen() ).toEqual( [
+				`cbuild-cart ${ turned ? 'top' : 'underside' }`,
+			] );
+		}
 	} );
 } );
