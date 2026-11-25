@@ -214,8 +214,13 @@ test.describe( 'Help me choose', () => {
 	test( 'skips to the builder from the questions, from the builds, and by keyboard', async ( {
 		page,
 		javaScriptEnabled,
+		browserName,
 	} ) => {
 		const js = false !== javaScriptEnabled;
+		// Safari's Tab reaches only text fields and the like, buttons and links with Option-Tab, unless "Press Tab to
+		// highlight each item" is on; Playwright's WebKit keeps that default, so its keyboard user presses Option-Tab
+		// (D-408).
+		const tab = 'webkit' === browserName ? 'Alt+Tab' : 'Tab';
 		const start = async () =>
 			expect(
 				page.getByRole( 'heading', {
@@ -270,11 +275,11 @@ test.describe( 'Help me choose', () => {
 		await guide.locator( 'summary' ).focus();
 		await page.keyboard.press( 'Enter' );
 		await page.getByLabel( 'Your budget ($)' ).focus();
-		await page.keyboard.press( 'Tab' );
+		await page.keyboard.press( tab );
 		await expect(
 			guide.getByRole( 'button', { name: 'Show builds' } )
 		).toBeFocused();
-		await page.keyboard.press( 'Tab' );
+		await page.keyboard.press( tab );
 		const skip = guide
 			.locator( '.cbuild-guide__form' )
 			.getByRole( 'link', { name: 'Skip to the builder' } );

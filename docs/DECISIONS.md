@@ -6030,6 +6030,17 @@ Issue #151, Mature Content's ask in Cowork's review of 1.2.0. Mature Content put
 
 **Status:** Accepted.
 
+### D-408 · Follow-ups to #134 and #147 on lane 2: WebKit's Option-Tab, a flagged deck in the guide's builds, and Next with its answer held · 2026-11-25
+
+**WebKit's Tab in "Help me choose" (#134).** `guide.spec.ts`, "skips to the builder from the questions, from the builds, and by keyboard", failed on webkit-phone every time, and on webkit-desktop too: "Show builds" was not focused after Tab from the budget (guide.spec.ts:276). Not a focus-order bug: a probe of the same page found Chromium's Tab going budget, "Show builds", "Skip to the builder", the first width, while WebKit's went budget, "Not sure of your width?" (the next `summary`), the bar's total, the page. Safari's Tab reaches text fields and a few controls, and buttons and links only with Option-Tab, unless "Press Tab to highlight each item" is on in Safari's settings; Playwright's WebKit keeps that default. With Option-Tab WebKit goes budget, "Show builds", "Skip to the builder", as Chromium does with Tab. The test now presses Alt+Tab on WebKit, as `builder.spec.ts`'s keyboard tests already do (the skip link's and the outline's), so it checks the order a Safari keyboard user gets. WebKit is not skipped.
+
+- **Red run:** the test as it was, `expect(locator).toBeFocused() failed`, "Received: inactive" (guide.spec.ts:276) on webkit-phone and webkit-desktop.
+- **Deliberate break:** "Skip to the builder" in the form given `tabindex="-1"`: the corrected test failed on both, "Received: inactive" at `expect( skip ).toBeFocused()` (guide.spec.ts:286). Put back, both pass.
+
+**Why:** a test written for one engine's Tab says nothing of the other's; Option-Tab is what Safari's keyboard user presses for a button or link.
+
+**Status:** Accepted.
+
 ### D-410 · A kit's page and the Builder page print no Product markup, with WooCommerce's or Yoast's, and need no new filter · 2026-11-25
 
 Issue #141, from the roadmap's companion review of 24 November: in place of a Creative Schema release, a test that a kit's page and the Builder block's page print no Product JSON-LD, with WooCommerce's structured data and with Yoast SEO's. Where one did, the builder was to remove it through that plugin's filter, for the kit only.
