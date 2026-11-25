@@ -1220,7 +1220,9 @@ final class BuildTabTest extends IntegrationTestCase {
 		$kit = KitFactory::kit();
 		foreach ( array(
 			'61'       => 'Assembly time in business days: type business days from 0 to 60, such as 2 or 2-4.',
-			'2 to 90'  => 'Assembly time in business days: type business days from 0 to 60, such as 2 or 2-4.',
+			'2 - 90'   => 'Assembly time in business days: type business days from 0 to 60, such as 2 or 2-4.',
+			// No word joins a range, in any language (D-389).
+			'2 to 4'   => 'Assembly time in business days: type a number of business days, such as 2, or a range with the fewer first, such as 2-4.',
 			'two days' => 'Assembly time in business days: type a number of business days, such as 2, or a range with the fewer first, such as 2-4.',
 			'4-2'      => 'Assembly time in business days: type a number of business days, such as 2, or a range with the fewer first, such as 2-4.',
 		) as $typed => $sentence ) {

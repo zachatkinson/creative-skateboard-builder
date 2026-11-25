@@ -165,7 +165,7 @@ final class KitSettingsTest extends TestCase {
 		yield 'past 60' => array( '61', 'document_out_of_range' );
 		yield 'the most first' => array( '4-2', 'rules_out_of_order' );
 		yield 'words' => array( 'two days', 'document_bad_measure' );
-		yield 'a form the Build tab reads and never keeps' => array( '2 to 4', 'document_bad_measure' );
+		yield 'a range in words, which nothing reads (D-389)' => array( '2 to 4', 'document_bad_measure' );
 	}
 
 	#[DataProvider( 'wrongDays' )]
