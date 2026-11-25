@@ -1,9 +1,8 @@
 {
 	"$schema": "http://json-schema.org/draft-04/schema#",
 	"title": "cbuild_snapshot",
-	"description": "A build as it was sold, stored in the _cbuild_snapshot meta of the kit's order item and kept for as long as the order is.",
+	"description": "A build as it was sold, stored in the _cbuild_snapshot meta of the kit's order item and kept for as long as the order is. From 1.2.0 no object with properties closes: a later release may add keys, which a reader passes over.",
 	"type": "object",
-	"additionalProperties": false,
 	"required": [
 		"schema_version",
 		"kit",
@@ -38,7 +37,6 @@
 			"patternProperties": {
 				"^[a-z][a-z0-9_]{0,31}(?!\\n)$": {
 					"type": "object",
-					"additionalProperties": false,
 					"required": [
 						"label",
 						"name",

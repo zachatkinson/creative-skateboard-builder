@@ -5286,6 +5286,8 @@ Put back, all passed.
 - **Red run.** "Arabic-Indic digits with data ('٢-٤', 2, 4, '2-4') / Failed asserting that two arrays are identical." (LeadDaysTest.php:59), and `KitEditorTest::test_the_assembly_time_is_kept_as_business_days_and_one_that_is_not_is_named_at_its_field` at KitEditorTest.php:687, the same.
 - **Deliberate break.** The value counted with the digit itself among those before it: nine rows failed, Devanagari's first (LeadDaysTest.php:58). Put back, all passed. Infection kills all 75 of the class's mutants.
 
+**The snapshot's schema opened (the audit's third pass, 25 Nov).** "1.1.0's reader passes over it" held for the plugin, not for a companion plugin that checks `_cbuild_snapshot` against the published schema: 1.1.0's closed the snapshot and each part with `additionalProperties` false, so it refuses every 1.2.0 snapshot. `schema/order-snapshot.json` now closes no object with properties, as `schema/state.json` stopped doing at 0.6.0 (D-143), and HOOKS.md and the changelog say to check a 1.2.0 snapshot against 1.2.0's schema. `OrderTest` closes each object again before it validates, so a key the schema does not describe still fails the plugin's tests, and `test_the_published_snapshot_schema_lets_a_later_key_through_and_the_strict_one_does_not` checks both. Red run: "The published schema closes no object with properties. / Failed asserting that false is not false." (OrderTest.php:169). Deliberate break: the top level closed again, the same failure. Put back, all passed.
+
 **Status:** Accepted.
 
 ### D-376 · A rendered event and five builder classes for other plugins · 2026-11-24

@@ -26,6 +26,7 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Changed
 
+- **`schema/order-snapshot.json` is open:** it closes no object with properties, as `schema/state.json` does not, so a plugin that checks `_cbuild_snapshot` against it accepts the keys a later release adds. 1.1.0's closed schema refuses a 1.2.0 snapshot, which has `lead_days`; check against 1.2.0's. The plugin's own tests still fail on a key the schema does not describe.
 - **Site Health's "composed pictures" test** names the parts whose layer images have no resized copies, up to five, beside how to make them (#129, D-372).
 - **`cbuild_builder_url`'s `$url`** starts from the kit's Builder page, where it has one, and the filter still answers last (#113).
 - **Development:**
