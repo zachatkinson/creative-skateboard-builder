@@ -310,6 +310,22 @@ final class ShelfTest extends TestCase {
 		self::assertCount( 4, $listed->widths, 'the question stays, for Change' );
 	}
 
+	public function test_the_width_question_lists_its_widths_narrowest_first_whatever_the_shop_s_order(): void {
+		$deck    = static fn( string $width, int $id ): Part => Parts::of( array( 'deck_width' => $width, 'deck_length' => '32', 'hole_pattern' => 'new_school', 'set_size' => 1 ), $id, 6000, 'baker' );
+		$parts   = array( $deck( '9', 201 ), $deck( '8.5', 202 ), $deck( '8', 203 ) );
+		$shelved = array(
+			201 => self::shelved( 1, 1 ),
+			202 => self::shelved( 2, 2 ),
+			203 => self::shelved( 3, 3 ),
+		);
+		$asking  = self::list( SlotKey::DECK, $parts, $shelved, new ShelfAsk(), Picks::none() );
+		self::assertSame(
+			array( '8in', '8.5in', '9in' ),
+			array_map( static fn( Width $width ): string => Shelf::named( $width->width ), $asking->widths ),
+			'the widest deck first in the shop, the narrowest first in the question'
+		);
+	}
+
 	/**
 	 * #81: a deck picked in one width, with another width asked. Its look's card shows the deck in the width asked,
 	 * which the builder then moves the pick to; a look not made in that width keeps the pick, so the card shows what
