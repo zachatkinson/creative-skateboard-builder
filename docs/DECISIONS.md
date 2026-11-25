@@ -443,6 +443,7 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-343 · The motion tests watch until the page is still](#d-343--the-motion-tests-watch-until-the-page-is-still--2026-11-24)
 - [D-345 · Markdown is linted with markdownlint-cli2, on its default rules but five](#d-345--markdown-is-linted-with-markdownlint-cli2-on-its-default-rules-but-five--2026-11-24)
 - [D-347 · Gate 20 fails a merge's conflict marker left in a file](#d-347--gate-20-fails-a-merges-conflict-marker-left-in-a-file--2026-11-24)
+- [D-379 · StrykerJS's floor is 95 %, once the store reached 98.99 %](#d-379--strykerjss-floor-is-95--once-the-store-reached-9899---2026-11-24)
 
 ### Releases and the repository
 
@@ -5318,5 +5319,18 @@ The check D-373 added to `npm run upgrade` failed from 1.0.0, on three runs out 
 **Deliberate break.** `requestRenditions()` back to `enqueueDistinct()`, due at once. The two unit tests failed at RenditionsMigrationTest.php:78 and :110, `GripRenditionsTest` at :201 and `RenditionsUpgradeTest` at :66 ("Failed asserting that 1 is identical to 0."), and `npm run upgrade` from 1.0.0 with "layer copies 0, parts missing copies 1". Put back, all passed, and the probe showed the step's job stored at 23:43:42 and run by 1.2.0 at 23:44:01.
 
 **Why:** the update's step is how the fix reaches a shop that updates (D-373). A job an earlier release's runner can claim is a step that may do nothing.
+
+**Status:** Accepted.
+
+### D-379 · StrykerJS's floor is 95 %, once the store reached 98.99 % · 2026-11-24
+
+The auditor's second pass on milestone 12 measured StrykerJS at 89.87 %, under the 90 % floor. Zach asked to kill as many of the store's mutants as possible, and approved the raise on 24 Nov 2026: "if we get above 95 we can raise the floor".
+
+- **The run.** The full `npm run mutate:js` on the milestone's branch (d55d679) scored 98.99 %: 2,539 killed, 5 timed out, 26 survived, none uncovered. `navigate.ts` and seven other files are at 100 %.
+- **The 26 left** are equivalent mutants, each with why no test can see it in the commits that killed the rest (09734e7 to d55d679). For example, a mutant that matters only for the review's chips, where the review draws none.
+- **The change.** `thresholds.break` and `low` go from 90 to 95, and `high` from 95 to 98, in `stryker.config.mjs`. CLAUDE.md, AUDIT.md, STANDARDS.md, README.md's Quality table, `tools/mutate-js.sh` and CI's step name say 95 %.
+- **Why 95, not 98.** About four points of room, so a new equivalent mutant in later code doesn't block a release, as Infection's 95 % outside the domain allows.
+
+**Why:** the score reached what Zach set as the condition, and a floor holds the gain.
 
 **Status:** Accepted.

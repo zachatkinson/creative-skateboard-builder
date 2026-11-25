@@ -270,7 +270,7 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
       - run: npm ci
-      - name: StrykerJS on the builder's store (90 %; skipped while assets/src has no TypeScript)
+      - name: StrykerJS on the builder's store (95 %; skipped while assets/src has no TypeScript)
         run: npm run mutate:js
       # Everything release.yml does short of publishing (tools/release-dry-run.sh): the zip, the SBOMs from their
       # pinned tools, and the manifest read back by the updater's own class. release.yml runs only on a tag, so without

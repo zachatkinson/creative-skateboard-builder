@@ -134,7 +134,7 @@ Each release is held to twelve dimensions, written down in [docs/AUDIT.md](docs/
 | --- | --- |
 | Unit tests | 100 % of lines and branches in the fit engine |
 | Unit and integration tests together | 95 % of all lines |
-| Mutation testing | A mutation score of 100 % in the fit engine and 95 % elsewhere ([Infection](https://infection.github.io)), and 90 % in the store ([StrykerJS](https://stryker-mutator.io)) |
+| Mutation testing | A mutation score of 100 % in the fit engine and 95 % elsewhere ([Infection](https://infection.github.io)), and 95 % in the store ([StrykerJS](https://stryker-mutator.io)) |
 | Static analysis | PHPStan level 9, and 10 on the fit engine; PHPCS with WordPress-Extra and WordPress VIP |
 | Browsers | Playwright with axe on Chromium, WebKit and Firefox, at phone, tablet and desktop widths, without JavaScript, in French and right to left |
 | Accessibility | WCAG 2.2 AA ([docs/A11Y.md](docs/A11Y.md)) |
