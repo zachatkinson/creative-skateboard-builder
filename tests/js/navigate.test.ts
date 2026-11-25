@@ -375,6 +375,23 @@ describe( 'Navigator', () => {
 		).toEqual( [ 'https://shop.example/?stuck' ] );
 	} );
 
+	it( 'leaves no timer running once the answer is shown with its pictures ready', async () => {
+		const h = harness();
+		h.deps.settle = () => Promise.resolve();
+		new Navigator( h.deps ).go( {
+			fields: STEP,
+			history: 'push',
+			fallback: () => undefined,
+		} );
+		h.reply( answer( { view: view( 'https://shop.example/?deck' ) } ) );
+		await settle();
+		await settle();
+		expect( h.shown.map( ( v ) => v.url ) ).toEqual( [
+			'https://shop.example/?deck',
+		] );
+		expect( vi.getTimerCount() ).toBe( 0 );
+	} );
+
 	it( 'drops an answer overtaken while its pictures were readied', async () => {
 		const h = harness();
 		const nav = new Navigator( h.deps );
@@ -834,6 +851,18 @@ describe( 'Navigator', () => {
 			navigator.go( move( h, [ [ 'cbuild[deck]', '13' ] ] ) );
 			expect( h.inits[ 0 ]?.signal?.aborted ).toBe( false );
 			expect( h.inits[ 1 ]?.signal?.aborted ).toBe( true );
+		} );
+
+		it( 'gives up nothing it asked ahead once answered, however long it is kept', async () => {
+			const h = harness();
+			new Navigator( h.deps ).prefetch( NEXT_STEP );
+			h.reply(
+				answer( { view: view( 'https://shop.example/?trucks' ) } )
+			);
+			await settle();
+			await vi.advanceTimersByTimeAsync( LIMIT );
+			expect( h.inits[ 0 ]?.signal?.aborted ).toBe( false );
+			expect( vi.getTimerCount() ).toBe( 0 );
 		} );
 
 		it( 'gives up what it asked ahead past LIMIT, so a move waiting for it stops waiting and says so (D-364)', async () => {
