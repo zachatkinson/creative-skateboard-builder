@@ -380,6 +380,14 @@ test.describe( 'The Build tab', () => {
 		await tab( page );
 		await expect( days ).toHaveValue( 'deux jours' );
 		await expect( days ).toHaveAttribute( 'aria-invalid', 'true' );
+		// The auditor's M12 minor 7: axe on the field with its error showing, in French as in English.
+		await axe(
+			page,
+			'the Build tab with an assembly time not saved, in French',
+			PANEL,
+			[],
+			THEIRS
+		);
 
 		await days.fill( '' );
 		await update( page );

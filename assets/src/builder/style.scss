@@ -55,6 +55,22 @@
 }
 
 /*
+ * Muted words are the text at 72 %, unless that would read under WCAG's 4.5:1 (1.4.3; D-380). A theme whose text is
+ * near the limit already, as Storefront's #6d6d6d is at 5.2:1 on white, leaves no room: at 72 % it read at 2.95:1.
+ * `Y` is the text's lightness from its channels, 0 to 255, and the opacity is the least that keeps the words on
+ * their side of the middle: dark words no lighter than 45 % laid on white, about 4.7:1, and light words no darker
+ * than 50 % laid on black, about 5.3:1. Of the two, the smaller is the one for the text's side. Words with room, as
+ * every block theme's, Kadence's and a dark scheme's have, keep 72 %; where the browser has no relative colours, so
+ * do Storefront's.
+ */
+@supports (color: rgb(from red r g b / clamp(0.5 * alpha, alpha, alpha))) {
+	.cbuild {
+		// prettier-ignore
+		--cbuild-muted: rgb(from currentcolor r g b / clamp(0.72 * alpha, alpha * min(140.25 / max(255 - (0.2126 * r + 0.7152 * g + 0.0722 * b), 1), 127.5 / max(0.2126 * r + 0.7152 * g + 0.0722 * b, 1)), alpha));
+	}
+}
+
+/*
  * A fill in the accent. Where the theme names no colour presets (a classic theme), the accent is the text's colour,
  * `currentcolor`, which a custom property resolves where it is used: a fill that set its own `color` would paint its
  * ground the colour of its words. So a fill keeps the text as its `color`, and so as its ground, and paints its words

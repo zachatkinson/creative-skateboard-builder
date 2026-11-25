@@ -5389,3 +5389,24 @@ The auditor's second pass on milestone 12 measured StrykerJS at 89.87 %, under t
 **Why:** the score reached what Zach set as the condition, and a floor holds the gain.
 
 **Status:** Accepted.
+
+### D-380 · Muted words keep 4.5:1 on a theme whose text is near the limit · 2026-11-24
+
+The auditor's minor 7 on milestone 12 asked for axe on the states M12 added. axe on the phone bar of a blank build on Storefront found its first violation: "Total" and "Show the parts" at 2.95:1, `#969696` on white. A run of axe on the whole blank start found the same in the deck step's lead, a ready build's description and the picture's side line. Kadence, dark, and Twenty Twenty-Five passed.
+
+- **The cause.** Muted words are `--cbuild-muted`, the text at 72 % opacity (`color-mix(in srgb, currentcolor 72%, transparent)`). Storefront's text is `#6d6d6d`, 5.2:1 on white, which leaves almost no room: any opacity under about 93 % takes it under 4.5:1 (WCAG 1.4.3). No earlier test ran axe on the builder under Storefront's light scheme, only its contrast for the current step and a pressed width.
+- **The fix.** Where the browser has relative colours (`rgb(from …)`, with `min()`, `max()` and `clamp()`; Chromium, WebKit and Firefox as the suite runs them), the opacity is the least that keeps the words on their side of the middle, and 72 % where that is less. `Y`, the text's channels weighted as for luminance (0.2126, 0.7152, 0.0722), gives two floors: dark words laid on white no lighter than 45 % (about 4.7:1), `140.25 / (255 - Y)`, and light words laid on black no darker than 50 % (about 5.3:1), `127.5 / Y`. The smaller of the two is the one for the text's side, so no `sign()` is needed. Storefront's text gets 96 %, so its muted words read at about 4.7:1; every block theme's, Kadence's and a dark scheme's text keeps exactly 72 %, read back in all three engines. Without relative colours, the 72 % stays.
+- **Not chosen.** A lower blanket opacity would change every theme's look for one theme's text, and still fail a text lighter than Storefront's. Mixing toward black or white would drop the theme's hue. A rule for Storefront by name is shop-specific in spirit and leaves the next theme with grey text to fail.
+- **The look.** On every theme but one with text near the limit, nothing changes. The visual baselines show no difference from this change at Playwright's threshold.
+
+**Tests.** `builder.spec.ts` "Fills in the accent on a classic theme › passes axe on the blank start on storefront, light, its muted words included", and Kadence, dark; the phone bar's "says 'Show the parts' whole under the total" runs axe on the bar of a blank build and of a started one on Storefront, Kadence and Twenty Twenty-Five.
+
+**Red run.** Before the fix, chromium-desktop: "the blank start on storefront, light: color-contrast … contrastRatio 2.95" (support/axe.ts:51, from builder.spec.ts:3157), and "the bar of a blank build on storefront: color-contrast", the nodes `cbuild-bar__label` and `cbuild-bar__more--show` at 2.95 (builder.spec.ts:7434).
+
+**Deliberate break.** The `@supports` condition made false, so the 72 % holds everywhere: both tests failed on chromium-desktop with the same contrast findings. Put back, both passed.
+
+**Two findings of the test, not the builder.** On a phone, and under Storefront's tall header on a desktop, the first screen leaves "Back to the shop" under the bar, which sticks over the screen's foot, and axe reads it as a covered target (2.5.8). The bar's own tests hold focus clear of it (D-160), so the whole-start test runs at 1280 by 900 with the panel's head scrolled to the middle of the screen; colours are the same at every width. And in Firefox, the axe helper (`tests/e2e/support/axe.ts`) waited for every finite animation to end before measuring, but Firefox never moves a transition on the widths folded inside a shut `details`, so axe on the bar after a pick waited out the test ("page.evaluate: Test timeout of 60000ms exceeded", support/axe.ts:22, from builder.spec.ts:7510, firefox-desktop and firefox-phone on Kadence). The helper now leaves out an animation on an element that is not drawn (`checkVisibility()`), which axe leaves out too.
+
+**Why:** muted words are still words a shopper reads, and the builder takes the theme's colours without being told them, so it has to keep them readable whatever they are.
+
+**Status:** Accepted.

@@ -1347,6 +1347,8 @@ test.describe( 'The builder with JavaScript', () => {
 			'no moment plays'
 		).toBe( 0 );
 		expect( await stayed( page ), 'no page was loaded' ).toBe( true );
+		// The auditor's M12 minor 7: axe on the state D-364 added, the limit said after a pick.
+		await axe( page, 'the 10 s limit said after a pick', '.cbuild' );
 		release();
 		await page.unroute( isRoute );
 		// Asked again, the answer comes and the line goes.
@@ -1388,6 +1390,12 @@ test.describe( 'The builder with JavaScript', () => {
 		}
 		await expect( button, 'focus on the width pressed' ).toBeFocused();
 		expect( await stayed( page ), 'no page was loaded' ).toBe( true );
+		// The auditor's M12 minor 7: axe on the question asked again, with the rate limit's words (D-364).
+		await axe(
+			page,
+			'a width press stopped by the rate limit, the question open again',
+			'.cbuild'
+		);
 		// Pressed again once the limit is past, the width lists its decks.
 		await page.unroute( isRoute );
 		await button.click();
@@ -1396,6 +1404,71 @@ test.describe( 'The builder with JavaScript', () => {
 			page.getByRole( 'radio', { name: /^Choose Builder test deck/ } )
 		).toHaveCount( 1 );
 		await expect( page.locator( '.cbuild__limited' ) ).toBeHidden();
+	} );
+
+	// The auditor's M12 minor 7: axe on the other two of D-364's states, the 10 s limit after a width press, with the
+	// question open again, and the rate limit after a pick.
+	test( 'passes axe on the 10 s limit after a width press and the rate limit after a pick (D-364)', async ( {
+		page,
+	} ) => {
+		test.slow();
+		let release: () => void = () => undefined;
+		const held = new Promise< void >( ( done ) => {
+			release = done;
+		} );
+		await page.route( isRoute, async ( route ) => {
+			await held;
+			// The page gave the request up: there is no one to answer.
+			await route.continue().catch( () => undefined );
+		} );
+		const button = page.locator( '.cbuild-width__option', {
+			has: page.locator( '.cbuild-chip__text', { hasText: /^8″$/ } ),
+		} );
+		await button.click();
+		// In English in every project, fr-ca's included: french.spec.ts reads it in French.
+		const late = 'The shop did not answer in time. Try again in a moment.';
+		await expect( page.locator( '.cbuild__limited' ) ).toHaveText( late, {
+			timeout: 20000,
+		} );
+		await expect( page.locator( '.cbuild' ) ).toHaveAttribute(
+			'aria-busy',
+			'false'
+		);
+		await expect( page.locator( '.cbuild-width__chosen' ) ).toBeHidden();
+		await expect( button ).toHaveAttribute( 'aria-pressed', 'false' );
+		await expect( button, 'focus on the width pressed' ).toBeFocused();
+		await axe(
+			page,
+			'the 10 s limit after a width press, the question open again',
+			'.cbuild'
+		);
+		release();
+		await page.unroute( isRoute );
+
+		await ride( page, '8″' );
+		const limit = 'Too many requests. Try again in 20 seconds.';
+		await page.route( isRoute, ( route ) =>
+			route.fulfill( {
+				status: 429,
+				contentType: 'application/json',
+				body: JSON.stringify( {
+					code: 'cbuild_rate_limited',
+					message: limit,
+				} ),
+			} )
+		);
+		const deck = page.getByRole( 'radio', {
+			name: 'Choose Builder test deck 8.0',
+		} );
+		await deck.check();
+		await expect( page.locator( '.cbuild__limited' ) ).toHaveText( limit );
+		await expect( page.locator( '.cbuild' ) ).toHaveAttribute(
+			'aria-busy',
+			'false'
+		);
+		await expect( deck, 'the step keeps what it shows' ).toBeChecked();
+		await axe( page, 'the rate limit said after a pick', '.cbuild' );
+		expect( await stayed( page ), 'no page was loaded' ).toBe( true );
 	} );
 
 	test( 'sends the form when the state route fails, the server shows the next step, and the build still reaches the cart', async ( {
@@ -3079,6 +3152,40 @@ test.describe( 'Fills in the accent on a classic theme', () => {
 		[ 'storefront', 'light' ],
 		[ 'kadence', 'dark' ],
 	] as const ) {
+		// Found by axe on the bar (the auditor's M12 minor 7): Storefront's text is #6d6d6d, 5.2:1 on white, and the
+		// builder's muted words, the text at 72 %, were 2.95:1 (D-380).
+		test( `passes axe on the blank start on ${ theme }, ${ scheme }, its muted words included`, async ( {
+			page,
+			context,
+			baseURL,
+		}, info ) => {
+			test.skip(
+				info.project.name === 'no-js',
+				"axe runs as a script in the page; the colours are the stylesheet's, the same with JavaScript."
+			);
+			const url = baseURL || SITE;
+			await context.addCookies( [
+				{ name: 'cbuild_e2e_theme', value: theme, url },
+				{ name: 'cbuild_e2e_scheme', value: scheme, url },
+			] );
+			// The colours are the same at every width. The bar sticks over the screen's foot, and whatever the first
+			// screen leaves under it, "Back to the shop" under Storefront's tall header, axe reads as a covered target;
+			// the bar's own tests hold focus clear of it (D-160). So a desktop, scrolled to the panel's head.
+			await page.setViewportSize( { width: 1280, height: 900 } );
+			await page.goto( fixture().page );
+			await expect( page.locator( '.cbuild-step__lead' ) ).toBeVisible();
+			await page
+				.locator( '.cbuild__back' )
+				.evaluate( ( link ) =>
+					link.scrollIntoView( { block: 'center' } )
+				);
+			await axe(
+				page,
+				`the blank start on ${ theme }, ${ scheme }`,
+				'.cbuild'
+			);
+		} );
+
 		test( `the current step and a pressed width read on ${ theme }, ${ scheme }, and the rail has no list numbers`, async ( {
 			page,
 			context,
@@ -6450,6 +6557,12 @@ test.describe( 'The board turned over', () => {
 			await topSide( page ).getAttribute( 'aria-pressed' ),
 		];
 		await expect.poll( said ).toEqual( [ 'true', 'false' ] );
+		// The auditor's M12 minor 7: axe on the group with each side pressed (D-369).
+		await axe(
+			page,
+			'the two sides, the underside pressed',
+			'#cbuild-picture'
+		);
 		await topSide( page ).focus();
 		await page.keyboard.press( 'Enter' );
 		await expect.poll( said ).toEqual( [ 'false', 'true' ] );
@@ -7377,6 +7490,12 @@ test.describe( 'The phone bar', () => {
 			if ( ! javaScriptEnabled ) {
 				return;
 			}
+			// The auditor's M12 minor 7: axe on the bar of a blank build and of a started one (D-374).
+			await axe(
+				page,
+				`the bar of a blank build on ${ theme }`,
+				'.cbuild-bar'
+			);
 			await pickDeck( page, '8.0' );
 			await settled( page );
 			await expect( total ).not.toContainText( '$15.00' );
@@ -7397,6 +7516,11 @@ test.describe( 'The phone bar', () => {
 				Math.abs( after.height - before.height - after.estimate ),
 				"the bar grows by the estimate's line alone"
 			).toBeLessThanOrEqual( 1 );
+			await axe(
+				page,
+				`the bar of a started build on ${ theme }`,
+				'.cbuild-bar'
+			);
 			await total.evaluate( ( summary ) => {
 				(
 					summary.querySelector(
@@ -8485,6 +8609,12 @@ test.describe( 'The start button on a theme (#133)', () => {
 					`Add to cart's height: ${ ours.height } and ${ theirs.height } px`
 				).toBeLessThanOrEqual( 0.5 );
 			}
+			// The auditor's M12 minor 7: axe on the button as the theme draws it, with its colours copied (D-377).
+			await axe(
+				page,
+				`the start button on ${ theme }`,
+				'.cbuild-start'
+			);
 		} );
 
 		// A theme's button may change size at a breakpoint: the copy follows Add to cart from 1280 px to a phone's 390.
