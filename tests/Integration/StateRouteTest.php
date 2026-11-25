@@ -1727,4 +1727,32 @@ final class StateRouteTest extends IntegrationTestCase {
 		self::assertSame( array(), $at( 'wheels', $open )['swaps'], 'a step with no pick offers none' );
 		self::assertSame( array(), $at( 'deck' )['swaps'], 'the deck is never swapped' );
 	}
+
+	public function test_a_kit_with_smart_swaps_off_offers_none_and_one_saved_without_the_setting_offers_them(): void {
+		$offered = function ( ?array $settings ): array {
+			$whole     = $this->whole( null, null, $settings );
+			$this->kit = $whole['kit'];
+			$this->wheels( 'Wheels for less', '7' );
+			return $this->answer( array( 'cbuild' => array_map( 'strval', $whole['picks'] ) + array( 'step' => 'review' ) ) )['swaps'];
+		};
+		self::assertNotSame( array(), $offered( null ), 'a kit with no settings' );
+		self::assertNotSame( array(), $offered( array( 'schema_version' => 1, 'start_button' => true ) ), 'a kit saved before 1.3.0, without the setting' );
+		self::assertSame( array(), $offered( array( 'schema_version' => 1, 'swaps' => false ) ), 'switched off' );
+
+		// The filter answers after the setting, with the kit's ID.
+		$asked = array();
+		add_filter(
+			'cbuild_swaps',
+			static function ( bool $offers, int $kit ) use ( &$asked ): bool {
+				$asked[] = array( $offers, $kit );
+				return ! $offers;
+			},
+			10,
+			2
+		);
+		self::assertNotSame( array(), $offered( array( 'schema_version' => 1, 'swaps' => false ) ), 'a plugin turns them on' );
+		self::assertSame( array( array( false, $this->kit ) ), $asked );
+		self::assertSame( array(), $offered( null ), 'and off' );
+		remove_all_filters( 'cbuild_swaps' );
+	}
 }

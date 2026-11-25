@@ -728,13 +728,22 @@
 		"view": {
 			"description": "Only in an answer to a build link (the cbuild argument): what the builder's template draws for it, as the page's first render has it. The builder's own, and no part of the public API: it may change in any release. The fields the store's script reads are described, so its types are generated from here; the rest are the templates'.",
 			"type": "object",
-			"required": ["url", "kit", "title", "status", "isChanges", "errors", "step", "review"],
+			"required": ["url", "kit", "title", "status", "isChanges", "errors", "step", "review", "swapped"],
 			"properties": {
 				"url": { "description": "The view's own address, which the store puts in the page's.", "type": "string" },
 				"kit": { "description": "The kit product's ID.", "type": "integer" },
 				"title": { "description": "The step's heading, which the store puts in the page's title.", "type": "string" },
 				"status": { "description": "What the status region says of the view.", "type": "string" },
 				"isChanges": { "description": "Whether the change panel is shown.", "type": "boolean" },
+				"swapped": {
+					"description": "After a smart swap, from 1.3.0 (#135): whether its notice, with Undo, is shown. The store puts focus on it after a swap.",
+					"type": "object",
+					"required": ["shown"],
+					"properties": {
+						"shown": { "description": "Whether the notice is shown.", "type": "boolean" }
+					},
+					"additionalProperties": true
+				},
 				"errors": {
 					"type": "object",
 					"required": ["shown"],

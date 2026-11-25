@@ -15,6 +15,7 @@
         "cbuild_slot_label",
         "cbuild_start_button",
         "cbuild_summary_notes",
+        "cbuild_swaps",
         "cbuild_ticket_specs",
         "cbuild_ticket_steps",
         "cbuild_updates_enabled",
@@ -311,11 +312,11 @@
         "schema/kit-picture.json": "f5a644b1f0082bd93867dbc8ac74342730c47a8008128c32380a80485f9ef939",
         "schema/kit-presets.json": "fa1447fe7d550c544db2236d898f02ca63e5966023a875f73bbbd90dba4f66c3",
         "schema/kit-rules.json": "79f9a5c998a63c1ceee8ec7877096515dabd9e75c6116257874e1d4418242c45",
-        "schema/kit-settings.json": "9fb245090ab00860a311c290dcf6da62c3fe54e6e4bcf2c2b7a610807d4743af",
+        "schema/kit-settings.json": "29abd35b99fcee81cc7f62737e1f17aee2b69d7324a4776aab26e13fefb19b2e",
         "schema/kit-slots.json": "7c383e3f551b517328d9d195c01e15f9f5dad1a1263a20fa4ff2188592bb820c",
         "schema/order-snapshot.json": "22d23b0213b466dfd4092e7e40ec09574bb4eaed6e99347bd166dadc86c441bb",
         "schema/settings.json": "c6ce801eae753f4d85734fdf81489cc91a4e2db8adf318aa2da21832d7ef9df4",
-        "schema/state.json": "7d55667cf9f386809164179e465e717ce219f80dfc539eef503dce757173c950"
+        "schema/state.json": "33a957ca681c6b639984e54dc2ec14c13c2f210746eec4defdc21e241aa92e0d"
     },
     "spec_keys": [
         "deck_width",

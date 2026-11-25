@@ -183,6 +183,12 @@ defined( 'ABSPATH' ) || exit;
 							</template>
 						</div>
 					</fieldset>
+					<?php // The pick's smart swaps, on its card alone (#135, D-397): links, so they work without the script. ?>
+					<p class="cbuild-card__swaps" data-wp-bind--hidden="!context.option.hasSwaps">
+						<template data-wp-each--swap="context.option.swaps" data-wp-each-key="context.swap.id">
+							<a class="cbuild-swap" rel="nofollow" data-wp-on--click="actions.follow" data-wp-bind--id="context.swap.id" data-wp-bind--href="context.swap.url" data-wp-text="context.swap.text"></a>
+						</template>
+					</p>
 				</li>
 			</template>
 		</ul>

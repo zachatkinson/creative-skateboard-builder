@@ -21,6 +21,10 @@ export interface CbuildSettings {
 	 */
 	start_button?: boolean;
 	/**
+	 * Whether the builder offers smart swaps, from 1.3.0 (#135): on the review and on the picked card, a part for less and a better one that fit the build. Off, the state route's answer has none and the builder shows no swap control. The default is true.
+	 */
+	swaps?: boolean;
+	/**
 	 * "Not sure of your width?" under the deck step's width question. Left out, the guide is shown with the plugin's rows, by US shoe size.
 	 */
 	width_guide?: {

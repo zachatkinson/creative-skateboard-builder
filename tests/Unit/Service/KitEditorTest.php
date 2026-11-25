@@ -542,6 +542,22 @@ final class KitEditorTest extends TestCase {
 		self::assertSame( array( 'schema_version' => 1, 'start_button' => false ), $draft->documents[ KitEditor::SETTINGS ] );
 	}
 
+	// #135: Offer smart swaps sends 0 unticked, so it is stored where sent and kept where not (D-397).
+	public function test_smart_swaps_are_stored_as_sent_and_kept_as_the_kit_has_them_where_not(): void {
+		$sent             = self::sent();
+		$sent['settings'] = array( 'start_button' => '1' );
+		$draft            = $this->editor->draft( $sent, self::stored() );
+		self::assertSame( array( 'schema_version' => 1, 'start_button' => true ), $draft->documents[ KitEditor::SETTINGS ], 'none stored and none sent: left out, on' );
+		foreach ( array( '0' => false, '1' => true, '' => false, 'yes' => true ) as $box => $on ) {
+			$sent['settings']['swaps'] = (string) $box;
+			self::assertSame( $on, $this->editor->draft( $sent, self::stored() )->documents[ KitEditor::SETTINGS ]['swaps'] ?? null, var_export( $box, true ) );
+		}
+		unset( $sent['settings']['swaps'] );
+		$stored                       = self::stored();
+		$stored[ KitEditor::SETTINGS ] = array( 'schema_version' => 1, 'swaps' => false );
+		self::assertFalse( $this->editor->draft( $sent, $stored )->documents[ KitEditor::SETTINGS ]['swaps'] ?? null, 'not sent: the kit\'s kept' );
+	}
+
 	// #113: the Builder page is a page's ID, or nothing for the kit's own page. Where the tab says which pages may be
 	// chosen, any other is refused; a select not sent at all keeps the page the kit has.
 	public function test_the_builder_page_is_kept_as_an_id_and_one_not_offered_is_refused(): void {

@@ -12,6 +12,10 @@ defined( 'ABSPATH' ) || exit;
 ?>
 <section class="cbuild-review" data-wp-interactive="creative-skateboard-builder" data-wp-bind--hidden="!state.view.isReview">
 	<h3 class="cbuild-review__heading screen-reader-text" data-wp-text="state.view.review.heading"></h3>
+	<?php // The same board for less (#135, D-397): every slot but the deck at its cheapest that fits, in one press. ?>
+	<p class="cbuild-review__board" data-wp-bind--hidden="!state.view.board.shown">
+		<a class="cbuild-button cbuild-swap cbuild-swap--board" rel="nofollow" data-wp-on--click="actions.follow" data-wp-bind--id="state.view.board.id" data-wp-bind--href="state.view.board.url" data-wp-text="state.view.board.text"></a>
+	</p>
 	<ul class="cbuild-review__items">
 		<template data-wp-each--item="state.view.review.items" data-wp-each-key="context.item.key">
 			<li data-wp-bind--class="context.item.classes">
@@ -22,6 +26,12 @@ defined( 'ABSPATH' ) || exit;
 				<span class="cbuild-review__fit" data-wp-text="context.item.fit"></span>
 				<span class="cbuild-review__amount" data-wp-text="context.item.amount"></span>
 				<a class="cbuild-button cbuild-review__change" rel="nofollow" data-wp-on--click="actions.follow" data-wp-bind--href="context.item.url" data-wp-bind--aria-label="context.item.change" data-wp-text="context.item.text"></a>
+				<?php // The slot's smart swaps, under its row (#135, D-397): links, so they work without the script. ?>
+				<span class="cbuild-review__swaps" data-wp-bind--hidden="!context.item.hasSwaps">
+					<template data-wp-each--swap="context.item.swaps" data-wp-each-key="context.swap.id">
+						<a class="cbuild-swap" rel="nofollow" data-wp-on--click="actions.follow" data-wp-bind--id="context.swap.id" data-wp-bind--href="context.swap.url" data-wp-text="context.swap.text"></a>
+					</template>
+				</span>
 			</li>
 		</template>
 	</ul>

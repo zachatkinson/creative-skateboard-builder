@@ -827,7 +827,8 @@ final class KitEditor {
 	 * the kit's own page; a form that does not send it at all keeps the one the kit has. The width guide (#114) is
 	 * stored only where its section was sent. The assembly time (#142) is kept as "2-4" however it was typed, left out
 	 * where it is empty, and kept as the kit has it where a form does not send it; what is not business days is kept
-	 * as typed, for the domain to refuse.
+	 * as typed, for the domain to refuse. Offer smart swaps (#135) is stored where it was sent, its box sending 0 when
+	 * unticked, and kept as the kit has it where it was not.
 	 *
 	 * @param array<mixed>              $sent      The fields.
 	 * @param array<string, mixed>|null $stored    The settings as stored.
@@ -844,6 +845,14 @@ final class KitEditor {
 		}
 		if ( is_array( $sent['wheel_guide'] ?? null ) ) {
 			$document['wheel_guide'] = self::wheels( $sent['wheel_guide'], $separator );
+		}
+		// Smart swaps (#135): the box sends 0 unticked, so a form without the field keeps the kit's, and one with none
+		// stored leaves it out, on (D-397).
+		$swaps = array_key_exists( 'swaps', $sent ) ? self::text( $sent, 'swaps' ) : null;
+		if ( null === $swaps && isset( $stored['swaps'] ) ) {
+			$document['swaps'] = $stored['swaps'];
+		} elseif ( null !== $swaps ) {
+			$document['swaps'] = '' !== $swaps && '0' !== $swaps;
 		}
 		$page = array_key_exists( 'builder_page', $sent ) ? self::text( $sent, 'builder_page' ) : null;
 		if ( null === $page && isset( $stored['builder_page'] ) ) {

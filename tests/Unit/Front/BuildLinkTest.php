@@ -468,4 +468,41 @@ final class BuildLinkTest extends TestCase {
 		self::assertSame( 0, GuideAnswers::read( array( 'shoe' => '0' ) )->shoe );
 		self::assertSame( 1, GuideAnswers::read( array( 'budget' => '1' ) )->budget );
 	}
+
+	public function test_a_swaps_link_carries_the_picks_its_undo_puts_back_and_no_link_made_from_it_does(): void {
+		$link    = BuildLink::read(
+			array(
+				'deck'     => '12',
+				'wheels'   => '31',
+				'hardware' => '61',
+				'step'     => 'review',
+			)
+		);
+		$swapped = $link->pick( 'wheels', 30 )->pick( 'hardware', 60 )->undoing( $link->picks );
+		self::assertSame(
+			array(
+				'deck'     => '12',
+				'wheels'   => '30',
+				'hardware' => '60',
+				'step'     => 'review',
+				'_undo'    => array(
+					'deck'     => '12',
+					'wheels'   => '31',
+					'hardware' => '61',
+				),
+			),
+			$swapped->query( self::slots() ),
+			'in slot order, after the rest'
+		);
+		$read = BuildLink::read( $swapped->query( self::slots() ) );
+		self::assertSame( array( 'deck' => 12, 'wheels' => 31, 'hardware' => 61 ), $read->undo, 'read back' );
+		self::assertFalse( BuildLink::read( array( '_undo' => array( 'deck' => '1' ) ) )->isClean(), 'an undo alone is a state' );
+		foreach ( array( 'at' => $read->at( 'review' ), 'pick' => $read->pick( 'grip', 7 ), 'assembled' => $read->assembled( true ), 'shared' => $read->shared(), 'after' => $read->after( array() ), 'filtered' => $read->filtered( 'a', '' ), 'showing' => $read->showing( 48 ), 'replacing' => $read->replacing( 'abc' ), 'shelved' => $read->shelved( new \CreativeBranding\SkateboardBuilder\Service\ShelfQuery() ), 'leave' => $read->leave( 'grip' ) ) as $made => $other ) {
+			self::assertSame( array(), $other->undo, $made . ' leaves the undo behind: it is the swap\'s alone' );
+		}
+		foreach ( array( array( '_undo' => 'deck' ), array( '_undo' => array( 'deck' => 'x', 'Deck' => '1', 'trucks' => '0' ) ) ) as $sent ) {
+			self::assertSame( array(), BuildLink::read( $sent )->undo, 'IDs alone, each a slot\'s' );
+		}
+		self::assertSame( array( 'deck' => '12' ), ( new BuildLink( undo: array( 'deck' => 12, 'bolts' => 8 ) ) )->query( self::slots() )['_undo'], 'a slot the kit lacks is left out' );
+	}
 }

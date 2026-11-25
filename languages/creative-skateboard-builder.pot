@@ -5042,3 +5042,51 @@ msgstr ""
 #: templates/admin/part-specs.php:146
 msgid "Rank"
 msgstr ""
+
+#: src/Admin/BuildTab.php:1030 src/Admin/BuildTab.php:1387
+msgid "Offer smart swaps"
+msgstr ""
+
+#: src/Admin/BuildTab.php:1034
+msgid "On the review and on the chosen card, offers the same board for less and a part for less or a better one in each slot, each checked to fit the build. Off, the builder offers none."
+msgstr ""
+
+#: src/Front/BuilderView.php:2167
+msgid "Undo swap"
+msgstr ""
+
+#. translators: %s: an amount of money, such as $3.00.
+#: src/Front/Words.php:635
+#, php-format
+msgid "Same board for %s less"
+msgstr ""
+
+#. translators: 1: a part's name. 2: an amount of money, such as $2.00.
+#: src/Front/Words.php:639
+#, php-format
+msgid "For less: %1$s, %2$s less"
+msgstr ""
+
+#. translators: 1: a part's name. 2: an amount of money, such as $2.00.
+#: src/Front/Words.php:643
+#, php-format
+msgid "Step up: %1$s, %2$s more"
+msgstr ""
+
+#. translators: 1: a part's name. 2: an amount of money, such as $2.00.
+#: src/Front/Words.php:647
+#, php-format
+msgid "Step up: %1$s, %2$s less"
+msgstr ""
+
+#. translators: %s: a part's name.
+#: src/Front/Words.php:649
+#, php-format
+msgid "Step up: %s, same price"
+msgstr ""
+
+#. translators: %s: slots' labels joined as the site's language joins a list, such as wheels and hardware.
+#: src/Front/Words.php:662
+#, php-format
+msgid "Swapped: %s."
+msgstr ""

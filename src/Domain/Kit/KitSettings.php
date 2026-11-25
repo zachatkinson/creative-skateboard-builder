@@ -40,8 +40,10 @@ final readonly class KitSettings {
 	 * @param LeadDays|null $leadDays    How many business days putting a build together takes, or null where the kit
 	 *                                   says none (#142).
 	 * @param WheelGuide    $wheels      The wheel sizes the guided start recommends for each riding style (1.3.0, #134).
+	 * @param bool          $swaps       Whether the builder offers smart swaps (from 1.3.0, #135, D-397). Off, the
+	 *                                   state route offers none and the builder shows no swap control.
 	 */
-	private function __construct( public bool $startButton, public ?int $builderPage, public SizeGuide $guide, public ?LeadDays $leadDays, public WheelGuide $wheels ) {}
+	private function __construct( public bool $startButton, public ?int $builderPage, public SizeGuide $guide, public ?LeadDays $leadDays, public WheelGuide $wheels, public bool $swaps ) {}
 
 	/**
 	 * From the decoded document, or the defaults where there is none.
@@ -54,7 +56,7 @@ final readonly class KitSettings {
 	 */
 	public static function fromDocument( mixed $document ): self {
 		if ( null === $document ) {
-			return new self( true, null, SizeGuide::plugins(), null, WheelGuide::plugins() );
+			return new self( true, null, SizeGuide::plugins(), null, WheelGuide::plugins(), true );
 		}
 		$root = Fields::document( $document );
 		// A kit with no start_button shows the button on its parts' pages, as one saved before 1.2.0 did.
@@ -65,7 +67,9 @@ final readonly class KitSettings {
 		$days = $root->has( 'lead_days' ) ? LeadDays::kept( $root->text( 'lead_days', self::TYPED ), $root->path( 'lead_days' ) ) : null;
 		// One with no wheel_guide, as every kit saved before 1.3.0, has the plugin's wheel sizes.
 		$wheels = $root->has( 'wheel_guide' ) ? WheelGuide::fromFields( $root->object( 'wheel_guide' ) ) : WheelGuide::plugins();
+		// One with no swaps offers them, as one saved before 1.3.0 is read.
+		$swaps = ! $root->has( 'swaps' ) || $root->flag( 'swaps' );
 		// One with no builder_page has its builder on the kit's own page.
-		return new self( $starts, $root->idOrNull( 'builder_page' ), $guide, $days, $wheels );
+		return new self( $starts, $root->idOrNull( 'builder_page' ), $guide, $days, $wheels, $swaps );
 	}
 }

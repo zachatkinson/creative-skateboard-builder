@@ -31,7 +31,8 @@ if ( ! defined( 'ABSPATH' ) ) {
  * filters; `_shown`, how many options the step lists; `_on`, the step whose form was sent, so that a filter or Show
  * pressed in it stays on it and no other step takes them (D-150); `_replace`, the build in the cart an add takes the
  * place of. From 1.0.0 the step's shelf too (D-264): `_width`, the deck width asked, which every step keeps for the
- * visit (D-242); `_chips`, group to the values chosen; `_q`, the search; and `_sort`.
+ * visit (D-242); `_chips`, group to the values chosen; `_q`, the search; and `_sort`. From 1.3.0 `_undo`, the picks
+ * before a smart swap, slot key to part ID, which the swap's Undo puts back (D-397).
  *
  * Nothing sent is trusted. A link is read into IDs, keys and flags, and what is not one of those is left out. Which
  * parts a slot may hold, and whether an ID is a part at all, is the state's to say.
@@ -92,6 +93,9 @@ final readonly class BuildLink {
 	 *                                          carries it.
 	 * @param GuideAnswers            $guide    The guided start's answers (from 1.3.0, #134). Only the guided start's
 	 *                                          own address keeps them; a link made from this one does not.
+	 * @param array<string, int>      $undo     The picks before a smart swap, which its Undo puts back, or none (from
+	 *                                          1.3.0, D-397). Only a swap's own link carries it: no link made from
+	 *                                          this one does.
 	 */
 	public function __construct(
 		public array $picks = array(),
@@ -107,7 +111,8 @@ final readonly class BuildLink {
 		public ShelfQuery $shelf = new ShelfQuery(),
 		public bool $asked = false,
 		public string $saved = '',
-		public GuideAnswers $guide = new GuideAnswers()
+		public GuideAnswers $guide = new GuideAnswers(),
+		public array $undo = array()
 	) {}
 
 	/**
@@ -153,7 +158,8 @@ final readonly class BuildLink {
 			),
 			null !== $step && null === $on,
 			self::matching( $sent['_saved'] ?? null, '/\A[a-f0-9-]{36}\z/' ),
-			GuideAnswers::read( $sent['_guide'] ?? null )
+			GuideAnswers::read( $sent['_guide'] ?? null ),
+			self::ids( $sent['_undo'] ?? null )
 		);
 	}
 
@@ -166,7 +172,8 @@ final readonly class BuildLink {
 		return array() === $this->picks && null === $this->was && null === $this->step && null === $this->assembly && null === $this->preset
 			&& '' === $this->brand && '' === $this->size && 0 === $this->shown && '' === $this->replace && array() === $this->none
 			&& '' === $this->shelf->width && array() === $this->shelf->chips && '' === $this->shelf->query && ShelfAsk::SORTS[0] === $this->shelf->sort
-			&& $this->guide->isEmpty();
+			&& $this->guide->isEmpty()
+			&& array() === $this->undo;
 	}
 
 	/**
@@ -182,7 +189,11 @@ final readonly class BuildLink {
 	public function query( Slots $slots ): array {
 		$query = array();
 		$was   = array();
+		$undo  = array();
 		foreach ( $slots->keys() as $key ) {
+			if ( isset( $this->undo[ $key ] ) ) {
+				$undo[ $key ] = (string) $this->undo[ $key ];
+			}
 			if ( isset( $this->picks[ $key ] ) ) {
 				$query[ $key ] = (string) $this->picks[ $key ];
 			} elseif ( in_array( $key, $this->none, true ) ) {
@@ -233,6 +244,9 @@ final readonly class BuildLink {
 		}
 		if ( ! $this->guide->isEmpty() ) {
 			$query['_guide'] = $this->guide->query();
+		}
+		if ( array() !== $undo ) {
+			$query['_undo'] = $undo;
 		}
 		return $query;
 	}
@@ -353,6 +367,17 @@ final readonly class BuildLink {
 	 */
 	public function guided( GuideAnswers $guide ): self {
 		return new self( $this->picks, $this->was, $this->step, $this->assembly, $this->preset, $this->brand, $this->size, $this->shown, $this->replace, $this->none, $this->shelf, $this->asked, $this->saved, $guide );
+	}
+
+	/**
+	 * The link of a smart swap: the same, with the picks its Undo puts back (D-397).
+	 *
+	 * @since 1.3.0
+	 *
+	 * @param array<string, int> $undo The picks before the swap.
+	 */
+	public function undoing( array $undo ): self {
+		return new self( $this->picks, $this->was, $this->step, $this->assembly, $this->preset, $this->brand, $this->size, $this->shown, $this->replace, $this->none, $this->shelf, $this->asked, $this->saved, undo: $undo );
 	}
 
 	/**

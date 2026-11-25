@@ -317,7 +317,7 @@ final class StateAnswer {
 		// The swaps offered (#135): on the review every picked part's, on a step its own pick's. Their parts are named.
 		$decimals = $this->kits->decimals();
 		$swapper  = $this->swaps;
-		$swaps    = null === $swapper || array() === BuildSwaps::slots( $state ) ? array() : $this->timed( 'swaps', fn(): array => $swapper->of( $state, $decimals ) );
+		$swaps    = null === $swapper || array() === BuildSwaps::slots( $state ) || ! self::swapping( $state ) ? array() : $this->timed( 'swaps', fn(): array => $swapper->of( $state, $decimals ) );
 		foreach ( $swaps as $priced ) {
 			foreach ( $priced['swap']->to as $swapped ) {
 				$ids[] = $swapped->part->id;
@@ -1174,5 +1174,23 @@ final class StateAnswer {
 			);
 		}
 		return $messages;
+	}
+
+	/**
+	 * Whether the kit offers smart swaps: its Build tab's switch, then a plugin's answer (#135, D-397).
+	 *
+	 * @param State $state The build's state.
+	 */
+	private static function swapping( State $state ): bool {
+		/**
+		 * Filters whether the builder offers smart swaps for a kit. The swaps offered are still the fit engine's: a
+		 * plugin turns them on or off, and never adds one.
+		 *
+		 * @since 1.3.0
+		 *
+		 * @param bool $offers Whether the kit's "Offer smart swaps" is on: true for a kit saved before 1.3.0.
+		 * @param int  $kit    The kit product's ID.
+		 */
+		return true === apply_filters( 'cbuild_swaps', $state->kit->settings->swaps, $state->id );
 	}
 }

@@ -353,6 +353,16 @@ function steadyPress( event: Event ): void {
 let adding = false;
 
 /**
+ * A smart swap's press (#135, D-397): the swap control pressed, by its ID, and whether the press was its Undo. After a
+ * swap focus goes to the notice that says it, which holds Undo; after Undo, back to the control that made the swap.
+ */
+const swapPress: { from: string; undo: boolean; pressed: boolean } = {
+	from: '',
+	undo: false,
+	pressed: false,
+};
+
+/**
  * What the shopper reads first after a step changes, by the template's classes.
  *
  * @param view The view now shown.
@@ -391,6 +401,27 @@ function say(
 		! before.isChanges &&
 		! view.errors.shown &&
 		view.step.slot === before.step.slot;
+	// A swap stays on the step, and the control pressed may be gone: focus goes to the notice, which says the swap and
+	// holds Undo, and after Undo back to the control that made it (#135, D-397). The region says the build and total.
+	const swapped = swapPress.pressed;
+	swapPress.pressed = false;
+	if ( stays && swapped ) {
+		state.status = view.status;
+		const undone = swapPress.undo && ! view.swapped.shown;
+		window.requestAnimationFrame( () => {
+			const control = undone
+				? root?.querySelector< HTMLElement >(
+						`[id="${ swapPress.from }"]`
+					)
+				: null;
+			( view.swapped.shown
+				? root?.querySelector< HTMLElement >( '.cbuild-swapped' )
+				: ( control ??
+					root?.querySelector< HTMLElement >( first( view ) ) )
+			)?.focus();
+		} );
+		return;
+	}
 	if ( stays ) {
 		const was = before.step.options ?? [];
 		// A view with no list lists no more than the one before.
@@ -1862,6 +1893,16 @@ const { state } = store(
 				}
 				event.preventDefault();
 				narrowing = false;
+				// A smart swap or its Undo, for where focus goes after it (#135, D-397).
+				swapPress.pressed =
+					link.classList.contains( 'cbuild-swap' ) ||
+					link.classList.contains( 'cbuild-swapped__undo' );
+				swapPress.undo = link.classList.contains(
+					'cbuild-swapped__undo'
+				);
+				if ( link.classList.contains( 'cbuild-swap' ) ) {
+					swapPress.from = link.id;
+				}
 				nav( state ).go( {
 					fields: [ ...url.searchParams ],
 					history: 'push',

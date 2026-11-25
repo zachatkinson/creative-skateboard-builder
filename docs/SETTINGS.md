@@ -173,6 +173,14 @@ On a product's Part specs tab, and on each variation's Part specs fields, kept a
 | --- | --- | --- | --- | --- |
 | Not offered in the builder | `_cbuild_not_offered` (product meta) | ticked (`yes`), not ticked (no meta) | not ticked | Keeps the part out of every kit, exactly as `cbuild_part_available` returning `false` does, and the filter still answers last. On a variable product it keeps out every variation; on a variation, that variation alone. The part stays in the shop. The Catalogue check lists it under "Parts kept out of the builder", not as a fix. Saved by who may edit products, through WooCommerce's product save and its nonce. |
 
+### Offer smart swaps (#135)
+
+In a kit's Build tab, Layout section, under "Where shoppers find it", beside Show "Build a complete with this deck" on its parts' pages, kept in `_cbuild_settings` (D-397). A kit saved before 1.3.0 has none, and offers them, so an update changes nothing.
+
+| Setting | Key | Choices | Default | What it does |
+| --- | --- | --- | --- | --- |
+| Offer smart swaps | `swaps` | `true`, `false` (a checkbox, which sends `0` unticked) | `true` (the key left out) | Whether the builder offers, on the review and on the picked card, the same board for less and a part for less or a better one in each slot, each checked by the fit engine. Off, the state route's answer has no `swaps` and the builder shows no swap control and leaves no room for one. A form that does not send the field keeps what the kit has. `cbuild_swaps` answers last. Saved by who may manage the shop, through WooCommerce's product save and its nonce. |
+
 ### Rank in its slot (#135)
 
 On a product's Part specs tab, and on each variation's Part specs fields, in a group of its own, "Rank", kept as `_cbuild_rank` product meta (D-395). A part saved before 1.3.0 has none.

@@ -437,4 +437,16 @@ final class WordsTest extends TestCase {
 		self::assertSame( 'Complete: Rascals and Retna 54 mm', Words::complete( '', array( 'Rascals', 'Retna 54 mm' ) ) );
 		self::assertSame( 'A complete', Words::complete( '', array() ) );
 	}
+
+	// #135 (D-397): what each swap does to the total, said on its control, and what one swapped, said after it.
+	public function test_a_swap_says_what_it_does_to_the_total_and_after_it_what_it_swapped(): void {
+		self::assertSame( 'Same board for $3.00 less', Words::swap( 'board', '', -300, '$3.00' ) );
+		self::assertSame( 'For less: Retna 52 mm, $2.00 less', Words::swap( 'less', 'Retna 52 mm', -200, '$2.00' ) );
+		self::assertSame( 'Step up: Bones 54 mm, $1.50 more', Words::swap( 'better', 'Bones 54 mm', 150, '$1.50' ) );
+		self::assertSame( 'Step up: Bones 54 mm, $0.50 less', Words::swap( 'better', 'Bones 54 mm', -50, '$0.50' ) );
+		self::assertSame( 'Step up: Bones 54 mm, same price', Words::swap( 'better', 'Bones 54 mm', 0, '$0.00' ) );
+		self::assertSame( 'Swapped: wheels.', Words::swapped( array( 'Wheels' ) ) );
+		self::assertStringStartsWith( 'Swapped: wheels', Words::swapped( array( 'Wheels', 'Hardware' ) ) );
+		self::assertStringContainsString( 'hardware', Words::swapped( array( 'Wheels', 'Hardware' ) ) );
+	}
 }

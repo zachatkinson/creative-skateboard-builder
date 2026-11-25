@@ -224,6 +224,10 @@ final class Builder {
 		if ( BuilderView::atStart( $state, $shown ) ) {
 			$shown = $shown->guided( $link->guide );
 		}
+		if ( null === $state->changes && array() !== $link->undo ) {
+			// A smart swap's Undo stays with the build it made until the next move (D-397).
+			$shown = $shown->undoing( $link->undo );
+		}
 		$link   = $shown;
 		$answer = $this->writer->of( $state, $link );
 		$view   = $this->view->of( $state, $answer, $link, $base, $steps, $stopped, $moved['said'] ?? '' );

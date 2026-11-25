@@ -1039,6 +1039,18 @@ final class BuildTab {
 			false !== ( $settings['start_button'] ?? true ) ? '1' : '',
 			array( 'note' => __( 'Puts "Build a complete with this deck" on the page of each part the kit\'s first slot offers. Where several kits offer a part, the one with the lowest menu order shows it, and the Products screen\'s Sorting sets that order. Off, the next of them shows it.', 'creative-skateboard-builder' ) )
 		);
+		// Smart swaps (#135, D-397): an unticked box sends 0, so a form that sends nothing keeps the kit's.
+		$found[] = $this->field(
+			self::IDS . '-settings-swaps',
+			self::FIELD . '[settings][swaps]',
+			__( 'Offer smart swaps', 'creative-skateboard-builder' ),
+			'checkbox',
+			false !== ( $settings['swaps'] ?? true ) ? '1' : '',
+			array(
+				'note'     => __( 'On the review and on the chosen card, offers the same board for less and a part for less or a better one in each slot, each checked to fit the build. Off, the builder offers none.', 'creative-skateboard-builder' ),
+				'unticked' => '0',
+			)
+		);
 		return array(
 			array(
 				'id'     => $id . '-fields',
@@ -1431,6 +1443,7 @@ final class BuildTab {
 			'wheelbase'          => __( 'Wheelbase where a deck gives none', 'creative-skateboard-builder' ),
 			'start_button'       => __( 'Show "Build a complete with this deck" on its parts\' pages', 'creative-skateboard-builder' ),
 			'builder_page'       => __( 'Builder page', 'creative-skateboard-builder' ),
+			'swaps'              => __( 'Offer smart swaps', 'creative-skateboard-builder' ),
 			'stage_side'         => __( 'Stage side on a desktop', 'creative-skateboard-builder' ),
 			'board_size'         => __( 'Board size on a desktop', 'creative-skateboard-builder' ),
 			'search'             => __( 'Search in the steps', 'creative-skateboard-builder' ),

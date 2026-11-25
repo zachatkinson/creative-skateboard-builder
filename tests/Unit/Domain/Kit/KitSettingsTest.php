@@ -51,6 +51,15 @@ final class KitSettingsTest extends TestCase {
 	}
 
 	// #113: the Builder page, a page's ID, or none for the kit's own page. A kit saved before 1.2.0 has none.
+	public function test_smart_swaps_are_offered_unless_the_kit_turns_them_off(): void {
+		self::assertTrue( KitSettings::fromDocument( null )->swaps, 'a kit with no settings, as before 1.2.0' );
+		self::assertTrue( KitSettings::fromDocument( array( 'schema_version' => 1, 'start_button' => false ) )->swaps, 'settings saved before 1.3.0' );
+		self::assertTrue( KitSettings::fromDocument( array( 'schema_version' => 1, 'swaps' => true ) )->swaps );
+		$off = KitSettings::fromDocument( array( 'schema_version' => 1, 'swaps' => false ) );
+		self::assertFalse( $off->swaps );
+		self::assertTrue( $off->startButton, 'and nothing else changes' );
+	}
+
 	public function test_the_builder_page_is_the_page_named_or_none(): void {
 		self::assertNull( KitSettings::fromDocument( null )->builderPage, 'a kit with no settings' );
 		self::assertNull( KitSettings::fromDocument( array( 'schema_version' => 1 ) )->builderPage, 'settings that name nothing' );
@@ -186,6 +195,7 @@ final class KitSettingsTest extends TestCase {
 		yield 'another version' => array( array( 'schema_version' => 2 ), 'document_unknown_version' );
 		yield 'the start button shown as text' => array( array( 'schema_version' => 1, 'start_button' => 'yes' ), 'document_wrong_type' );
 		yield 'the start button shown as a number' => array( array( 'schema_version' => 1, 'start_button' => 1 ), 'document_wrong_type' );
+		yield 'smart swaps as text' => array( array( 'schema_version' => 1, 'swaps' => 'on' ), 'document_wrong_type' );
 		yield 'a builder page of none' => array( array( 'schema_version' => 1, 'builder_page' => 0 ), 'document_out_of_range' );
 		yield 'a builder page below none' => array( array( 'schema_version' => 1, 'builder_page' => -3 ), 'document_out_of_range' );
 		yield 'a builder page as text' => array( array( 'schema_version' => 1, 'builder_page' => '42' ), 'document_wrong_type' );

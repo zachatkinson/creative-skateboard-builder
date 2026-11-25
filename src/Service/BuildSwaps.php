@@ -12,6 +12,7 @@ namespace CreativeBranding\SkateboardBuilder\Service;
 use CreativeBranding\SkateboardBuilder\Domain\Fit\FitEngine;
 use CreativeBranding\SkateboardBuilder\Domain\Fit\Swap;
 use CreativeBranding\SkateboardBuilder\Domain\Fit\Swapper;
+use CreativeBranding\SkateboardBuilder\Domain\Fit\SwapKind;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\InvalidMoney;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Picks;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\SlotKey;
@@ -108,11 +109,14 @@ final class BuildSwaps {
 		$pricer  = new Pricer();
 		$offered = array();
 		foreach ( $swaps as $swap ) {
-			$total     = $pricer->quote( $state->kit, $swap->after->build, $state->quote->assembly, $state->discount, $decimals )->total;
-			$offered[] = array(
-				'swap'   => $swap,
-				'change' => $total - $state->quote->total,
-			);
+			$change = $pricer->quote( $state->kit, $swap->after->build, $state->quote->assembly, $state->discount, $decimals )->total - $state->quote->total;
+			// One for less that the total, rounded, does not show as less is no saving to offer.
+			if ( SwapKind::Better === $swap->kind || $change < 0 ) {
+				$offered[] = array(
+					'swap'   => $swap,
+					'change' => $change,
+				);
+			}
 		}
 		return $offered;
 	}

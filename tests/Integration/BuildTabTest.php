@@ -863,6 +863,34 @@ final class BuildTabTest extends IntegrationTestCase {
 	// #115: Show on its parts' pages, in the Layout section and kept in `_cbuild_settings` (D-354). Ticked on a kit
 	// saved before 1.2.0; unticked, the kit places no "Build a complete with this deck". Saved by who may manage the
 	// shop alone, through WooCommerce's product save, from wp-admin with no WP-CLI.
+	// #135: Offer smart swaps, beside Show on its parts' pages and kept in `_cbuild_settings` (D-397). Ticked on a kit
+	// saved before 1.3.0; the box sends 0 under its 1, so a form that sends neither, as another plugin's save may,
+	// keeps what the kit has.
+	public function test_offer_smart_swaps_is_ticked_for_a_kit_saved_before_and_unticked_turns_them_off(): void {
+		$this->as( 'shop_manager' );
+		$kit   = KitFactory::kit();
+		$panel = $this->panel( $kit );
+		self::assertMatchesRegularExpression( '#<input\s+type="hidden"\s+name="cbuild_kit\[settings\]\[swaps\]"\s+value="0"\s*/>\s*<input\s+type="checkbox"[^>]*id="cbuild-kit-settings-swaps"[^>]*name="cbuild_kit\[settings\]\[swaps\]"[^>]*checked#', $panel, 'ticked, its unticked value before it' );
+		self::assertMatchesRegularExpression( '#<label for="cbuild-kit-settings-swaps">Offer smart swaps</label>#', $panel );
+		self::assertMatchesRegularExpression( '#id="cbuild-kit-settings-swaps"[^>]*aria-describedby="cbuild-kit-settings-swaps-note"#', $panel );
+
+		$sent                      = self::form();
+		$sent['settings']['swaps'] = '0';
+		$this->send( $kit, $sent );
+		self::assertSame( array(), self::notices() );
+		self::assertFalse( self::stored( $kit->get_id() )[ Options::META_KIT_SETTINGS ]['swaps'] );
+		self::assertFalse( $this->service( \CreativeBranding\SkateboardBuilder\Port\Kits::class )->kit( $kit->get_id() )?->settings->swaps );
+		self::assertDoesNotMatchRegularExpression( '/id="cbuild-kit-settings-swaps"[^>]*checked/', $this->panel( $kit ) );
+
+		unset( $sent['settings']['swaps'] );
+		$this->send( $kit, $sent );
+		self::assertFalse( self::stored( $kit->get_id() )[ Options::META_KIT_SETTINGS ]['swaps'], 'a form without the field keeps it' );
+
+		$sent['settings']['swaps'] = '1';
+		$this->send( $kit, $sent );
+		self::assertTrue( self::stored( $kit->get_id() )[ Options::META_KIT_SETTINGS ]['swaps'], 'ticked, stored as true' );
+	}
+
 	public function test_show_on_its_parts_pages_is_ticked_for_a_kit_saved_before_and_saved_by_who_may_manage_the_shop(): void {
 		$this->as( 'shop_manager' );
 		$kit   = KitFactory::kit();

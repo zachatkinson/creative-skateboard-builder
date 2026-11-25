@@ -1337,9 +1337,59 @@
 	font-size: var(--cbuild-small);
 }
 
+/* Smart swaps (#135, D-397): links under the picked card and under a review row, over the card's radio, which lies
+   over the whole card. Only the picked card has any, so a plain card is as tall as before. */
+:where(.cbuild-card__swaps, .cbuild-review__swaps) {
+	position: relative;
+	z-index: 1;
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.25rem var(--cbuild-gap-small);
+}
+
+:where(.cbuild-review__swaps) {
+	grid-column: 2 / -1;
+}
+
+:where(.cbuild-swap:not(.cbuild-button)) {
+	display: inline-flex;
+	align-items: center;
+	min-block-size: 1.5rem;
+	font-size: var(--cbuild-small);
+}
+
+/* A list whose picked card has swaps keeps each card its own height, so the line they take makes no plain card in its
+   row taller (#135, D-397). */
+:where(.cbuild-cards:has(.cbuild-card__swaps:not([hidden])) > li) {
+	align-self: start;
+}
+
+/* After a swap: what it swapped, and Undo. */
+:where(.cbuild-swapped) {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 0.25rem var(--cbuild-gap-small);
+	padding: var(--cbuild-gap-small) var(--cbuild-gap);
+	border: 1px solid var(--cbuild-line);
+	border-inline-start: 0.25rem solid var(--cbuild-accent);
+	border-radius: var(--cbuild-radius);
+	background: var(--cbuild-surface);
+}
+
+:where(.cbuild-swapped__undo) {
+	display: inline-flex;
+	align-items: center;
+	min-block-size: 1.5rem;
+}
+
 /* A link on its own line in the card: a phone's 44 px target (spec: Targets), its words still small. */
 @container cbuild (max-width: 47.99rem) {
-	:where(.cbuild-card__page) {
+	:where(
+		.cbuild-card__page,
+		.cbuild-swap:not(.cbuild-button),
+		.cbuild-swapped__undo
+	) {
 		display: inline-flex;
 		align-items: center;
 		min-block-size: var(--cbuild-target);

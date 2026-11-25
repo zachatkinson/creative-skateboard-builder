@@ -547,6 +547,16 @@ export interface CbuildState {
 		 * Whether the change panel is shown.
 		 */
 		isChanges: boolean;
+		/**
+		 * After a smart swap, from 1.3.0 (#135): whether its notice, with Undo, is shown. The store puts focus on it after a swap.
+		 */
+		swapped: {
+			/**
+			 * Whether the notice is shown.
+			 */
+			shown: boolean;
+			[k: string]: unknown;
+		};
 		errors: {
 			/**
 			 * Whether the error summary is shown.

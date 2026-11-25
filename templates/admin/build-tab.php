@@ -131,6 +131,10 @@ if ( ! defined( 'ABSPATH' ) ) {
 											<?php endif; ?>
 										><?php echo esc_textarea( $cbuild_field['value'] ); ?></textarea>
 									<?php elseif ( 'checkbox' === $cbuild_field['type'] ) : ?>
+										<?php if ( isset( $cbuild_field['unticked'] ) ) : ?>
+											<?php // What an unticked box sends, before the box, whose value takes its place when ticked (D-397). ?>
+											<input type="hidden" name="<?php echo esc_attr( $cbuild_field['name'] ); ?>" value="<?php echo esc_attr( $cbuild_field['unticked'] ); ?>" />
+										<?php endif; ?>
 										<input
 											type="checkbox"
 											class="checkbox"

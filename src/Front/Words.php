@@ -622,6 +622,50 @@ final class Words {
 	}
 
 	/**
+	 * A smart swap's control (#135, D-397): what it swaps in and what it does to the total. The board's says its saving
+	 * alone; a slot's names the part.
+	 *
+	 * @since 1.3.0
+	 *
+	 * @param string $kind   `board`, `less` or `better`.
+	 * @param string $name   The part it swaps in, for a slot's.
+	 * @param int    $change The total's change in minor units: below 0 for less.
+	 * @param string $amount The change with no sign, as the shop writes prices.
+	 */
+	public static function swap( string $kind, string $name, int $change, string $amount ): string {
+		if ( 'board' === $kind ) {
+			/* translators: %s: an amount of money, such as $3.00. */
+			return sprintf( __( 'Same board for %s less', 'creative-skateboard-builder' ), $amount );
+		}
+		if ( 'less' === $kind ) {
+			/* translators: 1: a part's name. 2: an amount of money, such as $2.00. */
+			return sprintf( __( 'For less: %1$s, %2$s less', 'creative-skateboard-builder' ), $name, $amount );
+		}
+		if ( $change > 0 ) {
+			/* translators: 1: a part's name. 2: an amount of money, such as $2.00. */
+			return sprintf( __( 'Step up: %1$s, %2$s more', 'creative-skateboard-builder' ), $name, $amount );
+		}
+		return $change < 0
+			/* translators: 1: a part's name. 2: an amount of money, such as $2.00. */
+			? sprintf( __( 'Step up: %1$s, %2$s less', 'creative-skateboard-builder' ), $name, $amount )
+			/* translators: %s: a part's name. */
+			: sprintf( __( 'Step up: %s, same price', 'creative-skateboard-builder' ), $name );
+	}
+
+	/**
+	 * What a smart swap changed, said after it (#135, D-397): the slots by their labels, as the site's language joins a
+	 * list.
+	 *
+	 * @since 1.3.0
+	 *
+	 * @param list<string> $labels The slots' labels.
+	 */
+	public static function swapped( array $labels ): string {
+		/* translators: %s: slots' labels joined as the site's language joins a list, such as wheels and hardware. */
+		return sprintf( __( 'Swapped: %s.', 'creative-skateboard-builder' ), wp_sprintf( '%l', array_map( self::inSentence( ... ), $labels ) ) );
+	}
+
+	/**
 	 * A slot's label inside a sentence, as "Change deck": its first letter small, unless the label is written in
 	 * capitals, as a brand's may be, or the language keeps a noun's capital (Cowork's review, minors 5 and 14).
 	 *

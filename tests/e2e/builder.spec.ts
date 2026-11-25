@@ -11549,3 +11549,206 @@ test.describe( 'Thumbnails in the review (#132)', () => {
 		);
 	} );
 } );
+
+/**
+ * #135 (D-394 to D-397): smart swaps. On the review the same board for less, and under each row its part for less and
+ * the next better one; on a step, under the picked card. Each is a link, so it works without the script; one press
+ * swaps, the total changes by what the control said, and one Undo puts the build back. With the script, focus goes
+ * to the notice that says the swap, then back to the control after Undo. A kit with its switch off shows none.
+ */
+test.describe( 'Smart swaps (#135)', () => {
+	test.describe.configure( { mode: 'serial' } );
+	// The 58s' card, a plain card, on the wheels step with the 54s picked and their swap on offer.
+	let plainBeside = 0;
+	const height = ( page: Page, name: string ) =>
+		page
+			.locator( '.cbuild-cards > li' )
+			.filter( { hasText: name } )
+			.first()
+			.evaluate( ( card ) => card.getBoundingClientRect().height );
+	// The 54s and the 1.25 in bolts: the 52s are $2 less and the 1 in bolts $1 less, and both fit; nothing better fits
+	// (the 56s are sold out, the 58s need risers, and no bolt is longer).
+	const picks = {
+		deck: id( 'builder-test-deck-8-0' ),
+		trucks: id( 'builder-test-trucks-139' ),
+		wheels: id( 'builder-test-wheels-54' ),
+		bearings: id( 'builder-test-bearings' ),
+		hardware: id( 'builder-test-bolts-1-25' ),
+		grip: id( 'builder-test-grip' ),
+	};
+	// An amount of money in a text, in minor units, in either language's way of writing it.
+	const money = ( text: string ): number => {
+		const found = text.match( /\d+[.,]\d{2}/ );
+		expect( found, `an amount in "${ text }"` ).not.toBeNull();
+		return Number( ( found?.[ 0 ] ?? '' ).replace( /\D/g, '' ) );
+	};
+	const total = async ( page: Page ): Promise< number > =>
+		money(
+			( await page.locator( '.cbuild-review__total' ).textContent() ) ??
+				''
+		);
+	const row = ( page: Page, slot: string ) =>
+		page.locator( '.cbuild-review__items > li' ).filter( {
+			has: page.locator( '.cbuild-review__slot', { hasText: slot } ),
+		} );
+	const settings = ( document: string ) =>
+		runPhp(
+			`$k = wc_get_product( ${
+				fixture().kit
+			} ); if ( false === get_option( 'cbuild_e2e_swaps' ) ) { update_option( 'cbuild_e2e_swaps', array( 'had' => $k->documents()['_cbuild_settings'] ) ); } $k->setDocument( '_cbuild_settings', ${ document } ); $k->save();`
+		);
+	test.afterAll( () => {
+		runPhp(
+			`$k = wc_get_product( ${
+				fixture().kit
+			} ); $o = get_option( 'cbuild_e2e_swaps' ); if ( false !== $o ) { $had = $o['had'] ?? ''; if ( is_array( $had ) ) { $k->setDocument( '_cbuild_settings', $had ); } else { $k->delete_meta_data( '_cbuild_settings' ); } $k->save(); delete_option( 'cbuild_e2e_swaps' ); }`
+		);
+	} );
+
+	test( 'the same board for less swaps the build, the total falls by what it said, and Undo puts it back', async ( {
+		page,
+		javaScriptEnabled,
+	} ) => {
+		await page.goto( linkTo( { ...picks, step: 'review' } ) );
+		const board = page.locator( '#cbuild-swap-board' );
+		await expect( board ).toBeVisible();
+		await expect( board ).toHaveAttribute( 'rel', 'nofollow' );
+		const said = money( ( await board.textContent() ) ?? '' );
+		expect( said, 'the wheels $2 less and the bolts $1' ).toBe( 300 );
+		const before = await total( page );
+		await expect(
+			row( page, 'Wheels' ).locator( '.cbuild-swap' ),
+			'the wheels for less alone: nothing better fits'
+		).toHaveCount( 1 );
+		await expect(
+			row( page, 'Deck' ).locator( '.cbuild-swap' )
+		).toHaveCount( 0 );
+		await expect( page.locator( '.cbuild-swapped' ) ).toBeHidden();
+		if ( javaScriptEnabled ) {
+			await axe( page, 'the review with smart swaps', '.cbuild-review' );
+		}
+
+		await board.click();
+		const notice = page.locator( '.cbuild-swapped' );
+		await expect( notice ).toBeVisible();
+		await expect.poll( () => total( page ) ).toBe( before - said );
+		await expect(
+			row( page, 'Wheels' ).locator( '.cbuild-review__name' )
+		).toContainText( '52' );
+		await expect(
+			row( page, 'Hardware' ).locator( '.cbuild-review__name' )
+		).toHaveText( /\b1$/ );
+		await expect(
+			page.locator( '#cbuild-swap-board' ),
+			'nothing left for less'
+		).toBeHidden();
+		expect(
+			new URL( page.url() ).searchParams.get( 'cbuild[_undo][wheels]' )
+		).toBe( String( picks.wheels ) );
+		if ( javaScriptEnabled ) {
+			await expect(
+				notice,
+				'focus on what the swap did, beside its Undo'
+			).toBeFocused();
+			await expect( page.locator( '.cbuild__status' ) ).toContainText(
+				( await notice
+					.locator( '.cbuild-swapped__text' )
+					.textContent() ) ?? ''
+			);
+			await axe( page, 'the review after a swap', '.cbuild__body' );
+		}
+
+		await notice.locator( '.cbuild-swapped__undo' ).click();
+		await expect( notice ).toBeHidden();
+		await expect.poll( () => total( page ) ).toBe( before );
+		await expect(
+			row( page, 'Wheels' ).locator( '.cbuild-review__name' )
+		).toContainText( '54' );
+		expect(
+			new URL( page.url() ).searchParams.get( 'cbuild[_undo][wheels]' ),
+			'nothing left to undo'
+		).toBeNull();
+		if ( javaScriptEnabled ) {
+			await expect(
+				page.locator( '#cbuild-swap-board' ),
+				'focus back on the swap'
+			).toBeFocused();
+			// Back undoes too: the swap was a step of the history.
+			await board.click();
+			await expect( notice ).toBeVisible();
+			await page.goBack();
+			await expect( notice ).toBeHidden();
+			await expect.poll( () => total( page ) ).toBe( before );
+		}
+	} );
+
+	test( 'the picked card offers its swap, plain cards none and no taller, and Undo comes back to it', async ( {
+		page,
+		javaScriptEnabled,
+	} ) => {
+		// With nothing picked on the step, no swap anywhere.
+		const { wheels, ...rest } = picks;
+		expect( wheels ).toBeGreaterThan( 0 );
+		await page.goto( linkTo( { ...rest, step: 'wheels' } ) );
+		await expect( page.locator( '.cbuild-swap:visible' ) ).toHaveCount( 0 );
+
+		await page.goto( linkTo( { ...picks, step: 'wheels' } ) );
+		const chosen = page.locator( '.cbuild-card--chosen' );
+		const swap = chosen.locator( '.cbuild-swap' );
+		await expect( swap ).toHaveCount( 1 );
+		await expect( swap ).toHaveAttribute( 'id', 'cbuild-swap-wheels-less' );
+		await expect(
+			page.locator(
+				'.cbuild-cards > li:not(.cbuild-card--chosen) .cbuild-card__swaps:not([hidden])'
+			)
+		).toHaveCount( 0 );
+		// A plain card's height beside the swap, for the kit with swaps off to match (the test after).
+		plainBeside = await height( page, 'wheels 58' );
+		if ( javaScriptEnabled ) {
+			await axe( page, 'the picked card with its swap', '.cbuild-step' );
+		}
+
+		await swap.click();
+		const notice = page.locator( '.cbuild-swapped' );
+		await expect( notice ).toBeVisible();
+		await expect( page.locator( '.cbuild-card--chosen' ) ).toContainText(
+			'52'
+		);
+		if ( javaScriptEnabled ) {
+			await expect( notice ).toBeFocused();
+		}
+		await notice.locator( '.cbuild-swapped__undo' ).click();
+		await expect( notice ).toBeHidden();
+		await expect( page.locator( '.cbuild-card--chosen' ) ).toContainText(
+			'54'
+		);
+		if ( javaScriptEnabled ) {
+			await expect(
+				page.locator( '#cbuild-swap-wheels-less' ),
+				'focus back on the swap'
+			).toBeFocused();
+		}
+	} );
+
+	test( 'a kit with Offer smart swaps off shows no swap control and leaves no room for one', async ( {
+		page,
+	} ) => {
+		settings( "array( 'schema_version' => 1, 'swaps' => false )" );
+		await page.goto( linkTo( { ...picks, step: 'review' } ) );
+		await expect( page.locator( '.cbuild-review__total' ) ).toBeVisible();
+		await expect( page.locator( '.cbuild-swap:visible' ) ).toHaveCount( 0 );
+		await expect( page.locator( '.cbuild-review__board' ) ).toBeHidden();
+		for ( const swaps of await page
+			.locator( '.cbuild-review__swaps' )
+			.all() ) {
+			await expect( swaps ).toBeHidden();
+		}
+		await page.goto( linkTo( { ...picks, step: 'wheels' } ) );
+		await expect( page.locator( '.cbuild-card--chosen' ) ).toBeVisible();
+		await expect( page.locator( '.cbuild-swap:visible' ) ).toHaveCount( 0 );
+		expect(
+			await height( page, 'wheels 58' ),
+			'a plain card no taller beside a swap than with none'
+		).toBeCloseTo( plainBeside, 0 );
+	} );
+} );

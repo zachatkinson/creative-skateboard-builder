@@ -25,6 +25,8 @@ use CreativeBranding\SkateboardBuilder\Front\Delivery;
 use CreativeBranding\SkateboardBuilder\Front\ShippingWords;
 use CreativeBranding\SkateboardBuilder\Front\StateAnswer;
 use CreativeBranding\SkateboardBuilder\Service\BuildState;
+use CreativeBranding\SkateboardBuilder\Service\BuildSwaps;
+use CreativeBranding\SkateboardBuilder\Port\PartRanks;
 use CreativeBranding\SkateboardBuilder\Service\State;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Domain\KitDocuments;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Domain\Parts;
@@ -1658,6 +1660,9 @@ final class BuilderTest extends TestCase {
 				// "Change" to the eye, read with what it changes.
 				'text'         => 'Change',
 				'change'       => 'Change trucks',
+				// No smart swaps where the answer offers none (#135).
+				'swaps'        => array(),
+				'hasSwaps'     => false,
 				// Its card's thumbnail (#132).
 				'hasImage'     => true,
 				'src'          => 'https://shop.test/139.jpg',
@@ -2033,5 +2038,88 @@ final class BuilderTest extends TestCase {
 		self::assertSame( $none, self::thumb( $review[ SlotKey::DECK ] ), 'Part 102 has no photo' );
 		self::assertSame( $none, self::thumb( $review[ SlotKey::GRIP ] ), 'nothing chosen' );
 		self::assertSame( 'cbuild-review__photo', $review[ SlotKey::GRIP ]['photoClasses'] );
+	}
+
+	/**
+	 * The builder with smart swaps, and no part ranked.
+	 */
+	private function swapping(): Builder {
+		$ranks = new class() implements PartRanks {
+			public function ranks( int ...$parts ): array {
+				return array();
+			}
+		};
+		return new Builder(
+			new BuildState( $this->kits, new InMemoryShopSettings(), new FakeLogger() ),
+			( new StateAnswer( new InMemoryPartCards(), new FakeMoney(), $this->kits, new Delivery( $this->kits, new FakeShippingZones(), new ShippingWords( new FakeMoney() ) ), new PageRenderer() ) )->withSwaps( new BuildSwaps( $ranks ) ),
+			new BuilderView()
+		);
+	}
+
+	/**
+	 * A link as the page reads it from an address.
+	 *
+	 * @param string $url The address.
+	 */
+	private static function followed( string $url ): BuildLink {
+		parse_str( (string) parse_url( $url, PHP_URL_QUERY ), $query );
+		return BuildLink::read( $query['cbuild'] ?? null );
+	}
+
+	/**
+	 * A complete of the shop's parts that fits: an 8.5 deck on 149s with 54 mm wheels.
+	 */
+	private const array COMPLETE = array(
+		SlotKey::DECK     => 103,
+		SlotKey::TRUCKS   => 149,
+		SlotKey::WHEELS   => 302,
+		SlotKey::BEARINGS => 501,
+		SlotKey::HARDWARE => 601,
+		SlotKey::GRIP     => 701,
+	);
+
+	// Issue #135 (D-397): each swap is a link, so it works without the script, to the build with the swap in place at
+	// the same step, carrying the picks before it; the swap's notice says what it swapped and holds Undo, a link back.
+	public function test_each_swap_is_a_link_to_the_build_swapped_and_its_notice_undoes_it_until_the_next_move(): void {
+		$view = $this->swapping()->show( self::KIT, new BuildLink( self::COMPLETE, null, State::REVIEW ), self::BASE )['view'] ?? array();
+		$undo = array_map( 'strval', self::COMPLETE );
+		self::assertSame(
+			array(
+				'shown' => true,
+				'id'    => 'cbuild-swap-board',
+				'url'   => self::url( array_replace( $undo, array( SlotKey::WHEELS => '301' ) ) + array( 'step' => 'review', '_undo' => $undo ) ),
+				'text'  => 'Same board for $2.00 less',
+			),
+			$view['board']
+		);
+		$rows = array_column( $view['review']['items'], null, 'key' );
+		self::assertSame( array( 'For less: Part 301, $2.00 less' ), array_column( $rows[ SlotKey::WHEELS ]['swaps'], 'text' ) );
+		self::assertSame( array( 'cbuild-swap-wheels-less' ), array_column( $rows[ SlotKey::WHEELS ]['swaps'], 'id' ) );
+		self::assertSame( array( 'Step up: Part 602, $0.50 more' ), array_column( $rows[ SlotKey::HARDWARE ]['swaps'], 'text' ) );
+		self::assertSame( array( true, false ), array( $rows[ SlotKey::WHEELS ]['hasSwaps'], $rows[ SlotKey::DECK ]['hasSwaps'] ), 'the deck is never swapped' );
+		self::assertFalse( $view['swapped']['shown'] );
+
+		// The board pressed: the build with the wheels for less, said, with Undo back to the build before.
+		$swapped = $this->swapping()->show( self::KIT, self::followed( $view['board']['url'] ), self::BASE )['view'] ?? array();
+		self::assertSame( 'Part 301', array_column( $swapped['review']['items'], 'name', 'key' )[ SlotKey::WHEELS ] );
+		self::assertTrue( $swapped['swapped']['shown'] );
+		self::assertSame( 'Swapped: wheels.', $swapped['swapped']['text'] );
+		self::assertStringStartsWith( 'Swapped: wheels. ', $swapped['status'], 'and the status says it before the build and its total' );
+		self::assertSame( self::url( array_map( 'strval', self::COMPLETE ) + array( 'step' => 'review' ) ), $swapped['swapped']['undo']['url'], 'Undo: the picks before, and nothing to undo after it' );
+		self::assertSame( 'Undo swap', $swapped['swapped']['undo']['text'] );
+		self::assertFalse( $swapped['board']['shown'], 'nothing left for less on the board' );
+
+		// The next move leaves the Undo behind.
+		$moved = $this->swapping()->show( self::KIT, self::followed( $swapped['url'] )->at( SlotKey::TRUCKS ), self::BASE )['view'] ?? array();
+		self::assertFalse( $moved['swapped']['shown'] );
+
+		// On a step: the picked card alone has the pick's swaps, the plain cards none.
+		$step  = $this->swapping()->show( self::KIT, new BuildLink( self::COMPLETE, null, SlotKey::WHEELS ), self::BASE )['view'] ?? array();
+		$cards = array_column( $step['step']['options'], null, 'id' );
+		self::assertSame( array( 'For less: Part 301, $2.00 less' ), array_column( $cards[302]['swaps'], 'text' ) );
+		self::assertSame( self::url( array_replace( $undo, array( SlotKey::WHEELS => '301' ) ) + array( 'step' => SlotKey::WHEELS, '_undo' => $undo ) ), $cards[302]['swaps'][0]['url'], 'at the same step' );
+		self::assertSame( array( false, false ), array( $cards[301]['hasSwaps'], $cards[303]['hasSwaps'] ) );
+		self::assertSame( array(), $cards[301]['swaps'] );
+		self::assertSame( array(), array_column( $step['review']['items'], null, 'key' )[ SlotKey::WHEELS ]['swaps'], 'the hidden review draws none, so no control is drawn twice' );
 	}
 }
