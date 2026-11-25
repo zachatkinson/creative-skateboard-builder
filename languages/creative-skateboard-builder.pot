@@ -5090,3 +5090,11 @@ msgstr ""
 #, php-format
 msgid "Swapped: %s."
 msgstr ""
+
+#. translators: %s: how many other widths a deck is made in, such as 6.
+#: src/Front/Words.php:439
+#, php-format
+msgid "Also in %s other width"
+msgid_plural "Also in %s other widths"
+msgstr[0] ""
+msgstr[1] ""

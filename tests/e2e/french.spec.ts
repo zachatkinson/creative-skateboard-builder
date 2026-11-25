@@ -15,7 +15,7 @@ const fixture = () =>
 			path.join( process.cwd(), 'tmp', 'e2e-builder.json' ),
 			'utf8'
 		)
-	) as { page: string };
+	) as { page: string; widths: { page: string } };
 
 test.describe( 'The builder in French', () => {
 	test.beforeEach( async ( { page }, info ) => {
@@ -53,6 +53,20 @@ test.describe( 'The builder in French', () => {
 		await expect( page.locator( '.cbuild__status' ) ).toHaveText(
 			'La boutique n’a pas répondu à temps. Réessayez dans un instant.'
 		);
+	} );
+
+	// F31 (#148, D-399): a deck's six other widths, counted in French, with its plural.
+	test( "counts a deck's other widths in French", async ( { page } ) => {
+		await page.goto(
+			fixture().widths.page +
+				'?cbuild%5Bstep%5D=deck&cbuild%5B_width%5D=8.5in'
+		);
+		await expect(
+			page
+				.locator( '.cbuild-cards:not(.cbuild-cards--sold-out) > li' )
+				.first()
+				.locator( '.cbuild-card__also' )
+		).toHaveText( 'Aussi en 6 autres largeurs' );
 	} );
 
 	test( 'says each step, pick and total in French, and the next step is drawn in French', async ( {

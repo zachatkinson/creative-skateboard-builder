@@ -533,6 +533,102 @@ $cbuild_shelf_page = (int) wp_insert_post(
 	)
 );
 
+// A kit whose decks each come in seven widths, as a real shop's do (Cowork's 1.2.0 review, F31, #148): six looks, each
+// a variable product whose variations are its widths and share one photo, so each is one card with six other widths to
+// say once a width is chosen. Their names wrap as the demo's do. Its other slots are the cart test kit's.
+$cbuild_widths_cat = get_term_by( 'slug', 'widths-test-deck', 'product_cat' );
+$cbuild_widths_cat = $cbuild_widths_cat instanceof WP_Term ? $cbuild_widths_cat->term_id : (int) wp_insert_term( 'Widths test deck', 'product_cat', array( 'slug' => 'widths-test-deck' ) )['term_id'];
+$cbuild_found      = get_term_by( 'slug', 'widths-elmwood', 'product_brand' );
+$cbuild_elm        = $cbuild_found instanceof WP_Term ? $cbuild_found->term_id : (int) wp_insert_term( 'Elmwood', 'product_brand', array( 'slug' => 'widths-elmwood' ) )['term_id'];
+$cbuild_photo      = wc_get_product( $cbuild_parts['builder-test-deck-8-25'] )->get_image_id();
+// The 8.5 in deck's layer image, so each card draws its deck upright, cut out, as the demo's decks are drawn.
+$cbuild_layer      = (string) wc_get_product( $cbuild_parts['builder-test-deck-8-5'] )->get_meta( '_cbuild_layer', true );
+$cbuild_sizes      = array( '7.75', '8', '8.125', '8.25', '8.38', '8.5', '8.75' );
+$cbuild_widths     = array();
+foreach ( array( 'Beaver Wizard', 'Dragon Wizard', 'Owl Wizard', 'Toad Wizard', 'Heron Wizard', 'Lynx Wizard' ) as $cbuild_at => $cbuild_graphic ) {
+	$cbuild_sku  = 'widths-test-deck-' . ( $cbuild_at + 1 );
+	$cbuild_deck = new WC_Product_Variable( wc_get_product_id_by_sku( $cbuild_sku ) );
+	$cbuild_size = new WC_Product_Attribute();
+	$cbuild_size->set_name( 'Deck width' );
+	$cbuild_size->set_options( $cbuild_sizes );
+	$cbuild_size->set_visible( true );
+	$cbuild_size->set_variation( true );
+	$cbuild_deck->set_name( 'Elmwood Skate Deck, ' . $cbuild_graphic );
+	$cbuild_deck->set_slug( $cbuild_sku );
+	$cbuild_deck->set_sku( $cbuild_sku );
+	$cbuild_deck->set_attributes( array( $cbuild_size ) );
+	$cbuild_deck->set_status( 'publish' );
+	$cbuild_deck->set_category_ids( array( $cbuild_widths_cat ) );
+	$cbuild_deck->set_image_id( $cbuild_photo );
+	$cbuild_deck->update_meta_data( '_cbuild_layer', $cbuild_layer );
+	$cbuild_deck->save();
+	wp_set_object_terms( $cbuild_deck->get_id(), array( $cbuild_elm ), 'product_brand' );
+	$cbuild_indexer = CreativeBranding\SkateboardBuilder\Plugin::container()->get( CreativeBranding\SkateboardBuilder\Service\SpecIndexer::class );
+	foreach ( $cbuild_sizes as $cbuild_width ) {
+		$cbuild_variation_sku = $cbuild_sku . '-' . str_replace( '.', '-', $cbuild_width );
+		$cbuild_variation     = new WC_Product_Variation( wc_get_product_id_by_sku( $cbuild_variation_sku ) );
+		$cbuild_variation->set_parent_id( $cbuild_deck->get_id() );
+		$cbuild_variation->set_attributes( array( 'deck-width' => $cbuild_width ) );
+		$cbuild_variation->set_sku( $cbuild_variation_sku );
+		$cbuild_variation->set_regular_price( '99.99' );
+		// Counted, as a shop that keeps stock does, so the card says how many are left on a line of its own.
+		$cbuild_variation->set_manage_stock( true );
+		$cbuild_variation->set_stock_quantity( 12 );
+		$cbuild_variation->update_meta_data(
+			'_cbuild_specs',
+			array(
+				'deck_width'   => number_format( (float) $cbuild_width, 4, '.', '' ),
+				'deck_length'  => '32.0000',
+				'hole_pattern' => 'new_school',
+			)
+		);
+		$cbuild_variation->save();
+		$cbuild_indexer->index( $cbuild_variation->get_id() );
+		CreativeBranding\SkateboardBuilder\Plugin::container()->get( CreativeBranding\SkateboardBuilder\Service\PartRenditions::class )->make( $cbuild_variation->get_id() );
+	}
+	WC_Product_Variable::sync( $cbuild_deck->get_id() );
+	$cbuild_indexer->index( $cbuild_deck->get_id() );
+	CreativeBranding\SkateboardBuilder\Plugin::container()->get( CreativeBranding\SkateboardBuilder\Service\PartRenditions::class )->make( $cbuild_deck->get_id() );
+	$cbuild_widths[] = $cbuild_deck->get_id();
+}
+$cbuild_slots['slots'][0]['sources'] = array( 'categories' => array( $cbuild_widths_cat ) );
+$cbuild_post                         = get_page_by_path( 'widths-test-kit', OBJECT, 'product' );
+$cbuild_widths_kit                   = new CreativeBranding\SkateboardBuilder\Adapter\KitProduct( $cbuild_post instanceof WP_Post ? $cbuild_post->ID : 0 );
+$cbuild_widths_kit->set_name( 'Widths test kit' );
+$cbuild_widths_kit->set_slug( 'widths-test-kit' );
+$cbuild_widths_kit->set_status( 'publish' );
+$cbuild_widths_kit->setDocument( '_cbuild_slots', $cbuild_slots );
+$cbuild_widths_kit->setDocument( '_cbuild_rules', CreativeBranding\SkateboardBuilder\Domain\Kit\RuleSettings::DEFAULTS );
+$cbuild_widths_kit->setDocument(
+	'_cbuild_presets',
+	array(
+		'schema_version' => 1,
+		'presets'        => array(),
+	)
+);
+$cbuild_widths_kit->setDocument(
+	'_cbuild_assembly',
+	array(
+		'schema_version' => 1,
+		'default_on'     => false,
+		'fee'            => '15',
+		'lead_time'      => '',
+		'returns_notice' => '',
+	)
+);
+$cbuild_widths_kit->save();
+$cbuild_widths_page = get_page_by_path( 'widths-test-page' );
+$cbuild_widths_page = (int) wp_insert_post(
+	array(
+		'ID'           => $cbuild_widths_page instanceof WP_Post ? $cbuild_widths_page->ID : 0,
+		'post_type'    => 'page',
+		'post_status'  => 'publish',
+		'post_name'    => 'widths-test-page',
+		'post_title'   => 'Decks in seven widths',
+		'post_content' => '<!-- wp:creative-skateboard-builder/builder {"kit":' . $cbuild_widths_kit->get_id() . '} /-->',
+	)
+);
+
 // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents -- a test fixture, writing where the tests read.
 file_put_contents(
 	CBUILD_PATH . 'tmp/e2e-builder.json',
@@ -546,6 +642,11 @@ file_put_contents(
 				'kit'   => $cbuild_shelf_kit->get_id(),
 				'page'  => (string) get_permalink( $cbuild_shelf_page ),
 				'decks' => $cbuild_shelf,
+			),
+			'widths' => array(
+				'kit'   => $cbuild_widths_kit->get_id(),
+				'page'  => (string) get_permalink( $cbuild_widths_page ),
+				'decks' => $cbuild_widths,
 			),
 		)
 	)

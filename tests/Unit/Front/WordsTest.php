@@ -222,6 +222,16 @@ final class WordsTest extends TestCase {
 		self::assertSame( array( 'Only in 8.25″', '' ), array( Words::only( '8.25″' ), Words::only( '' ) ) );
 	}
 
+	// Cowork's 1.2.0 review, F31 (#148, D-399): a deck's other widths take one line of its card. One or two are named; past
+	// two they are counted, so a deck sold in seven widths says six in a few words, not three lines of them.
+	public function test_a_decks_other_widths_are_named_up_to_two_and_counted_past_two(): void {
+		self::assertSame( '', Words::also( array() ) );
+		self::assertSame( 'Also in 8″', Words::also( array( '8″' ) ) );
+		self::assertSame( 'Also in 8″ and 8.5″', Words::also( array( '8″', '8.5″' ) ) );
+		self::assertSame( 'Also in 3 other widths', Words::also( array( '8″', '8.5″', '8.75″' ) ) );
+		self::assertSame( 'Also in 6 other widths', Words::also( array( '7.75″', '8″', '8.125″', '8.25″', '8.38″', '8.75″' ) ) );
+	}
+
 	// #137 (D-392): a part a ready build picks says which, by the builds' names as the site's language lists them, and
 	// nothing where none does.
 	public function test_a_part_a_ready_build_picks_says_which(): void {

@@ -157,8 +157,9 @@ defined( 'ABSPATH' ) || exit;
 								<span class="cbuild-card__rating" data-wp-bind--hidden="!context.option.hasRating"><span class="cbuild-card__star" aria-hidden="true"></span><span class="cbuild-card__score" aria-hidden="true" data-wp-text="context.option.score"></span><span class="cbuild-card__rated screen-reader-text" data-wp-text="context.option.rated"></span></span>
 							</span>
 							<span class="cbuild-card__delta" data-wp-bind--hidden="!context.option.hasDelta" data-wp-text="context.option.delta"></span>
-							<span class="cbuild-card__also" data-wp-bind--hidden="!context.option.hasAlso" data-wp-text="context.option.also"></span>
+							<?php // The stock before a deck's other widths: on a deck's compact card it sits beside the price where there is room, and the widths take a line of their own (F31, D-399). ?>
 							<span data-wp-bind--class="context.option.stockClass" data-wp-text="context.option.stock"></span>
+							<span class="cbuild-card__also" data-wp-bind--hidden="!context.option.hasAlso" data-wp-text="context.option.also"></span>
 							<span data-wp-bind--class="context.option.fitClass" data-wp-text="context.option.fit"></span>
 							<span class="cbuild-card__recommended" data-wp-bind--hidden="!context.option.recommended" data-wp-text="context.option.recommendedAs"></span>
 							<?php // The ready builds that pick it (#137, D-392). ?>

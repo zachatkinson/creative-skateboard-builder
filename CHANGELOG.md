@@ -92,6 +92,7 @@ All notable changes to this project are documented here. The format follows [Kee
 - **The full-width builder keeps the page's gutter on a phone:** the picture, its heading and the bar's total and buttons sit as far from the screen's edge as the step's words, the theme's own padding and never under 16 px. They were 7 px from the edge on Kadence and 10 px on Twenty Twenty-Five (D-384).
 - **"Build a complete with this deck" lines up** with the quantity and Add to cart on Twenty Twenty-Five, where WooCommerce's add-to-cart form block set it 4 px in (#133).
 - **In Firefox, a card focused from the keyboard** after a press of the dimmed Next is scrolled clear of "Choose your deck first.", and of the limit's words, over the bar. A card whose foot fell under the words, above the bar, stayed partly covered (D-388).
+- **A deck's card after a width is about 150 px again, not 230:** a deck sold in more than two other widths says how many, as "Also in 6 other widths", in place of listing them over three lines; one or two are still named. The stock sits beside the price where the line has room, and the deck's picture keeps its 7rem box on a theme that sets `img { height: auto }`, as Kadence and Storefront do, where an upright deck was drawn 211 px tall, and 1,500 px before the script ran. Under a theme's 129 px header, the first view after a width holds a whole deck on Twenty Twenty-Five, Kadence and Storefront (Cowork's 1.2.0 F31, #148, D-399).
 
 ## [1.1.0] - 2026-11-24
 

@@ -424,7 +424,9 @@ final class Words {
 	}
 
 	/**
-	 * The other sizes a look comes in, on its card, as "Also in 8″, 8.5″ and 8.75″" (D-240).
+	 * The other sizes a look comes in, on its card, in a line: named where there are one or two, as "Also in 8″ and
+	 * 8.5″" (D-240), and counted past two, as "Also in 6 other widths", so a deck sold in seven widths does not list six
+	 * over three lines (F31, D-399).
 	 *
 	 * @since 1.0.0
 	 *
@@ -434,7 +436,12 @@ final class Words {
 		if ( array() === $sizes ) {
 			return '';
 		}
-		/* translators: %s: sizes joined as the site's language joins a list, such as 8″, 8.5″ and 8.75″. */
+		$count = count( $sizes );
+		if ( $count > 2 ) {
+			/* translators: %s: how many other widths a deck is made in, such as 6. */
+			return sprintf( _n( 'Also in %s other width', 'Also in %s other widths', $count, 'creative-skateboard-builder' ), number_format_i18n( $count ) );
+		}
+		/* translators: %s: one size, or two joined as the site's language joins a list, such as 8″ and 8.5″. */
 		return sprintf( __( 'Also in %s', 'creative-skateboard-builder' ), wp_sprintf( '%l', $sizes ) );
 	}
 

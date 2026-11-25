@@ -5089,3 +5089,11 @@ msgstr "Un cran au-dessus : %s, même prix"
 #, php-format
 msgid "Swapped: %s."
 msgstr "Échangé : %s."
+
+#. translators: %s: how many other widths a deck is made in, such as 6.
+#: src/Front/Words.php:439
+#, php-format
+msgid "Also in %s other width"
+msgid_plural "Also in %s other widths"
+msgstr[0] "Aussi en %s autre largeur"
+msgstr[1] "Aussi en %s autres largeurs"

@@ -1398,8 +1398,8 @@
 
 /*
  * The deck step's compact cards (F14, #99): the deck small and upright at the start, its board's cut-out on the
- * card's own ground, or its photo; then the brand, the name, the price and its change on one line, and the widths
- * and the stock, about 134 px high. At most two columns, so six show at once on a desktop, and one in a panel
+ * card's own ground, or its photo; then the brand, the name, the price, its change and the stock on one line where
+ * they fit, and the widths, named or counted (D-399), about 134 px high. At most two columns, so six show at once on a desktop, and one in a panel
  * narrower than two of them, a phone's. The picture's box is the column's width and 7rem tall, whatever the image
  * (BuilderView's CARD_DECK), so nothing moves as it loads; the image is fitted into it. The words keep clear of the
  * chosen card's tick, picked or not, so a pick moves nothing. The picture and the words are the builder's gap apart,
@@ -1427,6 +1427,14 @@
 	aspect-ratio: auto;
 }
 
+// The deck's box is 7rem tall whatever the theme (F31, D-399). Kadence and Storefront set `img { height: auto }`, which
+// outranks a `:where()` rule, so a deck's upright layer image was drawn at the column's width and its own shape, 211 px
+// tall, and the card with it; and before the script, a lazy photo whose `sizes` starts with core's `auto` took core's
+// 1,500 px placeholder height. Set at `.cbuild` weight, as the theme's lists are (D-321).
+.cbuild .cbuild-cards--compact .cbuild-card__photo {
+	block-size: 7rem;
+}
+
 :where(.cbuild-cards--compact)
 	:where(.cbuild-card__body:not(:has(> .cbuild-card__photo:not([hidden])))) {
 	grid-template-columns: minmax(0, 1fr);
@@ -1444,8 +1452,9 @@
 	flex-basis: 100%;
 }
 
+// The stock beside the price and its change where the line has room, so a deck's card is a line shorter (F31, D-399).
 :where(.cbuild-cards--compact)
-	:where(.cbuild-card__priced, .cbuild-card__delta) {
+	:where(.cbuild-card__priced, .cbuild-card__delta, .cbuild-card__stock) {
 	flex-basis: auto;
 }
 

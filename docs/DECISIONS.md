@@ -240,6 +240,7 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-396 · Swaps are worked out on the review and on a step with a pick, and priced as the total is](#d-396--swaps-are-worked-out-on-the-review-and-on-a-step-with-a-pick-and-priced-as-the-total-is--2026-11-25)
 - [D-397 · A swap is a link that carries the picks before it, its Undo lives in a notice until the next move, and a kit can switch swaps off](#d-397--a-swap-is-a-link-that-carries-the-picks-before-it-its-undo-lives-in-a-notice-until-the-next-move-and-a-kit-can-switch-swaps-off--2026-11-25)
 - [D-398 · The review's thumbnail of a deck's layer image is marked drawn, as its card is](#d-398--the-reviews-thumbnail-of-a-decks-layer-image-is-marked-drawn-as-its-card-is--2026-11-25)
+- [D-399 · A deck's card counts its other widths past two, keeps its stock beside the price and its picture in its 7rem box](#d-399--a-decks-card-counts-its-other-widths-past-two-keeps-its-stock-beside-the-price-and-its-picture-in-its-7rem-box--2026-11-25)
 
 ### Accessibility
 
@@ -5908,6 +5909,49 @@ Cowork, for Mature Content: it flags a deck as a whole (`mcw-mature`) or in its 
 **Break.** The row's marks put back to `cbuild-review__photo` alone: the same test fails at :2031, and the browser test fails under both flags with "its layer image, marked as its card is" (builder.spec.ts:11104).
 
 **Why:** a plugin that tells a layer image from a photo by its mark must find the mark wherever the layer image is shown.
+
+**Status:** Accepted.
+
+### D-399 · A deck's card counts its other widths past two, keeps its stock beside the price and its picture in its 7rem box · 2026-11-25
+
+**Context:** Cowork's 1.2.0 review, F31 (#148, nit, design), after F24 (D-360). On the demo at 1440 by 900, a theme header puts the builder's rail at 129 px, and once a width was pressed the first view held no whole deck: the first card started at 674 px, the bar at 808, and each card was 316 by 237 px against 169 in 1.1.0. D-360's test put the builder at the window's top, so it never saw the header.
+
+**Measured on lane 1** with a fixture of the demo's shape: the widths kit, six decks each a variable product in seven widths (7.75″ to 8.75″), sharing a photo and the 8.5″ deck's layer image, stock counted, with names as long as the demo's ("Elmwood Skate Deck, Beaver Wizard"). At 1440 by 900, Balanced, 8.5″ pressed, a 129 px header, three things made the card tall:
+
+- **The other widths,** "Also in 7.75″, 8″, 8.125″, 8.25″, 8.38″, and 8.75″", over two or three lines of a 179 to 252 px column (D-377's 16 px gap narrowed it in 1.2.0).
+- **The stock,** "12 in stock", on a line of its own.
+- **The picture, on Kadence and Storefront,** which Cowork's note did not name. D-322 gives the deck a 3.5rem by 7rem box under `:where()`, which a theme's `img { height: auto }` outranks (D-391 met it on the other steps). An upright layer image was drawn at the column's 56 px and its own shape, 211 px tall, and the card with it: 227 px. Without the script it was worse: core marks a lazy image's `sizes` with `auto`, the browser gives it size containment, and core's `contain-intrinsic-size: 3000px 1500px` made the picture 1,500 px tall and the card 1,516.
+
+**Decision:**
+
+- **One line for the other widths.** One or two are named as before ("Also in 8″ and 8.5″"); past two they are counted, "Also in 6 other widths", through `_n()` with the count in `number_format_i18n()`. Two widths fit the line a count takes, and name the very widths; six do not. Kept everywhere the card shows, not only after a width, since the deck step lists decks only after one (D-241). Cowork's other choice, no list once a width is chosen, would hide that a look comes in other widths at all; the count still tells a shopper who compares widths that the deck comes in more, and the width line's Change lists every width with its decks. Each card says it the same way, so a column of cards scans as one.
+- **The stock beside the price.** In the card's markup the stock now comes before the other widths, and on a deck's compact card it takes the price's line where it has room, beside the price and its change, wrapping under them where it hasn't. The other widths are on the deck step alone, so every other step's card reads as before.
+- **The picture holds its box.** `.cbuild .cbuild-cards--compact .cbuild-card__photo { block-size: 7rem }`, at `.cbuild` weight as D-321's rules are, so a theme's `img { height: auto }` and core's placeholder height no longer reach it. The image is still fitted into the box.
+
+**Before and after** (the first card's height; whole decks above the bar under the 129 px header):
+
+| Theme | before | after |
+| --- | --- | --- |
+| Twenty Twenty-Five | 229 px, ≥ 1 | 188 px, ≥ 1 |
+| Kadence | 227 px, ≥ 1 | 152 px, ≥ 1 |
+| Storefront | 227 px, 0 | 149 px, ≥ 1 |
+
+Twenty Twenty-Five sets a card's name at 22 px, and the demo's names take three lines there: its limit is a name's line more, 190 px. The others' is 170, 1.1.0's card. On a phone the column is wider and the card shorter.
+
+**Tests.** Unit: `WordsTest::test_a_decks_other_widths_are_named_up_to_two_and_counted_past_two`. Browser: `shelf.spec.ts`, "Deck cards after a width, under a theme header (F31)", on the three themes and every project: the widths kit, a width pressed, Balanced, the builder 129 px down (the page scrolled, or a block put above it, with a small local helper), each card at most 190 px on Twenty Twenty-Five and 170 elsewhere, a whole deck above the bar on a desktop, and "Also in 6 other widths"; `french.spec.ts`, "counts a deck's other widths in French", "Aussi en 6 autres largeurs".
+
+**Red runs.** `WordsTest`: `-'Also in 3 other widths' +'Also in 8″, 8.5″ and 8.75″'` (WordsTest.php:231). Browser, before the change, chromium-desktop: "a deck card, 190 px at most, Received: 229" (Twenty Twenty-Five), "a deck card, 170 px at most, Received: 227" (Kadence), "whole decks in the first view under the header, Expected: >= 1, Received: 0" (Storefront); no-js: 229 on Twenty Twenty-Five, and 0 whole decks on Kadence and Storefront (the 1,516 px card).
+
+**Deliberate breaks,** each put back after:
+
+- The count from seven widths, not three (`$count > 6`): `WordsTest` at :231, `+'Also in 8″, 8.5″ and 8.75″'`; in the browser 207 px on Twenty Twenty-Five, 175 on Kadence, 171 on Storefront, on chromium-desktop and no-js.
+- `_n()`'s two forms swapped: `+'Also in 3 other width'` (:231). The count one short: `+'Also in 2 other widths'` (:231).
+- The picture's `.cbuild` rule taken out: "Received: 227" on Kadence, and no whole deck on Storefront, nor on either without the script.
+- The stock back on a line of its own: 209, 176 and 172 px, on both projects.
+
+**Visual baselines that move** (not remade here): any shot of the deck step's cards on a theme that sets `img { height: auto }` with a deck whose picture is a layer image (Kadence, Storefront), and any deck card with a stock line. The suite's own decks have no counted stock and one width each, so the "Also in" line does not move there.
+
+**Why:** a deck's card has to hold its picture, its name, its price and its widths in the screen a header leaves; a list of six widths is read once, and the count says the same thing in a line.
 
 **Status:** Accepted.
 
