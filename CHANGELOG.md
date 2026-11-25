@@ -39,6 +39,7 @@ All notable changes to this project are documented here. The format follows [Kee
   - A `.gitattributes` keeps line endings LF and binaries binary, marks generated types and docs for GitHub, and makes `git archive` hold what the release zip holds; gate 19 keeps its export-ignore list equal to `.distignore` (#112, D-346). Gate 20 fails a merge's conflict marker left in a file (D-347).
   - Lighthouse CI takes the median of five runs a page, not three (#75, D-344). A browser test whose builder never sets its ready mark reports the page's errors and whether the Interactivity runtime finished loading (#93).
   - CI's update job updates from every release from 1.0.0 on, and from 0.1.0 and 0.9.0, with `npm run upgrade:all -- --sample`: from every release it took 16 minutes (#144, D-414). `npm run upgrade:all` alone still updates from every release.
+  - `npm run upgrade` and `upgrade:all` read an old release's own browser fixture from its tag file by file: from 1.2.0, `.gitattributes` keeps `tests/` out of `git archive`, so the update from 1.2.0 found no fixture and failed (D-414).
 
 ### Fixed
 

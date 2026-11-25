@@ -126,7 +126,12 @@ case "$seed" in order:*) ;; *) fail "the shop's data was not made on $from: $see
 rm -rf tmp/upgrade/fixture && mkdir -p tmp/upgrade/fixture
 git rev-parse -q --verify "refs/tags/v$from" >/dev/null || git fetch -q --depth=1 origin tag "v$from" 2>/dev/null || true
 if git cat-file -e "v$from:tests/e2e/fixtures/shop.php" 2>/dev/null; then
-	git archive "v$from" tests/e2e/fixtures | tar -x -C tmp/upgrade/fixture
+	# Each file read from the tag itself: from 1.2.0, .gitattributes export-ignores tests/ (D-346), so git archive of
+	# the tag gives nothing (D-414).
+	git ls-tree -r --name-only "v$from" tests/e2e/fixtures | while IFS= read -r path; do
+		mkdir -p "tmp/upgrade/fixture/$(dirname "$path")"
+		git show "v$from:$path" > "tmp/upgrade/fixture/$path"
+	done
 	said="$(wp_said eval-file "$here/tmp/upgrade/fixture/tests/e2e/fixtures/shop.php")"
 	case "$said" in *"Fatal error"*|*"Error:"*) echo "$said" | sed 's/^/   /'; fail "$from's own fixture did not run" ;; esac
 fi
