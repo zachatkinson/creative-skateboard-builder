@@ -446,7 +446,9 @@ final class WordsTest extends TestCase {
 		self::assertSame( 'Step up: Bones 54 mm, $0.50 less', Words::swap( 'better', 'Bones 54 mm', -50, '$0.50' ) );
 		self::assertSame( 'Step up: Bones 54 mm, same price', Words::swap( 'better', 'Bones 54 mm', 0, '$0.00' ) );
 		self::assertSame( 'Swapped: wheels.', Words::swapped( array( 'Wheels' ) ) );
-		self::assertStringStartsWith( 'Swapped: wheels', Words::swapped( array( 'Wheels', 'Hardware' ) ) );
-		self::assertStringContainsString( 'hardware', Words::swapped( array( 'Wheels', 'Hardware' ) ) );
+		// The slots as the site's language joins a list, each in its sentence's case, not run together with commas (the
+		// shim's %l writes English's).
+		self::assertSame( 'Swapped: wheels and hardware.', Words::swapped( array( 'Wheels', 'Hardware' ) ) );
+		self::assertSame( 'Swapped: wheels, hardware and bearings.', Words::swapped( array( 'Wheels', 'Hardware', 'Bearings' ) ) );
 	}
 }
