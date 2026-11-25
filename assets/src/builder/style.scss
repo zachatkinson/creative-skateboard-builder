@@ -1202,50 +1202,43 @@
 	z-index: 1;
 }
 
+/*
+ * Every step's card puts the part's picture at its start, beside its words, as the deck step's compact cards do
+ * (#131, D-391): a square 5rem box, the size the square product photos of trucks, wheels and bearings still show
+ * their colour and finish at, then the brand, the name and the look, the full price large and what it changes in
+ * smaller type (D-249). The box is square whatever the image, which is fitted into it, so nothing moves as it loads:
+ * by its shape, not a height, which a theme's `img { height: auto }` would win over. The words take the rest of the
+ * card's width, the theme's smallest step from the picture, and the chosen card's tick sits on the picture's corner
+ * rather than over them, so they wrap no more than beside the 5.5rem photo phones had before.
+ */
 :where(.cbuild-card__body) {
 	display: grid;
-	grid-template-columns: minmax(0, 1fr);
-	align-content: start;
-	gap: 0.125rem;
+	grid-template-columns: 5rem minmax(0, 1fr);
+	align-content: center;
+	gap: 0.125rem var(--cbuild-gap-small);
 	cursor: pointer;
 }
 
-/* The prototype's card: the photo large on top, then the brand, the name and the look, the full price large and
-   what it changes in smaller type (D-249). On a phone, where a card spans the panel, the photo sits beside the
-   words, so a long step isn't a column of photos. */
+:where(.cbuild-card__body > :not(.cbuild-card__photo)) {
+	grid-column: 2;
+}
+
 :where(.cbuild-card__photo) {
-	inline-size: 100%;
+	grid-row: 1 / span 4;
+	align-self: center;
+	inline-size: 5rem;
 	block-size: auto;
 	aspect-ratio: 1;
-	margin-block-end: var(--cbuild-gap-small);
 	object-fit: contain;
 	border-radius: calc(var(--cbuild-radius) / 2);
 }
 
-@container cbuild (max-width: 47.99rem) {
-	:where(.cbuild-card__body) {
-		grid-template-columns: 5.5rem minmax(0, 1fr);
-		column-gap: var(--cbuild-gap-small);
-	}
+:where(.cbuild-card__body:not(:has(> .cbuild-card__photo:not([hidden])))) {
+	grid-template-columns: minmax(0, 1fr);
+}
 
-	:where(.cbuild-card__body > :not(.cbuild-card__photo)) {
-		grid-column: 2;
-	}
-
-	:where(.cbuild-card__photo) {
-		grid-row: 1 / span 4;
-		margin-block-end: 0;
-	}
-
-	:where(.cbuild-card__body:not(:has(> .cbuild-card__photo:not([hidden])))) {
-		grid-template-columns: minmax(0, 1fr);
-	}
-
-	:where(
-		.cbuild-card__body:not(:has(> .cbuild-card__photo:not([hidden]))) > *
-	) {
-		grid-column: 1;
-	}
+:where(.cbuild-card__body:not(:has(> .cbuild-card__photo:not([hidden]))) > *) {
+	grid-column: 1;
 }
 
 // The card's details, which describe its radio: a grid of its own, not display: contents, which older Safari left
@@ -1338,34 +1331,18 @@
 :where(.cbuild-cards--compact) :where(.cbuild-card__body) {
 	grid-template-columns: 3.5rem minmax(0, 1fr);
 	column-gap: var(--cbuild-gap);
-	align-content: center;
 	padding-inline-end: 1.75rem;
 }
 
-:where(.cbuild-cards--compact)
-	:where(.cbuild-card__body > :not(.cbuild-card__photo)) {
-	grid-column: 2;
-}
-
 :where(.cbuild-cards--compact) :where(.cbuild-card__photo) {
-	grid-row: 1 / span 4;
-	align-self: center;
 	inline-size: 100%;
 	block-size: 7rem;
 	aspect-ratio: auto;
-	margin-block-end: 0;
 }
 
 :where(.cbuild-cards--compact)
 	:where(.cbuild-card__body:not(:has(> .cbuild-card__photo:not([hidden])))) {
 	grid-template-columns: minmax(0, 1fr);
-}
-
-:where(.cbuild-cards--compact)
-	:where(
-		.cbuild-card__body:not(:has(> .cbuild-card__photo:not([hidden]))) > *
-	) {
-	grid-column: 1;
 }
 
 :where(.cbuild-cards--compact) :where(.cbuild-card__about) {
@@ -1432,6 +1409,24 @@
 	background: var(--cbuild-on-accent);
 	mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M6 12.5l4 4 8-9' fill='none' stroke='%23000' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")
 		center / 100% no-repeat;
+}
+
+/* Beside a square picture the tick sits on the picture's corner, in its column, so the words keep their width (#131,
+   D-391). A deck's compact card keeps it at the end, its words clear of it (D-322). */
+:where(
+	.cbuild-cards:not(.cbuild-cards--compact)
+		.cbuild-card:has(
+			> .cbuild-card__body > .cbuild-card__photo:not([hidden])
+		)
+)::before,
+:where(
+	.cbuild-cards:not(.cbuild-cards--compact)
+		.cbuild-card:has(
+			> .cbuild-card__body > .cbuild-card__photo:not([hidden])
+		)
+)::after {
+	inset-inline-start: var(--cbuild-gap-small);
+	inset-inline-end: auto;
 }
 
 :where(.cbuild-card--sold-out) :where(.cbuild-card__body) {

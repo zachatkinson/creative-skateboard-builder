@@ -10547,6 +10547,296 @@ test.describe( 'Compact deck cards (F14)', () => {
 } );
 
 /**
+ * #131 (D-391): every step's cards put the part's picture beside its words, as the deck step's compact cards do, in a
+ * square 5rem box, the size the square photos of trucks, wheels and bearings still show their colour at. Each step holds
+ * at least as many whole cards in a screen as it did with the photo on top: measured on the three themes at 1440 by 900
+ * and 390 by 844, the step's first card at the window's top and the list filled to 24 with copies of it, the bar's top
+ * the screen's foot. The deck step's compact cards are as they were.
+ */
+test.describe( 'Cards side by side on every step (#131)', () => {
+	// The step, with a part picked in each step before it.
+	const at = ( step: string ): string => {
+		const picks: Record< string, number > = {};
+		for ( const [ slot, part ] of Object.entries( {
+			deck: id( 'builder-test-deck-8-0' ),
+			trucks: id( 'builder-test-trucks-139' ),
+			wheels: id( 'builder-test-wheels-52' ),
+			bearings: id( 'builder-test-bearings' ),
+			hardware: id( 'builder-test-bolts-1' ),
+		} ) ) {
+			if ( slot === step ) {
+				break;
+			}
+			picks[ slot ] = part;
+		}
+		return linkTo( { ...picks, step } );
+	};
+	const steps = [ 'trucks', 'wheels', 'hardware', 'grip' ] as const;
+
+	for ( const step of steps ) {
+		test( `puts the picture in a 5rem square beside the words on the ${ step } step`, async ( {
+			page,
+		} ) => {
+			await page.goto( at( step ) );
+			const item = page
+				.locator( '.cbuild-cards:not(.cbuild-cards--compact) > li' )
+				.filter( {
+					has: page.locator( '.cbuild-card__photo:visible' ),
+				} )
+				.first();
+			await expect( item ).toBeVisible();
+			const measured = await item.evaluate( ( li ) => {
+				const rem = parseFloat(
+					getComputedStyle( document.documentElement ).fontSize
+				);
+				const photo = li
+					.querySelector( '.cbuild-card__photo' )
+					?.getBoundingClientRect();
+				const words = [
+					...li.querySelectorAll(
+						'.cbuild-card__body > :not(.cbuild-card__photo)'
+					),
+				]
+					.map( ( word ) => word.getBoundingClientRect() )
+					.filter( ( word ) => word.width > 0 );
+				return {
+					rem,
+					width: photo?.width ?? 0,
+					height: photo?.height ?? 0,
+					// Beside: no word over the picture's column, and the first word starts within its height.
+					clear: words.every(
+						( word ) =>
+							! photo ||
+							word.left >= photo.right ||
+							word.right <= photo.left
+					),
+					beside:
+						!! photo &&
+						( words[ 0 ]?.top ?? Number.POSITIVE_INFINITY ) <
+							photo.bottom,
+				};
+			} );
+			expect( measured.width, 'the picture 5rem wide' ).toBeCloseTo(
+				5 * measured.rem,
+				0
+			);
+			expect( measured.height, 'and square' ).toBeCloseTo(
+				measured.width,
+				0
+			);
+			expect( measured.clear, 'no word over the picture' ).toBe( true );
+			expect( measured.beside, 'the words beside it' ).toBe( true );
+			// The radio is named by its part and the rest of the card describes it, in the same order as before.
+			await expect( item.getByRole( 'radio' ) ).toHaveAttribute(
+				'aria-describedby',
+				/-about .*-notes$/
+			);
+			await axe( page, `the ${ step } step's cards`, '.cbuild-step' );
+		} );
+	}
+
+	// The step's first card at the window's top, the list filled to 24 with copies of it: the whole cards above the bar.
+	// Before #131, at 1440 by 900: trucks 2, 2, 3; wheels 2, 2, 3; bearings 8, 8, 9; hardware 8, 8, 6; grip 2, 2, 3 on
+	// Kadence, Twenty Twenty-Five and Storefront. At 390 by 844 each step's count is as it was (D-391).
+	const held: Record<
+		string,
+		Record<
+			'desktop' | 'phone',
+			Record< ( typeof steps )[ number ] | 'bearings', number >
+		>
+	> = {
+		kadence: {
+			desktop: {
+				trucks: 6,
+				wheels: 6,
+				bearings: 8,
+				hardware: 12,
+				grip: 8,
+			},
+			phone: { trucks: 2, wheels: 2, bearings: 3, hardware: 3, grip: 3 },
+		},
+		twentytwentyfive: {
+			desktop: {
+				trucks: 6,
+				wheels: 6,
+				bearings: 8,
+				hardware: 10,
+				grip: 6,
+			},
+			phone: { trucks: 2, wheels: 2, bearings: 3, hardware: 3, grip: 2 },
+		},
+		storefront: {
+			desktop: {
+				trucks: 6,
+				wheels: 6,
+				bearings: 9,
+				hardware: 12,
+				grip: 9,
+			},
+			phone: { trucks: 2, wheels: 2, bearings: 2, hardware: 3, grip: 2 },
+		},
+	};
+	for ( const [ theme, sizes ] of Object.entries( held ) ) {
+		test( `holds as many whole cards in a screen on every step on ${ theme }`, async ( {
+			page,
+			context,
+			baseURL,
+		}, info ) => {
+			test.skip(
+				'chromium-desktop' !== info.project.name &&
+					'chromium-phone' !== info.project.name,
+				'A layout count, one engine at each width.'
+			);
+			const phone = info.project.name.includes( 'phone' );
+			await context.addCookies( [
+				{
+					name: 'cbuild_e2e_theme',
+					value: theme,
+					url: baseURL || SITE,
+				},
+			] );
+			await page.setViewportSize(
+				phone
+					? { width: 390, height: 844 }
+					: { width: 1440, height: 900 }
+			);
+			const counted: Record< string, number > = {};
+			for ( const step of [ ...steps, 'bearings' ] as const ) {
+				await page.goto( at( step ) );
+				await page.waitForSelector( '.cbuild[data-ready]' );
+				await page.evaluate( () => document.fonts.ready );
+				counted[ step ] = await page
+					.locator( '.cbuild-cards:not(.cbuild-cards--sold-out)' )
+					.first()
+					.evaluate( ( list ) => {
+						const first = list.querySelector( ':scope > li' );
+						while (
+							first &&
+							list.querySelectorAll( ':scope > li' ).length < 24
+						) {
+							list.append( first.cloneNode( true ) );
+						}
+						first?.scrollIntoView( { block: 'start' } );
+						const bar = document
+							.querySelector( '.cbuild-bar:not([hidden])' )
+							?.getBoundingClientRect();
+						const foot =
+							bar && bar.top > 0 && bar.top < innerHeight
+								? bar.top
+								: innerHeight;
+						return [
+							...list.querySelectorAll( ':scope > li' ),
+						].filter( ( item ) => {
+							const box = item.getBoundingClientRect();
+							return box.top >= 0 && box.bottom <= foot;
+						} ).length;
+					} );
+			}
+			for ( const [ step, least ] of Object.entries(
+				sizes[ phone ? 'phone' : 'desktop' ]
+			) ) {
+				expect(
+					counted[ step ],
+					`whole ${ step } cards in a screen`
+				).toBeGreaterThanOrEqual( least );
+			}
+		} );
+	}
+
+	// Nothing moves as a picture loads: each card's picture box is set before its file comes (CLS 0).
+	test( 'moves nothing as the pictures load', async ( {
+		page,
+		browserName,
+		javaScriptEnabled,
+	} ) => {
+		test.skip(
+			'chromium' !== browserName || ! javaScriptEnabled,
+			'Layout shift entries are Chromium’s, read by a script.'
+		);
+		// Every file held back until the cards are in view, so they are laid out before any picture comes: a shift is
+		// counted only where it is seen.
+		let release = (): void => undefined;
+		const gate = new Promise< void >( ( resolve ) => {
+			release = resolve;
+		} );
+		await page.route(
+			/\/wp-content\/uploads\/.*\.(png|jpe?g|webp)$/,
+			async ( route ) => {
+				await gate;
+				await route.continue();
+			}
+		);
+		await page.addInitScript( () => {
+			( window as unknown as { shifted: number } ).shifted = 0;
+			new PerformanceObserver( ( list ) => {
+				for ( const entry of list.getEntries() as Array<
+					PerformanceEntry & {
+						value: number;
+						hadRecentInput: boolean;
+						sources: Array< { node: Node | null } >;
+					}
+				> ) {
+					// The step's own shifts: a theme's header settling as its font arrives is the theme's.
+					const ours = entry.sources.some(
+						( source ) =>
+							source.node instanceof Element &&
+							null !== source.node.closest( '.cbuild-step' )
+					);
+					if ( ! entry.hadRecentInput && ours ) {
+						( window as unknown as { shifted: number } ).shifted +=
+							entry.value;
+					}
+				}
+			} ).observe( { type: 'layout-shift', buffered: true } );
+		} );
+		await page.goto( at( 'wheels' ) );
+		const photos = page.locator(
+			'.cbuild-cards:not(.cbuild-cards--sold-out) .cbuild-card__photo:not([hidden])'
+		);
+		await expect( photos.first() ).toBeAttached();
+		await page
+			.locator( '.cbuild-cards' )
+			.first()
+			.evaluate( ( list ) => list.scrollIntoView( { block: 'start' } ) );
+		await page.evaluate(
+			() =>
+				new Promise( ( resolve ) =>
+					requestAnimationFrame( () =>
+						requestAnimationFrame( resolve )
+					)
+				)
+		);
+		release();
+		await expect
+			.poll( () =>
+				photos.evaluateAll( ( images ) =>
+					images.every(
+						( image ) =>
+							( image as HTMLImageElement ).complete &&
+							( image as HTMLImageElement ).naturalWidth > 0
+					)
+				)
+			)
+			.toBe( true );
+		// Two frames for the last image's paint, and its shift if it made one.
+		await page.evaluate(
+			() =>
+				new Promise( ( resolve ) =>
+					requestAnimationFrame( () =>
+						requestAnimationFrame( resolve )
+					)
+				)
+		);
+		const shifted = await page.evaluate(
+			() => ( window as unknown as { shifted: number } ).shifted
+		);
+		expect( shifted, "the step's layout shift as the pictures load" ).toBe(
+			0
+		);
+	} );
+} );
+
+/**
  * Issue #143: what a companion plugin (Mature Content) may rely on. The builder sends `cbuild:rendered` once it is
  * hydrated and once after each answer it draws, and an element another plugin puts in the stage or the step's form
  * stays there through a pick, a step change and the change panel, as the Interactivity API redraws around it.

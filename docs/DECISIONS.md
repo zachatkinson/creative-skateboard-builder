@@ -231,6 +231,7 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-382 · The bar follows the panel, not inside it, so its sticky foot can rise to the builder's top](#d-382--the-bar-follows-the-panel-not-inside-it-so-its-sticky-foot-can-rise-to-the-builders-top--2026-11-24)
 - [D-383 · The limit's line is drawn over the bar, in the panel's column](#d-383--the-limits-line-is-drawn-over-the-bar-in-the-panels-column--2026-11-24)
 - [D-384 · At full width the builder spans the theme's full width, and stacked its contents keep the page's gutter](#d-384--at-full-width-the-builder-spans-the-themes-full-width-and-stacked-its-contents-keep-the-pages-gutter--2026-11-24)
+- [D-391 · Every step's card puts its picture beside its words, in a 5rem square](#d-391--every-steps-card-puts-its-picture-beside-its-words-in-a-5rem-square--2026-11-25)
 
 ### Accessibility
 
@@ -5611,6 +5612,44 @@ The auditor's third pass on milestone 12, a minor: `LeadDays` read "2 to 4" in a
 **Deliberate break.** The word put back in the form, `(?:-|\x{2013}|to)` with `/i`: the same three failed at the same lines. Put back, all passed, and Infection kills all 75 of the class's mutants.
 
 **Why:** a form the domain reads should mean the same in every language the shop is run in; a hyphen does, and a word never does.
+
+**Status:** Accepted.
+
+### D-391 · Every step's card puts its picture beside its words, in a 5rem square · 2026-11-25
+
+Issue #131, from Zach on 24 November, in milestone 13's plan (`docs/research/plan-after-1-2.md`, "Cards side by side on every step"). The deck step's compact cards (D-322) put the deck beside its words; every other step put a square photo the card's width on top, so a desktop's screen held two trucks or two wheels.
+
+- **Every step's card is side by side.** The picture sits at the card's start in a square 5rem box, then the brand, the name, the look, the price and what it changes, the stock, the fit and the recommendation, each on its line as before. The deck step's compact cards keep their 3.5rem by 7rem upright box, their two columns and their price and change on one line.
+- **The thumbnail's size per part.** One size, 5rem (80 px), for trucks, wheels, bearings, risers, hardware and grip: their photos are square product shots, and 5rem is the size the issue named for telling a wheel's colour or a truck's finish. Phones showed a 5.5rem photo beside the words before, so on a phone the card is the same shape, 8 px narrower in its picture.
+- **Square by its shape.** The box is `inline-size: 5rem` with `aspect-ratio: 1`, not a height: Kadence and Storefront set `img { height: auto }`, which outranks the builder's `:where()` rules, and a grip's 9 by 300 layer image made a card 2,683 px tall with a fixed height. The image is fitted into the box, so nothing moves as it loads.
+- **The words keep their width.** The picture and the words are the theme's smallest step apart (`--cbuild-gap-small`), as the phone's cards were, and the chosen card's tick sits on the picture's corner, in its column, so the words need no room kept for it. With the deck's 16 px gap (D-377) and its room for the tick, the words were 40 px narrower on a phone, wrapped a line more, and a phone's screen held one truck card where it held two.
+- **Columns.** The cards wrap at `--cbuild-card-width` (13.5rem) as before, so a desktop's panel holds two or three to a row and a phone's one. Capped at two, as the deck's are, Storefront's wider panel lost its third column, and its bearings step held 6 cards where it held 9.
+- **No setting, and no filter.** The layout follows the part. Nothing measured shows a shop needs the photo on top, so `cbuild_card_layout` is not added (the issue's condition).
+- **A wheel's colour at 80 px.** Looked at on the wheel step on Twenty Twenty-Five at 1440 by 900: the fixture's red, cream and yellow wheels are told apart at a glance, the picked card's tick on the picture's corner leaves the wheel itself clear.
+
+**Whole cards in a screen, before and after.** Measured on the three themes with the browser test's fixture: the step's first card at the window's top, the list filled to 24 with copies of it, the cards counted whole above the bar. The deck step (the shelf kit's, after a width) is unchanged: 10 at 1440 by 900 and 5 at 390 by 844 on each theme.
+
+| Step | Kadence 1440 | Twenty Twenty-Five 1440 | Storefront 1440 | Kadence 390 | Twenty Twenty-Five 390 | Storefront 390 |
+| --- | --- | --- | --- | --- | --- | --- |
+| Trucks | 2 to 6 | 2 to 6 | 3 to 6 | 2 to 2 | 2 to 2 | 2 to 2 |
+| Wheels | 2 to 6 | 2 to 6 | 3 to 6 | 2 to 2 | 2 to 2 | 2 to 2 |
+| Bearings | 8 to 8 | 8 to 8 | 9 to 9 | 3 to 3 | 3 to 3 | 2 to 2 |
+| Hardware | 8 to 12 | 8 to 10 | 6 to 12 | 3 to 3 | 3 to 3 | 3 to 3 |
+| Grip | 2 to 8 | 2 to 6 | 3 to 9 | 3 to 3 | 2 to 2 | 2 to 2 |
+
+The fixture's bearings have no picture, so their card is the same before and after. The first view with the builder at the window's top, as D-360 counts it, with the fixture's own parts (three trucks, three wheels in stock): at 1440 by 900 trucks 1 to 1, wheels 2 to 3, bearings 1 to 1, hardware 2 to 2 and grip 1 to 1 on Kadence and Twenty Twenty-Five, and none before or after on Storefront, whose header fills the first view; at 390 by 844 none before or after on any theme, the stage and the bar filling a phone's.
+
+**Kept.** Each card's reading order and names: the radio named by its part, the rest describing it, in the same source order. The deck step's compact cards, their gap and their tick (D-322, D-377). The class `cbuild-cards--compact` stays the deck step's.
+
+**Tests.** `builder.spec.ts`, "Cards side by side on every step (#131)": on the trucks, wheels, hardware and grip steps, the picture 5rem square, no word over its column, the words beside it, the radio's description as before and axe clean, on every project; the counts above held per theme on chromium-desktop and chromium-phone; and "moves nothing as the pictures load", the step's layout shift 0 with every image held until the cards are in view, on Chromium at both widths.
+
+**Red run.** Before the change, on chromium-desktop: "the picture 5rem wide / Expected: 80 / Received: 198.5" (builder.spec.ts:10157) on each of the four steps, and "whole trucks cards in a screen / Expected: >= 6 / Received: 2" on Kadence and Twenty Twenty-Five, "Received: 3" on Storefront (builder.spec.ts:10279); on chromium-phone the picture was 88 px, 5.5rem.
+
+**Deliberate break.** The picture put back on a row of its own above the words, with no shape and no `width` or `height` on the image: "the step's layout shift as the pictures load / Expected: 0 / Received: 0.026720423685179816" on chromium-desktop. Put back, all passed.
+
+**Visual baselines that move** (not remade here): every one that shows a step's cards other than the deck's: `kadence-{light,dark}-phone-bar-estimate` and the moments `twentytwentyfive-light-desktop-moment-{step,trucks,wheels,grip,removed,swapped}`.
+
+**Why:** a list with the picture beside the words is how a shopper compares parts chosen by spec and by look (Baymard's list and grid views), and it shows two to four times as many trucks, wheels and grip on a desktop's screen, with a phone's as it was.
 
 **Status:** Accepted.
 

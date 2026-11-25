@@ -48,6 +48,7 @@ All notable changes to this project are documented here. The format follows [Kee
 - **`schema/order-snapshot.json` is open:** it closes no object with properties, as `schema/state.json` does not, so a plugin that checks `_cbuild_snapshot` against it accepts the keys a later release adds. 1.1.0's closed schema refuses a 1.2.0 snapshot, which has `lead_days`; check against 1.2.0's. The plugin's own tests still fail on a key the schema does not describe.
 - **Site Health's "composed pictures" test** names the parts whose layer images have no resized copies, up to five, beside how to make them (#129, D-372).
 - **`cbuild_builder_url`'s `$url`** starts from the kit's Builder page, where it has one, and the filter still answers last (#113).
+- **Every step's cards put the part's picture beside its words,** in a square 5rem box, as the deck step's compact cards do: two to four times as many trucks, wheels, hardware and grip in a desktop's screen, and a phone's as before. The chosen card's tick sits on the picture's corner. The deck step's cards are as they were (#131, D-391).
 - **Development:**
   - StrykerJS's floor on the builder's store goes from 90 % to 95 %, once tests took its score from 92.90 % to 98.99 % (D-379).
   - Markdown is linted with markdownlint-cli2 0.24.0 (`npm run lint:md`, in `npm run check`, CI, a workflow for changes to the docs alone, and the pre-commit hook). The docs' 183 findings are fixed, 67 bold lines among them now real headings (#111, D-345).
