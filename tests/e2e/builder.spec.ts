@@ -8610,6 +8610,17 @@ test.describe( 'Compare saved builds (#136)', () => {
 			french ? inFrench : english;
 		await page.goto( '/my-account/my-builds/' );
 
+		// Each row names its build on a phone too, where WooCommerce's small-screen styles hide a responsive table's
+		// row headers, so a box is never ticked for a build the shopper can't see (D-412).
+		for ( const name of names ) {
+			await expect(
+				page.locator( '.cbuild-my-builds__name' ).filter( {
+					hasText: name,
+				} ),
+				'the row says which build it is'
+			).toBeVisible();
+		}
+
 		// Chosen by keyboard: each build's box, then the one button.
 		for ( const name of names ) {
 			const box = page.getByRole( 'checkbox', {

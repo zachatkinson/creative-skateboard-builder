@@ -40,6 +40,7 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Fixed
 
+- My builds names each build on a phone. WooCommerce's small-screen styles hid each row's header, the build's picture and name, so a phone showed each build's total and buttons with nothing to say which build they were for (D-412).
 - In a kit's Build tab, a wrong Builder page, width guide or assembly time in business days is refused alone, and the kit's other settings are saved. One wrong field threw away all four, and the notice named them all; it now names the field refused and leads to it (D-385).
 - A Build tab field that was not saved is marked where it is, by a border in WordPress's error red twice as thick as a field that saved (D-386).
 - The Build tab's lists are as wide as their longest option, up to the field, so "Search in the steps" shows its options whole on a desktop (D-387).

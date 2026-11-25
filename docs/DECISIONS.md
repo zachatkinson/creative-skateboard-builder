@@ -334,6 +334,7 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-275 · Undo is offered for 15 minutes, and says what it undoes](#d-275--undo-is-offered-for-15-minutes-and-says-what-it-undoes--2026-11-19)
 - [D-278 · A saved build's prices go in its picks document under `_prices`; My builds' Open carries `_saved`](#d-278--a-saved-builds-prices-go-in-its-picks-document-under-_prices-my-builds-open-carries-_saved--2026-11-19)
 - [D-411 · My builds compares up to three saved builds in one table, a column a build, by a query string on its own page](#d-411--my-builds-compares-up-to-three-saved-builds-in-one-table-a-column-a-build-by-a-query-string-on-its-own-page--2026-11-25)
+- [D-412 · My builds names each build on a phone too](#d-412--my-builds-names-each-build-on-a-phone-too--2026-11-25)
 
 ### SEO and sharing
 
@@ -5676,5 +5677,19 @@ Put back, all passed.
 - WCAG 2.2: 1.3.1 Info and Relationships, 1.4.1 Use of Color, 1.4.10 Reflow (a data table may scroll in two dimensions), 2.1.1 Keyboard.
 - Deque, axe rule [scrollable-region-focusable](https://dequeuniversity.com/rules/axe/4.10/scrollable-region-focusable): a scrollable region must be reachable by keyboard.
 - Adrian Roselli, ["Under-Engineered Responsive Tables"](https://adrianroselli.com/2020/11/under-engineered-responsive-tables.html) (2020): a table kept a table in a focusable, named region that scrolls.
+
+**Status:** Accepted.
+
+### D-412 · My builds names each build on a phone too · 2026-11-25
+
+Found building #136 (D-411). My builds is a WooCommerce responsive table (`shop_table_responsive`), and WooCommerce's small-screen styles hide such a table's row headers below 768 px (`woocommerce-smallscreen.css`, `.woocommerce table.shop_table_responsive tbody th{display:none}`). Each build's row header holds its picture and its name, so since 0.8.0 a phone showed each build's total, date and buttons with nothing to say which build they were for. A screen reader heard the names, since each control is named for its build (audit 5), but a sighted shopper did not see them. A Compare box beside no name would have made the compare unusable on a phone.
+
+**Decision:** My builds' own inline styles show the row header as a block on every width: `table.cbuild-my-builds.shop_table_responsive tbody tr th[scope=row]{display:block;text-align:start}`, more specific than WooCommerce's rule, so the stylesheets' order does not matter. The picture and the name head each build's group of cells, as they do on a desktop.
+
+**Red run.** "Compare saved builds (#136)" with a check that each row's `.cbuild-my-builds__name` is visible: on chromium-phone, "the row says which build it is. expect(locator).toBeVisible() failed. Received: hidden" (`builder.spec.ts:8621`). Chromium at desktop width passed.
+
+**Deliberate break.** With `display:block` taken out of the rule, the same check failed on webkit-phone at the same line. Put back, it passed on all three phone projects.
+
+**Why:** the controls in a row must say which build they act on to the eye as well as to a screen reader (WCAG 2.2, 1.3.1 and 2.4.6).
 
 **Status:** Accepted.

@@ -48,7 +48,7 @@ final class SavedBuildHooks implements Hookable {
 	public const string ENDPOINT = 'my-builds';
 
 	/**
-	 * My builds' rules: the picture on its own line, its name under it, and each build's Compare box under that.
+	 * My builds' rules: the picture on its own line, its name under it, shown on a phone too, and the compare.
 	 *
 	 * The compare (#136, D-411): a column a build at least 14rem wide, so a phone shows about one build at a time and
 	 * the region scrolls sideways, its focus ring drawn as the theme's text. A row that differs is tinted, and the
@@ -56,6 +56,9 @@ final class SavedBuildHooks implements Hookable {
 	 * contrast on a light or a dark page. Under forced colours the tint is gone and the words and the mark's border stay.
 	 */
 	private const string STYLES = '.cbuild-my-builds__build th img{display:block;margin:0 0 8px}'
+		// A phone's responsive table hides its row headers (WooCommerce's woocommerce-smallscreen.css), and the build's
+		// name is its row's header: shown, so each row says which build its controls are for (D-412).
+		. 'table.cbuild-my-builds.shop_table_responsive tbody tr th[scope=row]{display:block;text-align:start}'
 		. '.cbuild-my-builds__pick{display:flex;align-items:center;gap:.5em;margin-block-end:.5em}'
 		. '.cbuild-compare{overflow-x:auto;margin-block:1em}'
 		. '.cbuild-compare:focus-visible{outline:2px solid currentColor;outline-offset:2px}'
