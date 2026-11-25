@@ -9096,7 +9096,12 @@ test.describe( 'The start button on a theme (#133)', () => {
 		context,
 		baseURL,
 		browserName,
+		javaScriptEnabled,
 	} ) => {
+		test.skip(
+			! javaScriptEnabled,
+			"The theme's rules are added by script; the outline is the script's (D-377)."
+		);
 		await tabbedMark(
 			page,
 			context,
@@ -9135,6 +9140,10 @@ test.describe( 'The start button on a light accent', () => {
 		baseURL,
 		javaScriptEnabled,
 	} ) => {
+		test.skip(
+			! javaScriptEnabled,
+			"The outline is the script's (D-377); without it the button is the theme's own."
+		);
 		await context.addCookies( [
 			{
 				name: 'cbuild_e2e_theme',
@@ -9155,9 +9164,6 @@ test.describe( 'The start button on a light accent', () => {
 			'the start button on a light accent',
 			'.cbuild-start'
 		);
-		if ( ! javaScriptEnabled ) {
-			return;
-		}
 		const colours = ( locator: Locator ) =>
 			locator.evaluate( ( element ) => {
 				const style = getComputedStyle( element );
