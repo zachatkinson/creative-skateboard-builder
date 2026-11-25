@@ -5835,6 +5835,8 @@ Issue #135, in milestone 13's plan ("Smart swaps"), with Zach's answers of 24 No
 
 **Why:** Zach's answers, with the smallest choice that leaves a shopper the say: a swap that fits as the cart will check it, one step at a time, and the look left alone.
 
+**Confirmed by Zach** on 25 November: the deck is never swapped, as built.
+
 **Status:** Accepted.
 
 ### D-395 · A part's rank is a whole number on its Part specs, higher being better, and a filter answers last · 2026-11-25
@@ -5892,6 +5894,8 @@ Issue #135: "one press swaps in a part … one Undo puts the build back", and ev
 **Breaks.** `Builder::show` not keeping `_undo`: `BuilderTest` fails at :2105 ("false is true", no notice). Swaps on every card, not the picked one alone: :2121. The store not noting a swap's press: the browser test fails "focus on what the swap did, beside its Undo".
 
 **Why:** a link works everywhere the builder does, and an Undo that waits for the shopper, not a timer, is the one every shopper can reach.
+
+**Confirmed by Zach** on 25 November: Undo lasts until the next move, with no timer, as built.
 
 **Status:** Accepted.
 
