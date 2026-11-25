@@ -1,7 +1,7 @@
 import { execSync } from 'node:child_process';
 import { readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { test, expect, answered, inLocale, Page } from './support/test';
+import { test, expect, answered, inLocale, Page, SITE } from './support/test';
 import { axe } from './support/axe';
 
 /*
@@ -479,4 +479,97 @@ test.describe( 'Help me choose turned off', () => {
 		}
 		expect( await whole(), 'whole decks in view' ).toBe( decks );
 	} );
+} );
+
+// Cowork, for Mature Content: the guide's builds are ready builds' tiles, whose picture takes each part's classes from
+// `cbuild_part_classes` (D-309). tests/e2e/mu-plugins/cbuild-e2e-flag.php flags a deck either way Mature Content does:
+// as a whole (`mcw-mature`), every picture of it blurs; or in its layer image alone (`mcw-mature-layer`), the pictures
+// marked as the layer image (`…__photo--drawn`) blur and a photo stays sharp (D-398). With every answer blank the guide
+// recommends three builds: the 8 in deck, whose tile shows its layer image since it has no photo, the 8.25 in deck, its
+// photo, and the 8.5 in deck (D-408).
+test.describe( "A flagged deck in the guide's builds", () => {
+	const parts = () =>
+		JSON.parse(
+			readFileSync(
+				path.join( process.cwd(), 'tmp', 'e2e-builder.json' ),
+				'utf8'
+			)
+		).parts as Record< string, number >;
+	for ( const [ flag, cookie ] of [
+		[ 'as a whole', 'cbuild_e2e_flag' ],
+		[ 'in its layer image alone', 'cbuild_e2e_flag_layer' ],
+	] as const ) {
+		test( `blurs the tile of a deck flagged ${ flag } where it shows what is flagged`, async ( {
+			page,
+			context,
+			baseURL,
+		} ) => {
+			const layer = 'cbuild_e2e_flag_layer' === cookie;
+			const tiles = page.locator( '.cbuild-guide__tiles .cbuild-preset' );
+			const photo = ( deck: number ) =>
+				tiles
+					.filter( {
+						has: page.locator(
+							`input[name="cbuild[deck]"][value="${ deck }"]`
+						),
+					} )
+					.locator( '.cbuild-preset__photo' );
+			const decks = [
+				Number( parts()[ 'builder-test-deck-8-0' ] ),
+				Number( parts()[ 'builder-test-deck-8-25' ] ),
+				Number( parts()[ 'builder-test-deck-8-5' ] ),
+			] as const;
+			for ( const [ deck, drawn ] of [
+				[ decks[ 0 ], true ],
+				[ decks[ 1 ], false ],
+			] as const ) {
+				await context.clearCookies( { name: cookie } );
+				await context.addCookies( [
+					{
+						name: cookie,
+						value: String( deck ),
+						url: baseURL || SITE,
+					},
+				] );
+				await page.goto( asked( {} ) );
+				await expect( tiles ).toHaveCount( 3 );
+				await expect( photo( deck ) ).toBeVisible();
+				await expect( photo( deck ) ).toHaveClass(
+					layer
+						? /(^| )cbuild-e2e-flagged-layer( |$)/
+						: /(^| )cbuild-e2e-flagged( |$)/
+				);
+				if ( drawn ) {
+					await expect(
+						photo( deck ),
+						'its layer image, marked as its card is'
+					).toHaveClass( /(^| )cbuild-preset__photo--drawn( |$)/ );
+				} else {
+					await expect(
+						photo( deck ),
+						'its photo, not marked'
+					).not.toHaveClass( /__photo--drawn/ );
+				}
+				if ( drawn || ! layer ) {
+					await expect(
+						photo( deck ),
+						drawn
+							? 'the flagged layer image'
+							: 'the deck flagged whole'
+					).toHaveCSS( 'filter', /^blur\(/ );
+				} else {
+					await expect(
+						photo( deck ),
+						'a photo stays sharp when only the layer image is flagged'
+					).toHaveCSS( 'filter', 'none' );
+				}
+				for ( const other of decks.filter( ( one ) => one !== deck ) ) {
+					await expect(
+						photo( other ),
+						'a build with another deck'
+					).toHaveCSS( 'filter', 'none' );
+				}
+			}
+		} );
+	}
 } );

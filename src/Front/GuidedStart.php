@@ -156,6 +156,8 @@ final readonly class GuidedStart {
 				'amount' => $totals[ $at ],
 				'over'   => $over ? $this->money->text( $totals[ $at ] - (int) $budget, $decimals ) : '',
 				'image'  => $cards[ $deck ]['image'] ?? null,
+				// The deck's card picture is its layer image where it has no photo (D-282): marked drawn, as the card's is.
+				'drawn'  => null !== ( $cards[ $deck ]['image'] ?? null ) && false === ( $cards[ $deck ]['photo'] ?? true ),
 				'deck'   => $deck,
 			);
 		}

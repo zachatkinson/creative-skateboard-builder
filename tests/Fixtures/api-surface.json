@@ -198,6 +198,7 @@
         "cbuild-picture",
         "cbuild-picture__item",
         "cbuild-preset__photo",
+        "cbuild-preset__photo--drawn",
         "cbuild-quantity",
         "cbuild-review__item",
         "cbuild-review__photo",

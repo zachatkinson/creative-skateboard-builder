@@ -640,7 +640,8 @@ final class BuilderView {
 				Words::tierLine( $tier ),
 				Cast::str( $build['total'] ?? null ),
 				/* translators: %s: an amount of money, such as $12.00. */
-				'' === $over ? array() : array( array( 'text' => sprintf( __( 'Over your budget by %s.', 'creative-skateboard-builder' ), $over ) ) )
+				'' === $over ? array() : array( array( 'text' => sprintf( __( 'Over your budget by %s.', 'creative-skateboard-builder' ), $over ) ) ),
+				Cast::bool( $build['drawn'] ?? null )
 			);
 		}
 		$start = null;
@@ -680,7 +681,8 @@ final class BuilderView {
 	 * A ready build's tile (spec: Presets; #134): its picture, name, a line on what it is, its total and its notes, and
 	 * the GET form's fields that start it at the review, its part IDs as a build link writes them, each checked again
 	 * when it arrives. The tile shows the build, so it takes each part's classes from another plugin, merged: a flagged
-	 * deck blurs it as it blurs the deck's card (Cowork's review of 1.0.0, F19; D-309).
+	 * deck blurs it as it blurs the deck's card (Cowork's review of 1.0.0, F19; D-309). A picture that is the deck's
+	 * layer image, as a build Help me choose recommends may show, is marked drawn, as the card's is (D-408).
 	 *
 	 * @param State                     $state       The build's state.
 	 * @param BuildLink                 $start       The link the tile starts.
@@ -689,10 +691,11 @@ final class BuilderView {
 	 * @param string                    $description Its line, or empty.
 	 * @param string                    $total       Its total, or empty for none shown.
 	 * @param list<array{text: string}> $notes       Its notes.
+	 * @param bool                      $drawn       Whether its picture is the deck's layer image, not a photo.
 	 * @return array<string, mixed>
 	 */
-	private static function tile( State $state, BuildLink $start, mixed $image, string $name, string $description, string $total, array $notes ): array {
-		$photo = array( Options::CLASS_PRESET_PHOTO );
+	private static function tile( State $state, BuildLink $start, mixed $image, string $name, string $description, string $total, array $notes, bool $drawn = false ): array {
+		$photo = $drawn ? array( Options::CLASS_PRESET_PHOTO, Options::CLASS_PRESET_DRAWN ) : array( Options::CLASS_PRESET_PHOTO );
 		foreach ( $start->picks as $slot => $part ) {
 			$photo = array_merge( $photo, explode( ' ', self::flagged( array(), $state->id, $slot, $part ) ) );
 		}

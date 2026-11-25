@@ -234,6 +234,14 @@ final class Options {
 	public const CLASS_ABOVE_CARDS = 'cbuild-step__above-cards';
 
 	/**
+	 * A ready build's tile picture when it is the deck's layer image rather than its photo, as a build Help me choose
+	 * recommends shows its deck's card picture (D-408).
+	 *
+	 * @since 1.3.0
+	 */
+	public const CLASS_PRESET_DRAWN = 'cbuild-preset__photo--drawn';
+
+	/**
 	 * Order item meta (spec: Data model, Order items). Hidden from customers by their underscore, and kept with the
 	 * shop's order records for good: a key is never renamed.
 	 */
@@ -524,6 +532,7 @@ final class Options {
 			self::CLASS_REVIEW_PHOTO,
 			self::CLASS_REVIEW_DRAWN,
 			self::CLASS_ABOVE_CARDS,
+			self::CLASS_PRESET_DRAWN,
 		);
 	}
 

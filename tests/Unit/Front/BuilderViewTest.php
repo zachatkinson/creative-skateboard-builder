@@ -263,6 +263,49 @@ final class BuilderViewTest extends TestCase {
 		self::assertTrue( $tiles[1]['hasTotal'], 'a part sold out still counts' );
 	}
 
+	// D-408: a build the guide recommends shows its deck's card picture, which is the deck's layer image where it has no
+	// photo (D-282). That picture is marked drawn, as the card's is, so a plugin that flags the layer image alone finds
+	// it; a photo is not, and a part's classes are merged either way (D-309).
+	public function test_a_guide_tile_showing_a_decks_layer_image_is_marked_drawn_and_a_photo_is_not(): void {
+		$state = ( new BuildState( $this->kits, new InMemoryShopSettings(), new FakeLogger() ) )->of( self::KIT, array(), null, SlotKey::DECK );
+		self::assertNotNull( $state );
+		$image = array(
+			'src'    => 'https://shop.test/deck.png',
+			'width'  => 76,
+			'height' => 300,
+			'srcset' => '',
+			'sizes'  => '',
+		);
+		$build = static fn( \CreativeBranding\SkateboardBuilder\Domain\Guide\Tier $tier, int $deck, bool $drawn ): array => array(
+			'tier'  => $tier,
+			'picks' => array( SlotKey::DECK => $deck ),
+			'total' => '$100.00',
+			'image' => $image,
+			'drawn' => $drawn,
+		);
+		$GLOBALS['cbuild_test_filters']['cbuild_part_classes'] = static fn( array $classes, int $part ): array => 31 === $part ? array( 'is-flagged' ) : $classes;
+		try {
+			$guide = BuilderView::guide(
+				$state,
+				array(),
+				new BuildLink(),
+				self::BASE,
+				array(
+					'builds' => array(
+						$build( \CreativeBranding\SkateboardBuilder\Domain\Guide\Tier::Budget, 31, true ),
+						$build( \CreativeBranding\SkateboardBuilder\Domain\Guide\Tier::Premium, 32, false ),
+					),
+				)
+			);
+		} finally {
+			unset( $GLOBALS['cbuild_test_filters'] );
+		}
+		self::assertSame(
+			array( 'cbuild-preset__photo cbuild-preset__photo--drawn is-flagged', 'cbuild-preset__photo' ),
+			array_column( $guide['tiles'], 'photoClasses' )
+		);
+	}
+
 	// The auditor's 1.1.0 should-fix 2: the answer lists every ready build, each saying whether it is shown, and the
 	// page makes a tile for those shown alone, each opening its own place among the kit's.
 	public function test_a_ready_build_the_answer_does_not_show_has_no_tile(): void {

@@ -686,6 +686,7 @@ A kit's line raised past what the shop has of a part is refused as `cbuild_build
 | `cbuild-picture` | 1.2.0 | The picture's root, the `<figure>` on the stage that holds the board, the parts' photos and the sentence that says the build (#143). |
 | `cbuild__stage` | 1.2.0 | The stage, around the picture, which stays in view as the panel scrolls (#143). |
 | `cbuild-step` | 1.2.0 | A step's form, around its fields and cards. The same element on every step, hidden on the change panel and the review (#143). |
+| `cbuild-preset__photo--drawn` | 1.3.0 | A ready build's tile picture when it is the deck's layer image rather than its photo: a build Help me choose recommends shows its deck's card picture, which is the layer image where the deck has no photo (D-282), so it is marked as the card's is (D-408). A shop's ready builds' tiles never show a layer image. |
 | `cbuild-step__above-cards` | 1.3.0 | An empty `<div>` in the step's form, just above its card list, which the builder renders for another plugin's own element and never draws into. Out of the layout while empty; hidden, with the cards, while the deck step asks its width (#151, D-407). |
 
 **Places another plugin may add its own element.** From 1.2.0, the stage (`.cbuild__stage`) and the step's form (`.cbuild-step`), such as a button over the board or a notice above the step (#143, D-376). From 1.3.0 (`@since 1.3.0`), also the place just above the step's cards (`.cbuild-step__above-cards`), where a notice about the cards comes in with them (#151, D-407):
