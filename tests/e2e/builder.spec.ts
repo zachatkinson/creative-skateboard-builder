@@ -11355,7 +11355,12 @@ test.describe( 'Thumbnails in the review (#132)', () => {
 
 	test( "shows each part's card picture on its row, and keeps the place on a row with none", async ( {
 		page,
+		javaScriptEnabled,
 	} ) => {
+		test.skip(
+			! javaScriptEnabled,
+			'Measured by a script in the page; the review is the server’s, the same without one.'
+		);
 		const deck = await chosen( page, 'deck' );
 		const trucks = await chosen( page, 'trucks' );
 
@@ -11409,41 +11414,110 @@ test.describe( 'Thumbnails in the review (#132)', () => {
 		await axe( page, 'the review with its thumbnails', '.cbuild-review' );
 	} );
 
-	test( 'moves nothing as the thumbnails load', async ( { page } ) => {
+	// Every file held back until the review is in view, so its rows are laid out before any thumbnail comes, as the
+	// cards' pictures are tested (#131): the list keeps its height as each loads, and in Chromium, which reports layout
+	// shifts, nothing in the review moves.
+	test( 'moves nothing as the thumbnails load', async ( {
+		page,
+		browserName,
+		javaScriptEnabled,
+	} ) => {
+		test.skip(
+			! javaScriptEnabled,
+			'Each picture is waited for by a script in the page; the layout is the stylesheet’s, the same without one.'
+		);
+		let release = (): void => undefined;
+		const gate = new Promise< void >( ( resolve ) => {
+			release = resolve;
+		} );
+		await page.route(
+			/\/wp-content\/uploads\/.*\.(png|jpe?g|webp)$/,
+			async ( route ) => {
+				await gate;
+				await route.continue();
+			}
+		);
 		await page.addInitScript( () => {
-			const counted = window as unknown as { cbuildShift: number };
-			counted.cbuildShift = 0;
-			// Only the browsers that report layout shifts (Chromium) add to it; the others measure the list's box.
+			( window as unknown as { shifted: number } ).shifted = 0;
+			if (
+				! PerformanceObserver.supportedEntryTypes.includes(
+					'layout-shift'
+				)
+			) {
+				return;
+			}
 			new PerformanceObserver( ( list ) => {
-				for ( const entry of list.getEntries() as unknown as {
-					value: number;
-				}[] ) {
-					counted.cbuildShift += entry.value;
+				for ( const entry of list.getEntries() as Array<
+					PerformanceEntry & {
+						value: number;
+						hadRecentInput: boolean;
+						sources: Array< { node: Node | null } >;
+					}
+				> ) {
+					// The review's own shifts: a theme's header settling as its font arrives is the theme's.
+					const ours = entry.sources.some(
+						( source ) =>
+							source.node instanceof Element &&
+							null !== source.node.closest( '.cbuild-review' )
+					);
+					if ( ! entry.hadRecentInput && ours ) {
+						( window as unknown as { shifted: number } ).shifted +=
+							entry.value;
+					}
 				}
 			} ).observe( { type: 'layout-shift', buffered: true } );
 		} );
-		await page.goto( linkTo( { ...picks, step: 'review' } ) );
+		// The page's own pictures are held too, so its load event waits on the gate: the builder's ready mark instead.
+		await page.goto( linkTo( { ...picks, step: 'review' } ), {
+			waitUntil: 'domcontentloaded',
+		} );
+		await page.waitForSelector( '.cbuild[data-ready]' );
 		const items = page.locator( '.cbuild-review__items' );
 		await expect( items ).toBeVisible();
-		const before = await items.boundingBox();
-		const photos = page.locator( '.cbuild-review__photo:visible' );
-		await expect( photos.first() ).toBeVisible();
-		await expect
-			.poll( () =>
-				photos.evaluateAll( ( imgs ) =>
-					( imgs as HTMLImageElement[] ).every(
-						( img ) => img.complete
+		await items.evaluate( ( list ) =>
+			list.scrollIntoView( { block: 'start' } )
+		);
+		const height = async () =>
+			items.evaluate( ( list ) => list.getBoundingClientRect().height );
+		const before = await height();
+		release();
+		const photos = page.locator( '.cbuild-review__photo:not([hidden])' );
+		const count = await photos.count();
+		expect( count, 'thumbnails to load' ).toBeGreaterThan( 0 );
+		for ( let at = 0; at < count; at++ ) {
+			const photo = photos.nth( at );
+			await photo.evaluate( ( image ) =>
+				image.scrollIntoView( { block: 'center' } )
+			);
+			await expect
+				.poll( () =>
+					photo.evaluate(
+						( image ) =>
+							( image as HTMLImageElement ).complete &&
+							( image as HTMLImageElement ).naturalWidth > 0
 					)
 				)
-			)
-			.toBe( true );
-		expect( await items.boundingBox(), 'the list as it was' ).toEqual(
-			before
+				.toBe( true );
+		}
+		// Two frames for the last picture's paint, and its shift if it made one.
+		await page.evaluate(
+			() =>
+				new Promise( ( resolve ) =>
+					requestAnimationFrame( () =>
+						requestAnimationFrame( resolve )
+					)
+				)
 		);
-		const shift = await page.evaluate(
-			() => ( window as unknown as { cbuildShift: number } ).cbuildShift
+		expect( await height(), 'the list as tall as before' ).toBeCloseTo(
+			before,
+			1
 		);
-		expect( shift, "the review's layout shift" ).toBe( 0 );
+		if ( 'chromium' === browserName ) {
+			const shifted = await page.evaluate(
+				() => ( window as unknown as { shifted: number } ).shifted
+			);
+			expect( shifted, "the review's layout shift" ).toBe( 0 );
+		}
 	} );
 
 	test( "blurs a flagged part's thumbnail, as Mature Content blurs it", async ( {
