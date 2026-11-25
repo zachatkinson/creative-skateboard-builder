@@ -484,6 +484,7 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-421 · axe on Firefox reads aria-labelledby from the attribute, past a crash in Playwright's Firefox](#d-421--axe-on-firefox-reads-aria-labelledby-from-the-attribute-past-a-crash-in-playwrights-firefox--2026-11-25)
 - [D-422 · The browser tests reach wp-env one command at a time, under a lock](#d-422--the-browser-tests-reach-wp-env-one-command-at-a-time-under-a-lock--2026-11-25)
 - [D-423 · The i18n check fails a translation compiled before its strings were translated](#d-423--the-i18n-check-fails-a-translation-compiled-before-its-strings-were-translated--2026-11-25)
+- [D-430 · The swaps-off test measures its own plain card, so it holds when it runs alone](#d-430--the-swaps-off-test-measures-its-own-plain-card-so-it-holds-when-it-runs-alone--2026-11-25)
 
 ### Releases and the repository
 
@@ -6442,5 +6443,21 @@ Found by the fr-ca run for D-421 and D-422 on lane 3. "Compare saved builds (#13
 **Tests.** Red: the check on the committed files found 64 problems, among them `languages/creative-skateboard-builder-fr_CA.l10n.php: "Compare %s" is not compiled as languages/creative-skateboard-builder-fr_CA.po translates it`. After the compile it passes, and the browser test passes on fr-ca and chromium-desktop. Deliberate break: "Comparer %s" put back to "Compare %s" in the compiled file failed the check with that one line.
 
 **Why:** the check that the translation is complete has to check what WordPress loads, not only what the translator wrote.
+
+**Status:** Accepted.
+
+### D-430 · The swaps-off test measures its own plain card, so it holds when it runs alone · 2026-11-25
+
+`tests/e2e/builder.spec.ts`, "Smart swaps (#135) › a kit with Offer smart swaps off shows no swap control and leaves no room for one", failed on firefox-phone, no-js and fr-ca: "a plain card no taller beside a swap than with none, Expected: 0, Received: 339.75".
+
+**Cause: the test, not the builder.** It compared the 58s' card with a height the test before it stored in a variable of the group (`plainBeside`). The group is serial, so a whole run of the file measures first, and every project passes that way: the three projects' full suites (firefox-phone, no-js, fr-ca, 27.6 min) and all of `builder.spec.ts` on no-js pass the group. A run that selects the test alone never measures, and the variable stays 0: by its line, by its title with `-g` (as `tools/focused.sh` selects a changed test) or by `--last-failed`. Run by its line, it fails the same way on chromium-desktop too, at the same 339.75. The helper also read any `li` in a `.cbuild-cards` list, the sold-out cards' closed list among them, and a card that isn't drawn measures 0, so a missing card read as a height.
+
+**Not a picture out of its box.** The 58s' card is 339.75 px on chromium-desktop with the script as well as without it: its words are long (the risers it needs). With the swap on offer on the 54s' card, every step's card picture is in its box: on Twenty Twenty-Five, Kadence and Storefront, with and without the script, at 412 and 1280 px, in Chromium, Firefox and WebKit. That's 80 by 80 px (5rem, D-391) on the trucks, wheels, hardware and grip cards, and 56 by 112 px (D-399) on the deck's compact card. A square card's `aspect-ratio: 1` fixes its height from its 5rem width, so a theme's `img { height: auto }` and core's placeholder size for a lazy image, which F31 met on the deck's `block-size: 7rem`, don't reach it.
+
+**Decision:** the test measures the plain card itself: the kit with swaps on, the 54s' swap shown, then the kit with swaps off. The helper takes only the step's own list, and expects one card and that it's visible before it measures. Test 2 keeps its own check that no plain card shows a swap's paragraph. Nothing is loosened: the same card, the same comparison to the nearest pixel.
+
+**Red run.** Run alone, `builder.spec.ts:11775` on chromium-desktop and no-js: "a plain card no taller beside a swap than with none, Expected: 0, Received: 339.75".
+
+**Deliberate break.** Every card on the step shows the swaps' paragraph when the step offers a swap (`'hasSwaps' => array() !== ( $swaps[ $slot ] ?? array() )` in `BuilderView`). Run alone, the test failed on chromium-desktop and no-js: "Expected: 349.75, Received: 339.75", a 10 px empty paragraph on a plain card.
 
 **Status:** Accepted.

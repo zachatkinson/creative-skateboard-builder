@@ -11860,14 +11860,16 @@ test.describe( 'Thumbnails in the review (#132)', () => {
  */
 test.describe( 'Smart swaps (#135)', () => {
 	test.describe.configure( { mode: 'serial' } );
-	// The 58s' card, a plain card, on the wheels step with the 54s picked and their swap on offer.
-	let plainBeside = 0;
-	const height = ( page: Page, name: string ) =>
-		page
-			.locator( '.cbuild-cards > li' )
-			.filter( { hasText: name } )
-			.first()
-			.evaluate( ( card ) => card.getBoundingClientRect().height );
+	// A card's height in the step's list, the sold-out cards' closed list left out. It must be shown: a card not drawn
+	// measures 0, which would say nothing.
+	const height = async ( page: Page, name: string ): Promise< number > => {
+		const card = page
+			.locator( '.cbuild-cards:not(.cbuild-cards--sold-out) > li' )
+			.filter( { hasText: name } );
+		await expect( card ).toHaveCount( 1 );
+		await expect( card ).toBeVisible();
+		return card.evaluate( ( li ) => li.getBoundingClientRect().height );
+	};
 	// The 54s and the 1.25 in bolts: the 52s are $2 less and the 1 in bolts $1 less, and both fit; nothing better fits
 	// (the 56s are sold out, the 58s need risers, and no bolt is longer).
 	const picks = {
@@ -12004,8 +12006,6 @@ test.describe( 'Smart swaps (#135)', () => {
 				'.cbuild-cards > li:not(.cbuild-card--chosen) .cbuild-card__swaps:not([hidden])'
 			)
 		).toHaveCount( 0 );
-		// A plain card's height beside the swap, for the kit with swaps off to match (the test after).
-		plainBeside = await height( page, 'wheels 58' );
 		if ( javaScriptEnabled ) {
 			await axe( page, 'the picked card with its swap', '.cbuild-step' );
 		}
@@ -12035,6 +12035,15 @@ test.describe( 'Smart swaps (#135)', () => {
 	test( 'a kit with Offer smart swaps off shows no swap control and leaves no room for one', async ( {
 		page,
 	} ) => {
+		// The 58s' card, a plain card, on the wheels step with the 54s picked and their swap on offer. Measured here, so
+		// the test holds when it runs alone (D-430).
+		settings( "array( 'schema_version' => 1, 'swaps' => true )" );
+		await page.goto( linkTo( { ...picks, step: 'wheels' } ) );
+		await expect(
+			page.locator( '.cbuild-card--chosen .cbuild-swap' )
+		).toHaveCount( 1 );
+		const plainBeside = await height( page, 'wheels 58' );
+
 		settings( "array( 'schema_version' => 1, 'swaps' => false )" );
 		await page.goto( linkTo( { ...picks, step: 'review' } ) );
 		await expect( page.locator( '.cbuild-review__total' ) ).toBeVisible();
