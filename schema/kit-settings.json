@@ -71,6 +71,48 @@
 					}
 				}
 			}
+		},
+		"wheel_guide": {
+			"description": "From 1.3.0 (#134): the wheel sizes the guided start recommends for each riding style, in millimetres. Left out, or a style with no row, the plugin's sizes, from published wheel guides: street 50 to 54, park 53 to 56, bowl 55 to 58 and cruising 59 to 65.",
+			"type": "object",
+			"additionalProperties": false,
+			"properties": {
+				"rows": {
+					"description": "The shop's own sizes, a row a riding style at most.",
+					"type": "array",
+					"maxItems": 4,
+					"items": {
+						"type": "object",
+						"additionalProperties": false,
+						"required": [
+							"style",
+							"from"
+						],
+						"properties": {
+							"style": {
+								"description": "The riding style the guided start asks about.",
+								"type": "string",
+								"enum": [
+									"street",
+									"park",
+									"bowl",
+									"cruising"
+								]
+							},
+							"from": {
+								"description": "The smallest wheel it recommends, in millimetres, from 40 to 90, with a point and up to four decimals.",
+								"type": "string",
+								"pattern": "^((4[0-9]|[5-8][0-9])(\\.[0-9]{1,4})?|90(\\.0{1,4})?)(?!\\n)$"
+							},
+							"to": {
+								"description": "The largest, in millimetres, no smaller than from. Left out or empty, from alone.",
+								"type": "string",
+								"pattern": "^((4[0-9]|[5-8][0-9])(\\.[0-9]{1,4})?|90(\\.0{1,4})?)?(?!\\n)$"
+							}
+						}
+					}
+				}
+			}
 		}
 	}
 }

@@ -5609,6 +5609,36 @@ The auditor's third pass on milestone 12, a minor: `LeadDays` read "2 to 4" in a
 
 **Status:** Accepted.
 
+### D-400 · The wheel guide: a row a riding style in `_cbuild_settings`, with defaults from published wheel guides · 2026-11-25
+
+Issue #134 and Zach's answer 2 (`docs/research/plan-after-1-2.md`): the guided start's wheel size comes from a small table of riding style to wheel size on the kit's Build tab, with defaults from published wheel guides, that the shop can change. The choices the answer leaves:
+
+- **Where it is kept.** `wheel_guide` in `_cbuild_settings`, the document a new kit setting goes in (D-354), so 1.2.0 still reads a kit saved on 1.3.0. Its object is closed (`additionalProperties` false), as the width guide's is; a later change of its shape goes in a new key.
+- **The rows' shape.** `rows`, up to four, each `style` (`street`, `park`, `bowl` or `cruising`, the guided start's answers, each once), `from` and optionally `to`, wheel sizes in millimetres from 40 to 90, as decimals; `to` left out is `from` alone, and is never under it. `Domain\Guide\WheelGuide` reads it, and `Domain\Guide\RidingStyle` names the four styles.
+- **The styles are fixed.** The question asks the four the plan names, so the shop sets sizes for each and adds none. A style with no row has the plugin's sizes, and a kit with no `wheel_guide`, as every kit saved before 1.3.0, has them all.
+- **The defaults,** from shops' published wheel guides, read on 25 Nov 2026:
+
+  | Style | Sizes | Sources |
+  | --- | --- | --- |
+  | Street | 50 to 54 mm | Tactics, "How to choose skate wheels": street wheels 50 to 54 mm. Sector 9, "Skateboard wheel sizes explained": street 50 to 54 mm. Skate Warehouse, "How to choose the best skateboard wheel size": 54 mm and under for street. |
+  | Park | 53 to 56 mm | skatedeluxe, "Skateboard wiki: wheels": 53 to 56 mm for small ramps and mini ramps. |
+  | Bowl | 55 to 58 mm | Skate Warehouse, the same guide: 55 to 58 mm for transition and rough ground. |
+  | Cruising | 59 to 65 mm | Skate Warehouse: 59 mm and larger for cruising. Sector 9: 60 to 65 mm for cruising. |
+
+  The ranges overlap where the guides do. A cruising wheel over a truck's limit asks for a riser, as any pick does; the guided start's builds go through the fit engine (D-401), so a kit that cannot take one recommends no such build.
+- **Restore defaults.** No checkbox: a style with both fields empty is stored as no row, so the plugin's sizes keep reaching the kit, and each row's note names them ("Leave both empty for the builder's 50 mm to 54 mm").
+- **The tab's fields are named by style,** `cbuild_kit[settings][wheel_guide][street][from]`, and the editor stores only the styles given sizes, so a stored row's place is no field's. A problem's path is rewritten from `wheel_guide.rows[1].to` to `wheel_guide.cruising.to` (`KitEditor::styled()`), so the notice leads to the field and `aria-invalid` marks it. A wrong size is `wheel_guide_size_range` ("type a size from 40 to 90 mm"), and the guide alone is refused, as every settings field is (D-385).
+
+**Tests.** `WheelGuideTest` (every boundary: 40 and 90 mm kept, 39.9999 and 90.0001 refused, `to` under `from`, a style twice, a style not asked, five rows), `SpanTest`, `KitEditorTest` (kept by style, emptied, named at its style), `BuildTabTest` (the section, the shop's separator, refused alone with its notice) and `KitSchemasTest` (the schema and the domain agree). Infection: 46 mutants of `Domain\Guide`, all killed.
+
+**Red runs.** `WheelGuideTest` with the class missing: "Undefined property: KitSettings::$wheels" (WheelGuideTest.php:58) and 18 more errors. `KitEditorTest::test_the_wheel_guide_keeps_the_sizes_the_shop_types_for_each_style_and_none_for_the_rest`, "Failed asserting that null is identical to Array" (KitEditorTest.php:678), and `test_a_wheel_guide_size_that_is_wrong_is_named_at_its_style_and_refused_alone`, "Undefined constant KitEditor::WHEEL_SIZE" (:708). With the tab's change held back, `BuildTabTest::test_the_wheel_guide_section_keeps_the_shops_sizes_a_style_and_the_builders_for_the_rest` failed at BuildTabTest.php:1197, the section absent, and `test_a_wheel_guide_size_that_is_wrong_is_not_saved_and_the_notice_names_its_field` at :1247, "Failed asserting that two arrays are identical."
+
+**Deliberate breaks.** `to` allowed one ten-thousandth under `from`: "to under from" failed at WheelGuideTest.php:172. The style left out of a problem's path: `KitEditorTest` failed at :723, "Failed asserting that two arrays are identical." Put back, both passed.
+
+**Why:** the shop knows its customers' riding better than any guide, and a guide is a better start than an empty table; storing only what the shop changed keeps the plugin's sizes current for everything else.
+
+**Status:** Accepted.
+
 ### D-410 · A kit's page and the Builder page print no Product markup, with WooCommerce's or Yoast's, and need no new filter · 2026-11-25
 
 Issue #141, from the roadmap's companion review of 24 November: in place of a Creative Schema release, a test that a kit's page and the Builder block's page print no Product JSON-LD, with WooCommerce's structured data and with Yoast SEO's. Where one did, the builder was to remove it through that plugin's filter, for the kit only.

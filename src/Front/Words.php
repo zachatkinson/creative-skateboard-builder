@@ -11,6 +11,7 @@ namespace CreativeBranding\SkateboardBuilder\Front;
 
 use CreativeBranding\SkateboardBuilder\Admin\Labels;
 use CreativeBranding\SkateboardBuilder\Domain\Fit\Problem;
+use CreativeBranding\SkateboardBuilder\Domain\Guide\RidingStyle;
 use CreativeBranding\SkateboardBuilder\Domain\Measure\Measure;
 use CreativeBranding\SkateboardBuilder\Domain\Measure\Unit;
 use CreativeBranding\SkateboardBuilder\Domain\Rule\Finding;
@@ -578,5 +579,21 @@ final class Words {
 		}
 		$first = mb_substr( $label, 0, 1 );
 		return ( function_exists( 'mb_strtolower' ) ? mb_strtolower( $first, 'UTF-8' ) : strtolower( $first ) ) . mb_substr( $label, 1 );
+	}
+
+	/**
+	 * A riding style as the guided start's question offers it, and as the kit's Wheel guide names its row (#134).
+	 *
+	 * @since 1.3.0
+	 *
+	 * @param RidingStyle $style The style.
+	 */
+	public static function style( RidingStyle $style ): string {
+		return match ( $style ) {
+			RidingStyle::Street   => _x( 'Street', 'where a shopper skates', 'creative-skateboard-builder' ),
+			RidingStyle::Park     => _x( 'Skatepark', 'where a shopper skates', 'creative-skateboard-builder' ),
+			RidingStyle::Bowl     => _x( 'Bowl and transition', 'where a shopper skates', 'creative-skateboard-builder' ),
+			RidingStyle::Cruising => _x( 'Cruising', 'where a shopper skates', 'creative-skateboard-builder' ),
+		};
 	}
 }

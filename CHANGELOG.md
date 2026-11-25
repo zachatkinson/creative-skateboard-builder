@@ -26,6 +26,7 @@ All notable changes to this project are documented here. The format follows [Kee
   - a DOM event, `cbuild:rendered`, on the builder's element, bubbling, with the kit and the step, once the builder is hydrated and once after each answer it draws, never for a pick or a key before its answer;
   - `.cbuild[data-ready]`, the sign the builder has hydrated, for a script that loads after the first event;
   - the classes `cbuild-card`, `cbuild-card__control`, `cbuild-picture`, `cbuild__stage` and `cbuild-step`, named in HOOKS.md as API, with the last child of `.cbuild__stage` and the first of `form.cbuild-step` kept for another plugin's element through every redraw.
+- **Wheel guide** (1.3.0), a section of a kit's Build tab: the smallest and largest wheel the guided start recommends for each riding style, street, skatepark, bowl and transition, and cruising, 40 to 90 mm. Kept as `wheel_guide` in `_cbuild_settings`; a kit without one, or a style left empty, has the builder's sizes from published wheel guides: 50 to 54, 53 to 56, 55 to 58 and 59 to 65 mm (#134, D-400).
 - **The deck step's time, placed:** the state route's `Server-Timing` header to a shop manager names the answer's phases after its time and queries: `cbuild-shelf`, `cbuild-cards` and, on the deck step, `cbuild-boards` (#125, D-365).
 
 ### Changed

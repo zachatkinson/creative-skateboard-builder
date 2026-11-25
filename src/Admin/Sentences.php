@@ -256,6 +256,8 @@ final class Sentences {
 			KitEditor::BUILDER_PAGE => sprintf( __( '%s: choose one of the pages listed, or the kit\'s own page. A page is listed when it is published and holds this kit\'s Builder block.', 'creative-skateboard-builder' ), $field ),
 			/* translators: %s: a field's name. */
 			KitEditor::GUIDE_WIDTH => sprintf( __( '%s: type a width from 5 to 12 in.', 'creative-skateboard-builder' ), $field ),
+			/* translators: %s: the field, such as "Wheel guide, Street, Smallest wheel". */
+			KitEditor::WHEEL_SIZE => sprintf( __( '%s: type a size from 40 to 90 mm.', 'creative-skateboard-builder' ), $field ),
 			/* translators: %s: a field's name, Assembly time in business days. */
 			KitEditor::LEAD_DAYS_FORM => sprintf( __( '%s: type a number of business days, such as 2, or a range with the fewer first, such as 2-4.', 'creative-skateboard-builder' ), $field ),
 			/* translators: 1: a field's name, Assembly time in business days. 2: the most business days it may be, 60. */

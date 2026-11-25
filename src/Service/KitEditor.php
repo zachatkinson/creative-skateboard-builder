@@ -12,6 +12,7 @@ namespace CreativeBranding\SkateboardBuilder\Service;
 use CreativeBranding\SkateboardBuilder\Domain\Fit\BuildValidator;
 use CreativeBranding\SkateboardBuilder\Domain\Fit\FitEngine;
 use CreativeBranding\SkateboardBuilder\Domain\Fit\Problem;
+use CreativeBranding\SkateboardBuilder\Domain\Guide\RidingStyle;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Assembly;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\DocumentError;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Fields;
@@ -93,6 +94,13 @@ final class KitEditor {
 	public const GUIDE_SHOE_TWICE = 'width_guide_shoe_twice';
 
 	/**
+	 * A wheel guide's row names a wheel size outside 40 to 90 mm (#134).
+	 *
+	 * @since 1.3.0
+	 */
+	public const WHEEL_SIZE = 'wheel_guide_size_range';
+
+	/**
 	 * The assembly time is not a count of business days or a range of them, the fewer first (#142).
 	 *
 	 * @since 1.2.0
@@ -109,7 +117,7 @@ final class KitEditor {
 	/**
 	 * The settings' fields refused alone where wrong (D-385). The start button is a box, which is never wrong.
 	 */
-	private const OWN_FIELDS = array( 'width_guide', 'builder_page', 'lead_days' );
+	private const OWN_FIELDS = array( 'width_guide', 'wheel_guide', 'builder_page', 'lead_days' );
 
 	/**
 	 * A document the domain read and its schema still refused. The schemas and the domain agree
@@ -436,15 +444,33 @@ final class KitEditor {
 			// Only the settings document has a width guide and an assembly time, so neither needs a check of the key.
 			$code = match ( true ) {
 				'lead_days' === $refused->path => DocumentError::OutOfRange === $refused->reason ? self::LEAD_DAYS_RANGE : self::LEAD_DAYS_FORM,
-				self::SETTINGS === $key && DocumentError::Duplicate === $refused->reason => self::GUIDE_SHOE_TWICE,
+				self::SETTINGS === $key && DocumentError::Duplicate === $refused->reason && str_starts_with( $refused->path, 'width_guide' ) => self::GUIDE_SHOE_TWICE,
 				DocumentError::OutOfRange !== $refused->reason => $refused->reason->value,
 				self::PICTURE === $key => self::WHEELBASE_RANGE,
 				(bool) preg_match( '/\Awidth_guide\.rows\[\d+\]\.(from|to)\z/', $refused->path ) => self::GUIDE_WIDTH,
+				(bool) preg_match( '/\Awheel_guide\.rows\[\d+\]\.(from|to)\z/', $refused->path ) => self::WHEEL_SIZE,
 				default => $refused->reason->value,
 			};
-			return array( self::problem( $key, $code, $refused->path ) );
+			return array( self::problem( $key, $code, self::SETTINGS === $key ? self::styled( $document, $refused->path ) : $refused->path ) );
 		}
 		return array();
+	}
+
+	/**
+	 * A wheel guide row's path by the style it is for, as the tab sends it: `wheel_guide.rows[1].to` is
+	 * `wheel_guide.cruising.to` where the second row stored is cruising's (#134). The tab draws a row a style, and the
+	 * stored rows hold only the styles given sizes, so a row's place there is no field's. Any other path is as it was.
+	 *
+	 * @param array<string, mixed> $document The settings.
+	 * @param string               $path     A problem's path in them.
+	 */
+	private static function styled( array $document, string $path ): string {
+		if ( 1 !== preg_match( '/\Awheel_guide\.rows\[(\d+)\](.*)\z/s', $path, $found ) ) {
+			return $path;
+		}
+		$rows  = self::map( self::map( $document['wheel_guide'] ?? null )['rows'] ?? null );
+		$style = self::map( $rows[ (int) $found[1] ] ?? null )['style'] ?? null;
+		return is_string( $style ) && 1 === preg_match( '/\A[a-z]{1,16}\z/', $style ) ? 'wheel_guide.' . $style . $found[2] : $path;
 	}
 
 	/**
@@ -816,6 +842,9 @@ final class KitEditor {
 		if ( is_array( $sent['width_guide'] ?? null ) ) {
 			$document['width_guide'] = self::guide( $sent['width_guide'], $separator );
 		}
+		if ( is_array( $sent['wheel_guide'] ?? null ) ) {
+			$document['wheel_guide'] = self::wheels( $sent['wheel_guide'], $separator );
+		}
 		$page = array_key_exists( 'builder_page', $sent ) ? self::text( $sent, 'builder_page' ) : null;
 		if ( null === $page && isset( $stored['builder_page'] ) ) {
 			$document['builder_page'] = $stored['builder_page'];
@@ -883,6 +912,34 @@ final class KitEditor {
 			$guide['rows'] = $rows;
 		}
 		return $guide;
+	}
+
+	/**
+	 * The wheel guide from its section's fields (#134): a style's smallest and largest wheel, sent by style. A style left
+	 * empty has the plugin's sizes and is stored as no row, so a later release's change of them reaches the kit; a
+	 * largest left empty is the smallest alone. A style the question does not ask is not read.
+	 *
+	 * @param array<mixed> $sent      The section's fields, by style.
+	 * @param string       $separator The shop's decimal separator.
+	 * @return array<string, mixed>
+	 */
+	private static function wheels( array $sent, string $separator ): array {
+		$rows = array();
+		foreach ( RidingStyle::cases() as $style ) {
+			$row    = self::map( $sent[ $style->value ] ?? null );
+			$fields = array_filter(
+				array(
+					'from' => self::text( $row, 'from' ),
+					'to'   => self::text( $row, 'to' ),
+				),
+				static fn( string $text ): bool => '' !== $text
+			);
+			if ( array() === $fields ) {
+				continue;
+			}
+			$rows[] = array( 'style' => $style->value ) + array_map( static fn( string $size ): string => self::measure( $size, Unit::Millimetre, $separator ), $fields );
+		}
+		return array() === $rows ? array() : array( 'rows' => $rows );
 	}
 
 	/**

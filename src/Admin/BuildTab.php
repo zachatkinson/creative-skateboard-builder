@@ -9,6 +9,8 @@ declare( strict_types=1 );
 
 namespace CreativeBranding\SkateboardBuilder\Admin;
 
+use CreativeBranding\SkateboardBuilder\Domain\Guide\RidingStyle;
+use CreativeBranding\SkateboardBuilder\Domain\Guide\WheelGuide;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Assembly;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Kit;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Preset;
@@ -21,6 +23,7 @@ use CreativeBranding\SkateboardBuilder\Domain\Picture\Layout;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Slots;
 use CreativeBranding\SkateboardBuilder\Front\BuilderPlace;
 use CreativeBranding\SkateboardBuilder\Front\WidthGuide;
+use CreativeBranding\SkateboardBuilder\Front\Words;
 use CreativeBranding\SkateboardBuilder\Port\ShopSettings;
 use CreativeBranding\SkateboardBuilder\Service\KitEditor;
 use CreativeBranding\SkateboardBuilder\Support\Options;
@@ -134,6 +137,12 @@ final class BuildTab {
 	 * of every control's ID, as a problem's path gives it.
 	 */
 	private const GUIDE = 'settings-width_guide';
+
+	/**
+	 * The wheel guide's section, kept in the settings document (1.3.0, #134): its name after the prefix of every
+	 * control's ID, as a problem's path gives it.
+	 */
+	private const WHEELS = 'settings-wheel_guide';
 
 	/**
 	 * The assembly time's field, kept in the settings document (1.2.0, #142) and shown in the Assembly section beside
@@ -437,13 +446,19 @@ final class BuildTab {
 				__( 'Under the deck step\'s question "What width do you ride?", "Not sure of your width?" opens a table of shoe sizes and the deck widths each rides.', 'creative-skateboard-builder' ),
 				$this->guide( $shown[ KitEditor::SETTINGS ] ),
 			),
+			self::WHEELS        => array(
+				__( 'Wheel guide', 'creative-skateboard-builder' ),
+				__( 'Before the first step, "Help me choose" asks where the shopper skates and recommends wheels in these sizes, and its ready builds have them. Leave a style empty for the builder\'s sizes, from published wheel guides.', 'creative-skateboard-builder' ),
+				$this->wheels( $shown[ KitEditor::SETTINGS ] ),
+			),
 		) as $name => $section ) {
 			// The settings document (1.2.0, D-354) is shown in three sections: the Builder page and the start button in
 			// Layout, the width guide in a section of its own, and the assembly time in Assembly (#142). Each lists the
 			// problems in its own fields, and is shown as typed where the settings were refused for one of them.
-			$problems = self::GUIDE === $name ? array() : ( $listed[ $name ] ?? array() );
+			$own      = self::GUIDE === $name || self::WHEELS === $name;
+			$problems = $own ? array() : ( $listed[ $name ] ?? array() );
 			$typed    = isset( $refused[ $name ] );
-			if ( KitEditor::LAYOUT === $name || self::GUIDE === $name || KitEditor::ASSEMBLY === $name ) {
+			if ( KitEditor::LAYOUT === $name || $own || KitEditor::ASSEMBLY === $name ) {
 				$own      = array_values( array_filter( $listed[ KitEditor::SETTINGS ] ?? array(), static fn( array $problem ): bool => self::home( $problem['field'] ) === $name ) );
 				$problems = array( ...$problems, ...$own );
 				$typed    = $typed || ( isset( $refused[ KitEditor::SETTINGS ] ) && array() !== $own );
@@ -817,13 +832,14 @@ final class BuildTab {
 	}
 
 	/**
-	 * The section a settings field is shown in, by its control's ID: Width guide, Assembly or Layout.
+	 * The section a settings field is shown in, by its control's ID: Width guide, Wheel guide, Assembly or Layout.
 	 *
 	 * @param string $field The control's ID.
 	 */
 	private static function home( string $field ): string {
 		return match ( true ) {
 			str_starts_with( $field, self::IDS . '-' . self::GUIDE ) => self::GUIDE,
+			str_starts_with( $field, self::IDS . '-' . self::WHEELS ) => self::WHEELS,
 			self::IDS . '-' . self::DAYS === $field => KitEditor::ASSEMBLY,
 			default => KitEditor::LAYOUT,
 		};
@@ -1166,6 +1182,49 @@ final class BuildTab {
 	}
 
 	/**
+	 * The Wheel guide section's fields (1.3.0, #134): a group a riding style, with its smallest and largest wheel. A
+	 * style the kit gives no sizes shows empty fields, and its note says the builder's sizes it then has.
+	 *
+	 * @param array<mixed> $document The settings document to show.
+	 * @return list<array{id: string, legend: string, moves: bool, fold: string, open: bool, fields: list<array<string, mixed>>, more: list<array<string, mixed>>}>
+	 */
+	private function wheels( array $document ): array {
+		$id    = self::IDS . '-' . self::WHEELS;
+		$name  = self::FIELD . '[settings][wheel_guide]';
+		$rows  = array();
+		$guide = is_array( $document['wheel_guide'] ?? null ) ? $document['wheel_guide'] : array();
+		foreach ( self::rows( $guide, 'rows' ) as $row ) {
+			$rows[ self::text( $row, 'style' ) ] = $row;
+		}
+		$groups = array();
+		foreach ( RidingStyle::cases() as $style ) {
+			$row      = $rows[ $style->value ] ?? array();
+			$plugins  = WheelGuide::plugins()->span( $style );
+			$groups[] = array(
+				'id'     => $id . '-' . $style->value,
+				'legend' => Words::style( $style ),
+				'moves'  => false,
+				'fold'   => '',
+				'open'   => true,
+				'fields' => array(
+					$this->field( $id . '-' . $style->value . '-from', $name . '[' . $style->value . '][from]', __( 'Smallest wheel (mm)', 'creative-skateboard-builder' ), 'text', self::measure( $row['from'] ?? '' ) ),
+					$this->field(
+						$id . '-' . $style->value . '-to',
+						$name . '[' . $style->value . '][to]',
+						__( 'Largest wheel (mm)', 'creative-skateboard-builder' ),
+						'text',
+						self::measure( $row['to'] ?? '' ),
+						/* translators: 1: the smallest wheel size the builder recommends, such as 50 mm. 2: the largest, such as 54 mm. */
+						array( 'note' => sprintf( __( 'Leave both empty for the builder\'s %1$s to %2$s. Leave this one empty for the smallest alone.', 'creative-skateboard-builder' ), Words::measure( $plugins->from ), Words::measure( $plugins->to ?? $plugins->from ) ) )
+					),
+				),
+				'more'   => array(),
+			);
+		}
+		return $groups;
+	}
+
+	/**
 	 * The plugin's rows of the width guide, as the editor starts from them.
 	 *
 	 * @return list<array{shoe: string, from: string, to: string}>
@@ -1380,8 +1439,15 @@ final class BuildTab {
 			'width_guide'        => __( 'Width guide', 'creative-skateboard-builder' ),
 			'width_guide.rows'   => __( 'Width guide', 'creative-skateboard-builder' ),
 			'width_guide.shown'  => __( 'Show the width guide', 'creative-skateboard-builder' ),
+			'wheel_guide'        => __( 'Wheel guide', 'creative-skateboard-builder' ),
+			'wheel_guide.rows'   => __( 'Wheel guide', 'creative-skateboard-builder' ),
 		);
 		$found  = array();
+		if ( 1 === preg_match( '/\Awheel_guide\.([a-z]+)\.(from|to)\z/', $path, $found ) && null !== RidingStyle::tryFrom( $found[1] ) ) {
+			$label = 'from' === $found[2] ? __( 'Smallest wheel', 'creative-skateboard-builder' ) : __( 'Largest wheel', 'creative-skateboard-builder' );
+			/* translators: 1: a riding style, such as Street. 2: a field's label, such as Smallest wheel. */
+			return sprintf( __( 'Wheel guide, %1$s, %2$s', 'creative-skateboard-builder' ), Words::style( RidingStyle::from( $found[1] ) ), $label );
+		}
 		if ( 1 === preg_match( '/\Awidth_guide\.rows\[(\d+)\]\.?(.*)\z/', $path, $found ) ) {
 			$label = array(
 				'shoe' => __( 'Shoe size', 'creative-skateboard-builder' ),
@@ -1491,6 +1557,7 @@ final class BuildTab {
 		return match ( $field ) {
 			'builder_page' => __( 'The kit\'s Builder page was not saved. The Build tab shows it as you chose it, with what to put right.', 'creative-skateboard-builder' ),
 			'width_guide'  => __( 'The kit\'s width guide was not saved. The Build tab shows it as you typed it, with what to put right.', 'creative-skateboard-builder' ),
+			'wheel_guide'  => __( 'The kit\'s wheel guide was not saved. The Build tab shows it as you typed it, with what to put right.', 'creative-skateboard-builder' ),
 			'lead_days'    => __( 'The kit\'s assembly time in business days was not saved. The Build tab shows it as you typed it, with what to put right.', 'creative-skateboard-builder' ),
 			// A field the editor never refuses alone: the sentence for the whole settings is true of it.
 			default        => self::refused( KitEditor::SETTINGS ),
