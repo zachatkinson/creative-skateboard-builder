@@ -62,9 +62,12 @@ final class StartButton implements Hookable {
 	/**
 	 * The outline the button takes where the theme draws it as Add to cart's twin, in Add to cart's colour, which the
 	 * script below sets as `--cbuild-start-ink`. Its weight outranks a theme's plain `.button:hover`. An inset ring, not
-	 * a border, so its height stays Add to cart's.
+	 * a border, so its height stays Add to cart's. The paragraph keeps no inline padding: WooCommerce's add-to-cart form
+	 * block pads every child after its first by 4 px (`:where(.wp-block-woocommerce-add-to-cart-form>*+*)`, in
+	 * assets/client/blocks/wc-block-library-style.css, 11.3.1), which set the button 4 px in from the quantity and
+	 * Add to cart on a block theme.
 	 */
-	private const string STYLES = ':where(.cbuild-start__link){display:inline-block}.cbuild-start .cbuild-start__link.cbuild-start__link--outline,.cbuild-start .cbuild-start__link.cbuild-start__link--outline:hover,.cbuild-start .cbuild-start__link.cbuild-start__link--outline:focus{background:transparent;color:var(--cbuild-start-ink);border-color:var(--cbuild-start-ink);box-shadow:inset 0 0 0 2px var(--cbuild-start-ink)}.cbuild-start .cbuild-start__link.cbuild-start__link--outline:hover{background:color-mix(in srgb,var(--cbuild-start-ink) 12%,transparent)}';
+	private const string STYLES = '.cbuild-start{padding-inline:0}:where(.cbuild-start__link){display:inline-block}.cbuild-start .cbuild-start__link.cbuild-start__link--outline,.cbuild-start .cbuild-start__link.cbuild-start__link--outline:hover,.cbuild-start .cbuild-start__link.cbuild-start__link--outline:focus{background:transparent;color:var(--cbuild-start-ink);border-color:var(--cbuild-start-ink);box-shadow:inset 0 0 0 2px var(--cbuild-start-ink)}.cbuild-start .cbuild-start__link.cbuild-start__link--outline:hover{background:color-mix(in srgb,var(--cbuild-start-ink) 12%,transparent)}';
 
 	/**
 	 * Gives the button just printed Add to cart's font, weight and height as the page draws them (#133, D-377): a theme

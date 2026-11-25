@@ -8881,6 +8881,21 @@ test.describe( 'The start button on a theme (#133)', () => {
 				'a background, a border or a ring'
 			).toBe( true );
 			expect( ours.padding, 'padding' ).toBe( true );
+			// In line with the quantity and Add to cart: on Twenty Twenty-Five WooCommerce's add-to-cart form block pads
+			// every child after its first by 4 px (M12's walkthrough, #133).
+			const edges = await start.evaluate( ( link ) => {
+				const form = document
+					.querySelector( 'form.cart' )!
+					.getBoundingClientRect();
+				const box = link.getBoundingClientRect();
+				return 'rtl' === getComputedStyle( link ).direction
+					? { ours: box.right, theirs: form.right }
+					: { ours: box.left, theirs: form.left };
+			} );
+			expect(
+				Math.abs( edges.ours - edges.theirs ),
+				`in line with the quantity and Add to cart: ${ edges.ours } and ${ edges.theirs } px`
+			).toBeLessThanOrEqual( 0.5 );
 			if ( ! javaScriptEnabled ) {
 				// Add to cart's colours, weight and height as drawn are read by the page's script (D-377); without it
 				// the button is the theme's own as it stands, which on Kadence and Twenty Twenty-Five is Add to cart's.
