@@ -5025,3 +5025,19 @@ msgstr[1] "%1$s sur 5, %2$s avis"
 msgctxt "a rating and its count of reviews"
 msgid "%1$s (%2$s)"
 msgstr "%1$s (%2$s)"
+
+#: src/Admin/PartSpecsPanel.php:343
+msgid "Rank in its slot"
+msgstr "Rang dans son emplacement"
+
+#: src/Admin/PartSpecsPanel.php:345
+msgid "A whole number, higher being better. Left empty, the variation takes its product's rank."
+msgstr "Un nombre entier, et plus il est élevé, mieux c’est. Laissé vide, la variation prend le rang de son produit."
+
+#: src/Admin/PartSpecsPanel.php:346
+msgid "A whole number, higher being better. When the builder offers a better part, it offers the next rank up, and where no part in the slot has a rank, the next price up. Leave it empty for none."
+msgstr "Un nombre entier, et plus il est élevé, mieux c’est. Quand le configurateur propose une meilleure pièce, il propose le rang suivant, et là où aucune pièce de l’emplacement n’a de rang, le prix suivant. Laissez-le vide pour n’en donner aucun."
+
+#: templates/admin/part-specs.php:146
+msgid "Rank"
+msgstr "Rang"

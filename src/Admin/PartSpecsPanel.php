@@ -29,6 +29,7 @@ use CreativeBranding\SkateboardBuilder\Service\SpecWriter;
 use CreativeBranding\SkateboardBuilder\Support\Cast;
 use CreativeBranding\SkateboardBuilder\Support\LayerMeta;
 use CreativeBranding\SkateboardBuilder\Support\NotOffered;
+use CreativeBranding\SkateboardBuilder\Support\PartRank;
 use CreativeBranding\SkateboardBuilder\Support\Options;
 use WC_Admin_Meta_Boxes;
 use WC_Product;
@@ -111,6 +112,13 @@ final class PartSpecsPanel {
 	private const OFFER = 'cbuild_not_offered';
 
 	private const VARIATION_OFFER = 'cbuild_variation_not_offered';
+
+	/**
+	 * The names the part's rank is sent under, on the product and on each variation (1.3.0, #135, D-395).
+	 */
+	private const RANK = 'cbuild_rank';
+
+	private const VARIATION_RANK = 'cbuild_variation_rank';
 
 	/**
 	 * The slot whose parts need each group, by the group's first spec. Sets are any part's.
@@ -221,6 +229,7 @@ final class PartSpecsPanel {
 		$groups = $this->groups( $product_object, self::FIELDS, 'cbuild_specs', 'cbuild_spec_table' );
 		$layer  = array() === $groups ? null : $this->layer( $product_object, self::FIELDS, 'cbuild_layer' );
 		$offer  = self::offer( $product_object, $groups, self::FIELDS, self::OFFER );
+		$rank   = self::rank( $product_object, $groups, self::FIELDS, self::RANK );
 		$whole  = true;
 		include CBUILD_PATH . 'templates/admin/part-specs.php';
 	}
@@ -244,6 +253,7 @@ final class PartSpecsPanel {
 			return;
 		}
 		$layer = array() === $groups ? null : $this->layer( $product, self::FIELDS . '-' . $loop, 'cbuild_variation_layer[' . $loop . ']' );
+		$rank  = self::rank( $product, $groups, self::FIELDS . '-' . $loop, self::VARIATION_RANK . '[' . $loop . ']' );
 		$whole = false;
 		include CBUILD_PATH . 'templates/admin/part-specs.php';
 	}
@@ -267,6 +277,7 @@ final class PartSpecsPanel {
 		$chart = isset( $_POST['cbuild_spec_table'] ) ? wp_unslash( $_POST['cbuild_spec_table'] ) : null;
 		$layer = isset( $_POST['cbuild_layer'] ) ? wp_unslash( $_POST['cbuild_layer'] ) : null;
 		$offer = isset( $_POST[ self::OFFER ] ) ? wp_unslash( $_POST[ self::OFFER ] ) : null;
+		$rank  = isset( $_POST[ self::RANK ] ) ? wp_unslash( $_POST[ self::RANK ] ) : null;
 		// The product data box was sent, so a box not ticked is unticked; a save without it, as another plugin's, is not.
 		$form = isset( $_POST['product-type'] );
 		// phpcs:enable
@@ -275,6 +286,7 @@ final class PartSpecsPanel {
 		}
 		$this->storeLayer( $product, $layer );
 		self::storeOffer( $product, $form, $offer );
+		self::storeRank( $product, $rank );
 	}
 
 	/**
@@ -297,6 +309,7 @@ final class PartSpecsPanel {
 		$charts = isset( $_POST['cbuild_variation_spec_table'] ) && is_array( $_POST['cbuild_variation_spec_table'] ) ? wp_unslash( $_POST['cbuild_variation_spec_table'] ) : array();
 		$layers = isset( $_POST['cbuild_variation_layer'] ) && is_array( $_POST['cbuild_variation_layer'] ) ? wp_unslash( $_POST['cbuild_variation_layer'] ) : array();
 		$offers = isset( $_POST[ self::VARIATION_OFFER ] ) && is_array( $_POST[ self::VARIATION_OFFER ] ) ? wp_unslash( $_POST[ self::VARIATION_OFFER ] ) : array();
+		$ranks  = isset( $_POST[ self::VARIATION_RANK ] ) && is_array( $_POST[ self::VARIATION_RANK ] ) ? wp_unslash( $_POST[ self::VARIATION_RANK ] ) : array();
 		// phpcs:enable
 		if ( isset( $rows[ $loop ] ) && is_array( $rows[ $loop ] ) ) {
 			$this->store( $variation, $rows[ $loop ], $charts[ $loop ] ?? null );
@@ -304,6 +317,53 @@ final class PartSpecsPanel {
 		$this->storeLayer( $variation, $layers[ $loop ] ?? null );
 		// WooCommerce saves the variations its form sent, so a box not ticked in one is unticked.
 		self::storeOffer( $variation, true, $offers[ $loop ] ?? null );
+		self::storeRank( $variation, $ranks[ $loop ] ?? null );
+	}
+
+	/**
+	 * The part's rank in its slot (1.3.0, #135, D-395): drawn where the panel has fields, and where the part has one,
+	 * so it can be cleared on a part no kit takes now.
+	 *
+	 * @param WC_Product  $product The product or variation.
+	 * @param list<mixed> $groups  The panel's groups of fields for it.
+	 * @param string      $prefix  The prefix of each control's ID.
+	 * @param string      $name    The name the field is sent under.
+	 * @return array{id: string, name: string, value: string, open: bool, label: string, note: string}|null
+	 */
+	private static function rank( WC_Product $product, array $groups, string $prefix, string $name ): ?array {
+		$own = PartRank::own( $product );
+		if ( array() === $groups && null === $own ) {
+			return null;
+		}
+		return array(
+			'id'    => self::field( $prefix, 'rank' ),
+			'name'  => $name,
+			'value' => null === $own ? '' : (string) $own,
+			'open'  => null !== $own,
+			'label' => __( 'Rank in its slot', 'creative-skateboard-builder' ),
+			'note'  => $product->is_type( 'variation' )
+				? __( 'A whole number, higher being better. Left empty, the variation takes its product\'s rank.', 'creative-skateboard-builder' )
+				: __( 'A whole number, higher being better. When the builder offers a better part, it offers the next rank up, and where no part in the slot has a rank, the next price up. Leave it empty for none.', 'creative-skateboard-builder' ),
+		);
+	}
+
+	/**
+	 * Put the rank sent on the product WooCommerce is about to write: a whole number from 0 to 999,999,999 sets it, an
+	 * empty field takes it off, and anything else is not saved. A save with no field, as another plugin's, leaves it.
+	 *
+	 * @param WC_Product $product The product or variation.
+	 * @param mixed      $sent    What the field sent, unslashed, or null.
+	 */
+	private static function storeRank( WC_Product $product, mixed $sent ): void {
+		if ( ! is_string( $sent ) ) {
+			return;
+		}
+		$rank = trim( sanitize_text_field( $sent ) );
+		if ( '' === $rank ) {
+			$product->delete_meta_data( Options::META_RANK );
+		} elseif ( 1 === preg_match( PartRank::PATTERN, $rank ) ) {
+			$product->update_meta_data( Options::META_RANK, $rank );
+		}
 	}
 
 	/**

@@ -354,6 +354,47 @@ export interface CbuildState {
 		}[];
 	} | null;
 	/**
+	 * From 1.3.0: the swaps the build is offered (#135, D-394, D-396). On the review, the same board for less first, where there is one, then each picked slot's in step order, for less before better; on a step, the step's own pick's; otherwise none. Each fits the whole build, is in stock in the quantity the build takes, and leaves the build no problem it did not have. The deck is never swapped. An answer an earlier container makes has none.
+	 *
+	 * Items: A swap: one press that puts these parts in place of the build's.
+	 */
+	swaps?: {
+		/**
+		 * `less`: one slot's part, the cheapest that fits. `better`: one slot's part, the next up by the shop's rank, or by price where no part of the slot has a rank. `board`: the same board for less, every picked slot but the deck that has a part for less.
+		 */
+		kind: 'less' | 'better' | 'board';
+		/**
+		 * What it swaps, one entry a slot, in step order.
+		 *
+		 * @minItems 1
+		 */
+		parts: {
+			/**
+			 * The slot's key.
+			 */
+			slot: string;
+			/**
+			 * The ID of the part the build has now.
+			 */
+			was: number;
+			/**
+			 * The ID of the part it takes in its place.
+			 */
+			part: number;
+			/**
+			 * That part's name, or an empty string when its product has gone.
+			 */
+			name: string;
+		}[];
+		/**
+		 * What the swap does to the total, as the total is worked out: `amount` in minor units, below 0 where it takes off, and `text`, how much without a sign, as the shop writes prices. The total after the swap is the total now plus `amount`.
+		 */
+		change: {
+			amount: number;
+			text: string;
+		};
+	}[];
+	/**
 	 * What the build costs so far.
 	 */
 	total: {

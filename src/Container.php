@@ -68,6 +68,7 @@ final class Container {
 			Port\LayerRenditions::class => Adapter\WpLayerRenditions::class,
 			Port\PictureFiles::class    => Adapter\WpPictureFiles::class,
 			Port\ProductMeta::class     => Repository\ProductMetaRepository::class,
+			Port\PartRanks::class       => Adapter\WooPartRanks::class,
 			Port\SavedBuildStore::class => Repository\SavedBuildRepository::class,
 		);
 	}
@@ -479,7 +480,7 @@ final class Container {
 		return array(
 			Service\IndexJobs::class        => static fn( object $jobs, Container $c ): object => $jobs instanceof Service\IndexJobs ? $jobs->withRenditions( $c->get( Service\PartRenditions::class ) ) : $jobs,
 			Service\CatalogueCheck::class   => static fn( object $check, Container $c ): object => $check instanceof Service\CatalogueCheck ? $check->withLayers( $c->get( Port\LayerImages::class ) )->withLooks( $c->get( Port\PartLooks::class ) )->withKeptOut( $c->get( Port\PartsKeptOut::class ) ) : $check,
-			Front\StateAnswer::class        => static fn( object $answer, Container $c ): object => $answer instanceof Front\StateAnswer ? $answer->withArtwork( $c->get( Service\LayerArtwork::class ) )->withShelf( $c->get( Service\StepShelf::class ) )->withPictures( self::tiles( $c ) )->withPhases( $c->get( Service\Phases::class ) ) : $answer,
+			Front\StateAnswer::class        => static fn( object $answer, Container $c ): object => $answer instanceof Front\StateAnswer ? $answer->withArtwork( $c->get( Service\LayerArtwork::class ) )->withShelf( $c->get( Service\StepShelf::class ) )->withPictures( self::tiles( $c ) )->withPhases( $c->get( Service\Phases::class ) )->withSwaps( $c->get( Service\BuildSwaps::class ) ) : $answer,
 			Admin\PartSpecsPanel::class     => static fn( object $panel, Container $c ): object => $panel instanceof Admin\PartSpecsPanel ? $panel->withImages( $c->get( Port\LayerImages::class ) ) : $panel,
 			Front\BuilderPage::class        => static fn( object $page, Container $c ): object => $page instanceof Front\BuilderPage ? $page->withSaved( $c->get( Service\SavedBuilds::class ) ) : $page,
 			Front\Builder::class            => static fn( object $builder, Container $c ): object => $builder instanceof Front\Builder ? $builder->withSaved( $c->get( Front\RememberedWidth::class ), $c->get( Service\SavedBuilds::class ) )->withShelf( $c->get( Service\StepShelf::class ) )->withGuide( $c->get( Front\GuidedStart::class ) ) : $builder,

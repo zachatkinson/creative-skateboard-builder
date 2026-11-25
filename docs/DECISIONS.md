@@ -236,6 +236,8 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-393 · A card's rating sits beside its price, and a ready build's pick costs a card one line](#d-393--a-cards-rating-sits-beside-its-price-and-a-ready-builds-pick-costs-a-card-one-line--2026-11-25)
 - [D-403 · Each row of the review shows its card's picture in a 3rem square, its place kept](#d-403--each-row-of-the-review-shows-its-cards-picture-in-a-3rem-square-its-place-kept--2026-11-25)
 - [D-394 · A swap is the cheapest or the next better part that fits the whole build, and the same board for less swaps every slot but the deck](#d-394--a-swap-is-the-cheapest-or-the-next-better-part-that-fits-the-whole-build-and-the-same-board-for-less-swaps-every-slot-but-the-deck--2026-11-25)
+- [D-395 · A part's rank is a whole number on its Part specs, higher being better, and a filter answers last](#d-395--a-parts-rank-is-a-whole-number-on-its-part-specs-higher-being-better-and-a-filter-answers-last--2026-11-25)
+- [D-396 · Swaps are worked out on the review and on a step with a pick, and priced as the total is](#d-396--swaps-are-worked-out-on-the-review-and-on-a-step-with-a-pick-and-priced-as-the-total-is--2026-11-25)
 
 ### Accessibility
 
@@ -5829,6 +5831,41 @@ Issue #135, in milestone 13's plan ("Smart swaps"), with Zach's answers of 24 No
 **Red run.** `SwapperTest`, before `Swapper` was written: every case, `Class "CreativeBranding\SkateboardBuilder\Domain\Fit\Swapper" not found` (SwapperTest.php:85).
 
 **Why:** Zach's answers, with the smallest choice that leaves a shopper the say: a swap that fits as the cart will check it, one step at a time, and the look left alone.
+
+**Status:** Accepted.
+
+### D-395 · A part's rank is a whole number on its Part specs, higher being better, and a filter answers last · 2026-11-25
+
+Issue #135: "better" follows the shop's rank, "a number on the part's Part specs (not a list on the kit)", and falls back to price where no part in the slot has one. The issue leaves the number's form, where a variation's comes from and how another plugin answers.
+
+- **A whole number from 0 to 999999999, higher being better,** kept as digits in `_cbuild_rank` product meta (`Support\PartRank`). Higher is better because "rank 5" reads as above "rank 1" on a scale the shop sets, and a shop can leave gaps (10, 20, 30) to slot a part in later. A leading zero, a sign, a decimal or anything over nine digits is not saved, and what was there is kept, as the panel keeps a spec typed wrong; an empty field takes it off.
+- **A group of its own on the panel, "Rank", closed and its field disabled where the part has none,** as every group is, so a page of fifteen variations adds nothing to the product's form (issue #23's `max_input_vars`). It is drawn wherever the panel has fields, and on a part no kit takes where it has a rank, so it can be cleared.
+- **A variation with none takes its product's,** as its specs and layer image do, so a shop ranks a variable product once.
+- **`cbuild_part_rank` answers last,** with the stored rank (or the product's) as its first value, as `cbuild_part_available` does for "Not offered". Anything but a whole number is none. A filter adds a part's rank to the choice but never a swap: every swap is still the fit engine's, so no answer can offer a part that does not fit or is not in stock. The plan's `cbuild_swaps` filter is not added, since it could put an unchecked swap in front of a shopper.
+- **Read through WooCommerce's CRUD after one priming query** (`ProductMeta::primeWithParents()`, D-202), and only for the slots whose swaps are worked out (D-396), on each request. Nothing is kept: a part's rank changes only with a product save, and the parts are loaded in the same request anyway.
+
+**Tests.** `PartRankTest`: the field, open and enabled with a rank, closed and disabled without; saved, refused (`-1`, `2.5`, `top`, `07`, `1000000000`, `1e3`), kept when not sent, cleared when empty, and not saved by a customer; a variation's own and its product's; the filter last. `PartSpecsPanelTest`'s counts of groups gain the Rank group. `StateRouteTest`: the next rank up, not the top or the next price; a plugin's rank; no rank, the next dearer.
+
+**Red run.** `PartRankTest`, with the panel's field and save turned off: `test_the_panel_has_a_labelled_whole_number_field_with_the_parts_own_rank` failed at PartRankTest.php:104, the panel with no Rank group, and the save and variation tests at lines 112 and 145.
+
+**Why:** the issue's own words, with WooCommerce's ways for the rest: meta on the part, a variation taking its parent's, and a filter that answers last.
+
+**Status:** Accepted.
+
+### D-396 · Swaps are worked out on the review and on a step with a pick, and priced as the total is · 2026-11-25
+
+Issue #135 offers the swaps "on the review and on a picked card". Working them out validates the build once for each part tried, so where they are worked out is a cost on every answer.
+
+- **On the review,** every picked slot's but the deck's: the same board for less first, then each slot in step order, for less then better. **On a step,** only that step's pick, which is the picked card's. None on the deck's step, a step with no pick, or a request whose state has neither (`BuildSwaps::slots()` says so before anything is read, so such an answer asks no rank and runs no check).
+- **The candidates are the slot's parts as the step has them, offered and hidden,** the same parts the server checked for the cards, each with its stock; the swapper keeps only the ones that fit the whole build.
+- **The difference is the total's change, worked out as the total is:** the swapped build quoted by `Pricer::quote()` with the build's assembly, the build discount and the shop's decimals, less the total shown. So tax, the fee and the discount are in it, and the difference shown always equals what the total does. The answer gives the amount with its sign and the text without, for the words to say "less" or "more".
+- **A phase of its own in `Server-Timing`,** `cbuild-swaps`, so a manager sees its cost.
+
+**Tests.** `StateRouteTest` with a 13 % tax shown in prices and the shop in euros with a comma: the board, then each slot, in order; each swapped build ready, with no problem, its total's change the change shown; written as the shop writes prices, with no sign; the deck never swapped. `StateAnswerTest` with a 10 % build discount: the change equals the total's, and a step asks for its own slot's ranks alone, a step with no pick or the deck's none.
+
+**Red run.** `StateRouteTest::test_the_review_offers_each_swap_at_the_change_it_makes_to_the_total_with_tax_and_the_shops_currency` and `test_better_follows_the_shops_ranks_or_a_plugins_and_a_step_offers_its_own_picks_swaps_alone`, before the answer was given its swaps: `Failed asserting that two arrays are identical`, the answer's `swaps` empty (StateRouteTest.php:1660 and 1714). `StateAnswerTest`'s two cases with `BuildSwaps::of()` answering nothing: StateAnswerTest.php:1684 and 1702.
+
+**Why:** the issue's two places and no more, and a difference no one has to trust the browser for.
 
 **Status:** Accepted.
 

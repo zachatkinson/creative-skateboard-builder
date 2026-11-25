@@ -39,7 +39,7 @@ final class OptionsTest extends TestCase {
 	}
 
 	public function test_the_meta_and_settings_keys_are_the_ones_uninstall_and_the_snapshot_read(): void {
-		self::assertSame( array( '_cbuild_specs', '_cbuild_spec_table', '_cbuild_layer', '_cbuild_not_offered', '_cbuild_rows', '_cbuild_seed', '_cbuild_slots', '_cbuild_rules', '_cbuild_presets', '_cbuild_assembly', '_cbuild_picture', '_cbuild_layout', '_cbuild_settings' ), Options::metaKeys() );
+		self::assertSame( array( '_cbuild_specs', '_cbuild_spec_table', '_cbuild_layer', '_cbuild_not_offered', '_cbuild_rank', '_cbuild_rows', '_cbuild_seed', '_cbuild_slots', '_cbuild_rules', '_cbuild_presets', '_cbuild_assembly', '_cbuild_picture', '_cbuild_layout', '_cbuild_settings' ), Options::metaKeys() );
 		self::assertSame( array( '_cbuild_slots', '_cbuild_rules', '_cbuild_presets', '_cbuild_assembly', '_cbuild_picture', '_cbuild_layout', '_cbuild_settings' ), Options::kitDocuments() );
 		self::assertSame( array( 'cbuild_kit' ), Options::productTypes() );
 		self::assertSame( array( 'cbuild', 'cbuild_children', 'cbuild_parent', 'cbuild_slot' ), Options::cartKeys() );

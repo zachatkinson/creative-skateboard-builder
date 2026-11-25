@@ -265,6 +265,14 @@ final class Options {
 	public const META_NOT_OFFERED = '_cbuild_not_offered';
 
 	/**
+	 * Product meta: the shop's rank for a part in its slot, a whole number, higher being better, from its Part specs
+	 * (#135, D-395). A part with none is unranked.
+	 *
+	 * @since 1.3.0
+	 */
+	public const META_RANK = '_cbuild_rank';
+
+	/**
 	 * The kit's product type.
 	 *
 	 * @since 0.4.0
@@ -432,7 +440,7 @@ final class Options {
 	 * @return string[]
 	 */
 	public static function metaKeys(): array {
-		return array( self::META_SPECS, self::META_SPEC_TABLE, self::META_LAYER, self::META_NOT_OFFERED, self::META_TABLE_ROWS, self::META_TABLE_SEED, ...self::kitDocuments() );
+		return array( self::META_SPECS, self::META_SPEC_TABLE, self::META_LAYER, self::META_NOT_OFFERED, self::META_RANK, self::META_TABLE_ROWS, self::META_TABLE_SEED, ...self::kitDocuments() );
 	}
 
 	/**

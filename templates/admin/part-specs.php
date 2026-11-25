@@ -8,6 +8,7 @@
  * @var bool $whole Whether this is the tab's panel (true) or a variation's fields (false).
  * @var array{id: string, name: string, value: string, open: bool, note: string, src: string, box: array{int, int}|null, caption: string, choose: string, title: string, types: list<string>}|null $layer The Layer image field (from 0.7.0). None where the panel has no groups.
  * @var array{id: string, name: string, checked: bool, label: string, note: string}|null $offer "Not offered in the builder" (from 1.2.0). None where the panel has no groups and it is not ticked.
+ * @var array{id: string, name: string, value: string, open: bool, label: string, note: string}|null $rank The part's rank in its slot (from 1.3.0), a group open where the part has one. None where the panel has no groups and the part has no rank.
  */
 
 declare( strict_types=1 );
@@ -137,6 +138,30 @@ $cbuild_row = $whole ? 'form-field' : 'form-row form-row-full';
 					<?php endif; ?>
 				</figure>
 			<?php endif; ?>
+		</details>
+	<?php endif; ?>
+	<?php if ( null !== $rank ) : ?>
+		<?php // The shop's rank for smart swaps' "better" (#135, D-395): a whole number, higher being better. Closed, its field is disabled, as every group's (issue #23). ?>
+		<details class="cbuild-rank"<?php echo $rank['open'] ? ' open' : ''; ?>>
+			<summary><?php esc_html_e( 'Rank', 'creative-skateboard-builder' ); ?></summary>
+			<p class="<?php echo esc_attr( $cbuild_row ); ?>">
+				<label for="<?php echo esc_attr( $rank['id'] ); ?>"><?php echo esc_html( $rank['label'] ); ?></label>
+				<input
+					type="number"
+					class="short"
+					min="0"
+					max="999999999"
+					step="1"
+					inputmode="numeric"
+					id="<?php echo esc_attr( $rank['id'] ); ?>"
+					name="<?php echo esc_attr( $rank['name'] ); ?>"
+					value="<?php echo esc_attr( $rank['value'] ); ?>"
+					autocomplete="off"
+					aria-describedby="<?php echo esc_attr( $rank['id'] . '-note' ); ?>"
+					<?php disabled( ! $rank['open'] ); ?>
+				/>
+				<span class="description" id="<?php echo esc_attr( $rank['id'] . '-note' ); ?>"><?php echo esc_html( $rank['note'] ); ?></span>
+			</p>
 		</details>
 	<?php endif; ?>
 <?php if ( $whole ) : ?>

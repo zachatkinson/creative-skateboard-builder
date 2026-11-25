@@ -173,6 +173,14 @@ On a product's Part specs tab, and on each variation's Part specs fields, kept a
 | --- | --- | --- | --- | --- |
 | Not offered in the builder | `_cbuild_not_offered` (product meta) | ticked (`yes`), not ticked (no meta) | not ticked | Keeps the part out of every kit, exactly as `cbuild_part_available` returning `false` does, and the filter still answers last. On a variable product it keeps out every variation; on a variation, that variation alone. The part stays in the shop. The Catalogue check lists it under "Parts kept out of the builder", not as a fix. Saved by who may edit products, through WooCommerce's product save and its nonce. |
 
+### Rank in its slot (#135)
+
+On a product's Part specs tab, and on each variation's Part specs fields, in a group of its own, "Rank", kept as `_cbuild_rank` product meta (D-395). A part saved before 1.3.0 has none.
+
+| Setting | Key | Choices | Default | What it does |
+| --- | --- | --- | --- | --- |
+| Rank in its slot | `_cbuild_rank` (product meta) | a whole number from 0 to 999999999, or empty | empty (none) | Where the builder offers a better part for a pick (smart swaps), it offers the next rank up among the parts that fit; where no part in the slot has a rank, the next price up. Higher is better. A variation left empty takes its product's. `cbuild_part_rank` answers last. Saved by who may edit products, through WooCommerce's product save and its nonce. |
+
 ## Options beside the settings
 
 The plugin keeps seven options of its own, which no screen edits: `cbuild_db_version`, `cbuild_migrations`, `cbuild_migration_lock` and, from 0.3.0, `cbuild_reindex_state`, `cbuild_reindex_owed`, `cbuild_import_state` and `cbuild_import_rows`. [HOOKS.md](HOOKS.md) says what each holds, and [PRIVACY.md](PRIVACY.md) lists everything stored.

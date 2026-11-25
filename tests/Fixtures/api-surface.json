@@ -9,6 +9,7 @@
         "cbuild_kit_text",
         "cbuild_part_available",
         "cbuild_part_classes",
+        "cbuild_part_rank",
         "cbuild_preset_label",
         "cbuild_price_context",
         "cbuild_slot_label",
@@ -68,6 +69,7 @@
         "_cbuild_not_offered",
         "_cbuild_picture",
         "_cbuild_presets",
+        "_cbuild_rank",
         "_cbuild_rows",
         "_cbuild_rules",
         "_cbuild_seed",
@@ -313,7 +315,7 @@
         "schema/kit-slots.json": "7c383e3f551b517328d9d195c01e15f9f5dad1a1263a20fa4ff2188592bb820c",
         "schema/order-snapshot.json": "22d23b0213b466dfd4092e7e40ec09574bb4eaed6e99347bd166dadc86c441bb",
         "schema/settings.json": "c6ce801eae753f4d85734fdf81489cc91a4e2db8adf318aa2da21832d7ef9df4",
-        "schema/state.json": "281a251a6ab0b37cd91fb37decc272f58817c3bcf52b693855adab3fdbd33517"
+        "schema/state.json": "7d55667cf9f386809164179e465e717ce219f80dfc539eef503dce757173c950"
     },
     "spec_keys": [
         "deck_width",

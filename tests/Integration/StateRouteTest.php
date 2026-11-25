@@ -1583,4 +1583,148 @@ final class StateRouteTest extends IntegrationTestCase {
 		self::assertSame( array( array() ), array_values( array_unique( array_column( array_merge( $hidden['options'], $hidden['hidden'] ), 'presets' ), SORT_REGULAR ) ) );
 		self::assertFalse( array_column( $hidden['view']['step']['options'], null, 'id' )[ $this->parts['truck 139'] ]['hasPickedFor'] );
 	}
+
+	/**
+	 * A set of wheels in the whole kit's wheels category, indexed.
+	 *
+	 * @param string $name     Its name.
+	 * @param string $price    Its price, as the shop enters it.
+	 * @param string $diameter Its diameter in millimetres.
+	 */
+	private function wheels( string $name, string $price, string $diameter = '52.0000' ): int {
+		return $this->part(
+			$name,
+			$price,
+			array(
+				'wheel_diameter' => $diameter,
+				'set_size'       => '4',
+			),
+			$this->categories['wheels']
+		);
+	}
+
+	/**
+	 * The swaps an answer offers, each as its kind and the part each slot takes.
+	 *
+	 * @param array<string, mixed> $answer The answer.
+	 * @return list<array{string, array<string, int>}>
+	 */
+	private static function swaps( array $answer ): array {
+		$swaps = array();
+		foreach ( $answer['swaps'] as $swap ) {
+			$swaps[] = array( $swap['kind'], array_column( $swap['parts'], 'part', 'slot' ) );
+		}
+		return $swaps;
+	}
+
+	public function test_the_review_offers_each_swap_at_the_change_it_makes_to_the_total_with_tax_and_the_shops_currency(): void {
+		update_option( 'woocommerce_calc_taxes', 'yes' );
+		update_option( 'woocommerce_prices_include_tax', 'no' );
+		update_option( 'woocommerce_tax_display_shop', 'incl' );
+		update_option( 'woocommerce_currency', 'EUR' );
+		update_option( 'woocommerce_currency_pos', 'right_space' );
+		update_option( 'woocommerce_price_decimal_sep', ',' );
+		update_option( 'woocommerce_price_thousand_sep', '.' );
+		$rate = \WC_Tax::_insert_tax_rate(
+			array(
+				'tax_rate_country'  => '',
+				'tax_rate'          => '13.0000',
+				'tax_rate_name'     => 'Tax',
+				'tax_rate_priority' => 1,
+				'tax_rate_order'    => 1,
+				'tax_rate_class'    => '',
+			)
+		);
+		try {
+			$whole     = $this->whole();
+			$this->kit = $whole['kit'];
+			$cheaper   = $this->wheels( 'Wheels for less', '7.35' );
+			$better    = $this->wheels( 'Wheels, a step up', '13.10' );
+			$this->wheels( 'Wheels, a step further', '19.95' );
+			// The cheapest, but too big for the trucks without risers; and sold out.
+			$this->wheels( 'Wheels, too big', '5', '60.0000' );
+			$sold = wc_get_product( $this->wheels( 'Wheels, sold out', '6' ) );
+			$sold->set_stock_status( 'outofstock' );
+			$sold->save();
+			$bearings = $this->part(
+				'Bearings for less',
+				'8.20',
+				array(
+					'bearing_bore' => '8.0000',
+					'set_size'     => '8',
+				),
+				$this->categories['bearings']
+			);
+			$picks    = array_map( 'strval', $whole['picks'] );
+			$review   = $this->answer( array( 'cbuild' => $picks + array( 'step' => 'review' ) ) );
+			self::assertSame(
+				array(
+					array(
+						'board',
+						array(
+							'wheels'   => $cheaper,
+							'bearings' => $bearings,
+						),
+					),
+					array( 'less', array( 'wheels' => $cheaper ) ),
+					array( 'better', array( 'wheels' => $better ) ),
+					array( 'less', array( 'bearings' => $bearings ) ),
+				),
+				self::swaps( $review ),
+				'the same board for less first, then each slot in step order; the deck is never swapped, and the hardware and grip have nothing for less'
+			);
+			self::assertSame( array( 'Wheels for less', 'Bearings for less' ), array_column( $review['swaps'][0]['parts'], 'name' ) );
+			self::assertSame( array( $whole['picks']['wheels'], $whole['picks']['bearings'] ), array_column( $review['swaps'][0]['parts'], 'was' ) );
+			foreach ( $review['swaps'] as $swap ) {
+				$after = $picks;
+				foreach ( $swap['parts'] as $part ) {
+					$after[ $part['slot'] ] = (string) $part['part'];
+				}
+				$swapped = $this->answer( array( 'cbuild' => $after + array( 'step' => 'review' ) ) );
+				self::assertTrue( $swapped['ready'], $swap['kind'] . ': the build after it fits and is in stock' );
+				self::assertSame( array(), $swapped['problems'] );
+				self::assertSame( $swapped['total']['total']['amount'] - $review['total']['total']['amount'], $swap['change']['amount'], $swap['kind'] . ': the difference shown is the total\'s change' );
+				self::assertMatchesRegularExpression( '/\A[0-9]+,[0-9]{2}\x{00A0}€\z/u', $swap['change']['text'], 'written as the shop writes prices, with no sign' );
+			}
+			// With tax: 10.00 and 7.35 are 11.30 and 8.31 a set, so the wheels for less take 2.99 off.
+			self::assertSame( array( -299, '2,99' . "\u{00A0}" . '€' ), array( $review['swaps'][1]['change']['amount'], $review['swaps'][1]['change']['text'] ) );
+			self::assertSame( 350, $review['swaps'][2]['change']['amount'], '13.10 with tax is 14.80, 3.50 more' );
+		} finally {
+			\WC_Tax::_delete_tax_rate( $rate );
+		}
+	}
+
+	public function test_better_follows_the_shops_ranks_or_a_plugins_and_a_step_offers_its_own_picks_swaps_alone(): void {
+		$whole     = $this->whole();
+		$this->kit = $whole['kit'];
+		$picks     = array_map( 'strval', $whole['picks'] );
+		$dearer    = $this->wheels( 'Wheels, dearer', '12' );
+		$ranked    = $this->wheels( 'Wheels, ranked next', '25' );
+		$top       = $this->wheels( 'Wheels, ranked top', '15' );
+		$rank      = static function ( int $part, string $rank ): void {
+			$product = wc_get_product( $part );
+			$product->update_meta_data( Options::META_RANK, $rank );
+			$product->save();
+		};
+		$rank( $whole['picks']['wheels'], '1' );
+		$rank( $ranked, '2' );
+		$rank( $top, '7' );
+
+		$at = fn( string $step, array $build = array() ): array => $this->answer( array( 'cbuild' => ( array() === $build ? $picks : $build ) + array( 'step' => $step ) ) );
+		self::assertSame( array( array( 'better', array( 'wheels' => $ranked ) ) ), self::swaps( $at( 'wheels' ) ), 'the next rank up, not the top or the next price; on the wheels step, the wheels\' alone' );
+
+		add_filter( 'cbuild_part_rank', static fn( ?int $rank, int $part ): ?int => $part === $top ? 2 : $rank, 10, 2 );
+		self::assertSame( array( array( 'better', array( 'wheels' => $top ) ) ), self::swaps( $at( 'wheels' ) ), 'another plugin\'s rank, the cheaper of two at 2' );
+		remove_all_filters( 'cbuild_part_rank' );
+
+		add_filter( 'cbuild_part_rank', static fn(): ?int => null );
+		self::assertSame( array( array( 'better', array( 'wheels' => $dearer ) ) ), self::swaps( $at( 'wheels' ) ), 'no ranks: the next dearer' );
+		remove_all_filters( 'cbuild_part_rank' );
+
+		self::assertSame( array(), $at( 'trucks' )['swaps'], 'the trucks have nothing else that fits' );
+		$open = $picks;
+		unset( $open['wheels'] );
+		self::assertSame( array(), $at( 'wheels', $open )['swaps'], 'a step with no pick offers none' );
+		self::assertSame( array(), $at( 'deck' )['swaps'], 'the deck is never swapped' );
+	}
 }

@@ -27,6 +27,7 @@ use CreativeBranding\SkateboardBuilder\Port\PartCards;
 use CreativeBranding\SkateboardBuilder\Domain\Look\Shelf;
 use CreativeBranding\SkateboardBuilder\Domain\Look\ShelfLook;
 use CreativeBranding\SkateboardBuilder\Domain\Look\Width;
+use CreativeBranding\SkateboardBuilder\Service\BuildSwaps;
 use CreativeBranding\SkateboardBuilder\Service\ComposedPictures;
 use CreativeBranding\SkateboardBuilder\Service\LayerArtwork;
 use CreativeBranding\SkateboardBuilder\Service\Phases;
@@ -134,6 +135,27 @@ final class StateAnswer {
 	 * @var (Closure(int, array<string, int>): ?string)|null
 	 */
 	private ?Closure $pictures = null;
+
+	/**
+	 * The swaps a build is offered, since 1.3.0, given by the container through `withSwaps()`. An answer an earlier
+	 * release's container builds has none, and offers no swap (#135, D-208).
+	 *
+	 * @var BuildSwaps|null
+	 */
+	private ?BuildSwaps $swaps = null;
+
+	/**
+	 * The same answer, with the swaps a build is offered (#135).
+	 *
+	 * @since 1.3.0
+	 *
+	 * @param BuildSwaps $swaps The swaps a build is offered.
+	 */
+	public function withSwaps( BuildSwaps $swaps ): self {
+		$answer        = clone $this;
+		$answer->swaps = $swaps;
+		return $answer;
+	}
 
 	/**
 	 * Times the answer's phases for a shop manager's Server-Timing header, since 1.2.0, given by the container through
@@ -292,6 +314,15 @@ final class StateAnswer {
 				$ids[] = $change->closest->part->id;
 			}
 		}
+		// The swaps offered (#135): on the review every picked part's, on a step its own pick's. Their parts are named.
+		$decimals = $this->kits->decimals();
+		$swapper  = $this->swaps;
+		$swaps    = null === $swapper || array() === BuildSwaps::slots( $state ) ? array() : $this->timed( 'swaps', fn(): array => $swapper->of( $state, $decimals ) );
+		foreach ( $swaps as $priced ) {
+			foreach ( $priced['swap']->to as $swapped ) {
+				$ids[] = $swapped->part->id;
+			}
+		}
 		$cards = $this->timed( 'cards', fn(): array => $this->cards->cards( array_values( array_unique( $ids ) ) ) );
 		// The names of the parts that keep a ready build from the cart, shown or not, for a link that brings one.
 		$held = array();
@@ -302,12 +333,11 @@ final class StateAnswer {
 				}
 			}
 		}
-		$decimals = $this->kits->decimals();
-		$money    = fn( int $amount ): array => array(
+		$money  = fn( int $amount ): array => array(
 			'amount' => $amount,
 			'text'   => $this->money->text( $amount, $decimals ),
 		);
-		$delta    = function ( Option $option, ?StateStep $step ) use ( $state, $decimals ): array {
+		$delta  = function ( Option $option, ?StateStep $step ) use ( $state, $decimals ): array {
 			$change = Pricer::change( $option, $step?->counted(), $state->discount );
 			$amount = $change ?? 0;
 			$kind   = 'none';
@@ -326,7 +356,7 @@ final class StateAnswer {
 				'change' => null === $step?->counted() ? '' : Words::change( $kind, $text ),
 			);
 		};
-		$boards   = SlotKey::DECK === $state->step ? $this->timed( 'boards', fn(): array => $this->boards( $state, array_merge( $offered, array_map( static fn( ShelfLook $look ): Option => $look->option, null === $view ? array() : array_merge( $view->listing->looks, $view->listing->soldOut ) ) ) ) ) : array();
+		$boards = SlotKey::DECK === $state->step ? $this->timed( 'boards', fn(): array => $this->boards( $state, array_merge( $offered, array_map( static fn( ShelfLook $look ): Option => $look->option, null === $view ? array() : array_merge( $view->listing->looks, $view->listing->soldOut ) ) ) ) ) : array();
 		// The ready builds a shopper is offered that pick each part, by slot, in the kit's order (#137, D-392).
 		$chosen = array();
 		foreach ( $state->shownPresets() as $at ) {
@@ -487,6 +517,30 @@ final class StateAnswer {
 			'refused'           => array_map( static fn( BuildProblem $kept ): array => array_replace( $problem( $kept ), array( 'message' => Words::named( $kept->code, $labels[ $kept->slot ] ?? $kept->slot, null === $kept->part ? '' : $held[ $kept->part ] ?? '' ) ) ), $state->refused ),
 			'problems'          => array_map( $problem, $state->validation->problems ),
 			'changes'           => $changes,
+			// From 1.3.0: the swaps offered for the build, the same board for less first (#135, D-394, D-396).
+			'swaps'             => array_map(
+				function ( array $priced ) use ( $cards, $decimals ): array {
+					$parts = array();
+					foreach ( $priced['swap']->to as $slot => $swapped ) {
+						$parts[] = array(
+							'slot' => $slot,
+							'was'  => $priced['swap']->was[ $slot ]->id,
+							'part' => $swapped->part->id,
+							'name' => $cards[ $swapped->part->id ]['name'] ?? '',
+						);
+					}
+					return array(
+						'kind'   => $priced['swap']->kind->value,
+						'parts'  => $parts,
+						// What it does to the total, below nothing where it takes off, and how much as the shop writes it.
+						'change' => array(
+							'amount' => $priced['change'],
+							'text'   => $this->money->text( abs( $priced['change'] ), $decimals ),
+						),
+					);
+				},
+				$swaps
+			),
 			'total'             => array(
 				'lines'    => $lines,
 				'parts'    => $money( $state->quote->parts ),
