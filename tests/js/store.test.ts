@@ -3845,8 +3845,15 @@ describe( 'the rendered event', () => {
 		const { root, bar } = builder();
 		state.view = KIT;
 		const { events, stop } = heard();
+		let marked: boolean | undefined;
+		const look = () => {
+			marked = root.hasAttribute( 'data-ready' );
+		};
+		root.addEventListener( 'cbuild:rendered', look );
 		hydrated( bar );
 		stop();
+		root.removeEventListener( 'cbuild:rendered', look );
+		expect( marked, 'data-ready is set by the first event' ).toBe( true );
 		expect( events ).toHaveLength( 1 );
 		expect( events[ 0 ]!.target ).toBe( root );
 		expect( events[ 0 ]!.bubbles ).toBe( true );

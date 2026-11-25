@@ -683,6 +683,13 @@ A kit's line raised past what the shop has of a part is refused as `cbuild_build
 | `cbuild__stage` | 1.2.0 | The stage, around the picture, which stays in view as the panel scrolls (#143). |
 | `cbuild-step` | 1.2.0 | A step's form, around its fields and cards. The same element on every step, hidden on the change panel and the review (#143). |
 
+**Places another plugin may add its own element.** From 1.2.0, the stage (`.cbuild__stage`) and the step's form (`.cbuild-step`), such as a button over the board or a notice above the cards (#143, D-376):
+
+- **It stays, in its place.** An element another plugin adds once the builder is ready, as the last child of `.cbuild__stage` or as the first child of `.cbuild-step`, stays there, the same element in the same place, through every redraw the browser test runs it through: a width, a pick, the change panel, Use these, Next, a search, a fold opened and a turn of the board. The builder never removes a child it did not render.
+- **Other places are not promised.** Elsewhere among the builder's own children, a list the builder draws in the step's form may grow next to it, so its place may change.
+- **It is hidden with the form.** The step's form is hidden on the change panel and the review, and so is anything in it.
+- **When to look again.** Listen for `cbuild:rendered` (below) rather than watching the builder's attributes, which are the builder's own.
+
 **What the plugin loads.** A few style rules in the page, under the handle `cbuild-cart`, with the Mini-Cart, the Cart or Checkout block, or a classic cart or checkout page. With the Cart or Checkout block, also the script `cbuild-cart`, which answers `cartItemClass`, `itemName` and `showRemoveItemLink` in the namespace above and needs `wc-blocks-checkout`. Both only where the cart holds a build as the page is drawn.
 
 ### Shipping, express pay and delivery
@@ -922,7 +929,12 @@ The builder sends three events on its own element (`.cbuild`), with JavaScript o
 | --- | --- | --- | --- |
 | `cbuild:pick` | 0.6.0 | `{ kit: number, slot: string, part: number }`: the kit product's ID, the slot's key, and the part's ID, `0` for a slot left empty by choice. | The shopper picks a part, at once, before the state route answers. A pick the route then refuses is still sent. |
 | `cbuild:added` | 0.6.0 | `{ kit: number, picks: { [slot: string]: number }, assembly: boolean }`: the kit's ID, the build's parts by slot, and whether it is assembled. | The Store API has added the build to the cart. An add that falls back to WooCommerce's own handler loads the page, and sends nothing. |
-| `cbuild:rendered` | 1.2.0 | `{ kit: number, step: string }`: the kit's ID, and the step shown as the build link's `cbuild[step]` names it, a slot's key or `review`. On the change panel, the step it opened over. | Once the builder is hydrated, as it sets `data-ready`, and once after each answer of the state route it draws, on the frame the view is drawn in: a pick's, a step's, a search's, a filter's. Never for a pick or a key before its answer, nor for an answer dropped because a later move overtook it. Another plugin's script listens for it in place of watching the builder's attributes (#143, D-376). |
+| `cbuild:rendered` | 1.2.0 | `{ kit: number, step: string }`: the kit's ID, and the step shown as the build link's `cbuild[step]` names it, a slot's key or `review`. On the change panel, the step it opened over. | Once when the builder is hydrated, as it sets `data-ready`, and then once per answer of the state route it draws, on the frame the view is drawn in: a pick's, a step's, a search's, a filter's. Never for a pick or a key before its answer, nor for an answer dropped because a later move overtook it. Not for a turn of the board (Underside or Top) or a fold opened, which change the page without an answer. Another plugin's script listens for it in place of watching the builder's attributes (#143, D-376). |
+
+**The hydrated marker.** From 1.2.0 (`@since 1.2.0`, #143, D-376), `data-ready` on `.cbuild` says the builder has hydrated. It is set once, in the same callback that sends the first `cbuild:rendered`, just before it, and never removed. An event is not replayed for a listener added later, so a script that may load after hydration does both:
+
+- **First,** checks for `.cbuild[data-ready]`. Where it is set, the builder is live and its first view is drawn; act on it now.
+- **Then** listens for `cbuild:rendered` for every redraw after that.
 
 The builder also sends WooCommerce's own `wc-blocks_added_to_cart` on `document.body` after an add, on which the Mini-Cart reads the cart again (D-155). It is WooCommerce's event, not part of this plugin's API.
 

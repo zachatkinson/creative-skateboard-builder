@@ -1209,7 +1209,8 @@ test.describe( 'The builder with JavaScript', () => {
 		} );
 		await page.route( isRoute, async ( route ) => {
 			await held;
-			await route.continue();
+			// A request the store has given up on, as the one asked ahead for Next once a pick is made, is gone.
+			await route.continue().catch( () => undefined );
 		} );
 		const first = page.getByRole( 'radio', {
 			name: 'Choose Builder test wheels 52',
@@ -1275,7 +1276,8 @@ test.describe( 'The builder with JavaScript', () => {
 		} );
 		await page.route( isRoute, async ( route ) => {
 			await held;
-			await route.continue();
+			// A request the store has given up on, as the one asked ahead for Next once a pick is made, is gone.
+			await route.continue().catch( () => undefined );
 		} );
 		const total = page.locator( '.cbuild-bar__amount' );
 		const deck = page.getByRole( 'radio', {
@@ -7609,7 +7611,8 @@ test.describe( 'The phone bar', () => {
 		const held = new Promise< void >( ( done ) => ( release = done ) );
 		await page.route( /\/cbuild\/v1\/kits\/\d+\/state/, async ( route ) => {
 			await held;
-			await route.continue();
+			// A request the store has given up on, as the one asked ahead for Next once a pick is made, is gone.
+			await route.continue().catch( () => undefined );
 		} );
 		await page.goto( linkTo( { _width: '8in' } ) );
 		const bar = page.locator( '.cbuild-bar' );
@@ -7640,7 +7643,8 @@ test.describe( 'The phone bar', () => {
 		const held = new Promise< void >( ( done ) => ( release = done ) );
 		await page.route( /\/cbuild\/v1\/kits\/\d+\/state/, async ( route ) => {
 			await held;
-			await route.continue();
+			// A request the store has given up on, as the one asked ahead for Next once a pick is made, is gone.
+			await route.continue().catch( () => undefined );
 		} );
 		await page.goto( linkTo( { _width: '8in' } ) );
 		// Listened for first: a press asks at once (D-308), so the request leaves with the click.
@@ -9033,7 +9037,8 @@ test.describe( 'What another plugin may rely on (#143)', () => {
 		);
 
 	/**
-	 * Whether each element the test put in the builder is still where it was put.
+	 * Whether each element the test put in the builder is still where it was put: connected, in the same parent, and
+	 * still its first or last element child.
 	 *
 	 * @param page The page.
 	 */
@@ -9041,11 +9046,20 @@ test.describe( 'What another plugin may rely on (#143)', () => {
 		page.evaluate( () =>
 			(
 				window as unknown as {
-					cbuildOwn: { element: Element; parent: Element }[];
+					cbuildOwn: {
+						element: Element;
+						parent: Element;
+						first: boolean;
+					}[];
 				}
 			 ).cbuildOwn.map(
-				( { element, parent } ) =>
-					element.isConnected && element.parentElement === parent
+				( { element, parent, first } ) =>
+					element.isConnected &&
+					element.parentElement === parent &&
+					element ===
+						( first
+							? parent.firstElementChild
+							: parent.lastElementChild )
 			)
 		);
 
@@ -9085,8 +9099,28 @@ test.describe( 'What another plugin may rely on (#143)', () => {
 		const steps: ReturnType< typeof seen >[] = [ seen( 'deck' ) ];
 		await expect.poll( () => rendered( page ) ).toEqual( steps );
 
-		// Another plugin's own elements, put in once the builder is ready: a button over the board, and a notice
-		// before the step's fields and after them.
+		// A script that loads after hydration finds `data-ready` already set, and hears no earlier event replayed: it
+		// checks the attribute first, then listens for the redraws to come (D-376).
+		const late = await page.evaluate( async () => {
+			const heard: unknown[] = [];
+			const ready =
+				null !== document.querySelector( '.cbuild[data-ready]' );
+			document.addEventListener( 'cbuild:rendered', ( event ) => {
+				heard.push( ( event as CustomEvent ).detail );
+			} );
+			( window as unknown as { cbuildLate: unknown[] } ).cbuildLate =
+				heard;
+			await new Promise( ( done ) =>
+				window.requestAnimationFrame( () =>
+					window.setTimeout( done, 100 )
+				)
+			);
+			return { ready, heard: [ ...heard ] };
+		} );
+		expect( late ).toEqual( { ready: true, heard: [] } );
+
+		// Another plugin's own elements, put in once the builder is ready, where Mature Content 1.6.0 puts them: its
+		// veil the last child of the stage, and its notice the first child of the step's form.
 		await page.evaluate( () => {
 			const own = ( parent: Element, first: boolean ) => {
 				const element = document.createElement( 'div' );
@@ -9097,27 +9131,37 @@ test.describe( 'What another plugin may rely on (#143)', () => {
 				} else {
 					parent.append( element );
 				}
-				return { element, parent };
+				return { element, parent, first };
 			};
-			const stage = document.querySelector( '.cbuild__stage' )!;
-			const step = document.querySelector( '.cbuild-step' )!;
 			(
 				window as unknown as {
-					cbuildOwn: { element: Element; parent: Element }[];
+					cbuildOwn: {
+						element: Element;
+						parent: Element;
+						first: boolean;
+					}[];
 				}
 			 ).cbuildOwn = [
-				own( stage, false ),
-				own( step, true ),
-				own( step, false ),
+				own( document.querySelector( '.cbuild__stage' )!, false ),
+				own( document.querySelector( '.cbuild-step' )!, true ),
 			];
 		} );
-		const all = [ true, true, true ];
+		const all = [ true, true ];
 
 		// A list narrowed by a width: an answer on the same step.
 		await ride( page, inLocale( info.project.name, '8.5″' ) );
 		steps.push( seen( 'deck' ) );
 		await expect.poll( () => rendered( page ) ).toEqual( steps );
 		expect( await kept( page ) ).toEqual( all );
+
+		expect(
+			await page.evaluate(
+				() =>
+					( window as unknown as { cbuildLate: unknown[] } )
+						.cbuildLate
+			),
+			'the late listener hears the redraws after it, each once'
+		).toEqual( [ { kit, step: 'deck' } ] );
 
 		// A pick that opens the change panel, which hides the step's form.
 		await pickDeck( page, '8.5' );
@@ -9126,26 +9170,39 @@ test.describe( 'What another plugin may rely on (#143)', () => {
 		await expect.poll( () => rendered( page ) ).toEqual( steps );
 		expect( await kept( page ) ).toEqual( all );
 
-		// Use these: a new step.
+		// Use these: the panel gives way to the deck step it opened over, with the closest trucks.
 		await page.locator( '.cbuild-changes__use button' ).click();
 		await expect( page.locator( '.cbuild-step' ) ).toBeVisible();
-		steps.push( seen( 'trucks' ) );
+		steps.push( seen( 'deck' ) );
 		await expect.poll( () => rendered( page ) ).toEqual( steps );
 		expect( await kept( page ) ).toEqual( all );
 
-		// Next: another step, whichever the kit has after the trucks.
-		await page.locator( '.cbuild-bar__next:visible' ).click();
-		await expect
-			.poll( () =>
-				new URL( page.url() ).searchParams.get( 'cbuild[step]' )
-			)
-			.not.toBe( 'trucks' );
-		const after = String(
-			new URL( page.url() ).searchParams.get( 'cbuild[step]' )
-		);
-		steps.push( seen( after ) );
-		await expect.poll( () => rendered( page ) ).toEqual( steps );
+		// A fold opened, the widths behind their line: no answer, so no event.
+		await page.locator( '.cbuild-width__chosen' ).click();
+		await expect(
+			page.locator( 'details.cbuild-width__pick' )
+		).toHaveAttribute( 'open', '' );
+		await page.waitForTimeout( 300 );
+		expect( await rendered( page ), 'a fold opened' ).toEqual( steps );
 		expect( await kept( page ) ).toEqual( all );
+
+		// Next twice: the trucks, with the closest picked, then the step after them, which has nothing picked.
+		let after = 'deck';
+		for ( let move = 0; move < 2; move++ ) {
+			const from = after;
+			await page.locator( '.cbuild-bar__next:visible' ).click();
+			await expect
+				.poll( () =>
+					new URL( page.url() ).searchParams.get( 'cbuild[step]' )
+				)
+				.not.toBe( from );
+			after = String(
+				new URL( page.url() ).searchParams.get( 'cbuild[step]' )
+			);
+			steps.push( seen( after ) );
+			await expect.poll( () => rendered( page ) ).toEqual( steps );
+			expect( await kept( page ) ).toEqual( all );
+		}
 
 		// A pick on it: nothing is sent until its answer is drawn.
 		let release: () => void = () => undefined;
@@ -9155,11 +9212,12 @@ test.describe( 'What another plugin may rely on (#143)', () => {
 		const state = ( url: URL ) => url.pathname.endsWith( '/state' );
 		await page.route( state, async ( route ) => {
 			await held;
-			await route.continue();
+			// A request the store has given up on, as the one asked ahead for Next once a pick is made, is gone.
+			await route.continue().catch( () => undefined );
 		} );
 		await page
 			.locator(
-				'.cbuild-step .cbuild-card__control:not([disabled]):not(:checked)'
+				'.cbuild-step .cbuild-cards:not(.cbuild-cards--sold-out) .cbuild-card__control:not([disabled]):not(:checked)'
 			)
 			.first()
 			.check();
@@ -9179,7 +9237,22 @@ test.describe( 'What another plugin may rely on (#143)', () => {
 		steps.push( seen( after ) );
 		await expect.poll( () => rendered( page ) ).toEqual( steps );
 		expect( await kept( page ) ).toEqual( all );
-		await expect( page.locator( '.another-plugin' ) ).toHaveCount( 3 );
+
+		// A turn of the board, Underside or Top, whichever is not shown: no answer, so no event.
+		const sides = page.locator( '.cbuild-picture__turn .cbuild-button' );
+		await expect( sides.first() ).toBeVisible();
+		const turn =
+			'true' === ( await sides.first().getAttribute( 'aria-pressed' ) )
+				? sides.last()
+				: sides.first();
+		await turn.click();
+		await expect( turn ).toHaveAttribute( 'aria-pressed', 'true' );
+		await page.waitForTimeout( 600 );
+		expect( await rendered( page ), 'a turn of the board' ).toEqual(
+			steps
+		);
+		expect( await kept( page ) ).toEqual( all );
+		await expect( page.locator( '.another-plugin' ) ).toHaveCount( 2 );
 		expect( await stayed( page ) ).toBe( true );
 	} );
 } );

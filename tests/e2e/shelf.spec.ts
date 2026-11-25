@@ -553,6 +553,26 @@ test.describe( 'The rendered event on a search (#143)', () => {
 		await page.goto( at() );
 		const once = { kit: shelf().kit, step: 'deck' };
 		await expect.poll( rendered ).toEqual( [ once ] );
+		// Another plugin's elements where Mature Content 1.6.0 puts them: the stage's last child, the step's first.
+		await page.evaluate( () => {
+			const stage = document.querySelector( '.cbuild__stage' )!;
+			const step = document.querySelector( '.cbuild-step' )!;
+			const veil = document.createElement( 'div' );
+			const notice = document.createElement( 'div' );
+			stage.append( veil );
+			step.prepend( notice );
+			( window as unknown as { cbuildOwn: () => boolean[] } ).cbuildOwn =
+				() => [
+					veil.isConnected && stage.lastElementChild === veil,
+					notice.isConnected && step.firstElementChild === notice,
+				];
+		} );
+		const kept = () =>
+			page.evaluate( () =>
+				(
+					window as unknown as { cbuildOwn: () => boolean[] }
+				 ).cbuildOwn()
+			);
 		await page
 			.locator( '#cbuild-search' )
 			.pressSequentially( 'Rascals', { delay: 40 } );
@@ -562,5 +582,6 @@ test.describe( 'The rendered event on a search (#143)', () => {
 			'false'
 		);
 		await expect.poll( rendered ).toEqual( [ once, once ] );
+		expect( await kept() ).toEqual( [ true, true ] );
 	} );
 } );
