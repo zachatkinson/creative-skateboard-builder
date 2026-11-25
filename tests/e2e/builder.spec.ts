@@ -5003,6 +5003,197 @@ test.describe( 'Motion', () => {
 		onlyTransformAndOpacity( animations );
 	} );
 
+	/**
+	 * The trucks' step, ready, with the deck on the board.
+	 *
+	 * @param page The page.
+	 */
+	const atTrucks = async ( page: Page ) => {
+		await page.goto(
+			linkTo( { deck: id( 'builder-test-deck-8-0' ), step: 'trucks' } )
+		);
+		await expect( page.locator( '.cbuild' ) ).toHaveAttribute(
+			'data-ready',
+			''
+		);
+	};
+
+	// The changed area's highlight (#138, D-413): after a pick, the part's area of the board is outlined.
+	test( 'a part picked is outlined on the board for 600 ms, on each of its layers, by transform and opacity alone', async ( {
+		page,
+	} ) => {
+		await page.emulateMedia( { reducedMotion: 'no-preference' } );
+		await atTrucks( page );
+		await watch( page );
+		await choose( page, 'Builder test trucks 139' );
+		const { animations } = await seen( page );
+		const outlines = moment( animations, 'cbuild-outline' );
+		expect( outlines, 'one outline a truck' ).toHaveLength( 2 );
+		for ( const outlined of outlines ) {
+			expect( outlined.duration ).toBe( 600 );
+			expect( outlined.delay ).toBe( 0 );
+			expect( outlined.iterations ).toBe( 1 );
+			expect( outlined.pseudo ).toBe( '::after' );
+			expect( [ ...outlined.properties ].sort() ).toEqual( [
+				'opacity',
+				'transform',
+			] );
+		}
+		onlyTransformAndOpacity( animations );
+		// The build sentence still says what changed: the outline is for the eye alone.
+		await expect(
+			page.locator( '#cbuild-picture .cbuild-picture__description' )
+		).toContainText( 'Builder test trucks 139' );
+		await expect(
+			page.locator(
+				'#cbuild-picture .cbuild-board__layer[data-outlined]'
+			)
+		).toHaveCount( 0 );
+	} );
+
+	for ( const calm of [ 'reduced motion', 'subtle' ] as const ) {
+		test( `under ${ calm } the outline shows at once and fades in 150 ms or less, opacity alone`, async ( {
+			page,
+		} ) => {
+			await page.emulateMedia( {
+				reducedMotion:
+					'reduced motion' === calm ? 'reduce' : 'no-preference',
+			} );
+			await atTrucks( page );
+			if ( 'subtle' === calm ) {
+				await page
+					.locator( '.cbuild' )
+					.evaluate( ( root ) =>
+						root.classList.add( 'cbuild--subtle' )
+					);
+			}
+			await watch( page );
+			await choose( page, 'Builder test trucks 139' );
+			const outlined = page.locator(
+				'#cbuild-picture .cbuild-board__layer[data-outlined]'
+			);
+			// Shown without a move: each truck's layer marked, its outline drawn whole.
+			await expect( outlined ).toHaveCount( 2 );
+			expect(
+				await outlined
+					.first()
+					.evaluate(
+						( layer ) =>
+							getComputedStyle( layer, '::after' ).opacity
+					)
+			).toBe( '1' );
+			const { animations } = await seen( page );
+			const outlines = moment( animations, 'cbuild-outline' );
+			expect( outlines, 'one fade a truck' ).toHaveLength( 2 );
+			for ( const fade of outlines ) {
+				expect( fade.properties ).toEqual( [ 'opacity' ] );
+				expect( fade.pseudo ).toBe( '::after' );
+			}
+			faded( animations );
+			await expect( outlined ).toHaveCount( 0 );
+		} );
+	}
+
+	for ( const motion of [ 'no-preference', 'reduce' ] as const ) {
+		test( `the outline moves nothing on the page${
+			'reduce' === motion ? ' under reduced motion' : ''
+		}: no layer of the board changes its place or size, and no layout shift`, async ( {
+			page,
+		}, info ) => {
+			await page.emulateMedia( { reducedMotion: motion } );
+			await atTrucks( page );
+			await page.evaluate( () => {
+				const record = window as unknown as {
+					shift: number;
+					boxes: Set< string >;
+					outlined: number;
+				};
+				record.shift = 0;
+				record.boxes = new Set();
+				record.outlined = 0;
+				if (
+					PerformanceObserver.supportedEntryTypes.includes(
+						'layout-shift'
+					)
+				) {
+					new PerformanceObserver( ( list ) => {
+						for ( const entry of list.getEntries() as unknown as {
+							value: number;
+							hadRecentInput: boolean;
+						}[] ) {
+							if ( ! entry.hadRecentInput ) {
+								record.shift += entry.value;
+							}
+						}
+					} ).observe( { type: 'layout-shift' } );
+				}
+				// At each frame an outline is shown or playing: where each of the board's layers and images is laid out,
+				// its offsets, which a transform does not move. Every such frame must be the same.
+				const began = performance.now();
+				const frame = () => {
+					const board = document.querySelector(
+						'#cbuild-picture > .cbuild-board:not(.cbuild-board--top)'
+					);
+					const playing = document
+						.getAnimations()
+						.some(
+							( animation ) => 'cbuild-outline' === animation.id
+						);
+					if (
+						board &&
+						( playing || board.querySelector( '[data-outlined]' ) )
+					) {
+						record.outlined++;
+						record.boxes.add(
+							[
+								board,
+								...board.querySelectorAll< HTMLElement >(
+									'.cbuild-board__layer, .cbuild-board__image'
+								),
+							]
+								.map( ( element ) => {
+									const box = element as HTMLElement;
+									return `${ box.offsetLeft },${ box.offsetTop },${ box.offsetWidth }x${ box.offsetHeight }`;
+								} )
+								.join( ' ' )
+						);
+					}
+					if ( performance.now() < began + 4000 ) {
+						window.requestAnimationFrame( frame );
+					}
+				};
+				window.requestAnimationFrame( frame );
+			} );
+			await choose( page, 'Builder test trucks 139' );
+			await expect(
+				page.locator(
+					'#cbuild-picture .cbuild-board__layer[data-outlined]'
+				)
+			).toHaveCount( 0 );
+			await page.waitForTimeout( 1500 );
+			const { shift, boxes, outlined } = await page.evaluate( () => {
+				const record = window as unknown as {
+					shift: number;
+					boxes: Set< string >;
+					outlined: number;
+				};
+				return {
+					shift: record.shift,
+					boxes: [ ...record.boxes ],
+					outlined: record.outlined,
+				};
+			} );
+			expect( outlined, 'the outline was seen' ).toBeGreaterThan( 0 );
+			expect(
+				boxes,
+				'the board laid out the same at each frame'
+			).toHaveLength( 1 );
+			if ( info.project.name.startsWith( 'chromium' ) ) {
+				expect( shift, 'layout shift' ).toBe( 0 );
+			}
+		} );
+	}
+
 	for ( const calm of [ 'reduced motion', 'subtle' ] as const ) {
 		test( `under ${ calm } every moment is a fade of 150 ms or less, opacity alone`, async ( {
 			page,

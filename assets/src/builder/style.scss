@@ -2073,6 +2073,33 @@
 }
 
 /*
+ * A part picked, outlined (#138, D-413): each layer's ::after, drawn over its box and hidden. The motion module shows
+ * it for 600 ms by transform and opacity, or where motion is calm by `data-outlined` and a fade. It sits inside the
+ * layer's box, so it reaches past nothing and lays nothing out again. The board's top paints its deck and grip
+ * through their outline as a mask, which would cut a ring away: there the part's own shape is tinted instead.
+ */
+:where(.cbuild-board__layer)::after {
+	position: absolute;
+	box-sizing: border-box;
+	border: 2px solid var(--cbuild-accent);
+	border-radius: 4px;
+	content: "";
+	inset: 0;
+	opacity: 0;
+	pointer-events: none;
+}
+
+:where(.cbuild-board__layer[data-outlined])::after {
+	opacity: 1;
+}
+
+:where(.cbuild-board--top)
+	:where(.cbuild-board__layer--deck, .cbuild-board__layer--grip)::after {
+	border: 0;
+	background: color-mix(in srgb, var(--cbuild-accent) 35%, transparent);
+}
+
+/*
  * A pick's picture on its way (D-308): once the shopper has waited 300 ms, the board dims and a line runs along its
  * foot, four times at most (nothing loops; WCAG 2.2.2), the dim staying until the new board is drawn, as a wait of a second or more needs saying (NN/g's response limits); the old
  * board stays whole meanwhile. With reduced motion, the dim alone.
@@ -2174,6 +2201,11 @@
 
 	:where(.cbuild-button--primary, .cbuild-step__next) {
 		border: 2px solid ButtonText;
+	}
+
+	/* A part picked is outlined in the system's highlight (D-413). */
+	:where(.cbuild-board__layer)::after {
+		border-color: Highlight;
 	}
 
 	/* The board's top is a picture, as its images are: its maple is not the system's ground. */

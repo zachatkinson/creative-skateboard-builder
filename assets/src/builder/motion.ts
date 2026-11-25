@@ -25,6 +25,7 @@ export const TIMES = {
 	total: 300,
 	step: 200,
 	cart: 400,
+	outline: 600,
 } as const;
 
 export type Moment = keyof typeof TIMES;
@@ -87,6 +88,11 @@ let crossing: { skipTransition: () => void } | undefined;
 let counting: ( () => void ) | undefined;
 
 /**
+ * Each calm outline shown, by its layer: the timer that fades it.
+ */
+const held = new Map< Element, number >();
+
+/**
  * Cut every running moment short at its end: a new pick, a press, or an answer that came.
  */
 export function cut(): void {
@@ -98,6 +104,11 @@ export function cut(): void {
 	crossing = undefined;
 	counting?.();
 	counting = undefined;
+	for ( const [ layer, timer ] of held ) {
+		window.clearTimeout( timer );
+		layer.removeAttribute( 'data-outlined' );
+	}
+	held.clear();
 }
 
 /**
@@ -110,6 +121,7 @@ export function cut(): void {
  * @param quiet   Whether it only fades.
  * @param delay   How long it waits to start, in milliseconds.
  * @param fade    The fade where it is calm: in, out, or none for a moment that only moves.
+ * @param pseudo  The element's pseudo-element it plays on, such as `::after`, where it is not the element itself.
  */
 export function play(
 	element: Element,
@@ -117,7 +129,8 @@ export function play(
 	frames: Keyframe[],
 	quiet: boolean,
 	delay = 0,
-	fade: 'in' | 'out' | 'none' = 'in'
+	fade: 'in' | 'out' | 'none' = 'in',
+	pseudo?: string
 ): Animation | undefined {
 	if (
 		'function' !== typeof element.animate ||
@@ -133,6 +146,7 @@ export function play(
 			delay: quiet ? 0 : delay,
 			easing: quiet ? 'linear' : EASE,
 			fill: 'backwards',
+			...( pseudo ? { pseudoElement: pseudo } : {} ),
 		}
 	);
 	animation.id = `cbuild-${ moment }`;
@@ -234,11 +248,7 @@ export function build(
 	after: Layer[],
 	quiet: boolean
 ): void {
-	const drawn = board
-		? [ ...board.children ].filter(
-				( child ) => 'TEMPLATE' !== child.tagName
-			)
-		: [];
+	const drawn = layersOf( board );
 	for ( const cue of cues( before, after ) ) {
 		const element = drawn[ cue.index ];
 		const layer = after[ cue.index ];
@@ -251,6 +261,71 @@ export function build(
 				cue.delay
 			);
 		}
+	}
+}
+
+/**
+ * The board's drawn layers, in the order they are drawn: its children past the template that draws them.
+ *
+ * @param board The board's element.
+ */
+function layersOf( board: Element | null ): Element[] {
+	return board
+		? [ ...board.children ].filter(
+				( child ) => 'TEMPLATE' !== child.tagName
+			)
+		: [];
+}
+
+/**
+ * The outline's frames: drawn in from just inside the part's box, so it never reaches past it, held, and gone.
+ */
+const OUTLINE: Keyframe[] = [
+	{ opacity: 0, transform: 'scale(0.94)' },
+	{ opacity: 1, transform: 'none', offset: 0.25 },
+	{ opacity: 1, transform: 'none', offset: 0.7 },
+	{ opacity: 0, transform: 'none' },
+];
+
+/**
+ * After a pick, the area of the board each part new to it or swapped stands on is outlined for 600 ms (#138; D-413),
+ * so the eye finds what changed; the build's sentence says it in words. The outline is each layer's `::after`, which
+ * the stylesheet draws over its box and hides: moved here by `transform` and `opacity` alone, so nothing is laid out
+ * again. Where it is calm, the outline shows at once, by the layer's `data-outlined`, and fades out over the last
+ * 150 ms: no movement, 600 ms in all. A part removed has no layer left to outline, and the photos closing over it say
+ * it.
+ *
+ * @param board  The board's element.
+ * @param before Its layers before.
+ * @param after  Its layers now, in the order they are drawn.
+ * @param quiet  Whether moments only fade.
+ */
+export function outline(
+	board: Element | null,
+	before: Layer[],
+	after: Layer[],
+	quiet: boolean
+): void {
+	const drawn = layersOf( board );
+	for ( const cue of cues( before, after ) ) {
+		const layer = drawn[ cue.index ];
+		if ( ! layer || 'function' !== typeof layer.animate ) {
+			continue;
+		}
+		if ( ! quiet ) {
+			play( layer, 'outline', OUTLINE, false, 0, 'none', '::after' );
+			continue;
+		}
+		window.clearTimeout( held.get( layer ) );
+		layer.setAttribute( 'data-outlined', '' );
+		held.set(
+			layer,
+			window.setTimeout( () => {
+				held.delete( layer );
+				layer.removeAttribute( 'data-outlined' );
+				play( layer, 'outline', [], true, 0, 'out', '::after' );
+			}, TIMES.outline - FADE )
+		);
 	}
 }
 

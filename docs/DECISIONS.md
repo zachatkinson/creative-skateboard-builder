@@ -261,6 +261,7 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-305 · The motion: one module, the board's moments by the Web Animations API, a step by a view transition](#d-305--the-motion-one-module-the-boards-moments-by-the-web-animations-api-a-step-by-a-view-transition--2026-11-23)
 - [D-306 · The motion's speed gates: INP, no shift, the compositor, a trace of each moment](#d-306--the-motions-speed-gates-inp-no-shift-the-compositor-a-trace-of-each-moment--2026-11-23)
 - [D-329 · M11's motion durations stand over the older 150 to 250 ms range](#d-329--m11s-motion-durations-stand-over-the-older-150-to-250-ms-range--2026-11-23)
+- [D-413 · A part picked is outlined on the board for 600 ms, on its layer's ::after](#d-413--a-part-picked-is-outlined-on-the-board-for-600-ms-on-its-layers-after--2026-11-25)
 
 ### The picture
 
@@ -2183,7 +2184,11 @@ Milestone 5's first step: the keys' shapes, and where each route's request is ju
 - **The kit's line is priced by `set_price()` on the line's product object,** on `woocommerce_add_cart_item` and `woocommerce_get_cart_item_from_session`, at the assembly fee or nothing. The kit product's own price is not changed, and a kit read anywhere else still shows its fee.
 - **Mutation testing.** `Cart\CartHooks`, `Adapter\WooCart` and `Adapter\WpUuids` cannot run without WooCommerce and WordPress, and the integration suite proves them (`CartAddTest`). The pattern `Hooks` in `infection.json5` had matched `Cart/CartHooks.php` by its name; it is now `Hooks/`, the folder it was written for. Whether the three are named in the list is Zach's (D-038), and is asked at the review. Infection makes no mutant in a file no unit test loads, so the floor is the same either way.
 
-**Red run.** "CartAddTest::test_a_part_woocommerce_will_not_add_takes_the_whole_build_out_and_fails_the_add: Failed asserting that 500 is identical to 400." at `tests/Integration/CartAddTest.php:337`: the refusal was a plain exception wherever `WC()->is_store_api_request()` was false. **Deliberate breaks** are in the commit's message.
+**Red run.** "CartAddTest::test_a_part_woocommerce_will_not_add_takes_the_whole_build_out_and_fails_the_add: Failed asserting that 500 is identical to 400." at `tests/Integration/CartAddTest.php:337`: the refusal was a plain exception wherever `WC()->is_store_api_request()` was false. **Deliberate breaks**, each red, then put back and green:
+
+- the store's call to `outline()` after a view taken out: `store.test.ts`, "plays a part new to the board on the side shown alone", expected `[ 'cbuild-trucks underside trucks-1' ]` to equal the two with the outline (`:4570`);
+- a calm outline moved as a full one does: "where it is calm, shows the outline at once…", "nothing moves: expected [ Array(1) ] to deeply equal []" (`motion.test.ts:509`), and two more;
+- the calm outline held 600 ms before its fade, 750 ms in all: the same test, "expected true to be false" (`motion.test.ts:516`), and the second-pick test (`:548`).
 
 **Status:** Accepted.
 
@@ -5691,5 +5696,27 @@ Found building #136 (D-411). My builds is a WooCommerce responsive table (`shop_
 **Deliberate break.** With `display:block` taken out of the rule, the same check failed on webkit-phone at the same line. Put back, it passed on all three phone projects.
 
 **Why:** the controls in a row must say which build they act on to the eye as well as to a screen reader (WCAG 2.2, 1.3.1 and 2.4.6).
+
+**Status:** Accepted.
+
+### D-413 · A part picked is outlined on the board for 600 ms, on its layer's ::after · 2026-11-25
+
+Issue #138, from Cowork's competitor review and Zach's answers (24 Nov): after a pick, the part's area of the board is outlined for about 600 ms, and under reduced motion the outline shows and fades without movement.
+
+**Decision:**
+
+- **What is outlined.** Each layer the pick brought onto the board or changed, the same set the motion module's `cues()` already finds for the part's own moment: one outline per truck, four per wheel set, the deck when it is swapped. A part removed has no layer left to outline; the photos closing over it say it (D-305). A pick that draws nothing on the side shown (bearings, a turn of the board) outlines nothing.
+- **How.** Each layer's `::after`, which the stylesheet draws over the layer's own box and hides: a 2 px ring in the builder's accent with 4 px corners, Highlight under forced colours. On the board's top, the deck and grip are painted through their own outline as a mask, which would cut a ring away, so there the part's shape is tinted instead (`color-mix()` of the accent at 35 %). Nothing is built in JavaScript: the pseudo-element is the stylesheet's.
+- **Moves.** `outline()` in `motion.ts` plays the moment `outline`, 600 ms (`TIMES.outline`), through `play()`, which now takes a pseudo-element: opacity 0 to 1 by a quarter of the way, held to 70 %, then 0; transform from `scale(0.94)` to none, so it is drawn in from just inside the part's box and never reaches past it, and nothing scrolls. `transform` and `opacity` alone, on the compositor (D-306). It starts with the part's own moment, with no delay, so the eye goes to the part as it lands.
+- **Calm.** Under reduced motion or the kit's subtle Motion (D-256), the outline shows at once (the layer's `data-outlined`, which the Interactivity API's class binding does not touch), and after 450 ms fades out in 150 ms, opacity alone: 600 ms in all, no movement, and every animation still 150 ms or less with no delay, as D-256 holds every calm moment. A second pick on the same layer holds it 600 ms from then; `cut()` takes it away at once, with every other moment.
+- **Words.** The outline is for the eye alone; the build's sentence still says what changed, and the browser test reads it.
+
+**Red run.** The unit tests: `outline is not a function` (five tests), `TIMES` without `outline` and `play()` passing no `pseudoElement`. The browser tests on chromium-desktop: "one outline a truck. Expected length: 2. Received length: 0" (`builder.spec.ts:5031`); both calm tests, `toHaveCount(2)` received 0 (`:5076`); both no-shift tests, "the outline was seen. Expected: > 0. Received: 0" (`:5186`).
+
+**Deliberate breaks** are in the commit's message.
+
+**Why:** the eye finds a change to a picture faster with a cue at its place than from the sentence alone; 600 ms is the issue's figure, long enough to be seen past the part's own 200 to 300 ms moment and short of a wait. A ring inside the part's box, moved by transform and opacity, keeps D-306's gates: no shift, the compositor alone.
+
+**Sources:** WCAG 2.2 2.3.3 (Animation from Interactions) and 1.4.1 (Use of Color: the sentence says it in words); MDN, `Element.animate()`'s `pseudoElement` option (Chrome 84, Firefox 75, Safari 14); web.dev, "Optimize Cumulative Layout Shift" (transform animations shift nothing).
 
 **Status:** Accepted.

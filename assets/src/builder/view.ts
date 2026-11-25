@@ -50,6 +50,7 @@ import {
 	cross,
 	cut,
 	measured,
+	outline,
 	play,
 	type Currency,
 } from './motion';
@@ -626,14 +627,14 @@ function moments(
 	// The side shown alone: the top has a deck and wheels of its own, keyed as the underside's are.
 	const upper = true === after.picture?.turned;
 	const side = upper ? 'top' : 'board';
-	build(
-		board( upper ),
+	const then =
 		before.picture?.turned === after.picture?.turned
 			? ( before.picture?.[ side ]?.layers ?? [] )
-			: ( after.picture?.[ side ]?.layers ?? [] ),
-		after.picture?.[ side ]?.layers ?? [],
-		quiet
-	);
+			: ( after.picture?.[ side ]?.layers ?? [] );
+	const now = after.picture?.[ side ]?.layers ?? [];
+	build( board( upper ), then, now, quiet );
+	// The part picked, outlined on the board for the eye (#138, D-413).
+	outline( board( upper ), then, now, quiet );
 	if ( was ) {
 		close( was, quiet );
 	}
@@ -1068,9 +1069,10 @@ function swap( view: Shown, value: string ): void {
 				source.sizes = preload.sizes;
 			}
 			root?.setAttribute( 'data-swapped', '' );
-			window.requestAnimationFrame( () =>
-				build( board( false ), before, layers, calm( root ) )
-			);
+			window.requestAnimationFrame( () => {
+				build( board( false ), before, layers, calm( root ) );
+				outline( board( false ), before, layers, calm( root ) );
+			} );
 		},
 		// Not decoded: the old board stays whole until the answer.
 		() => undefined

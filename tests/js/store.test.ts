@@ -687,7 +687,11 @@ describe( 'the store', () => {
 				expect( animated, 'on the next frame' ).toEqual( [] );
 				vi.advanceTimersToNextFrame();
 				await settle();
-				expect( animated ).toEqual( [ 'cbuild-swapped' ] );
+				// The deck settles, and its area is outlined for the eye (#138, D-413).
+				expect( animated ).toEqual( [
+					'cbuild-swapped',
+					'cbuild-outline',
+				] );
 				expect( state.view.url, 'the answer still awaited' ).toBe(
 					START.url
 				);
@@ -4562,14 +4566,21 @@ describe( 'what the stage plays as a view comes in', () => {
 		await settle();
 		expect( seen(), 'not before the frame that draws it' ).toEqual( [] );
 		vi.advanceTimersToNextFrame();
-		expect( seen() ).toEqual( [ 'cbuild-trucks underside trucks-1' ] );
+		// Each part's moment, then its area outlined on the same side (#138, D-413).
+		expect( seen() ).toEqual( [
+			'cbuild-trucks underside trucks-1',
+			'cbuild-outline underside trucks-1',
+		] );
 
 		played = [];
 		state.view = pictured( true, [ 'deck-1' ], [ 'deck-1' ] );
 		await shown(
 			pictured( true, [ 'deck-1', 'trucks-1' ], [ 'deck-1', 'grip-1' ] )
 		);
-		expect( seen() ).toEqual( [ 'cbuild-grip top grip-1' ] );
+		expect( seen() ).toEqual( [
+			'cbuild-grip top grip-1',
+			'cbuild-outline top grip-1',
+		] );
 	} );
 
 	it( 'turns the board to the side a new view shows, and plays nothing new on the side as it turns to it', async () => {
