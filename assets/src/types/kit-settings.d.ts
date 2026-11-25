@@ -13,6 +13,10 @@ export interface CbuildSettings {
 	 */
 	builder_page?: number;
 	/**
+	 * How many business days putting a build together takes, from 1.2.0 (#142): a count, such as 2, or a range, the fewer first, such as 2-4, from 0 to 60. Shown beside the lead time in the Build tab's Assembly section, and given to cbuild_arrival_estimate and cbuild_delivery_line for an assembled build. Left out, none.
+	 */
+	lead_days?: string;
+	/**
 	 * Whether the kit places "Build a complete with this deck" on the pages of the parts its first slot offers. Off, the kit is passed over, and another kit that offers the part may place it. The default is true.
 	 */
 	start_button?: boolean;

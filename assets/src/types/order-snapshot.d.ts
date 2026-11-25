@@ -61,4 +61,8 @@ export interface CbuildSnapshot {
 	 * The kit's returns notice, as the shopper read it. Empty for a build the shop does not assemble.
 	 */
 	returns_notice: string;
+	/**
+	 * From 1.2.0 (#142): the kit's assembly time in business days when it was sold, such as 2 or 2-4. Empty for a build the shop does not assemble, or a kit with none. A snapshot made before 1.2.0 has no key.
+	 */
+	lead_days?: string;
 }

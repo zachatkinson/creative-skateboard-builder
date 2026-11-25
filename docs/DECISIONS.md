@@ -5266,4 +5266,6 @@ Put back, all passed.
 
 **Red run.** Before the code: `LeadDaysTest` failed with `Class "CreativeBranding\SkateboardBuilder\Domain\Kit\LeadDays" not found`; `KitEditorTest::test_the_assembly_time_is_kept_as_business_days_and_one_that_is_not_is_named_at_its_field` at KitEditorTest.php:684, "Failed asserting that two arrays are identical."; `StateAnswerTest::test_the_delivery_filters_are_given_the_assembly_time_and_each_part_with_its_quantity` at StateAnswerTest.php:1387 and `OrderBuildsTest::test_the_assembly_time_is_kept_for_an_assembled_build_alone` at OrderBuildsTest.php:72, each "Failed asserting that null is identical to '2-4'."
 
+**Deliberate breaks.** `lead_days` given empty in the filters' context and the snapshot: `DeliveryTest.php:282` and `OrderTest.php:316`, "Failed asserting that two strings are identical." The filters given no `parts`: `DeliveryTest.php:283`, "Failed asserting that two arrays are identical." The assembly time's problems left to Layout: `BuildTabTest.php:1231`, "Failed asserting that two arrays are identical." The editor keeping "2 to 4" as typed: `build-tab.spec.ts:317` on chromium-desktop, "Expected: 0 / Received: 1" (a notice where none was due). Put back, all passed.
+
 **Status:** Accepted.

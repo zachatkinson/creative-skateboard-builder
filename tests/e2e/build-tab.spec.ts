@@ -370,12 +370,12 @@ test.describe( 'The Build tab', () => {
 		await edit( page );
 		await tab( page );
 		await expect( days ).toHaveAccessibleName(
-			'Délai d’assemblage (jours ouvrables)'
+			'Délai d’assemblage en jours ouvrables'
 		);
 		await type( page, DAYS, 'deux jours' );
 		await update( page );
 		await expect( page.locator( '#woocommerce_errors' ) ).toContainText(
-			'Délai d’assemblage (jours ouvrables) : tapez un nombre de jours ouvrables, par exemple 2, ou un intervalle, le plus petit nombre d’abord, par exemple 2-4.'
+			'Délai d’assemblage en jours ouvrables : tapez un nombre de jours ouvrables, par exemple 2, ou un intervalle, le plus petit nombre d’abord, par exemple 2-4.'
 		);
 		await tab( page );
 		await expect( days ).toHaveValue( 'deux jours' );
