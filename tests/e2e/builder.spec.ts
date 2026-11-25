@@ -12111,4 +12111,361 @@ test.describe( 'A hostile theme', () => {
 			'.cbuild-start'
 		);
 	} );
+
+	// The wide sweep (D-419): every text block the builder draws, measured with the fixture off and then on, on the
+	// start with "Help me choose" open and with its answers sent, a deck step after a width, a hardware step, the review
+	// and the review with an error, the change panel, and My builds' compare; at the project's width and, on a desktop
+	// project, a phone's too. Each block's top within its screen and its height may differ by no more than LIMIT px: a
+	// theme's margins for its paragraphs, headings and lists are its content's, not the builder's.
+	type Block = {
+		top: number;
+		height: number;
+		below: number;
+		margin: string;
+	};
+	const guided = (): string => {
+		const url = new URL( fixture().page );
+		for ( const [ key, value ] of Object.entries( {
+			shoe: '3',
+			style: 'street',
+			asked: '1',
+		} ) ) {
+			url.searchParams.set( `cbuild[_guide][${ key }]`, value );
+		}
+		return url.toString();
+	};
+	const saved = [ 'Hostile street', 'Hostile park' ];
+	const unsave = () =>
+		runPhp(
+			`$u = get_user_by( 'login', 'e2e-saver' ); if ( $u ) { $s = CreativeBranding\\SkateboardBuilder\\Plugin::container()->get( CreativeBranding\\SkateboardBuilder\\Service\\SavedBuilds::class ); foreach ( $s->of( $u->ID ) as $b ) { if ( in_array( $b->name, ${ JSON.stringify(
+				saved
+			) }, true ) ) { $s->delete( $u->ID, $b->uuid ); } } }`
+		);
+	const screens: [
+		string,
+		string,
+		( page: Page, js: boolean ) => Promise< void >,
+	][] = [
+		[
+			'the start with Help me choose open',
+			'.cbuild',
+			async ( page ) => {
+				await page.goto( fixture().page );
+				const ask = page.locator( '.cbuild-guide__ask' );
+				await ask.locator( 'summary' ).click();
+				await expect( ask ).toHaveAttribute( 'open', '' );
+			},
+		],
+		[
+			"the start with the guide's answers sent",
+			'.cbuild',
+			async ( page ) => {
+				await page.goto( guided() );
+				await expect(
+					page.locator( '.cbuild-guide__builds' )
+				).toBeVisible();
+			},
+		],
+		[
+			'a deck step after a width',
+			'.cbuild',
+			async ( page ) => {
+				await page.goto( linkTo( { _width: '8in' } ) );
+			},
+		],
+		[
+			'a hardware step',
+			'.cbuild',
+			async ( page ) => {
+				await page.goto(
+					linkTo( {
+						deck: id( 'builder-test-deck-8-0' ),
+						trucks: id( 'builder-test-trucks-139' ),
+						wheels: id( 'builder-test-wheels-54' ),
+						bearings: id( 'builder-test-bearings' ),
+						step: 'hardware',
+					} )
+				);
+			},
+		],
+		[
+			'the review',
+			'.cbuild',
+			async ( page ) => {
+				await page.goto( review() );
+			},
+		],
+		[
+			'the review with an error',
+			'.cbuild',
+			async ( page ) => {
+				await page.goto(
+					linkTo( {
+						deck: id( 'builder-test-deck-8-5' ),
+						trucks: id( 'builder-test-trucks-149' ),
+						wheels: id( 'builder-test-wheels-56' ),
+						bearings: id( 'builder-test-bearings' ),
+						hardware: id( 'builder-test-bolts-1' ),
+						grip: id( 'builder-test-grip' ),
+						step: 'review',
+						preset: 1,
+					} )
+				);
+				await expect( page.locator( '.cbuild-errors' ) ).toBeVisible();
+			},
+		],
+		[
+			'the change panel',
+			'.cbuild',
+			async ( page, js ) => {
+				await page.goto(
+					linkTo( {
+						deck: id( 'builder-test-deck-8-0' ),
+						trucks: id( 'builder-test-trucks-139' ),
+						step: 'deck',
+					} )
+				);
+				// With the script the pick itself opens the panel; without it, Next sends the form and the server
+				// answers with the panel as a step of its own.
+				await pickDeck( page, '8.5' );
+				if ( ! js ) {
+					await next( page, 'Next: Trucks' );
+				}
+				await expect( page.locator( '.cbuild-changes' ) ).toBeVisible();
+			},
+		],
+	];
+
+	/**
+	 * Every text block shown in a screen's root: its top within its parent's box and its height, to the half pixel, by
+	 * its element, its place among the root's elements of that name and its classes; and its block margins, to say why.
+	 *
+	 * @param page The page.
+	 * @param root The screen's root.
+	 */
+	const blocks = async (
+		page: Page,
+		root: string
+	): Promise< Map< string, Block > > => {
+		// A primary button keeps the theme's own fill and padding (D-321), so the change panel's Use these is taller
+		// under the fixture's button rule; held at one size in both runs, it moves none of the words measured. The
+		// bar's buttons have their own test (D-417).
+		// Added by hand: addStyleTag waits for a load event that a page without JavaScript never sends.
+		await page.evaluate( () => {
+			const style = document.createElement( 'style' );
+			style.textContent =
+				'.cbuild .cbuild-button--primary{padding-block:0!important}';
+			document.head.append( style );
+		} );
+		return new Map(
+			await page
+				.locator( root )
+				.filter( { visible: true } )
+				.first()
+				.evaluate( ( scope ) => {
+					const half = ( value: number ) =>
+						Math.round( value * 2 ) / 2;
+					const found: [ string, Block ][] = [];
+					for ( const tag of [
+						'p',
+						'h1',
+						'h2',
+						'h3',
+						'h4',
+						'h5',
+						'h6',
+						'ul',
+						'ol',
+						'dl',
+						'li',
+						'dt',
+						'dd',
+						'legend',
+						'summary',
+						'figcaption',
+						'caption',
+						'table',
+						'th',
+						'td',
+					] ) {
+						scope
+							.querySelectorAll( tag )
+							.forEach( ( block, at ) => {
+								const box = block.getBoundingClientRect();
+								// A screen reader's text is off the screen, where a margin moves nothing.
+								if (
+									! block.checkVisibility() ||
+									box.height <= 1 ||
+									block.closest( '.screen-reader-text' )
+								) {
+									return;
+								}
+								const parent = (
+									block.parentElement ?? scope
+								).getBoundingClientRect();
+								const style = getComputedStyle( block );
+								const classes = [ ...block.classList ]
+									.map( ( name ) => `.${ name }` )
+									.join( '' );
+								found.push( [
+									`${ tag }[${ at }]${ classes }`,
+									{
+										top: half( box.top - parent.top ),
+										height: half( box.height ),
+										below: half(
+											parent.bottom - box.bottom
+										),
+										margin: `${ style.marginBlockStart } ${ style.marginBlockEnd }`,
+									},
+								] );
+							} );
+					}
+					return found;
+				} )
+		);
+	};
+
+	/**
+	 * The blocks a theme's rules moved by more than LIMIT px, or showed or hid.
+	 *
+	 * @param own    The blocks with the fixture off.
+	 * @param theirs The same with it on.
+	 */
+	const moved = (
+		own: Map< string, Block >,
+		theirs: Map< string, Block >
+	): string[] => [
+		...[ ...own ].flatMap( ( [ key, box ] ) => {
+			const other = theirs.get( key );
+			if ( ! other ) {
+				return [ `${ key }: hidden` ];
+			}
+			return Math.abs( other.top - box.top ) > LIMIT ||
+				Math.abs( other.height - box.height ) > LIMIT ||
+				Math.abs( other.below - box.below ) > LIMIT
+				? [
+						`${ key }: top ${ other.top }, height ${ other.height }, below ${ other.below }, margin ${ other.margin }; ${ box.top }, ${ box.height }, ${ box.below }, ${ box.margin } without`,
+					]
+				: [];
+		} ),
+		...[ ...theirs.keys() ]
+			.filter( ( key ) => ! own.has( key ) )
+			.map( ( key ) => `${ key }: shown` ),
+	];
+
+	/**
+	 * The widths a screen is measured at: the project's own, and on a desktop project a phone's too.
+	 *
+	 * @param project The project's name.
+	 */
+	const widths = ( project: string ) =>
+		project.includes( 'phone' )
+			? [ null ]
+			: [ null, { width: 390, height: 844 } ];
+
+	for ( const [ name, root, open ] of screens ) {
+		test( `keeps every text block of ${ name } where the builder puts it under the hostile theme`, async ( {
+			page,
+			context,
+			baseURL,
+			javaScriptEnabled,
+		}, info ) => {
+			const found: string[] = [];
+			for ( const size of widths( info.project.name ) ) {
+				if ( size ) {
+					await page.setViewportSize( size );
+				}
+				const width = page.viewportSize()?.width;
+				await hostile( context, baseURL, false );
+				await open( page, javaScriptEnabled );
+				const own = await blocks( page, root );
+				expect( own.size, 'text blocks to measure' ).toBeGreaterThan(
+					0
+				);
+				await hostile( context, baseURL, true );
+				await open( page, javaScriptEnabled );
+				const theirs = await blocks( page, root );
+				found.push(
+					...moved( own, theirs ).map(
+						( line ) => `${ width } px, ${ line }`
+					)
+				);
+			}
+			expect( found, `${ name }: the blocks a theme moved` ).toEqual(
+				[]
+			);
+		} );
+	}
+
+	test( "keeps every text block of My builds' compare where the builder puts it under the hostile theme", async ( {
+		page,
+		context,
+		baseURL,
+	}, info ) => {
+		await customer( page );
+		unsave();
+		const street = {
+			deck: id( 'builder-test-deck-8-0' ),
+			trucks: id( 'builder-test-trucks-139' ),
+			wheels: id( 'builder-test-wheels-54' ),
+			bearings: id( 'builder-test-bearings' ),
+			hardware: id( 'builder-test-bolts-1-25' ),
+			grip: id( 'builder-test-grip' ),
+		};
+		const builds = [
+			street,
+			{ ...street, wheels: id( 'builder-test-wheels-52' ) },
+		];
+		runPhp(
+			`$u = get_user_by( 'login', 'e2e-saver' ); $s = CreativeBranding\\SkateboardBuilder\\Plugin::container()->get( CreativeBranding\\SkateboardBuilder\\Service\\SavedBuilds::class ); foreach ( json_decode( '${ JSON.stringify(
+				builds.map( ( picks, at ) => ( { name: saved[ at ], picks } ) )
+			) }', true ) as $b ) { if ( 'saved' !== $s->save( $u->ID, ${
+				fixture().kit
+			}, $b['picks'], true, $b['name'] )['code'] ) { throw new RuntimeException( $b['name'] ); } }`
+		);
+		try {
+			await hostile( context, baseURL, false );
+			await page.goto( '/my-account/my-builds/' );
+			for ( const name of saved ) {
+				await page
+					.getByRole( 'checkbox', { name: `Compare ${ name }` } )
+					.check();
+			}
+			await answered( page, () =>
+				page
+					.getByRole( 'button', {
+						name: 'Compare the ticked builds',
+					} )
+					.click()
+			);
+			const address = page.url();
+			// The compare's own table. The link back to My builds above it is a paragraph of the account page, spaced
+			// as the theme spaces that page's words, WooCommerce's own among them (D-419).
+			const root = '.cbuild-compare';
+			const found: string[] = [];
+			for ( const size of widths( info.project.name ) ) {
+				if ( size ) {
+					await page.setViewportSize( size );
+				}
+				const width = page.viewportSize()?.width;
+				await hostile( context, baseURL, false );
+				await page.goto( address );
+				await expect( page.locator( '.cbuild-compare' ) ).toBeVisible();
+				const own = await blocks( page, root );
+				await hostile( context, baseURL, true );
+				await page.goto( address );
+				const theirs = await blocks( page, root );
+				found.push(
+					...moved( own, theirs ).map(
+						( line ) => `${ width } px, ${ line }`
+					)
+				);
+			}
+			expect( found, 'the compare: the blocks a theme moved' ).toEqual(
+				[]
+			);
+		} finally {
+			unsave();
+		}
+	} );
 } );

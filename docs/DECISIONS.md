@@ -244,6 +244,7 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-416 · The start button is Add to cart's twin by its fill alone, its words read on its fill, and a hostile theme fixture tests the builder against a theme's rules](#d-416--the-start-button-is-add-to-carts-twin-by-its-fill-alone-its-words-read-on-its-fill-and-a-hostile-theme-fixture-tests-the-builder-against-a-themes-rules--2026-11-25)
 - [D-417 · The bar's Back and Next, and its delivery lines, hold their size and margins at two classes' weight](#d-417--the-bars-back-and-next-and-its-delivery-lines-hold-their-size-and-margins-at-two-classes-weight--2026-11-25)
 - [D-418 · The hostile theme sweep, and a ready build's lines at two classes' weight](#d-418--the-hostile-theme-sweep-and-a-ready-builds-lines-at-two-classes-weight--2026-11-25)
+- [D-419 · The block margins of the builder's paragraphs, headings and lists hold at two classes' weight, measured by a sweep of every text block](#d-419--the-block-margins-of-the-builders-paragraphs-headings-and-lists-hold-at-two-classes-weight-measured-by-a-sweep-of-every-text-block--2026-11-25)
 
 ### Accessibility
 
@@ -6207,6 +6208,43 @@ Asked for with the hostile theme fixture (D-416): one test that runs the builder
 **Not covered.** The sweep measures the bar and one card or tile; other paragraphs in the builder (the review's lead and total, the guide's questions, a step's help) still take a theme's paragraph margin over the reset, by the reset's design, which leaves a theme's spacing to its words. A page whose spacing a theme makes worse than this is a finding for a later pass, not this one.
 
 **Why:** a theme's rules are aimed at its content's words, not at the builder's tiles and bar, whose sizes the builder sets so they fit.
+
+**Status:** Accepted.
+
+### D-419 · The block margins of the builder's paragraphs, headings and lists hold at two classes' weight, measured by a sweep of every text block · 2026-11-25
+
+D-418 left a gap: the sweep measured the bar and one card, and the builder's other words still took a theme's margins over the reset at no weight.
+
+**The wider sweep.** "A hostile theme › keeps every text block of … where the builder puts it under the hostile theme", for the start with Help me choose open, the start with the guide's answers sent, a deck step after a width, a hardware step, the review, the review with an error (the error summary), the change panel, and My builds' compare. Each screen is opened with the fixture off and then on, at the project's width and, on a desktop project, at 390 by 844 too. Every `p`, heading, list, list item, `dt`, `dd`, `legend`, `summary`, `figcaption`, `caption`, table and cell shown is measured: its top within its parent, its height, and the space below it in its parent. Any of the three that moves by more than 2 px is a finding, listed with the block's margins with and without the fixture. A screen reader's text is left out, since a margin moves nothing off the screen. A primary button keeps the theme's fill and padding (D-321), so it is held at one size in both runs; the bar's buttons have their own test (D-417). The compare is measured on its own table. The link back to My builds above it is a paragraph of the account page, and the theme spaces it as it spaces WooCommerce's own words there. That is not a finding.
+
+**What it found,** at 1280 px with the fixture, each block's margins against its own without it. The same held at 390 px and without JavaScript:
+
+- **The stage:** the heading took 32.6 px above and 16.3 below, where the builder sets none on a desktop, so it sat 32.5 px lower. Under it the side line took 32 px. The outline drawn before a part is picked lost its own 30 px margins to the theme's 0 and 32, and was 402 px tall, not 483.
+- **A step:** the lead lost its −20 px pull up to its heading and took 32 px under it, 20 px lower. The step's "more" line took 32 px under it.
+- **Help me choose:** the intro, the budget question and the actions line each took 32 px. The actions sat 64 px lower with the questions open. The heading over the builds, and the ready builds' heading, took the theme's 1.5em and 0.75em over the browser's 1em.
+- **The review:** the lead, the arrival line, the total, the notice and the sign-in line each took 32 px. The sign-in line sat 144 px lower, at 1348.5 px rather than 1204.5.
+- **The error summary:** its heading took the theme's heading margins, and the list under it moved 5.5 px.
+- **The change panel:** its heading and its three subheadings took the theme's heading margins. Each line that no longer fits, and each closest fit, took 32 px.
+- **My builds' compare:** its table, caption and cells held. Only the link above it moved, as said.
+
+**Decision: one rule at the root, not one per finding.** The reset that should have held them is `:where(.cbuild) :where(… p …)`, which has no weight, so a theme's class and element (Kadence's `.single-content p`, the fixture's) wins, and so does any rule of no weight printed after the builder's stylesheet. Fixing each finding at its own class, as D-417 and D-418 did, would take about twenty rules and leave the next paragraph open. Instead:
+
+- `.cbuild.cbuild :where(p, ul, ol, dl, dd, figure, h1, h2) { margin-block: 0 }`. Two classes, the least weight over a theme's class and element, the weight D-321 gave a plain button's reset.
+- `.cbuild.cbuild :where(h3) { margin-block: 1em }` and `:where(h4) { margin-block: 1.33em }`. A section's heading keeps the browser's own margins, which the builder was drawn with on Twenty Twenty-Five, rather than none, so its look there does not change.
+- **Only the block margins.** A list's marker and its indent, a heading's size, and every colour stay the theme's at no weight. That keeps D-321's choice that a list of words keeps the theme's list style, and Storefront's indent, which is a margin at the inline start.
+- **The builder's own margins** for these elements are now set after the rule, at its weight: the step's lead, the error list, the line under the widths when none is in stock, the hidden parts' lists, the stage's heading, the empty outline and the hero picture's items. Only their margins moved up. Their colours and the rest of each rule stay at no weight.
+
+**What it costs a theme.** A theme that wants to space the builder's words in its own way now needs two classes and an element, such as `.cbuild .cbuild-review__lead`, printed after the builder's stylesheet, or `body .cbuild .cbuild-review__lead`. One class no longer does it. That is the price D-321 already paid for a fieldset and a button. A theme that styles its content's words, which is nearly every theme, no longer changes the builder's layout by accident. Colour, type and list style, which a theme most often wants to set, stay at no weight. Cascade layers stay turned down, for D-321's reason.
+
+**What else moves, with no fixture** (measured on each theme at 1280 and 390 px, with and without JavaScript, before and after):
+
+- **Twenty Twenty-Five:** on a phone, at the start and on the deck step before a pick, the stage is 18 px shorter, and everything under it rises 18 px. WordPress's `:where(figure) { margin: 0 0 1em 0 }` ("Reset user agent styles for figure element margins", wp-includes/css/dist/block-library/common.css:339, printed as `wp-block-library-inline-css` after the builder's stylesheet) gave the stage's `figure` 18.3 px under it, over the builder's reset of the same weight. Nothing else moved on Twenty Twenty-Five at 1280 or 390 px.
+- **Kadence:** its heading and paragraph margins no longer reach the builder. The stage's words sit 12 px higher, and on a desktop the outline and the board are about 44 px taller. The guide is 64 to 84 px shorter. Each step's form is 32 px shorter.
+- **Storefront:** its `p` and heading margins no longer reach the builder. The rail and everything under it at the start rise 24 px. A step's form is 22 to 23 px shorter, and the stage's words 14 px higher.
+
+**Tests.** The sweep, eight tests, each over every text block of its screen. Red, on the styles before this change (64d0353), at builder.spec.ts:11391: 14 of 16 failed on chromium-desktop and no-js, every screen but the compare. The review's ran "the review: the blocks a theme moved", with `p[18].cbuild-review__lead: top 833.5 … margin 0px 32px; 817.5 … 0px 0px without`, and 18 more. Deliberate break: the three new rules wrapped back in `:where()` failed 7 of 8 on chromium-desktop the same way, every screen but the compare; the stage's heading held there, by its own rule.
+
+**Why:** a theme's margins are aimed at its content's words, not at the builder's, which are spaced by the builder's own grids' gaps. A rule at the root holds every one of them, the ones drawn later too, where a rule per class holds only the ones found.
 
 **Status:** Accepted.
 
