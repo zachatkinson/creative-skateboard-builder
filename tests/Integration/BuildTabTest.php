@@ -1196,7 +1196,7 @@ final class BuildTabTest extends IntegrationTestCase {
 		self::assertMatchesRegularExpression( '#id="cbuild-kit-assembly".*?id="cbuild-kit-assembly-lead_time".*?<label for="cbuild-kit-settings-lead_days">Assembly time in business days</label>.*?id="cbuild-kit-assembly-returns_notice"#s', $panel, 'in Assembly, after the lead time' );
 		self::assertMatchesRegularExpression( '#id="cbuild-kit-settings-lead_days"[^>]*aria-describedby="cbuild-kit-settings-lead_days-note"#', $panel, 'with its note' );
 
-		foreach ( array( '2' => '2', '2-4' => '2-4', ' 2 - 4 ' => '2-4', '2–4' => '2-4', '2 to 4' => '2-4', '0' => '0', '60' => '60' ) as $typed => $kept ) {
+		foreach ( array( '2' => '2', '2-4' => '2-4', ' 2 - 4 ' => '2-4', '2–4' => '2-4', '0' => '0', '60' => '60' ) as $typed => $kept ) {
 			\WC_Admin_Meta_Boxes::$meta_box_errors = array();
 			$sent                                  = self::form();
 			$sent['settings']['lead_days']         = (string) $typed;

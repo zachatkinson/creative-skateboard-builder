@@ -333,7 +333,7 @@ test.describe( 'The Build tab', () => {
 		expect( cut, 'options cut short' ).toEqual( [] );
 	} );
 
-	// #142: the assembly time in business days, beside the lead time. Typed as "2 to 4", it is kept as "2-4"; past 60
+	// #142: the assembly time in business days, beside the lead time. Typed as "2 - 4", it is kept as "2-4"; past 60
 	// it is not saved, and the notice leads to the field in Assembly, which shows it as typed.
 	test( 'the assembly time in business days is typed beside the lead time, kept as 2-4, and refused past 60', async ( {
 		page,
@@ -363,7 +363,7 @@ test.describe( 'The Build tab', () => {
 			'cbuild-kit-settings-lead_days',
 		] );
 
-		await type( page, DAYS, '2 to 4' );
+		await type( page, DAYS, '2 - 4' );
 		await update( page );
 		await expect( page.locator( '#woocommerce_errors' ) ).toHaveCount( 0 );
 		await tab( page );

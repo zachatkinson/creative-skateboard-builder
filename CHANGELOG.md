@@ -12,7 +12,7 @@ All notable changes to this project are documented here. The format follows [Kee
   - Typing in a row unticks that box, and a screen reader hears it. Without the page's script, rows typed while it is ticked are not saved, and the tab says so.
   - Kept as `width_guide` in `_cbuild_settings`; a kit without one shows the builder's rows as 1.1.0 did. Shoe sizes pass through `cbuild_kit_text` (`width_guide_shoe`), and `cbuild_width_guide` still answers last.
   - A hidden guide is gone from the page and from the state route's answer (#114, D-350).
-- **Assembly time in business days**, beside the lead time in a kit's Build tab, Assembly section: `lead_days` in `_cbuild_settings`, a count or a range from 0 to 60, typed as "2-4", "2 - 4", "2–4" or "2 to 4" and kept as "2-4", in any script's digits: "٢-٤" is kept as "2-4" (#142, D-375).
+- **Assembly time in business days**, beside the lead time in a kit's Build tab, Assembly section: `lead_days` in `_cbuild_settings`, a count or a range from 0 to 60, typed as "2-4", "2 - 4" or "2–4" and kept as "2-4", in any script's digits: "٢-٤" is kept as "2-4" (#142, D-375, D-389).
   - `cbuild_arrival_estimate` and `cbuild_delivery_line` get `lead_days`, `parts` (slot key to part ID) and `quantities` (slot key to how many one build takes) in their `$context`.
   - The order's `_cbuild_snapshot` keeps `lead_days` as sold. It is empty for a build that is not assembled.
   - Additions only: no key is renamed or changes meaning, and `schema_version` stays 1.

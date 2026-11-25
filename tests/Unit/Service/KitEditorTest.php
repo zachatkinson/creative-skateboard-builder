@@ -670,7 +670,6 @@ final class KitEditorTest extends TestCase {
 			' 2-4 '  => '2-4',
 			'2 - 4'  => '2-4',
 			'2–4'    => '2-4',
-			'2 to 4' => '2-4',
 			'0'      => '0',
 			'60'     => '60',
 			// Arabic-Indic and full-width digits are the days they say, not none (the audit's third pass).
@@ -702,6 +701,7 @@ final class KitEditorTest extends TestCase {
 			'2-90'     => KitEditor::LEAD_DAYS_RANGE,
 			'two days' => KitEditor::LEAD_DAYS_FORM,
 			'2.5'      => KitEditor::LEAD_DAYS_FORM,
+			'2 to 4'   => KitEditor::LEAD_DAYS_FORM,
 			'4-2'      => KitEditor::LEAD_DAYS_FORM,
 		) as $typed => $code ) {
 			$sent['settings'] = array( 'lead_days' => (string) $typed );

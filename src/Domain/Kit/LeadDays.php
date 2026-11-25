@@ -11,7 +11,7 @@ namespace CreativeBranding\SkateboardBuilder\Domain\Kit;
 
 /**
  * How many business days putting a build together takes (#142): one count, "2", or a range, "2-4", from 0 to 60. It
- * is read as an owner types it, "2-4", "2 - 4", "2–4" or "2 to 4", and kept as "2-4", the form Creative Checkout's
+ * is read as an owner types it, "2-4", "2 - 4" or "2–4", and kept as "2-4", the form Creative Checkout's
  * "Delivery time (business days)" takes, so a plugin that dates a delivery can count it. A range of one day is that
  * day. Digits of any script are read as their ASCII digits: "٢-٤" is kept as "2-4".
  *
@@ -27,10 +27,11 @@ final readonly class LeadDays {
 	public const int MAX = 60;
 
 	/**
-	 * A count in ASCII digits, or two joined by a hyphen, an en dash or "to", with spaces between and around, and no
-	 * line. `\d` would take any script's digit, which `(int)` reads as nought: other scripts' are made ASCII first.
+	 * A count in ASCII digits, or two joined by a hyphen or an en dash, with spaces between and around, and no line.
+	 * No word joins them: a word is one language's, and the French "2 à 4" would be refused where "2 to 4" was read
+	 * (D-389). `\d` would take any script's digit, which `(int)` reads as nought: other scripts' are made ASCII first.
 	 */
-	private const string FORM = '/\A\h*([0-9]+)\h*(?:(?:-|\x{2013}|to)\h*([0-9]+)\h*)?\z/iu';
+	private const string FORM = '/\A\h*([0-9]+)\h*(?:[-\x{2013}]\h*([0-9]+)\h*)?\z/u';
 
 	/**
 	 * A decimal digit of any script but ASCII's: Arabic-Indic, Devanagari, full-width and the rest.
@@ -55,7 +56,7 @@ final readonly class LeadDays {
 	 *
 	 * @since 1.2.0
 	 *
-	 * @param string $typed The days: "2", "2-4", "2 - 4", "2–4" or "2 to 4".
+	 * @param string $typed The days: "2", "2-4", "2 - 4" or "2–4".
 	 * @param string $path  Where the field is, for the refusal.
 	 *
 	 * @throws InvalidDocument When it is not a count or a range (`document_bad_measure`), the most comes first

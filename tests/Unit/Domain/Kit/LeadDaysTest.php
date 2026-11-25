@@ -17,7 +17,7 @@ use PHPUnit\Framework\TestCase;
 
 /**
  * #142: the kit's assembly time in business days, "2" or "2-4", 0 to 60. It is read as an owner types it, "2-4",
- * "2 - 4", "2–4" or "2 to 4", and kept as "2-4", the form Creative Checkout's "Delivery time (business days)" has.
+ * "2 - 4" or "2–4", and kept as "2-4", the form Creative Checkout's "Delivery time (business days)" has.
  */
 final class LeadDaysTest extends TestCase {
 
@@ -29,12 +29,10 @@ final class LeadDaysTest extends TestCase {
 		yield 'a range' => array( '2-4', 2, 4, '2-4' );
 		yield 'a range spaced' => array( '2 - 4', 2, 4, '2-4' );
 		yield 'a range with an en dash' => array( '2–4', 2, 4, '2-4' );
-		yield 'a range in words' => array( '2 to 4', 2, 4, '2-4' );
-		yield 'in words, capitalised' => array( '2 To 4', 2, 4, '2-4' );
 		yield 'spaces around' => array( '  3  ', 3, 3, '3' );
 		// A browser can send a no-break space, which PHP's own number reading does not pass over.
 		yield 'a no-break space before' => array( "\u{00A0}3", 3, 3, '3' );
-		yield 'a no-break space in a range' => array( "\u{00A0}2\u{00A0}to\u{00A0}4", 2, 4, '2-4' );
+		yield 'a no-break space in a range' => array( "\u{00A0}2\u{00A0}-\u{00A0}4", 2, 4, '2-4' );
 		yield 'none' => array( '0', 0, 0, '0' );
 		yield 'the most' => array( '60', 60, 60, '60' );
 		yield 'the whole range' => array( '0-60', 0, 60, '0-60' );
@@ -78,7 +76,11 @@ final class LeadDaysTest extends TestCase {
 		yield 'a decimal comma' => array( '2,5', DocumentError::BadMeasure );
 		yield 'a minus' => array( '-2', DocumentError::BadMeasure );
 		yield 'a range with no end' => array( '2-', DocumentError::BadMeasure );
-		yield 'a range with no start' => array( 'to 4', DocumentError::BadMeasure );
+		yield 'a range with no start' => array( '- 4', DocumentError::BadMeasure );
+		// A word between is one language's: the French "2 à 4" was refused while the English "2 to 4" was read (D-389).
+		yield 'a range in English words' => array( '2 to 4', DocumentError::BadMeasure );
+		yield 'in English words, capitalised' => array( '2 TO 4', DocumentError::BadMeasure );
+		yield 'a range in French words' => array( '2 à 4', DocumentError::BadMeasure );
 		yield 'three numbers' => array( '2-4-6', DocumentError::BadMeasure );
 		yield 'an em dash' => array( '2—4', DocumentError::BadMeasure );
 		yield 'a line after' => array( "2\n", DocumentError::BadMeasure );

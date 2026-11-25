@@ -135,6 +135,7 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-351 · "Not offered in the builder" is the part-available filter's first value](#d-351--not-offered-in-the-builder-is-the-part-available-filters-first-value--2026-11-24)
 - [D-354 · A kit's settings from 1.2.0 on are a document of their own, which the release before never reads](#d-354--a-kits-settings-from-120-on-are-a-document-of-their-own-which-the-release-before-never-reads--2026-11-24)
 - [D-385 · A wrong field of the kit's settings is refused alone, and the rest is saved](#d-385--a-wrong-field-of-the-kits-settings-is-refused-alone-and-the-rest-is-saved--2026-11-24)
+- [D-389 · No word joins the assembly time's range, in any language](#d-389--no-word-joins-the-assembly-times-range-in-any-language--2026-11-25)
 
 ### The state route and the public API
 
@@ -5533,5 +5534,23 @@ The walkthrough of milestone 12, finding 9, older than M12: "Search in the steps
 **Red run.** chromium-desktop: "options cut short / Received: cbuild-kit-layout-search: Creative Search where it is active, the builder's own otherwise".
 
 **Why:** a choice the owner cannot read whole is a choice they must open to make.
+
+**Status:** Accepted.
+
+### D-389 · No word joins the assembly time's range, in any language · 2026-11-25
+
+The auditor's third pass on milestone 12, a minor: `LeadDays` read "2 to 4" in any case (D-375), while the French "2 à 4", or any other language's word, was refused with `document_bad_measure`. The domain held one language's word, and a French-speaking owner was told their range was no business days.
+
+- **The fix.** The form takes a hyphen or an en dash between two counts, with spaces around either, and no word: "2-4", "2 - 4" and "2–4" are read, and "2 to 4", "2 TO 4" and "2 à 4" are refused alike, named at the field with the sentence that asks for a range such as 2-4. Digits of any script are still read (D-375), so the form holds no language's words or numerals.
+- **Why not add the French word.** Each language the owner may type in would need its own, in the domain, which answers in codes and holds no words (D-062). A hyphen is what Creative Checkout's field takes and what the field's description and its refusals already show ("such as 2-4"), in English and in French, so no string changes.
+- **Nothing public removed.** 1.2.0 is unreleased: no release read "2 to 4", and no kit keeps it, since a document keeps "2-4" alone (`LeadDays::kept()`, `schema/kit-settings.json`). The schema and `KitSchemasTest` already refused "2 to 4" in a document, and still do.
+
+**Tests.** `LeadDaysTest`: "2 to 4", "2 TO 4" and "2 à 4" refused with `document_bad_measure`, and the no-break space row now spaces a hyphen. `KitEditorTest`: "2 to 4" is named with `settings_lead_days_form` and shown as typed. `BuildTabTest`, `RollbackTest` and `build-tab.spec.ts` type "2 - 4" where they typed "2 to 4".
+
+**Red run.** Before the fix: `LeadDaysTest::test_what_is_not_business_days_from_0_to_60_is_refused_with_its_code` with "a range in English words" ('2 to 4') and "in English words, capitalised" ('2 TO 4'), at LeadDaysTest.php:99 ("read: 2 to 4"), and `KitEditorTest::test_the_assembly_time_is_kept_as_business_days_and_one_that_is_not_is_named_at_its_field`, "Failed asserting that two arrays are identical." (KitEditorTest.php:709).
+
+**Deliberate break.** The word put back in the form, `(?:-|\x{2013}|to)` with `/i`: the same three failed at the same lines. Put back, all passed, and Infection kills all 75 of the class's mutants.
+
+**Why:** a form the domain reads should mean the same in every language the shop is run in; a hyphen does, and a word never does.
 
 **Status:** Accepted.
