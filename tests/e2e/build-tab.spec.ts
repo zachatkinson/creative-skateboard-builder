@@ -321,6 +321,16 @@ test.describe( 'The Build tab', () => {
 		await type( page, DAYS, '61' );
 		await type( page, '#cbuild-kit-assembly-fee', '14' );
 		await update( page );
+		// The walkthrough of M12, finding 6 (D-385): the notice names the assembly time alone, and leads to its field.
+		const refused = page
+			.locator( '#woocommerce_errors' )
+			.getByRole( 'link', {
+				name: "The kit's assembly time in business days was not saved. The Build tab shows it as you typed it, with what to put right.",
+			} );
+		await expect( refused ).toBeVisible();
+		await refused.focus();
+		await page.keyboard.press( 'Enter' );
+		await expect( days ).toBeFocused();
 		const link = page.locator( '#woocommerce_errors' ).getByRole( 'link', {
 			name: 'Assembly time in business days: type business days from 0 to 60, such as 2 or 2-4.',
 		} );

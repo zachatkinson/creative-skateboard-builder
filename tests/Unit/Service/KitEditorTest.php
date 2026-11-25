@@ -564,14 +564,13 @@ final class KitEditorTest extends TestCase {
 		$sent['settings']['builder_page'] = '44';
 		$draft                          = $this->editor->draft( $sent, self::stored(), '.', array( 42, 43 ) );
 		self::assertSame( array( 'settings ' . KitEditor::BUILDER_PAGE . ' builder_page' ), self::problems( $draft ), 'a page the tab does not offer' );
-		self::assertArrayNotHasKey( KitEditor::SETTINGS, $draft->documents );
+		self::assertSame( array( 'schema_version' => 1, 'start_button' => true ), $draft->documents[ KitEditor::SETTINGS ] ?? null, 'the rest saved, with the page the kit has: none (D-385)' );
 		self::assertSame( 44, $draft->refused[ KitEditor::SETTINGS ]['builder_page'] ?? null, 'shown as chosen' );
 
-		// Settings that are already refused for another field is named at that field alone, and the page is checked
-		// once the rest of the section reads.
+		// Settings refused for another field too: each is named at its own field, and the page is checked as well.
 		$sent['settings']['width_guide'] = array( 'rows' => array( array( 'shoe' => 'EU 40', 'from' => '21' ) ) );
 		$draft                         = $this->editor->draft( $sent, self::stored(), '.', array( 42, 43 ) );
-		self::assertSame( array( 'settings ' . KitEditor::GUIDE_WIDTH . ' width_guide.rows[0].from' ), self::problems( $draft ) );
+		self::assertSame( array( 'settings ' . KitEditor::GUIDE_WIDTH . ' width_guide.rows[0].from', 'settings ' . KitEditor::BUILDER_PAGE . ' builder_page' ), self::problems( $draft ) );
 		unset( $sent['settings']['width_guide'] );
 
 		$sent['settings']['builder_page'] = 'https://elsewhere.example/';
@@ -658,7 +657,7 @@ final class KitEditorTest extends TestCase {
 			);
 			$draft          = $this->editor->draft( $sent, self::stored() );
 			self::assertSame( array( $expected ), self::problems( $draft ), $case );
-			self::assertArrayNotHasKey( KitEditor::SETTINGS, $draft->documents, $case );
+			self::assertSame( array( 'schema_version' => 1, 'start_button' => false ), $draft->documents[ KitEditor::SETTINGS ] ?? null, $case . ': the rest saved, with no guide, as the kit has (D-385)' );
 		}
 	}
 
@@ -704,9 +703,80 @@ final class KitEditorTest extends TestCase {
 			$sent['settings'] = array( 'lead_days' => (string) $typed );
 			$draft            = $this->editor->draft( $sent, $stored );
 			self::assertSame( array( 'settings ' . $code . ' lead_days' ), self::problems( $draft ), (string) $typed );
-			self::assertArrayNotHasKey( KitEditor::SETTINGS, $draft->documents, (string) $typed );
+			self::assertSame( array( 'schema_version' => 1, 'start_button' => false, 'lead_days' => '3' ), $draft->documents[ KitEditor::SETTINGS ] ?? null, (string) $typed . ': the rest saved, with the time the kit has (D-385)' );
 			self::assertSame( (string) $typed, $draft->refused[ KitEditor::SETTINGS ]['lead_days'] ?? null, 'shown as typed' );
 		}
+	}
+
+	// The walkthrough of M12, finding 6 (D-385): one field of the settings that is wrong is refused alone. The Builder
+	// page, the start button, the width guide and the assembly time are four settings in three sections, so the
+	// others are saved as sent, and the wrong one keeps what the kit has.
+	public function test_a_settings_field_that_is_wrong_is_refused_alone_and_the_rest_is_saved(): void {
+		$stored                        = self::stored();
+		$stored[ KitEditor::SETTINGS ] = array(
+			'schema_version' => 1,
+			'start_button'   => true,
+			'width_guide'    => array( 'shown' => false ),
+			'builder_page'   => 43,
+			'lead_days'      => '3',
+		);
+		$sent             = self::sent();
+		$guide            = array(
+			'shown' => '1',
+			'rows'  => array( array( 'shoe' => 'EU 38', 'from' => '7.75', 'to' => '' ) ),
+		);
+		$sent['settings'] = array(
+			'width_guide'  => $guide,
+			'builder_page' => '42',
+			'lead_days'    => '61',
+		);
+		$draft            = $this->editor->draft( $sent, $stored, '.', array( 42, 43 ) );
+		self::assertSame( array( 'settings ' . KitEditor::LEAD_DAYS_RANGE . ' lead_days' ), self::problems( $draft ) );
+		self::assertSame(
+			array(
+				'schema_version' => 1,
+				'start_button'   => false,
+				'width_guide'    => array(
+					'shown' => true,
+					'rows'  => array( array( 'shoe' => 'EU 38', 'from' => '7.75' ) ),
+				),
+				'builder_page'   => 42,
+				'lead_days'      => '3',
+			),
+			$draft->documents[ KitEditor::SETTINGS ] ?? null,
+			'the button, the guide and the page saved; the time the kit had kept'
+		);
+		self::assertSame( '61', $draft->refused[ KitEditor::SETTINGS ]['lead_days'] ?? null, 'shown as typed' );
+
+		// Three wrong: each named, and each keeps what the kit has.
+		$sent['settings']['width_guide']['rows'][0]['from'] = '21';
+		$sent['settings']['builder_page']                   = '44';
+		$draft = $this->editor->draft( $sent, $stored, '.', array( 42, 43 ) );
+		self::assertSame(
+			array(
+				'settings ' . KitEditor::GUIDE_WIDTH . ' width_guide.rows[0].from',
+				'settings ' . KitEditor::LEAD_DAYS_RANGE . ' lead_days',
+				'settings ' . KitEditor::BUILDER_PAGE . ' builder_page',
+			),
+			self::problems( $draft )
+		);
+		self::assertSame(
+			array(
+				'schema_version' => 1,
+				'start_button'   => false,
+				'width_guide'    => array( 'shown' => false ),
+				'builder_page'   => 43,
+				'lead_days'      => '3',
+			),
+			$draft->documents[ KitEditor::SETTINGS ] ?? null
+		);
+
+		// What the kit has for the field no longer reads either: nothing of the settings is saved, and the field is named once.
+		$stored[ KitEditor::SETTINGS ]['lead_days'] = '99';
+		$sent['settings']                           = array( 'lead_days' => '61' );
+		$draft                                      = $this->editor->draft( $sent, $stored, '.', array( 42, 43 ) );
+		self::assertSame( array( 'settings ' . KitEditor::LEAD_DAYS_RANGE . ' lead_days' ), self::problems( $draft ), 'named once' );
+		self::assertArrayNotHasKey( KitEditor::SETTINGS, $draft->documents );
 	}
 
 	public function test_assembly_takes_a_fee_as_the_shop_writes_money_and_each_thing_wrong_is_named(): void {

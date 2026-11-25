@@ -285,6 +285,13 @@ final class BuildTab {
 		$shown    = array_replace( $stored, $draft->documents, $draft->refused );
 		$problems = array();
 		foreach ( array_keys( $draft->refused ) as $name ) {
+			if ( KitEditor::SETTINGS === $name && isset( $draft->documents[ $name ] ) ) {
+				// The rest of the settings was saved: each field refused is named alone, and leads to itself (D-385).
+				foreach ( self::refusedFields( $draft->problems ) as $field => $path ) {
+					self::notice( self::id( KitEditor::SETTINGS, $path ), self::refusedField( $field ) );
+				}
+				continue;
+			}
 			self::notice( self::section( $name, $draft->problems ), self::refused( $name ) );
 		}
 		foreach ( $draft->problems as $at => $problem ) {
@@ -1446,6 +1453,35 @@ final class BuildTab {
 			KitEditor::LAYOUT  => __( 'The kit\'s layout was not saved. The Build tab shows it as you chose it, with what to put right.', 'creative-skateboard-builder' ),
 			KitEditor::SETTINGS => __( 'The kit\'s Builder page, the button on its parts\' pages, its width guide and its assembly time in business days were not saved. The Build tab shows them as you chose them, with what to put right.', 'creative-skateboard-builder' ),
 			default            => __( 'The kit\'s assembly settings were not saved. The Build tab shows them as you typed them, with what to put right.', 'creative-skateboard-builder' ),
+		};
+	}
+
+	/**
+	 * The settings' fields refused, each with the path of its first problem (D-385).
+	 *
+	 * @param list<array{document: string, code: string, path: string, values: array<string, string>}> $problems What the save found.
+	 * @return array<string, string>
+	 */
+	private static function refusedFields( array $problems ): array {
+		$fields = array();
+		foreach ( $problems as $problem ) {
+			if ( KitEditor::SETTINGS === $problem['document'] ) {
+				$fields[ (string) preg_replace( '/[.\[].*\z/s', '', $problem['path'] ) ] ??= $problem['path'];
+			}
+		}
+		return $fields;
+	}
+
+	/**
+	 * That one of the settings' fields was not saved, while the rest was (D-385).
+	 *
+	 * @param string $field The field's key in the settings.
+	 */
+	private static function refusedField( string $field ): string {
+		return match ( $field ) {
+			'builder_page' => __( 'The kit\'s Builder page was not saved. The Build tab shows it as you chose it, with what to put right.', 'creative-skateboard-builder' ),
+			'width_guide'  => __( 'The kit\'s width guide was not saved. The Build tab shows it as you typed it, with what to put right.', 'creative-skateboard-builder' ),
+			default        => __( 'The kit\'s assembly time in business days was not saved. The Build tab shows it as you typed it, with what to put right.', 'creative-skateboard-builder' ),
 		};
 	}
 

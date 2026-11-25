@@ -965,7 +965,7 @@ final class BuildTabTest extends IntegrationTestCase {
 		}
 		$sent['settings']['builder_page'] = '<b>about-us</b>';
 		$this->send( $kit, $sent );
-		self::assertStringContainsString( 'The kit&#039;s Builder page, the button on its parts&#039; pages, its width guide and its assembly time in business days were not saved.', implode( '', self::notices() ), 'what is no page is refused' );
+		self::assertStringContainsString( '<a href="#cbuild-kit-settings-builder_page">The kit&#039;s Builder page was not saved. The Build tab shows it as you chose it, with what to put right.</a>', implode( '', self::notices() ), 'what is no page is refused, and named alone (D-385)' );
 		\WC_Admin_Meta_Boxes::$meta_box_errors = array();
 		$this->panel( $kit );
 
@@ -1153,17 +1153,18 @@ final class BuildTabTest extends IntegrationTestCase {
 				array( 'shoe' => 'EU 50', 'from' => '8', 'to' => '21' ),
 			),
 		);
+		$sent['settings']['start_button'] = '';
 		$sent['assembly']['fee']       = '9';
 		$this->send( $kit, $sent );
 		self::assertSame(
 			array(
-				'<a href="#cbuild-kit-settings-width_guide">The kit&#039;s Builder page, the button on its parts&#039; pages, its width guide and its assembly time in business days were not saved. The Build tab shows them as you chose them, with what to put right.</a>',
+				'<a href="#cbuild-kit-settings-width_guide-rows-1-to">The kit&#039;s width guide was not saved. The Build tab shows it as you typed it, with what to put right.</a>',
 				'<a href="#cbuild-kit-settings-width_guide-rows-1-to">Width guide, row 2, Deck width to: type a width from 5 to 12 in.</a>',
 			),
 			self::notices()
 		);
 		$stored = self::stored( $kit->get_id() );
-		self::assertNull( $stored[ Options::META_KIT_SETTINGS ], 'nothing saved in its place' );
+		self::assertSame( array( 'schema_version' => 1, 'start_button' => false ), $stored[ Options::META_KIT_SETTINGS ], 'the rest of the settings saved, with no guide, as the kit had (D-385)' );
 		self::assertSame( 'left', $stored[ Options::META_KIT_LAYOUT ]['stage_side'] ?? null, 'the layout saved: it is a document of its own (D-354)' );
 		self::assertSame( '9', $stored[ Options::META_KIT_ASSEMBLY ]['fee'], 'the rest of the kit saved' );
 
@@ -1226,18 +1227,20 @@ final class BuildTabTest extends IntegrationTestCase {
 			\WC_Admin_Meta_Boxes::$meta_box_errors = array();
 			$sent                                  = self::form();
 			$sent['settings']['lead_days']         = (string) $typed;
+			$sent['settings']['start_button']      = '';
 			$sent['assembly']['fee']               = '9';
 			$this->send( $kit, $sent );
+			// The walkthrough of M12, finding 6 (D-385): the notice names the assembly time alone and leads to it.
 			self::assertSame(
 				array(
-					'<a href="#cbuild-kit-assembly">The kit&#039;s Builder page, the button on its parts&#039; pages, its width guide and its assembly time in business days were not saved. The Build tab shows them as you chose them, with what to put right.</a>',
+					'<a href="#cbuild-kit-settings-lead_days">The kit&#039;s assembly time in business days was not saved. The Build tab shows it as you typed it, with what to put right.</a>',
 					'<a href="#cbuild-kit-settings-lead_days">' . esc_html( $sentence ) . '</a>',
 				),
 				self::notices(),
 				(string) $typed
 			);
 			$stored = self::stored( $kit->get_id() );
-			self::assertNull( $stored[ Options::META_KIT_SETTINGS ], 'nothing saved in its place' );
+			self::assertSame( array( 'schema_version' => 1, 'start_button' => false ), $stored[ Options::META_KIT_SETTINGS ], 'the button saved off, and no time, as the kit had (D-385)' );
 			self::assertSame( '9', $stored[ Options::META_KIT_ASSEMBLY ]['fee'], 'the rest of the kit saved' );
 
 			$panel = $this->panel( $kit );

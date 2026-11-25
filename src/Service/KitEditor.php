@@ -107,6 +107,11 @@ final class KitEditor {
 	public const LEAD_DAYS_RANGE = 'settings_lead_days_range';
 
 	/**
+	 * The settings' fields refused alone where wrong (D-385). The start button is a box, which is never wrong.
+	 */
+	private const OWN_FIELDS = array( 'width_guide', 'builder_page', 'lead_days' );
+
+	/**
 	 * A document the domain read and its schema still refused. The schemas and the domain agree
 	 * (`KitSchemasTest`), so this is a guard and not a path a person should meet.
 	 *
@@ -220,9 +225,18 @@ final class KitEditor {
 
 		$problems = array();
 		$inForce  = array();
+		$saving   = null;
 		foreach ( array( self::SLOTS, self::RULES, self::ASSEMBLY, self::PICTURE, self::LAYOUT, self::SETTINGS ) as $key ) {
 			$inForce[ $key ] = $stored[ $key ] ?? null;
 			if ( ! isset( $built[ $key ] ) ) {
+				continue;
+			}
+			if ( self::SETTINGS === $key ) {
+				[ $saving, $found ] = $this->settled( $built[ $key ], $stored[ $key ] ?? null, $pages );
+				if ( null !== $saving ) {
+					$inForce[ $key ] = $saving;
+				}
+				$problems = array( ...$problems, ...$found );
 				continue;
 			}
 			$found = $this->held( $key, $built[ $key ], self::read( $key, $built[ $key ] ) );
@@ -230,13 +244,6 @@ final class KitEditor {
 				$inForce[ $key ] = $built[ $key ];
 			}
 			$problems = array( ...$problems, ...$found );
-		}
-		$page = $built[ self::SETTINGS ]['builder_page'] ?? null;
-		// The page the kit has is kept while the owner leaves it, though it may be one the tab offers no longer: it is
-		// checked again each time it is used.
-		$has = $stored[ self::SETTINGS ]['builder_page'] ?? null;
-		if ( null !== $pages && is_int( $page ) && $has !== $page && ! in_array( $page, $pages, true ) && ! in_array( self::SETTINGS, array_column( $problems, 'document' ), true ) ) {
-			$problems[] = self::problem( self::SETTINGS, self::BUILDER_PAGE, 'builder_page' );
 		}
 
 		$parts     = array();
@@ -287,7 +294,71 @@ final class KitEditor {
 				$documents[ $key ] = $document;
 			}
 		}
+		// The settings' fields that read are saved beside the ones refused, which keep what the kit has (D-385).
+		if ( null !== $saving ) {
+			$documents[ self::SETTINGS ] = $saving;
+		}
 		return new KitDraft( $documents, $refused, $problems, $this->notes( $inForce, $parts ), $unoffered );
+	}
+
+	/**
+	 * The settings to save, and what is wrong with them. The settings hold four things shown in three sections (D-354):
+	 * the Builder page, the start button, the width guide and the assembly time. A field that is wrong is refused
+	 * alone and keeps what the kit has, and the rest is saved (D-385). The domain names one problem at a time, so each
+	 * wrong field is put back in turn until the rest reads. A problem that is no one field's refuses them all.
+	 *
+	 * @param array<string, mixed>      $built  The settings as sent.
+	 * @param array<string, mixed>|null $stored The settings as stored.
+	 * @param list<int>|null            $pages  The pages the Builder page may be; null checks none.
+	 * @return array{0: array<string, mixed>|null, 1: list<array{document: string, code: string, path: string, values: array<string, string>}>}
+	 */
+	private function settled( array $built, ?array $stored, ?array $pages ): array {
+		$saving   = $built;
+		$problems = array();
+		$back     = array();
+		while ( true ) {
+			$found = $this->held( self::SETTINGS, $saving, self::read( self::SETTINGS, $saving ) );
+			if ( array() === $found ) {
+				break;
+			}
+			$field = (string) preg_replace( '/[.\[].*\z/s', '', $found[0]['path'] );
+			// What the kit has for a field put back fails too: the problem is the field's, named once already.
+			if ( in_array( $field, $back, true ) ) {
+				return array( null, $problems );
+			}
+			$problems = array( ...$problems, ...$found );
+			if ( ! in_array( $field, self::OWN_FIELDS, true ) ) {
+				return array( null, $problems );
+			}
+			$back[] = $field;
+			$saving = self::kept( $saving, $stored, $field );
+		}
+		$page = $saving['builder_page'] ?? null;
+		// The page the kit has is kept while the owner leaves it, though it may be one the tab offers no longer: it is
+		// checked again each time it is used.
+		$has = $stored['builder_page'] ?? null;
+		if ( null !== $pages && is_int( $page ) && $has !== $page && ! in_array( $page, $pages, true ) ) {
+			$problems[] = self::problem( self::SETTINGS, self::BUILDER_PAGE, 'builder_page' );
+			$saving     = self::kept( $saving, $stored, 'builder_page' );
+		}
+		return array( $saving, $problems );
+	}
+
+	/**
+	 * The settings with one field as the kit has it, in its place, or without it where the kit has none.
+	 *
+	 * @param array<string, mixed>      $settings The settings.
+	 * @param array<string, mixed>|null $stored   The settings as stored.
+	 * @param string                    $field    The field.
+	 * @return array<string, mixed>
+	 */
+	private static function kept( array $settings, ?array $stored, string $field ): array {
+		if ( is_array( $stored ) && array_key_exists( $field, $stored ) ) {
+			$settings[ $field ] = $stored[ $field ];
+		} else {
+			unset( $settings[ $field ] );
+		}
+		return $settings;
 	}
 
 	/**

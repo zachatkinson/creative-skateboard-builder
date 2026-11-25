@@ -4768,6 +4768,15 @@ msgstr "« Non proposé dans le configurateur » est coché sur ces pièces, o
 msgid "The kit's Builder page, the button on its parts' pages, its width guide and its assembly time in business days were not saved. The Build tab shows them as you chose them, with what to put right."
 msgstr "La page du configurateur de l’ensemble, le bouton sur les pages de ses pièces, son guide des largeurs et son délai d’assemblage en jours ouvrables n’ont pas été enregistrés. L’onglet Montage les affiche tels que vous les avez choisis, avec ce qu’il faut corriger."
 
+msgid "The kit's Builder page was not saved. The Build tab shows it as you chose it, with what to put right."
+msgstr "La page du configurateur de l’ensemble n’a pas été enregistrée. L’onglet Montage l’affiche telle que vous l’avez choisie, avec ce qu’il faut corriger."
+
+msgid "The kit's width guide was not saved. The Build tab shows it as you typed it, with what to put right."
+msgstr "Le guide des largeurs de l’ensemble n’a pas été enregistré. L’onglet Montage l’affiche tel que vous l’avez saisi, avec ce qu’il faut corriger."
+
+msgid "The kit's assembly time in business days was not saved. The Build tab shows it as you typed it, with what to put right."
+msgstr "Le délai d’assemblage en jours ouvrables de l’ensemble n’a pas été enregistré. L’onglet Montage l’affiche tel que vous l’avez saisi, avec ce qu’il faut corriger."
+
 #: src/Admin/BuildTab.php:304
 msgid "Width guide: the rows you typed were not saved, since \"Use the builder's rows\" is ticked. Untick it and save again to keep them."
 msgstr "Guide des largeurs : les lignes que vous avez tapées n’ont pas été enregistrées, car « Utiliser les lignes du configurateur » est coché. Décochez-le et enregistrez de nouveau pour les garder."

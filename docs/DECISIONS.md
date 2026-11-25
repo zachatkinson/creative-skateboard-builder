@@ -134,6 +134,7 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-350 · A kit's width guide is kept in its layout, as structured widths, and a hidden one is gone from the answer](#d-350--a-kits-width-guide-is-kept-in-its-layout-as-structured-widths-and-a-hidden-one-is-gone-from-the-answer--2026-11-24)
 - [D-351 · "Not offered in the builder" is the part-available filter's first value](#d-351--not-offered-in-the-builder-is-the-part-available-filters-first-value--2026-11-24)
 - [D-354 · A kit's settings from 1.2.0 on are a document of their own, which the release before never reads](#d-354--a-kits-settings-from-120-on-are-a-document-of-their-own-which-the-release-before-never-reads--2026-11-24)
+- [D-385 · A wrong field of the kit's settings is refused alone, and the rest is saved](#d-385--a-wrong-field-of-the-kits-settings-is-refused-alone-and-the-rest-is-saved--2026-11-24)
 
 ### The state route and the public API
 
@@ -246,6 +247,7 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-279 · The picked card's sizes are picks of the step, and the card's own radio stands aside](#d-279--the-picked-cards-sizes-are-picks-of-the-step-and-the-cards-own-radio-stands-aside--2026-11-19)
 - [D-326 · axe reads the error summary in Firefox again](#d-326--axe-reads-the-error-summary-in-firefox-again--2026-11-23)
 - [D-369 · The side is chosen with two buttons, Underside and Top, the side shown pressed](#d-369--the-side-is-chosen-with-two-buttons-underside-and-top-the-side-shown-pressed--2026-11-24)
+- [D-380 · Muted words keep 4.5:1 on a theme whose text is near the limit](#d-380--muted-words-keep-451-on-a-theme-whose-text-is-near-the-limit--2026-11-24)
 
 ### Motion
 
@@ -5470,5 +5472,25 @@ M12's walkthrough, on the page that holds the kit's Builder block, which is full
 **Deliberate break.** The stage taken out of the full-width rule: Kadence and Twenty Twenty-Five on a phone failed again with the picture and its heading at 7 and 10 px (builder.spec.ts:8022). Put back, all passed.
 
 **Why:** a stacked builder is read as the page's column, and a column whose picture and buttons touch the screen's edge beside words that keep their margin reads as a page that failed to lay out.
+
+**Status:** Accepted.
+
+### D-385 · A wrong field of the kit's settings is refused alone, and the rest is saved · 2026-11-24
+
+The walkthrough of milestone 12, finding 6: on "Build tab test kit", 61 typed in "Assembly time in business days" gave the notice "The kit's Builder page, the button on its parts' pages, its width guide and its assembly time in business days were not saved." It was true. `KitEditor::draft()` held each document whole, and the settings (D-354) are one document holding four things shown in three sections: the Builder page and the start button in Layout, the width guide in its own section, and the assembly time in Assembly (#142). One wrong field threw away the other three, though each other section refuses only its own document.
+
+- **Field by field.** `KitEditor::settled()` reads the settings as sent. Where the domain or the schema names a problem in the Builder page, the width guide or the assembly time, that field is put back as the kit has it, or left out where the kit has none, and the rest is read again. The domain names one problem at a time, so a second wrong field is named at the next read. The settings that read are saved, and the problems name each refused field. The Builder page's check against the pages offered runs on what is left, so it is named beside the others, not only once the rest reads.
+- **When all are refused.** A problem that is no one field's, or a field whose value as the kit has it fails too, refuses the whole document, as before, with its old notice.
+- **What the tab shows.** The sections show the settings as sent, so the refused field shows what was typed and the others what was saved, which is the same. Only the section with the problem shows "Not saved" (D-354).
+- **The notice.** One per refused field, leading to that field: "The kit's assembly time in business days was not saved. The Build tab shows it as you typed it, with what to put right.", and the same for the Builder page ("as you chose it") and the width guide. The notice's link went to the section, where the tab's script focused its first control, the Assembly box; it now goes to the field.
+- **The start button** is a box, and a box is never wrong, so it is no field refused alone.
+
+**Tests.** `KitEditorTest::test_a_settings_field_that_is_wrong_is_refused_alone_and_the_rest_is_saved`: the button, the guide and the page saved with the time the kit had kept; three wrong fields, each named and each kept as the kit has it; and the kit's own time failing too refuses the whole, named once. The Builder page, width guide and assembly time tests now find the rest saved. `BuildTabTest`: the notices name the field alone and lead to it, and the settings stored hold the rest. `build-tab.spec.ts`: the notice's link focuses the field.
+
+**Red run.** `KitEditorTest`, four tests: "Failed asserting that null is identical to Array" (KitEditorTest.php:567, :660, :706 and :735). `BuildTabTest`, three: the old notice, leading to `#cbuild-kit-assembly`, "The kit's Builder page, the button on its parts' pages, …", where the field's alone was expected (BuildTabTest.php:968, :1159 and :1234).
+
+**Deliberate break.** `settled()` giving up at the first wrong field, as before: the four unit tests failed again (KitEditorTest.php:573, :660, :706, :735). Put back, all passed.
+
+**Why:** an owner who mistypes one field should lose that field, not three others they set in other sections, as every other section of the tab already works.
 
 **Status:** Accepted.
