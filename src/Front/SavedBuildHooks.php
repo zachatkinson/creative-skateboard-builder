@@ -48,9 +48,27 @@ final class SavedBuildHooks implements Hookable {
 	public const string ENDPOINT = 'my-builds';
 
 	/**
-	 * My builds' one rule: the picture on its own line, its name under it.
+	 * My builds' rules: the picture on its own line, its name under it, and each build's Compare box under that.
+	 *
+	 * The compare (#136, D-411): a column a build at least 14rem wide, so a phone shows about one build at a time and
+	 * the region scrolls sideways, its focus ring drawn as the theme's text. A row that differs is tinted, and the
+	 * lowest total, beside the words that say each; the tint is mixed with transparency, so the theme's text keeps its
+	 * contrast on a light or a dark page. Under forced colours the tint is gone and the words and the mark's border stay.
 	 */
-	private const string STYLES = '.cbuild-my-builds__build th img{display:block;margin:0 0 8px}';
+	private const string STYLES = '.cbuild-my-builds__build th img{display:block;margin:0 0 8px}'
+		. '.cbuild-my-builds__pick{display:flex;align-items:center;gap:.5em;margin-block-end:.5em}'
+		. '.cbuild-compare{overflow-x:auto;margin-block:1em}'
+		. '.cbuild-compare:focus-visible{outline:2px solid currentColor;outline-offset:2px}'
+		. '.cbuild-compare__table{inline-size:auto;min-inline-size:100%;margin:0}'
+		. '.cbuild-compare__table caption{text-align:start;font-weight:600;padding-block:.5em}'
+		. '.cbuild-compare__table th,.cbuild-compare__table td{vertical-align:top;text-align:start}'
+		. '.cbuild-compare__build{min-width:14rem}'
+		. '.cbuild-compare__part,.cbuild-compare__price,.cbuild-compare__note,.cbuild-compare__open,.cbuild-compare__name{display:block}'
+		. '.cbuild-compare__note{font-size:.875em;margin-block-start:.25em}'
+		. '.cbuild-compare__open{font-weight:400}'
+		. '.cbuild-compare__mark{display:inline-block;margin-inline-start:.5em;padding:0 .375em;border:1px solid currentColor;border-radius:.25em;font-size:.875em;font-weight:600}'
+		. '.cbuild-compare__differs{background:color-mix(in srgb,#e0a800 20%,transparent)}'
+		. '.cbuild-compare__lowest{background:color-mix(in srgb,#2e8540 20%,transparent);font-weight:600}';
 
 	/**
 	 * The field that says which form was sent.
@@ -142,6 +160,27 @@ final class SavedBuildHooks implements Hookable {
 	public function __construct( private Closure $saved, private Closure $view, private Clock $clock ) {}
 
 	/**
+	 * Builds My builds' compare when it is asked; none in a copy an earlier release's container built (D-208).
+	 *
+	 * @var (Closure(): CompareView)|null
+	 */
+	private ?Closure $compare = null;
+
+	/**
+	 * The same, comparing up to three of the customer's builds when My builds is asked with `cbuild_compare[]` (#136).
+	 * Only this release's container calls it (D-208).
+	 *
+	 * @since 1.3.0
+	 *
+	 * @param Closure(): CompareView $compare The compare, built when it is asked.
+	 */
+	public function withCompare( Closure $compare ): self {
+		$copy          = clone $this;
+		$copy->compare = $compare;
+		return $copy;
+	}
+
+	/**
 	 * Attach hooks.
 	 *
 	 * @since 0.8.0
@@ -213,10 +252,22 @@ final class SavedBuildHooks implements Hookable {
 	 * @since 0.8.0
 	 */
 	public function page(): void {
-		$rows   = ( $this->view )()->rows( get_current_user_id() );
-		$action = self::url();
-		$gone   = $this->offered();
-		$undo   = null === $gone ? null : array(
+		$asked = null === $this->compare ? null : CompareView::asked();
+		$said  = null;
+		if ( null !== $asked && null !== $this->compare ) {
+			$table = ( $this->compare )()->table( get_current_user_id(), $asked );
+			if ( count( $table['builds'] ) > 1 ) {
+				$back = self::url();
+				require CBUILD_PATH . 'templates/account/compare.php';
+				return;
+			}
+			$said = __( 'Choose two or three of your saved builds to compare.', 'creative-skateboard-builder' );
+		}
+		$rows    = ( $this->view )()->rows( get_current_user_id() );
+		$action  = self::url();
+		$compare = null === $this->compare ? null : self::fields( $action );
+		$gone    = $this->offered();
+		$undo    = null === $gone ? null : array(
 			'uuid' => $gone->uuid,
 			'name' => ( $this->view )()->name( $gone ),
 		);
@@ -423,6 +474,27 @@ final class SavedBuildHooks implements Hookable {
 		$stored  = Cast::map( $session?->get( self::DELETED ) );
 		$session?->set( self::DELETED, array( 'shown' => true ) + $stored );
 		return $kept['build'];
+	}
+
+	/**
+	 * Where the compare's form is sent, and the fields that keep the address's own query: a form sent by GET drops the
+	 * query its action has, as a site without pretty permalinks gives My builds one.
+	 *
+	 * @param string $url My builds' address.
+	 * @return array{action: string, fields: array<string, string>}
+	 */
+	private static function fields( string $url ): array {
+		$query = (string) wp_parse_url( $url, PHP_URL_QUERY );
+		$args  = array();
+		wp_parse_str( $query, $args );
+		$fields = array();
+		foreach ( $args as $key => $value ) {
+			$fields[ (string) $key ] = is_string( $value ) ? $value : '';
+		}
+		return array(
+			'action' => '' === $query ? $url : (string) strtok( $url, '?' ),
+			'fields' => $fields,
+		);
 	}
 
 	/**

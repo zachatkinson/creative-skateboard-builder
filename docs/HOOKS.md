@@ -957,6 +957,7 @@ The builder also sends WooCommerce's own `wc-blocks_added_to_cart` on `document.
 | --- | --- | --- |
 | My account endpoint `my-builds` | 0.8.0 | My builds: each of the signed-in customer's saved builds with its picture, name, total today and the date it was saved, and Open, Rename and Delete. Added through WooCommerce's `woocommerce_get_query_vars`, with its menu item before Log out (`woocommerce_account_menu_items`). A shop that wants it elsewhere in the menu reorders that filter's answer at a later priority. |
 | `cbuild_saved` | 0.8.0 | The query parameter Open adds: the saved build's UUID. Read only on its owner's page, where Save build then updates that build. Another customer's page, and a visitor's, ignore it; no build link, Copy link or `og:url` carries it. |
+| `cbuild_compare` | 1.3.0 | The query parameter on My builds that compares saved builds side by side: `cbuild_compare[]`, a build's UUID each, in the order shown. The first three of the signed-in customer's own builds among them are compared; another customer's, a UUID asked twice and anything that is no UUID are left out. Fewer than two leaves My builds' list, which says to choose two or three. A link may carry it, as My builds' own Compare form does, sent by GET (#136, D-411). |
 
 Save build, Rename, Delete and, from 0.9.0, Undo (the action `cbuild_restore_build`) are forms posted to My builds with a nonce each, answered on `template_redirect`. Their fields are the builder's own and no part of this API (D-217, D-231).
 

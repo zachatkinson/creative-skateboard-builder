@@ -270,7 +270,7 @@ $cbuild_surface = array(
 	'link_params'       => array_map( static fn( string $key ): string => 'cbuild[' . $key . ']', cbuild_api_matches( array( $cbuild_root . '/src/Front/BuildLink.php' ), "/\\\$query\\['([a-z][a-z0-9_]*)'\\]\\s*=/" ) ),
 	// Names a shop, a theme or another plugin may hold on to: an address's parameter, an account endpoint, an
 	// admin-post action and a bulk action, a list column, and the privacy tools' ID (audit of milestone 8).
-	'query_params'      => cbuild_api_source_const( $cbuild_root . '/src/Front/MyBuildsView.php', 'PARAM' ),
+	'query_params'      => array_merge( cbuild_api_source_const( $cbuild_root . '/src/Front/MyBuildsView.php', 'PARAM' ), cbuild_api_source_const( $cbuild_root . '/src/Front/CompareView.php', 'PARAM' ) ),
 	'account_endpoints' => cbuild_api_source_const( $cbuild_root . '/src/Front/SavedBuildHooks.php', 'ENDPOINT' ),
 	'admin_actions'     => cbuild_api_source_const( $cbuild_root . '/src/Order/TicketPage.php', 'ACTION' ),
 	'list_columns'      => cbuild_api_source_const( $cbuild_root . '/src/Order/OrdersList.php', 'COLUMN' ),

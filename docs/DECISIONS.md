@@ -333,6 +333,7 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-254 · A saved build keeps its prices, and reopening a changed one shows the change](#d-254--a-saved-build-keeps-its-prices-and-reopening-a-changed-one-shows-the-change--2026-11-18)
 - [D-275 · Undo is offered for 15 minutes, and says what it undoes](#d-275--undo-is-offered-for-15-minutes-and-says-what-it-undoes--2026-11-19)
 - [D-278 · A saved build's prices go in its picks document under `_prices`; My builds' Open carries `_saved`](#d-278--a-saved-builds-prices-go-in-its-picks-document-under-_prices-my-builds-open-carries-_saved--2026-11-19)
+- [D-411 · My builds compares up to three saved builds in one table, a column a build, by a query string on its own page](#d-411--my-builds-compares-up-to-three-saved-builds-in-one-table-a-column-a-build-by-a-query-string-on-its-own-page--2026-11-25)
 
 ### SEO and sharing
 
@@ -5625,5 +5626,55 @@ Issue #141, from the roadmap's companion review of 24 November: in place of a Cr
 Twenty Twenty-Five passed with the break, as its kit template makes no markup. Put back, all passed.
 
 **Why:** a kit's own price is only its assembly fee, so a Product would offer the kit alone at that price, which the cart refuses (SPEC.md, SEO and sharing). A filter that removes nothing would be code no test could fail.
+
+**Status:** Accepted.
+
+### D-411 · My builds compares up to three saved builds in one table, a column a build, by a query string on its own page · 2026-11-25
+
+Issue #136, from Cowork's competitor review and Zach's answers of 24 November (`docs/research/plan-after-1-2.md`, "Compare saved builds (item 6)"): up to three saved builds side by side, the parts that differ and the price gap marked in words as well as colour, at today's prices with D-254's note, one build a column with a scroll on a phone, and a real table by keyboard. The plan fixed the rest: a query string on My builds' own endpoint, no new endpoint or table, nothing stored (`docs/reviews/M13.md`).
+
+**Decision:**
+
+- **How builds are chosen.** Each row of My builds gets a Compare box, and one button under the table, "Compare the ticked builds", sends a form by GET to My builds itself, so it works without JavaScript. The boxes join the form through their `form` attribute, since the rows already hold Rename's and Delete's forms and forms cannot nest. The form keeps My builds' own query as hidden fields, because a GET form drops its action's query and a site without pretty permalinks has one. The boxes show only when there are two builds or more.
+- **The address.** `cbuild_compare[]`, a UUID each, in the order chosen, which is the list's: the last saved first. It is public API (`docs/HOOKS.md`, 1.3.0), since a link may carry it.
+- **Whose builds.** `CompareView::table()` reads the signed-in customer's own list once, `SavedBuilds::of()`, and keeps the UUIDs asked that are in it. Another customer's UUID is never looked up, and a visitor has no list. A UUID asked twice or not a UUID is dropped, and more than three are cut to the first three, with a sentence that says so.
+- **Fewer than two.** My builds' list shows, with "Choose two or three of your saved builds to compare." above it. The sentence is the page's own, since WooCommerce has printed its notices before the endpoint's content.
+- **The table.** A column a build, headed by its name and its Open link (`th scope="col"`), and a row a slot of the kit, headed by the slot's label (`th scope="row"`), then Assembly, "Total today" and "Price difference". A caption names it, "Your builds side by side, at today's prices".
+- **Today's prices, and what changed.** A build is checked and priced today, as My builds' list does. One that changed since it was saved is shown as it would reopen, its closest parts in place, with D-254's own sentences in the slot's cell: the reason ("Wheels: … is no longer in the shop."), "Closest fit: …", a new price then and now, and the total then and now. The sentences come from one place, `BuilderView::changedWords()`, which "Your build has changed" now uses too, and the changes from `SavedBuilds::changed()`, which `reopened()` now calls, so neither is made twice.
+- **What differs, in words.** A row whose parts are not the same in every build says "Differs" in its header, beside a tint on its cells. The price difference row says "Lowest total" for the cheapest build and "$16.00 more than the lowest" for each other, "Same total" when all are equal, and "No total to compare" for a build with no total. The lowest is tinted too. Each tint is a colour mixed with transparency, so the theme's text keeps its contrast on a light or a dark page, and the words are there under forced colours, where tints go.
+- **On a phone.** Each build's column is at least 14rem, so a 390 px phone shows about one build and the table scrolls sideways inside its own region, never the page. The region is `role="region"`, named by the caption, with `tabindex="0"`, so a keyboard reaches it with Tab and scrolls it with the arrow keys. WCAG 2.1.1 asks it, and axe's `scrollable-region-focusable` checks it.
+- **The Compare box sits with the row's actions,** not in the build's header cell. WooCommerce's small-screen styles hide a responsive table's row headers (`woocommerce-smallscreen.css`, `.shop_table_responsive tbody th{display:none}`).
+- **Queries.** The builds' parts are primed in one query, as My builds does (D-351), and the slots are read once through `Kits::together()`. Three builds ask no more than two queries more than two builds.
+- **Upgrades.** `SavedBuildHooks` gets the compare through `withCompare()`, which only 1.3.0's container calls (D-208). `CompareView` is new, and `MyBuildsView::named()` is now public.
+- **The version moves to 1.3.0** with this, milestone 13's first public item (D-062).
+
+**Not chosen:**
+
+- **A row a build, a column a slot.** It is the list's own shape, but a phone would scroll through seven slot columns to compare one part, and the issue asks for a build a column.
+- **Marking each differing cell against the first build.** With three builds there is no one build to differ from. The row says it differs, and each cell says what it holds.
+- **Limiting the boxes to three with a script.** The server takes the first three and says so, which works without JavaScript and needs no markup made in the browser.
+
+**Tests.**
+
+- **Integration:** `CompareBuildsTest`. It holds two builds side by side with the differing row and the price gap in words; today's prices, a price changed since the save and a part gone, with its closest fit; another customer's builds never compared, alone or beside their own, nor to a visitor; four asked and three shown with the sentence, and a UUID twice or not a UUID dropped; the form by GET with a named box a build, and none with one build; and three builds asking no more than two queries over two. `SavedBuildsPageTest`'s named controls now include each row's Compare box.
+- **Browser:** "Compare saved builds (#136)" on every project but visual. Three builds are chosen by keyboard, then the table is read by its roles: the column headers in the order chosen, "Wheels Differs" as a row header, Bearings unmarked, the price difference row in words, and Open named for its build. Tab reaches the region; the page never scrolls sideways; each column is at least 14rem. On a phone, a column is over half the region, which scrolls, and ArrowRight scrolls it in Chromium and Firefox; Playwright's WebKit scrolled nothing for the arrow keys there, so it holds the focus and the overflow. axe runs with JavaScript, and fr-ca runs in the plugin's French.
+
+**Red run.** Before `CompareView` existed, all six `CompareBuildsTest` tests failed with `Error: Class "CreativeBranding\SkateboardBuilder\Front\CompareView" not found` (`CompareBuildsTest.php:89`).
+
+**Deliberate breaks:**
+
+- **The owner read from the first UUID asked,** by SQL, in place of the signed-in customer: `test_another_customers_builds_are_never_compared` failed with "nothing of another customer's".
+- **`differs` always false:** the side-by-side test failed with "said in words in its header".
+- **`changed()` skipped:** the today's prices test failed with "Failed asserting that two arrays are identical".
+- **The region without `tabindex`:** the browser test failed at `expect( region ).toBeFocused()` on chromium-phone and webkit-phone.
+
+Put back, all passed.
+
+**Sources:**
+
+- W3C WAI, [Tables tutorial](https://www.w3.org/WAI/tutorials/tables/two-headers/): a table with header cells in both its first row and its first column takes `scope="col"` and `scope="row"`.
+- WCAG 2.2: 1.3.1 Info and Relationships, 1.4.1 Use of Color, 1.4.10 Reflow (a data table may scroll in two dimensions), 2.1.1 Keyboard.
+- Deque, axe rule [scrollable-region-focusable](https://dequeuniversity.com/rules/axe/4.10/scrollable-region-focusable): a scrollable region must be reachable by keyboard.
+- Adrian Roselli, ["Under-Engineered Responsive Tables"](https://adrianroselli.com/2020/11/under-engineered-responsive-tables.html) (2020): a table kept a table in a focusable, named region that scrolls.
 
 **Status:** Accepted.

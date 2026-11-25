@@ -9,12 +9,21 @@
  * @var list<array{uuid: string, name: string, picture: string|null, photo: string, total: string, ready: bool, saved: string, open: string|null}> $rows
  * @var string $action Where the forms post: this page.
  * @var array{uuid: string, name: string}|null $undo The build just deleted, which Undo puts back from the server's copy (D-231).
+ * @var array{action: string, fields: array<string, string>}|null $compare Where the compare's form is sent, with the fields that keep its address's query; null where there is no compare (#136).
+ * @var string|null $said Why a compare asked for was not shown, or null.
  */
 
 defined( 'ABSPATH' ) || exit;
 
+use CreativeBranding\SkateboardBuilder\Front\CompareView;
 use CreativeBranding\SkateboardBuilder\Front\SavedBuildHooks;
+
+// A box a build and one Compare button, sent by GET to this page, so it works without JavaScript (#136, D-411).
+$cbuild_compare = null !== $compare && count( $rows ) > 1;
 ?>
+<?php if ( null !== $said ) : ?>
+	<p class="cbuild-compare__said" role="status"><?php echo esc_html( $said ); ?></p>
+<?php endif; ?>
 <?php if ( null !== $undo ) : ?>
 	<?php /* A form that puts the build back, without JavaScript, for UNDO_MINUTES after the Delete. It names the build; the build itself is the session's copy (Cowork's 0.8.0 review, F3; D-231, D-275). */ ?>
 	<form class="cbuild-my-builds__undo" method="post" action="<?php echo esc_url( $action ); ?>">
@@ -68,6 +77,13 @@ use CreativeBranding\SkateboardBuilder\Front\SavedBuildHooks;
 			</td>
 			<td data-title="<?php esc_attr_e( 'Saved', 'creative-skateboard-builder' ); ?>"><?php echo esc_html( $cbuild_row['saved'] ); ?></td>
 			<td data-title="<?php esc_attr_e( 'Actions', 'creative-skateboard-builder' ); ?>">
+				<?php /* With the actions, not the build's header cell, which WooCommerce's small-screen styles hide on a phone. */ ?>
+				<?php if ( $cbuild_compare ) : ?>
+					<span class="cbuild-my-builds__pick">
+						<input type="checkbox" id="<?php echo esc_attr( $cbuild_id . '-compare' ); ?>" name="<?php echo esc_attr( CompareView::PARAM ); ?>[]" value="<?php echo esc_attr( $cbuild_row['uuid'] ); ?>" form="cbuild-compare" aria-label="<?php /* translators: %s: the saved build's name. */ echo esc_attr( sprintf( __( 'Compare %s', 'creative-skateboard-builder' ), $cbuild_row['name'] ) ); ?>">
+						<label for="<?php echo esc_attr( $cbuild_id . '-compare' ); ?>"><?php esc_html_e( 'Compare', 'creative-skateboard-builder' ); ?></label>
+					</span>
+				<?php endif; ?>
 				<?php if ( null !== $cbuild_row['open'] ) : ?>
 					<a class="button cbuild-my-builds__open" rel="nofollow" href="<?php echo esc_url( $cbuild_row['open'] ); ?>" aria-label="<?php /* translators: %s: the saved build's name. */ echo esc_attr( sprintf( __( 'Open %s', 'creative-skateboard-builder' ), $cbuild_row['name'] ) ); ?>"><?php esc_html_e( 'Open', 'creative-skateboard-builder' ); ?></a>
 				<?php else : ?>
@@ -94,4 +110,18 @@ use CreativeBranding\SkateboardBuilder\Front\SavedBuildHooks;
 	<?php endforeach; ?>
 	</tbody>
 </table>
+	<?php if ( $cbuild_compare && null !== $compare ) : ?>
+		<form id="cbuild-compare" class="cbuild-my-builds__compare" method="get" action="<?php echo esc_url( $compare['action'] ); ?>">
+			<?php foreach ( $compare['fields'] as $cbuild_key => $cbuild_value ) : ?>
+				<input type="hidden" name="<?php echo esc_attr( $cbuild_key ); ?>" value="<?php echo esc_attr( $cbuild_value ); ?>">
+			<?php endforeach; ?>
+			<p id="cbuild-compare-hint">
+				<?php
+				/* translators: %s: the most builds compared at once, such as 3. */
+				echo esc_html( sprintf( _n( 'Tick up to %s build, then compare them side by side at today\'s prices.', 'Tick up to %s builds, then compare them side by side at today\'s prices.', CompareView::MOST, 'creative-skateboard-builder' ), number_format_i18n( CompareView::MOST ) ) );
+				?>
+			</p>
+			<button type="submit" class="button" aria-describedby="cbuild-compare-hint"><?php esc_html_e( 'Compare the ticked builds', 'creative-skateboard-builder' ); ?></button>
+		</form>
+	<?php endif; ?>
 <?php endif; ?>

@@ -494,7 +494,21 @@ final class Container {
 			Cart\ShowHooks::class           => static fn( object $hooks, Container $c ): object => $hooks instanceof Cart\ShowHooks ? $hooks->withAddress( $c->get( Front\BuilderAddress::class ) ) : $hooks,
 			Rest\StateRoute::class          => static fn( object $route, Container $c ): object => $route instanceof Rest\StateRoute ? $route->withAddress( $c->get( Front\BuilderAddress::class ) )->withPhases( $c->get( Service\Phases::class ) ) : $route,
 			Admin\BuildTab::class           => static fn( object $tab, Container $c ): object => $tab instanceof Admin\BuildTab ? $tab->withPlace( $c->get( Front\BuilderPlace::class ) ) : $tab,
+			// 1.3.0: My builds' compare (#136, D-411).
+			Front\SavedBuildHooks::class    => static fn( object $hooks, Container $c ): object => $hooks instanceof Front\SavedBuildHooks ? $hooks->withCompare( self::compare( $c ) ) : $hooks,
 		);
+	}
+
+	/**
+	 * My builds' compare, built when it is asked (#136).
+	 *
+	 * @param Container $c The container.
+	 * @return Closure(): Front\CompareView
+	 */
+	private static function compare( Container $c ): Closure {
+		return static function () use ( $c ): Front\CompareView {
+			return $c->get( Front\CompareView::class );
+		};
 	}
 
 	/**

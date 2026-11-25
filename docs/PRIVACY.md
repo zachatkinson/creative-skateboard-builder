@@ -48,6 +48,7 @@ From 0.8.0, saved builds are the only personal data the plugin keeps (spec: Priv
 - **Erase.** Erase Personal Data deletes them all: the eraser `creative-skateboard-builder`. Nothing is kept, so nothing is reported retained (`PrivacyTest`).
 - **A deleted account** takes its saved builds with it: on its site through `delete_user`, and on every site of a network through `wpmu_delete_user`, from the must-use file below where the plugin is not loaded (`PrivacyTest`).
 - **The customer** renames or deletes each one under My builds, and only they can read or change them (`SavedBuildsPageTest`).
+- **Compare** (1.3.0) shows up to three of the customer's own builds side by side from their UUIDs in the address, `cbuild_compare[]`, and stores nothing. Another customer's UUID shows nothing (`CompareBuildsTest`, D-411).
 - **The suggested policy text** goes to Settings > Privacy's guide on `admin_init`, through the text domain, in the site's language. It says what is kept, for how long, and how to have it exported or erased.
 
 Order item meta is not personal data the plugin adds: each build's snapshot names parts, SKUs, specs and the shop's own words, and is kept with the order as part of the shop's records (spec: Uninstall).

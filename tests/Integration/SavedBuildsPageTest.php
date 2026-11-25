@@ -506,12 +506,14 @@ final class SavedBuildsPageTest extends CartTestCase {
 		$this->post( $this->saveFields( wp_create_nonce( SavedBuildHooks::SAVE ), 'Park' ) );
 		$dom   = new \DOMXPath( self::html( $this->page() ) );
 		$names = array();
-		foreach ( $dom->query( '//a[contains(@class,"cbuild-my-builds__open")] | //button | //input[@type="text"]' ) as $control ) {
+		// The row's controls, its Compare box among them from 1.3.0 (#136); the one Compare button under the table is
+		// named by its own words.
+		foreach ( $dom->query( '//a[contains(@class,"cbuild-my-builds__open")] | //tbody//button | //input[@type="text"] | //input[@type="checkbox"]' ) as $control ) {
 			self::assertInstanceOf( \DOMElement::class, $control );
 			$names[] = $control->getAttribute( 'aria-label' );
 		}
 		sort( $names );
-		self::assertSame( array( 'Delete Park', 'Delete Street', 'Name of Park', 'Name of Street', 'Open Park', 'Open Street', 'Rename Park', 'Rename Street' ), $names );
+		self::assertSame( array( 'Compare Park', 'Compare Street', 'Delete Park', 'Delete Street', 'Name of Park', 'Name of Street', 'Open Park', 'Open Street', 'Rename Park', 'Rename Street' ), $names );
 	}
 
 	/**

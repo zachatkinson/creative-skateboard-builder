@@ -156,7 +156,8 @@
         "cbuild[step]"
     ],
     "query_params": [
-        "cbuild_saved"
+        "cbuild_saved",
+        "cbuild_compare"
     ],
     "account_endpoints": [
         "my-builds"

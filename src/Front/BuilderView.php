@@ -1920,6 +1920,55 @@ final class BuilderView {
 	}
 
 	/**
+	 * What changed in a saved build since it was saved, in D-254's words: each changed pick with why and its closest
+	 * fit, each new price then and now, and the totals. "Your build has changed" says them, and My builds' compare
+	 * says them in each build's column (#136).
+	 *
+	 * @since 1.3.0
+	 *
+	 * @param array{changes: list<array{slot: string, label: string, was: int, name: string, reason: string, closest: array{id: int, name: string}|null}>, prices: list<array{slot: string, label: string, part: int, name: string, then: string, now: string}>, then: string|null, now: string} $reopened What changed, as the answer says it.
+	 * @return array{changes: list<array{slot: string, text: string, closest: string}>, prices: list<array{slot: string, text: string}>, totals: string}
+	 */
+	public static function changedWords( array $reopened ): array {
+		$changes = array();
+		foreach ( $reopened['changes'] as $change ) {
+			$named     = '' === $change['name'] ? __( 'a part', 'creative-skateboard-builder' ) : $change['name'];
+			$changes[] = array(
+				'slot'    => $change['slot'],
+				'text'    => match ( $change['reason'] ) {
+					/* translators: 1: a slot's label, such as Wheels. 2: a part's name. */
+					'gone'     => sprintf( __( '%1$s: %2$s is no longer in the shop.', 'creative-skateboard-builder' ), $change['label'], $named ),
+					/* translators: 1: a slot's label, such as Wheels. 2: a part's name. */
+					'sold_out' => sprintf( __( '%1$s: %2$s is sold out.', 'creative-skateboard-builder' ), $change['label'], $named ),
+					/* translators: 1: a slot's label, such as Trucks. 2: a part's name. */
+					default    => sprintf( __( '%1$s: %2$s no longer fits.', 'creative-skateboard-builder' ), $change['label'], $named ),
+				},
+				'closest' => null === $change['closest']
+					? __( 'Nothing the shop has fits here, so this slot would be left for you to choose again.', 'creative-skateboard-builder' )
+					/* translators: %s: a part's name. */
+					: sprintf( __( 'Closest fit: %s', 'creative-skateboard-builder' ), $change['closest']['name'] ),
+			);
+		}
+		$prices = array();
+		foreach ( $reopened['prices'] as $price ) {
+			$prices[] = array(
+				'slot' => $price['slot'],
+				/* translators: 1: a part's name, such as Independent 149 trucks. 2: its price when the build was saved. 3: its price now. */
+				'text' => sprintf( __( '%1$s: %2$s when you saved, %3$s now', 'creative-skateboard-builder' ), $price['name'], $price['then'], $price['now'] ),
+			);
+		}
+		return array(
+			'changes' => $changes,
+			'prices'  => $prices,
+			'totals'  => null === $reopened['then']
+				/* translators: %s: the build's total now. */
+				? sprintf( __( 'Total now: %s', 'creative-skateboard-builder' ), $reopened['now'] )
+				/* translators: 1: the build's total when it was saved. 2: its total now. */
+				: sprintf( __( 'Total: %1$s when you saved, %2$s now', 'creative-skateboard-builder' ), $reopened['then'], $reopened['now'] ),
+		);
+	}
+
+	/**
 	 * The view of a saved build that changed since it was saved, as "Your build has changed" before the review (spec: A
 	 * saved build that has changed, D-254): the change panel, each changed part named with why and its closest fit,
 	 * each new price then and now, the totals, then Use these, which takes the closest parts to the review, and Choose
@@ -1934,36 +1983,18 @@ final class BuilderView {
 	 * @return array<string, mixed>
 	 */
 	public function reopened( array $view, array $reopened, State $state, ?bool $assembly ): array {
+		$words = self::changedWords( $reopened );
 		$items = array();
-		foreach ( $reopened['changes'] as $change ) {
-			$named   = '' === $change['name'] ? __( 'a part', 'creative-skateboard-builder' ) : $change['name'];
+		foreach ( $words['changes'] as $change ) {
 			$items[] = array(
 				'key'     => $change['slot'],
-				'text'    => match ( $change['reason'] ) {
-					/* translators: 1: a slot's label, such as Wheels. 2: a part's name. */
-					'gone'     => sprintf( __( '%1$s: %2$s is no longer in the shop.', 'creative-skateboard-builder' ), $change['label'], $named ),
-					/* translators: 1: a slot's label, such as Wheels. 2: a part's name. */
-					'sold_out' => sprintf( __( '%1$s: %2$s is sold out.', 'creative-skateboard-builder' ), $change['label'], $named ),
-					/* translators: 1: a slot's label, such as Trucks. 2: a part's name. */
-					default    => sprintf( __( '%1$s: %2$s no longer fits.', 'creative-skateboard-builder' ), $change['label'], $named ),
-				},
+				'text'    => $change['text'],
 				'reasons' => array(),
-				'closest' => null === $change['closest']
-					? __( 'Nothing the shop has fits here, so this slot would be left for you to choose again.', 'creative-skateboard-builder' )
-					/* translators: %s: a part's name. */
-					: sprintf( __( 'Closest fit: %s', 'creative-skateboard-builder' ), $change['closest']['name'] ),
+				'closest' => $change['closest'],
 			);
 		}
-		$prices = array();
-		foreach ( $reopened['prices'] as $price ) {
-			/* translators: 1: a part's name, such as Independent 149 trucks. 2: its price when the build was saved. 3: its price now. */
-			$prices[] = array( 'text' => sprintf( __( '%1$s: %2$s when you saved, %3$s now', 'creative-skateboard-builder' ), $price['name'], $price['then'], $price['now'] ) );
-		}
-		$totals = null === $reopened['then']
-			/* translators: %s: the build's total now. */
-			? sprintf( __( 'Total now: %s', 'creative-skateboard-builder' ), $reopened['now'] )
-			/* translators: 1: the build's total when it was saved. 2: its total now. */
-			: sprintf( __( 'Total: %1$s when you saved, %2$s now', 'creative-skateboard-builder' ), $reopened['then'], $reopened['now'] );
+		$prices            = array_map( static fn( array $price ): array => array( 'text' => $price['text'] ), $words['prices'] );
+		$totals            = $words['totals'];
 		$slots             = $state->kit->slots;
 		$kept              = array_diff_key( $reopened['picks'], array_flip( array_column( $reopened['changes'], 'slot' ) ) );
 		$use               = new BuildLink( $reopened['picks'], null, State::REVIEW, $assembly );

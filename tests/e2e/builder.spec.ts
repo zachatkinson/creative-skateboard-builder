@@ -8551,6 +8551,202 @@ test.describe( 'Saved builds', () => {
 	} );
 } );
 
+// #136 (D-411): up to three saved builds side by side under My builds, chosen by keyboard, in a real table whose
+// columns and rows are headed; on a phone a build a column, the table scrolling sideways in its own region and never
+// the page. The rows that differ and the gap between the totals are said in words. With JavaScript and without, at
+// each width, in French on the fr-ca project.
+test.describe( 'Compare saved builds (#136)', () => {
+	const names = [ 'Street setup', 'Park setup', 'Bowl setup' ];
+
+	/** The test's own builds of the saved builds customer, taken away. */
+	const clear = () =>
+		runPhp(
+			`$u = get_user_by( 'login', 'e2e-saver' ); if ( $u ) { $s = CreativeBranding\\SkateboardBuilder\\Plugin::container()->get( CreativeBranding\\SkateboardBuilder\\Service\\SavedBuilds::class ); foreach ( $s->of( $u->ID ) as $b ) { if ( in_array( $b->name, ${ JSON.stringify(
+				names
+			) }, true ) ) { $s->delete( $u->ID, $b->uuid ); } } }`
+		);
+
+	test.afterAll( clear );
+
+	test( 'three builds compared by keyboard in a table that says what differs in words', async ( {
+		page,
+		javaScriptEnabled,
+	}, info ) => {
+		await customer( page );
+		clear();
+		const street = {
+			deck: id( 'builder-test-deck-8-0' ),
+			trucks: id( 'builder-test-trucks-139' ),
+			wheels: id( 'builder-test-wheels-54' ),
+			bearings: id( 'builder-test-bearings' ),
+			hardware: id( 'builder-test-bolts-1-25' ),
+			grip: id( 'builder-test-grip' ),
+		};
+		// Park: wheels $2 cheaper. Bowl: a wider deck and its trucks, dearer.
+		const builds = [
+			street,
+			{ ...street, wheels: id( 'builder-test-wheels-52' ) },
+			{
+				...street,
+				deck: id( 'builder-test-deck-8-5' ),
+				trucks: id( 'builder-test-trucks-149' ),
+			},
+		];
+		runPhp(
+			`$u = get_user_by( 'login', 'e2e-saver' ); $s = CreativeBranding\\SkateboardBuilder\\Plugin::container()->get( CreativeBranding\\SkateboardBuilder\\Service\\SavedBuilds::class ); foreach ( json_decode( '${ JSON.stringify(
+				builds.map( ( picks, at ) => ( { name: names[ at ], picks } ) )
+			) }', true ) as $b ) { if ( 'saved' !== $s->save( $u->ID, ${
+				fixture().kit
+			}, $b['picks'], true, $b['name'] )['code'] ) { throw new RuntimeException( $b['name'] ); } }`
+		);
+		const french = 'fr-ca' === info.project.name;
+		if ( french ) {
+			await page.setExtraHTTPHeaders( {
+				'x-cbuild-e2e-locale': 'fr_CA',
+				'x-cbuild-e2e-translated': '1',
+			} );
+		}
+		const say = ( english: string, inFrench: string ) =>
+			french ? inFrench : english;
+		await page.goto( '/my-account/my-builds/' );
+
+		// Chosen by keyboard: each build's box, then the one button.
+		for ( const name of names ) {
+			const box = page.getByRole( 'checkbox', {
+				name: say( `Compare ${ name }`, `Comparer ${ name }` ),
+			} );
+			await box.focus();
+			await page.keyboard.press( 'Space' );
+			await expect( box ).toBeChecked();
+		}
+		await page
+			.getByRole( 'button', {
+				name: say(
+					'Compare the ticked builds',
+					'Comparer les montages cochés'
+				),
+			} )
+			.focus();
+		await answered( page, () => page.keyboard.press( 'Enter' ) );
+		expect( decodeURIComponent( page.url() ) ).toContain(
+			'cbuild_compare[]='
+		);
+
+		const caption = say(
+			"Your builds side by side, at today's prices",
+			'Vos montages côte à côte, aux prix d’aujourd’hui'
+		);
+		const table = page.getByRole( 'table', { name: caption } );
+		await expect( table ).toBeVisible();
+		await expect( table.getByRole( 'columnheader' ) ).toHaveText( [
+			say( 'Part', 'Pièce' ),
+			// In the order chosen: My builds lists the last saved first.
+			/^\s*Bowl setup/,
+			/^\s*Park setup/,
+			/^\s*Street setup/,
+		] );
+		const differs = say( 'Differs', 'Diffère' );
+		await expect(
+			table.getByRole( 'rowheader', { name: `Wheels ${ differs }` } ),
+			'a row that differs says so in words'
+		).toBeVisible();
+		await expect(
+			table.getByRole( 'rowheader', {
+				name: 'Bearings',
+				exact: true,
+			} ),
+			'a row the same in each is not marked'
+		).toBeVisible();
+		const gaps = table
+			.getByRole( 'row' )
+			.filter( {
+				has: page.getByRole( 'rowheader', {
+					name: say( 'Price difference', 'Écart de prix' ),
+				} ),
+			} )
+			.getByRole( 'cell' );
+		await expect( gaps ).toHaveText( [
+			/ more than the lowest$| de plus que le plus bas$/,
+			say( 'Lowest total', 'Total le plus bas' ),
+			/ more than the lowest$| de plus que le plus bas$/,
+		] );
+		await expect(
+			table.getByRole( 'link', {
+				name: say( 'Open Park setup', 'Ouvrir Park setup' ),
+			} )
+		).toBeVisible();
+
+		// The region takes focus, to scroll by keyboard; the page itself never scrolls sideways.
+		const region = page.getByRole( 'region', { name: caption } );
+		// Reached by Tab from the link before it: in the tab order, not only focusable by a script.
+		await page
+			.getByRole( 'link', {
+				name: say( 'Back to My builds', 'Retour à Mes montages' ),
+			} )
+			.focus();
+		await page.keyboard.press( 'Tab' );
+		await expect( region ).toBeFocused();
+		const sizes = () =>
+			page.evaluate( () => {
+				const box = document.querySelector( '.cbuild-compare' )!;
+				return {
+					scroll: box.scrollWidth,
+					client: box.clientWidth,
+					left: Math.abs( box.scrollLeft ),
+					page: document.documentElement.scrollWidth,
+					view: document.documentElement.clientWidth,
+					columns: [
+						...document.querySelectorAll(
+							'.cbuild-compare__build'
+						),
+					].map( ( th ) => th.getBoundingClientRect().width ),
+				};
+			} );
+		const measured = await sizes();
+		expect(
+			measured.page,
+			'no sideways scroll of the page'
+		).toBeLessThanOrEqual( measured.view );
+		for ( const width of measured.columns ) {
+			expect(
+				width,
+				'a build a column, at least 14rem'
+			).toBeGreaterThanOrEqual( 14 * 16 - 1 );
+		}
+		if ( info.project.name.includes( 'phone' ) ) {
+			expect(
+				measured.columns[ 0 ],
+				'about one build in view at a time'
+			).toBeGreaterThan( measured.client / 2 );
+			expect( measured.scroll, 'the region scrolls' ).toBeGreaterThan(
+				measured.client
+			);
+			// The arrow keys scroll the focused region in Chromium and Firefox. Playwright's WebKit scrolled nothing for
+			// them here, so there the region's focus and its overflow, which are the page's part, are what is held.
+			if ( ! info.project.name.startsWith( 'webkit' ) ) {
+				await page.keyboard.press( 'ArrowRight' );
+				await expect
+					.poll( async () => ( await sizes() ).left )
+					.toBeGreaterThan( 0 );
+			}
+		}
+		if ( javaScriptEnabled ) {
+			await axe(
+				page,
+				`${ info.project.name }: compare`,
+				'.woocommerce-MyAccount-content'
+			);
+		}
+
+		await page
+			.getByRole( 'link', {
+				name: say( 'Back to My builds', 'Retour à Mes montages' ),
+			} )
+			.click();
+		await expect( page.locator( '.cbuild-my-builds' ) ).toBeVisible();
+	} );
+} );
+
 /**
  * Presses a button and waits for the step whose heading it leads to, with JavaScript or without: the store moves the
  * builder without loading the page, and the form loads the next one.
