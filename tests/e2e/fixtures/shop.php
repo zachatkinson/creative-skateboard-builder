@@ -327,6 +327,36 @@ $cbuild_kit->setDocument(
 	)
 );
 $cbuild_kit->save();
+// Reviews (#137): the 139 trucks, Street's, rated 5 and 4, and the 54 mm wheels 3, so a step shows a ready build's pick
+// and a rating, and a part with neither. The shop shows ratings; each part's reviews are made afresh.
+update_option( 'woocommerce_enable_reviews', 'yes' );
+update_option( 'woocommerce_enable_review_rating', 'yes' );
+foreach (
+	array(
+		'builder-test-trucks-139' => array( 5, 4 ),
+		'builder-test-wheels-54'  => array( 3 ),
+	) as $cbuild_sku => $cbuild_ratings
+) {
+	$cbuild_id = $cbuild_parts[ $cbuild_sku ];
+	foreach ( get_comments( array( 'post_id' => $cbuild_id, 'fields' => 'ids', 'type' => 'review', 'status' => 'all' ) ) as $cbuild_had ) {
+		wp_delete_comment( (int) $cbuild_had, true );
+	}
+	foreach ( $cbuild_ratings as $cbuild_at => $cbuild_rating ) {
+		wp_insert_comment(
+			array(
+				'comment_post_ID'      => $cbuild_id,
+				'comment_type'         => 'review',
+				'comment_approved'     => 1,
+				'comment_author'       => 'Shopper ' . ( $cbuild_at + 1 ),
+				'comment_author_email' => 'shopper+' . ( $cbuild_at + 1 ) . '@example.com',
+				'comment_content'      => 'Rides well.',
+				'comment_meta'         => array( 'rating' => $cbuild_rating ),
+			)
+		);
+	}
+	// The rating's meta is added after the comment is counted (wp-includes/comment.php:2206, :2220).
+	WC_Comments::clear_transients( $cbuild_id );
+}
 // Layer images for the picture (milestone 7): clean test art drawn by tools/layer-art.php to the shooting template,
 // at two pixels to the millimetre, in the Media Library. The 8.25 in deck and the trucks 144 have none, so the
 // labelled photo is tested beside the board. An image is made again when its file is gone (wp-env started on another

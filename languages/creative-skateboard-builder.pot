@@ -5005,3 +5005,24 @@ msgstr ""
 #: src/Front/Words.php:671
 msgid "The one build the shop can make from these answers."
 msgstr ""
+
+#. translators: %s: ready builds' names joined as the site's language joins a list, such as Street and Cruiser.
+#: src/Front/Words.php:466
+#, php-format
+msgid "Picked for %s"
+msgstr ""
+
+#. translators: 1: an average star rating, such as 4.5. 2: how many reviews it is the average of.
+#: src/Front/Words.php:481
+#, php-format
+msgid "%1$s out of 5, %2$s review"
+msgid_plural "%1$s out of 5, %2$s reviews"
+msgstr[0] ""
+msgstr[1] ""
+
+#. translators: 1: an average star rating, such as 4.5. 2: how many reviews it is the average of. Shown beside the stars.
+#: src/Front/Words.php:499
+#, php-format
+msgctxt "a rating and its count of reviews"
+msgid "%1$s (%2$s)"
+msgstr ""

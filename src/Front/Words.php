@@ -454,6 +454,68 @@ final class Words {
 	}
 
 	/**
+	 * The ready builds that pick a part, on its card, as "Picked for Street and Cruiser" (#137, D-392); empty where
+	 * none does.
+	 *
+	 * @since 1.3.0
+	 *
+	 * @param list<string> $names The ready builds' names, as the shopper reads them on their tiles, in the kit's order.
+	 */
+	public static function pickedFor( array $names ): string {
+		if ( array() === $names ) {
+			return '';
+		}
+		/* translators: %s: ready builds' names joined as the site's language joins a list, such as Street and Cruiser. */
+		return sprintf( __( 'Picked for %s', 'creative-skateboard-builder' ), wp_sprintf( '%l', $names ) );
+	}
+
+	/**
+	 * A part's star rating as words, the text the stars stand for, as "4.5 out of 5, 12 reviews" (#137, D-392): the
+	 * average to one decimal, a whole one without it, in the shop's decimal separator, and the count in the site's.
+	 *
+	 * @since 1.3.0
+	 *
+	 * @param float $average The average rating, 0 to 5, as WooCommerce keeps it.
+	 * @param int   $count   How many reviews it is the average of.
+	 */
+	public static function rating( float $average, int $count ): string {
+		return sprintf(
+			/* translators: 1: an average star rating, such as 4.5. 2: how many reviews it is the average of. */
+			_n( '%1$s out of 5, %2$s review', '%1$s out of 5, %2$s reviews', $count, 'creative-skateboard-builder' ),
+			self::average( $average ),
+			number_format_i18n( $count )
+		);
+	}
+
+	/**
+	 * A part's star rating shown short beside its stars, as "4.5 (12)" (#137, D-393), so it shares a line with the
+	 * ready builds' pick on a card as narrow as a desktop's. The sentence from rating() is what a screen reader says.
+	 *
+	 * @since 1.3.0
+	 *
+	 * @param float $average The average rating, 0 to 5, as WooCommerce keeps it.
+	 * @param int   $count   How many reviews it is the average of.
+	 */
+	public static function score( float $average, int $count ): string {
+		return sprintf(
+			/* translators: 1: an average star rating, such as 4.5. 2: how many reviews it is the average of. Shown beside the stars. */
+			_x( '%1$s (%2$s)', 'a rating and its count of reviews', 'creative-skateboard-builder' ),
+			self::average( $average ),
+			number_format_i18n( $count )
+		);
+	}
+
+	/**
+	 * An average rating to one decimal, a whole one without it, in the shop's decimal separator.
+	 *
+	 * @param float $average The average rating, 0 to 5.
+	 */
+	private static function average( float $average ): string {
+		$tenths = (int) round( $average * 10 );
+		return number_format( $tenths / 10, 0 === $tenths % 10 ? 0 : 1, wc_get_price_decimal_separator(), '' );
+	}
+
+	/**
 	 * A part's label in the picture of what is in the box (spec: The picture): its slot, then its brand and its
 	 * size where it has them, as "Wheels: Retna, 54 mm".
 	 *

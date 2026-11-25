@@ -10576,7 +10576,12 @@ test.describe( 'Cards side by side on every step (#131)', () => {
 	for ( const step of steps ) {
 		test( `puts the picture in a 5rem square beside the words on the ${ step } step`, async ( {
 			page,
+			javaScriptEnabled,
 		} ) => {
+			test.skip(
+				! javaScriptEnabled,
+				'Measured by a script in the page; the layout is the stylesheet’s, the same without one.'
+			);
 			await page.goto( at( step ) );
 			const item = page
 				.locator( '.cbuild-cards:not(.cbuild-cards--compact) > li' )
@@ -10637,7 +10642,8 @@ test.describe( 'Cards side by side on every step (#131)', () => {
 
 	// The step's first card at the window's top, the list filled to 24 with copies of it: the whole cards above the bar.
 	// Before #131, at 1440 by 900: trucks 2, 2, 3; wheels 2, 2, 3; bearings 8, 8, 9; hardware 8, 8, 6; grip 2, 2, 3 on
-	// Kadence, Twenty Twenty-Five and Storefront. At 390 by 844 each step's count is as it was (D-391).
+	// Kadence, Twenty Twenty-Five and Storefront. At 390 by 844 each step's count is as it was (D-391). The card is
+	// plain: a ready build's pick and a rating are a line more where a part has them, held by the test after (D-393).
 	const held: Record<
 		string,
 		Record<
@@ -10710,6 +10716,14 @@ test.describe( 'Cards side by side on every step (#131)', () => {
 					.first()
 					.evaluate( ( list ) => {
 						const first = list.querySelector( ':scope > li' );
+						// A plain card: no ready build's pick and no rating (D-393).
+						first
+							?.querySelectorAll< HTMLElement >(
+								'.cbuild-card__picked, .cbuild-card__rating'
+							)
+							.forEach( ( extra ) => {
+								extra.hidden = true;
+							} );
 						while (
 							first &&
 							list.querySelectorAll( ':scope > li' ).length < 24
@@ -10740,6 +10754,82 @@ test.describe( 'Cards side by side on every step (#131)', () => {
 					`whole ${ step } cards in a screen`
 				).toBeGreaterThanOrEqual( least );
 			}
+		} );
+
+		// A part a ready build picks and the shop rates (the trucks 139, Street's, rated 4.5): its rating sits beside
+		// its price, so the card is a line taller at most, the "Picked for" line, at either width (#137, D-393).
+		test( `a card with a ready build's pick and a rating is a line taller at most on ${ theme }`, async ( {
+			page,
+			context,
+			baseURL,
+		}, info ) => {
+			test.skip(
+				'chromium-desktop' !== info.project.name &&
+					'chromium-phone' !== info.project.name,
+				'A layout measure, one engine at each width.'
+			);
+			await context.addCookies( [
+				{
+					name: 'cbuild_e2e_theme',
+					value: theme,
+					url: baseURL || SITE,
+				},
+			] );
+			await page.setViewportSize(
+				info.project.name.includes( 'phone' )
+					? { width: 390, height: 844 }
+					: { width: 1440, height: 900 }
+			);
+			await page.goto( at( 'trucks' ) );
+			await page.waitForSelector( '.cbuild[data-ready]' );
+			await page.evaluate( () => document.fonts.ready );
+			const card = page
+				.locator( '.cbuild-cards > li' )
+				.filter( { hasText: 'Picked for Street' } )
+				.first();
+			await expect(
+				card.locator( '.cbuild-card__rating' ),
+				'rated'
+			).toBeVisible();
+			const measured = await card.evaluate( ( item ) => {
+				const picked = item.querySelector< HTMLElement >(
+					'.cbuild-card__picked'
+				);
+				const rating = item.querySelector< HTMLElement >(
+					'.cbuild-card__rating'
+				);
+				const price = item.querySelector( '.cbuild-card__price' );
+				const rich = item.getBoundingClientRect().height;
+				const line = picked ? picked.getBoundingClientRect().height : 0;
+				const beside =
+					!! rating &&
+					!! price &&
+					Math.abs(
+						rating.getBoundingClientRect().top -
+							price.getBoundingClientRect().top
+					) < price.getBoundingClientRect().height;
+				if ( picked && rating ) {
+					picked.hidden = true;
+					rating.hidden = true;
+				}
+				const plain = item.getBoundingClientRect().height;
+				const gap = parseFloat(
+					getComputedStyle(
+						item.querySelector( '.cbuild-card__about' ) ?? item
+					).rowGap
+				);
+				return { rich, plain, line, gap, beside };
+			} );
+			expect( measured.line, 'one line of small type' ).toBeLessThan(
+				30
+			);
+			expect(
+				measured.rich - measured.plain,
+				'the pick and the rating add a line at most'
+			).toBeLessThanOrEqual( measured.line + measured.gap + 1 );
+			expect( measured.beside, 'the rating beside the price' ).toBe(
+				true
+			);
 		} );
 	}
 
@@ -10833,6 +10923,152 @@ test.describe( 'Cards side by side on every step (#131)', () => {
 		expect( shifted, "the step's layout shift as the pictures load" ).toBe(
 			0
 		);
+	} );
+} );
+
+/**
+ * Issue #137 (D-392): a part a ready build picks says so on its card, and a part with reviews shows its stars and,
+ * in words a screen reader says with the card, its rating and count. The fixture's 139 trucks are Street's and rated 5
+ * and 4; its 52 mm wheels are Street's, unrated; its 54 mm wheels are no ready build's, rated 3. Cruiser holds a sold
+ * out wheel, so it is no tile, and no card names it: Street's bearings, Cruiser's too, say Street alone.
+ */
+test.describe( "Ready builds' picks and ratings on the cards (#137)", () => {
+	const wheels = () =>
+		linkTo( {
+			deck: id( 'builder-test-deck-8-0' ),
+			trucks: id( 'builder-test-trucks-139' ),
+			step: 'wheels',
+		} );
+	const card = ( page: Page, name: RegExp ) =>
+		page
+			.locator( '.cbuild-step .cbuild-cards > li' )
+			.filter( { has: page.getByRole( 'radio', { name } ) } );
+
+	test( 'says which ready build picks a part, and its rating, in words beside the stars', async ( {
+		page,
+		javaScriptEnabled,
+	} ) => {
+		await page.goto(
+			linkTo( { deck: id( 'builder-test-deck-8-0' ), step: 'trucks' } )
+		);
+		const rated = card( page, /^Choose Builder test trucks 139/ );
+		await expect( rated.locator( '.cbuild-card__picked' ) ).toHaveText(
+			'Picked for Street'
+		);
+		await expect( rated.locator( '.cbuild-card__rated' ) ).toHaveText(
+			'4.5 out of 5, 2 reviews'
+		);
+		// One star and the short score are seen, and stand for the sentence, which is said (D-393): the rating beside
+		// the price, read after it, and the pick after the fit.
+		const star = rated.locator( '.cbuild-card__star' );
+		await expect( star ).toBeVisible();
+		await expect( star ).toHaveAttribute( 'aria-hidden', 'true' );
+		const score = rated.locator( '.cbuild-card__score' );
+		await expect( score ).toHaveText( '4.5 (2)' );
+		await expect( score ).toBeVisible();
+		await expect( score ).toHaveAttribute( 'aria-hidden', 'true' );
+		await expect( rated.getByRole( 'radio' ) ).toHaveAccessibleDescription(
+			/4\.5 out of 5, 2 reviews.*Picked for Street/
+		);
+		await expect(
+			rated.getByRole( 'radio' ),
+			'the short score is not said'
+		).not.toHaveAccessibleDescription( /\(2\)/ );
+		// Measured from the boxes Playwright reads, so the page needs no script of its own.
+		const starBox = await star.boundingBox();
+		const scoreBox = await score.boundingBox();
+		const rtl =
+			'rtl' === ( await page.locator( 'html' ).getAttribute( 'dir' ) );
+		const shown = {
+			width: starBox?.width ?? 0,
+			height: starBox?.height ?? 0,
+			// Before it in the line's own direction: left of it, or right of it in a right-to-left page.
+			before:
+				!! starBox &&
+				!! scoreBox &&
+				( rtl
+					? starBox.x >= scoreBox.x + scoreBox.width - 1
+					: starBox.x + starBox.width <= scoreBox.x + 1 ),
+		};
+		expect( shown.width, 'one star' ).toBeCloseTo( shown.height, 0 );
+		expect( shown.height, 'drawn' ).toBeGreaterThan( 8 );
+		expect( shown.before, 'before the score' ).toBe( true );
+
+		await page.goto( wheels() );
+		const picked = card( page, /^Choose Builder test wheels 52/ );
+		await expect( picked.locator( '.cbuild-card__picked' ) ).toHaveText(
+			'Picked for Street'
+		);
+		await expect( picked.locator( '.cbuild-card__rating' ) ).toBeHidden();
+		const reviewed = card( page, /^Choose Builder test wheels 54/ );
+		await expect( reviewed.locator( '.cbuild-card__picked' ) ).toBeHidden();
+		await expect( reviewed.locator( '.cbuild-card__rated' ) ).toHaveText(
+			'3 out of 5, 1 review'
+		);
+		await expect( reviewed.locator( '.cbuild-card__score' ) ).toHaveText(
+			'3 (1)'
+		);
+		if ( javaScriptEnabled ) {
+			// axe runs its script in the page, which the no-js project cannot.
+			await axe(
+				page,
+				"the wheel step's picks and ratings",
+				'.cbuild-step'
+			);
+			// The store draws them again from the answer, as the server did.
+			await choose( page, 'Builder test wheels 54' );
+			await expect(
+				reviewed.locator( '.cbuild-card__rated' )
+			).toHaveText( '3 out of 5, 1 review' );
+			await expect( picked.locator( '.cbuild-card__picked' ) ).toHaveText(
+				'Picked for Street'
+			);
+		}
+
+		await page.goto(
+			linkTo( {
+				deck: id( 'builder-test-deck-8-0' ),
+				trucks: id( 'builder-test-trucks-139' ),
+				wheels: id( 'builder-test-wheels-52' ),
+				step: 'bearings',
+			} )
+		);
+		await expect(
+			card( page, /^Choose Builder test bearings/ ).locator(
+				'.cbuild-card__picked'
+			)
+		).toHaveText( 'Picked for Street' );
+	} );
+
+	test( "says them in French, its decimal separator the shop's", async ( {
+		page,
+	}, info ) => {
+		test.skip( 'fr-ca' !== info.project.name, 'The fr-ca project alone' );
+		await page.setExtraHTTPHeaders( {
+			'x-cbuild-e2e-locale': 'fr_CA',
+			'x-cbuild-e2e-translated': '1',
+		} );
+		await page.goto(
+			linkTo( { deck: id( 'builder-test-deck-8-0' ), step: 'trucks' } )
+		);
+		const rated = page
+			.locator( '.cbuild-step .cbuild-cards > li' )
+			.filter( {
+				has: page.getByRole( 'radio', {
+					name: /^Choisir Builder test trucks 139/,
+				} ),
+			} );
+		await expect( rated.locator( '.cbuild-card__picked' ) ).toHaveText(
+			'Choisi pour Street'
+		);
+		// The shop's own decimal separator, a point in the fixture's, as its prices are written (D-392).
+		await expect( rated.locator( '.cbuild-card__rated' ) ).toHaveText(
+			'4.5 sur 5, 2 avis'
+		);
+		await expect( rated.locator( '.cbuild-card__score' ) ).toHaveText(
+			'4.5 (2)'
+		);
+		await axe( page, 'the trucks step in French', '.cbuild-step' );
 	} );
 } );
 

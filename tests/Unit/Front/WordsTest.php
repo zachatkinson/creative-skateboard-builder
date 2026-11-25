@@ -222,6 +222,61 @@ final class WordsTest extends TestCase {
 		self::assertSame( array( 'Only in 8.25″', '' ), array( Words::only( '8.25″' ), Words::only( '' ) ) );
 	}
 
+	// #137 (D-392): a part a ready build picks says which, by the builds' names as the site's language lists them, and
+	// nothing where none does.
+	public function test_a_part_a_ready_build_picks_says_which(): void {
+		self::assertSame(
+			array( 'Picked for Street', 'Picked for Street and Cruiser', 'Picked for Street, Park and Cruiser', '' ),
+			array( Words::pickedFor( array( 'Street' ) ), Words::pickedFor( array( 'Street', 'Cruiser' ) ), Words::pickedFor( array( 'Street', 'Park', 'Cruiser' ) ), Words::pickedFor( array() ) )
+		);
+	}
+
+	/**
+	 * @return iterable<string, array{float, int, string, string}>
+	 */
+	public static function ratings(): iterable {
+		yield 'one review' => array( 5.0, 1, '.', '5 out of 5, 1 review' );
+		yield 'a half' => array( 4.5, 12, '.', '4.5 out of 5, 12 reviews' );
+		yield 'as WooCommerce keeps it, two places' => array( 4.33, 3, '.', '4.3 out of 5, 3 reviews' );
+		yield 'rounded to a whole' => array( 3.96, 1234, '.', '4 out of 5, 1,234 reviews' );
+		yield "the shop's decimal comma" => array( 4.5, 2, ',', '4,5 out of 5, 2 reviews' );
+	}
+
+	// #137 (D-392): a rating said as a person reads it, its one decimal in the shop's own separator, its count in the
+	// site's, and a review or reviews by the count.
+	#[DataProvider( 'ratings' )]
+	public function test_a_rating_is_said_out_of_five_with_its_count( float $average, int $count, string $decimal, string $said ): void {
+		$GLOBALS['cbuild_test_decimal'] = $decimal;
+		try {
+			self::assertSame( $said, Words::rating( $average, $count ) );
+		} finally {
+			unset( $GLOBALS['cbuild_test_decimal'] );
+		}
+	}
+
+	/**
+	 * @return iterable<string, array{float, int, string, string}>
+	 */
+	public static function scores(): iterable {
+		yield 'one review' => array( 5.0, 1, '.', '5 (1)' );
+		yield 'a half' => array( 4.5, 12, '.', '4.5 (12)' );
+		yield 'as WooCommerce keeps it, two places' => array( 4.33, 3, '.', '4.3 (3)' );
+		yield 'rounded to a whole' => array( 3.96, 1234, '.', '4 (1,234)' );
+		yield "the shop's decimal comma" => array( 4.5, 2, ',', '4,5 (2)' );
+	}
+
+	// #137 (D-393): the rating shown beside the stars, short so it shares a line with the ready builds' pick on a card
+	// as narrow as a desktop's: the average as the sentence has it, and the count. The sentence is what is said.
+	#[DataProvider( 'scores' )]
+	public function test_a_rating_is_shown_short_beside_its_stars( float $average, int $count, string $decimal, string $shown ): void {
+		$GLOBALS['cbuild_test_decimal'] = $decimal;
+		try {
+			self::assertSame( $shown, Words::score( $average, $count ) );
+		} finally {
+			unset( $GLOBALS['cbuild_test_decimal'] );
+		}
+	}
+
 	public function test_a_spec_this_version_does_not_know_is_named_as_it_came(): void {
 		self::assertSame(
 			'kingpin_angle is not filled in for this part, so its fit cannot be checked.',

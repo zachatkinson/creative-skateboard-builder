@@ -44,12 +44,20 @@ final class InMemoryPartCards implements PartCards {
 	 */
 	public array $forgotten = array();
 
+	/**
+	 * The ratings the shop shows, by part (1.3.0, #137); a part not here has none.
+	 *
+	 * @var array<int, array{average: float, count: int}>
+	 */
+	public array $rated = array();
+
 	public function cards( array $ids ): array {
 		$this->asked[] = $ids;
 		$cards         = array();
 		foreach ( $ids as $id ) {
 			if ( ! in_array( $id, $this->missing, true ) ) {
-				$cards[ $id ] = self::card( $id );
+				$cards[ $id ]           = self::card( $id );
+				$cards[ $id ]['rating'] = $this->rated[ $id ] ?? null;
 			}
 		}
 		return $cards;
@@ -67,7 +75,7 @@ final class InMemoryPartCards implements PartCards {
 	/**
 	 * The card this fake gives a part.
 	 *
-	 * @return array{name: string, url: string, price: string, stock: string, stock_class: string, image: array{src: string, width: int, height: int, srcset: string, sizes: string}|null, photo: bool, large: array{src: string, width: int, height: int, srcset: string, sizes: string}|null}
+	 * @return array{name: string, url: string, price: string, stock: string, stock_class: string, image: array{src: string, width: int, height: int, srcset: string, sizes: string}|null, photo: bool, large: array{src: string, width: int, height: int, srcset: string, sizes: string}|null, rating: array{average: float, count: int}|null}
 	 */
 	public static function card( int $id ): array {
 		return array(
@@ -92,6 +100,8 @@ final class InMemoryPartCards implements PartCards {
 				'srcset' => "https://shop.test/{$id}-large.jpg 600w",
 				'sizes'  => '(max-width: 600px) 100vw, 600px',
 			),
+			// The rating the shop shows, none unless a test sets one (1.3.0, #137).
+			'rating'      => null,
 		);
 	}
 

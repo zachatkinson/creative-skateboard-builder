@@ -327,7 +327,14 @@ final class StateAnswer {
 			);
 		};
 		$boards   = SlotKey::DECK === $state->step ? $this->timed( 'boards', fn(): array => $this->boards( $state, array_merge( $offered, array_map( static fn( ShelfLook $look ): Option => $look->option, null === $view ? array() : array_merge( $view->listing->looks, $view->listing->soldOut ) ) ) ) ) : array();
-		$option   = static fn( Option $option, string $slot, ?StateStep $step ): array => array(
+		// The ready builds a shopper is offered that pick each part, by slot, in the kit's order (#137, D-392).
+		$chosen = array();
+		foreach ( $state->shownPresets() as $at ) {
+			foreach ( $state->kit->presets[ $at ]->picks ?? array() as $slot => $part ) {
+				$chosen[ $slot ][ $part ][] = $at;
+			}
+		}
+		$option  = static fn( Option $option, string $slot, ?StateStep $step ): array => array(
 			'id'          => $option->part->id,
 			'brand'       => $option->part->brand,
 			'size'        => self::size( $slot, $option->part ),
@@ -340,13 +347,15 @@ final class StateAnswer {
 			'recommended' => $option->part->id === $step?->recommended?->part->id,
 			'messages'    => self::messages( $option->findings ),
 			// A card as it is listed: the large photo is the picture's alone (#82), and would add to every card.
-			'card'        => isset( $cards[ $option->part->id ] ) ? array_diff_key( $cards[ $option->part->id ], array_flip( array( 'large' ) ) ) : null,
+			'card'        => isset( $cards[ $option->part->id ] ) ? self::listed( $cards[ $option->part->id ] ) : null,
 			// From 1.1.0, on the deck step: the board the deck would draw alone, so its image can be fetched as the
 			// shopper points at the card (D-308), and its card draws the deck small (F14, #99), sold out or not. Null
 			// elsewhere, and for a deck with no layer image.
 			'board'       => $boards[ $option->part->id ] ?? null,
+			// From 1.3.0: the places among the kit's of the ready builds shown that pick it, as `presets[].at` (#137).
+			'presets'     => $chosen[ $slot ][ $option->part->id ] ?? array(),
 		);
-		$problem  = static fn( BuildProblem $problem ): array => array(
+		$problem = static fn( BuildProblem $problem ): array => array(
 			'code'     => $problem->code->value,
 			'slot'     => $problem->slot,
 			'part'     => $problem->part,
@@ -822,6 +831,20 @@ final class StateAnswer {
 	}
 
 	/**
+	 * A card as an option lists it: without the large photo, which is the picture's alone (#82), and with its rating,
+	 * from 1.3.0, in words beside its numbers, or null (#137, D-392).
+	 *
+	 * @param array{name: string, url: string, price: string, stock: string, stock_class: string, image: array{src: string, width: int, height: int, srcset: string, sizes: string}|null, photo: bool, large?: array{src: string, width: int, height: int, srcset: string, sizes: string}|null, rating?: array{average: float, count: int}|null} $card The part's card.
+	 * @return array<string, mixed>
+	 */
+	private static function listed( array $card ): array {
+		$rating = $card['rating'] ?? null;
+		unset( $card['large'] );
+		$card['rating'] = null === $rating ? null : $rating + array( 'text' => Words::rating( $rating['average'], $rating['count'] ) );
+		return $card;
+	}
+
+	/**
 	 * A part's size, as the answer carries it, and as a share card names it (D-200).
 	 *
 	 * @since 0.7.0
@@ -890,11 +913,11 @@ final class StateAnswer {
 	 * picture settings, drawn for the page from the parts with a layer image, each of which the box then leaves out
 	 * (spec: The picture; D-195). From 0.8.0 the board's top too, from the same layout (#46).
 	 *
-	 * @param State                                                                                                                                                                                                                                                                                         $state   The build's state.
-	 * @param array<string, Part>                                                                                                                                                                                                                                                                           $counted The part each slot counts, by slot.
-	 * @param array<string, string>                                                                                                                                                                                                                                                                         $labels  The slots' labels.
-	 * @param array<string, string>                                                                                                                                                                                                                                                                         $brands  Brands' names, by slug.
-	 * @param array<int, array{name: string, url: string, price: string, stock: string, stock_class: string, image: array{src: string, width: int, height: int, srcset: string, sizes: string}|null, photo: bool, large?: array{src: string, width: int, height: int, srcset: string, sizes: string}|null}> $cards The cards.
+	 * @param State                                                                                                                                                                                                                                                                                                                                          $state   The build's state.
+	 * @param array<string, Part>                                                                                                                                                                                                                                                                                                                            $counted The part each slot counts, by slot.
+	 * @param array<string, string>                                                                                                                                                                                                                                                                                                                          $labels  The slots' labels.
+	 * @param array<string, string>                                                                                                                                                                                                                                                                                                                          $brands  Brands' names, by slug.
+	 * @param array<int, array{name: string, url: string, price: string, stock: string, stock_class: string, image: array{src: string, width: int, height: int, srcset: string, sizes: string}|null, photo: bool, large?: array{src: string, width: int, height: int, srcset: string, sizes: string}|null, rating?: array{average: float, count: int}|null}> $cards The cards.
 	 * @return array{items: list<array<string, mixed>>, description: string, width: int, height: int, layers: list<array<string, mixed>>, top: list<array<string, mixed>>}
 	 */
 	private function picture( State $state, array $counted, array $labels, array $brands, array $cards ): array {

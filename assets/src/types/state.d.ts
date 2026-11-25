@@ -809,6 +809,10 @@ export interface Option {
 		 */
 		layers: Layer[];
 	} | null;
+	/**
+	 * From 1.3.0: the ready builds offered to the shopper that pick this part, by their places among the kit's, as `presets[].at`, in the kit's order (#137). Empty where none does, and where the kit shows no ready builds.
+	 */
+	presets: number[];
 }
 /**
  * What a card shows of a part.
@@ -842,6 +846,23 @@ export interface Card {
 	 * Whether `image` is the part's photo, not its layer image (1.0.0).
 	 */
 	photo: boolean;
+	/**
+	 * From 1.3.0: the part's star rating and review count as WooCommerce keeps them from its reviews, a variation's being its product's (#137). Null where it has no reviews, or the shop shows no ratings (WooCommerce's Enable star rating on reviews).
+	 */
+	rating: {
+		/**
+		 * The average rating, 0 to 5, as WooCommerce keeps it.
+		 */
+		average: number;
+		/**
+		 * How many reviews it is the average of.
+		 */
+		count: number;
+		/**
+		 * The rating as words, the text its stars stand for: `4.5 out of 5, 12 reviews`, in the site's language and the shop's decimal separator.
+		 */
+		text: string;
+	} | null;
 }
 /**
  * One layer of the board: a part with a layer image, where it is drawn and the image.
@@ -1291,6 +1312,10 @@ export interface Option1 {
 		 */
 		layers: Layer[];
 	} | null;
+	/**
+	 * From 1.3.0: the ready builds offered to the shopper that pick this part, by their places among the kit's, as `presets[].at`, in the kit's order (#137). Empty where none does, and where the kit shows no ready builds.
+	 */
+	presets: number[];
 }
 /**
  * A group of chips: chips in one group widen, and groups narrow each other.

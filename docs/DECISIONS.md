@@ -232,6 +232,8 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-383 · The limit's line is drawn over the bar, in the panel's column](#d-383--the-limits-line-is-drawn-over-the-bar-in-the-panels-column--2026-11-24)
 - [D-384 · At full width the builder spans the theme's full width, and stacked its contents keep the page's gutter](#d-384--at-full-width-the-builder-spans-the-themes-full-width-and-stacked-its-contents-keep-the-pages-gutter--2026-11-24)
 - [D-391 · Every step's card puts its picture beside its words, in a 5rem square](#d-391--every-steps-card-puts-its-picture-beside-its-words-in-a-5rem-square--2026-11-25)
+- [D-392 · A card says the ready builds that pick it, and its rating from WooCommerce's own numbers](#d-392--a-card-says-the-ready-builds-that-pick-it-and-its-rating-from-woocommerces-own-numbers--2026-11-25)
+- [D-393 · A card's rating sits beside its price, and a ready build's pick costs a card one line](#d-393--a-cards-rating-sits-beside-its-price-and-a-ready-builds-pick-costs-a-card-one-line--2026-11-25)
 
 ### Accessibility
 
@@ -5650,6 +5652,50 @@ The fixture's bearings have no picture, so their card is the same before and aft
 **Visual baselines that move** (not remade here): every one that shows a step's cards other than the deck's: `kadence-{light,dark}-phone-bar-estimate` and the moments `twentytwentyfive-light-desktop-moment-{step,trucks,wheels,grip,removed,swapped}`.
 
 **Why:** a list with the picture beside the words is how a shopper compares parts chosen by spec and by look (Baymard's list and grid views), and it shows two to four times as many trucks, wheels and grip on a desktop's screen, with a phone's as it was.
+
+**Status:** Accepted.
+
+### D-392 · A card says the ready builds that pick it, and its rating from WooCommerce's own numbers · 2026-11-25
+
+Issue #137, in milestone 13's plan ("Rider picks and ratings in each step"). A shopper choosing among parts they don't know leans on what others chose and how they rated it.
+
+- **Ratings come from WooCommerce's product API, not Creative Reviews' meta.** The card reads `WC_Product::get_average_rating()` and `get_review_count()` (includes/abstracts/abstract-wc-product.php:768, :778, WooCommerce 11.3.1 on lane 1). Creative Reviews keeps those numbers right for its reviews (its SPEC, "Product meta") and publishes no read API of its own, so reading its private meta would tie this plugin to another's internals. With these, a rating shows wherever the shop's own reviews give one, with Creative Reviews or without it.
+- **Shown only where the shop shows ratings.** `wc_review_ratings_enabled()` (includes/wc-conditional-functions.php:531) is asked on every request, after a kept card is read, so turning the shop's ratings or reviews off hides them at once without forgetting a card. A part with no reviews shows nothing.
+- **A variation has its product's rating.** WooCommerce keeps reviews on the product, not its variations (a variation has no rating props). So the cards read every missed variation's parent, in the one query that already read the parents of variations with no photo.
+- **No query per card.** The rating is read from the product objects the cards already load, kept in the card with its stamp, and a card kept before 1.3.0, without `rating`, is read again. A new review saves the product (`WC_Comments::clear_transients()`, includes/class-wc-comments.php:295-298), which moves its stamp and forgets its card. The state route's query-count test now reviews every deck it adds and still asks the same number of queries for 8, 30 and 60 decks.
+- **Said in words, the stars standing for them.** One pattern through `_n()`, "%1$s out of 5, %2$s review(s)": the average to one decimal, a whole one without it, in the shop's decimal separator (`wc_get_price_decimal_separator()`, as its prices), and the count through `number_format_i18n()`. The five stars are drawn by CSS, filled to the nearest half, `aria-hidden`, and the words beside them are what a screen reader says, in the card's description after its fit. In a right-to-left page the stars fill from the right.
+- **"Picked for Street", not "Picked by".** The kit's ready builds have names ("Street", "Cruiser") and no rider field, and "Picked by Street" reads as a person. "Picked for %s" follows the house's "Start from %s", with the builds joined as the site's language joins a list (`wp_sprintf( '%l' )`). A rider's name would need a field on the preset, which is the owner's call (For Zach).
+- **Which ready builds count.** Only those the shopper is offered (`shownPresets()`): none where the kit's Show ready builds is off, and none whose own parts keep it from the cart, so a card never names a build the page doesn't show. A part counts where it is the ready build's pick in that slot, by its ID.
+- **The answer, additions only.** Each option gains `presets`, the places of the ready builds that pick it as `presets[].at` gives them, and each card `rating`, null or `average`, `count` and `text`. Both are in `schema/state.json`, HOOKS.md and the changelog; nothing is renamed.
+
+**Tests.** Unit: `WordsTest` for the pattern (one review, a half, WooCommerce's two places rounded, a whole, the shop's decimal comma) and the list of builds; `StateAnswerTest` for `presets` and `rating` on the options, both builds in the kit's order, and none with Show ready builds off. Integration: `StateRouteTest` with ratings on and off, reviews off, a part with no reviews, a new review moving a kept card, a variation's product's rating, a ready build's pick in the view, and Show ready builds off; `WooPartCardsTest` for a card kept before 1.3.0 and a broken kept rating. Browser: `builder.spec.ts`, "Ready builds' picks and ratings on the cards (#137)", on the trucks, wheels and bearings steps, with axe, on every project, and in French on fr-ca.
+
+**Red runs.** `WordsTest`: "Call to undefined method …Words::pickedFor()" (WordsTest.php:230) and "::rating()" (:251). `StateAnswerTest::test_an_option_names_the_ready_builds_that_pick_it_and_its_card_has_its_rating`: "Undefined array key \"presets\"" (StateAnswerTest.php:383). `StateRouteTest`: "Undefined array key \"rating\"" (StateRouteTest.php:1487) and "Undefined array key 25" (:1564). Browser: "Expected: \"Picked for Street\" … element(s) not found" (builder.spec.ts:10403).
+
+**Found on the way.** The parts table keeps a card as JSON, and PHP writes 4.0 as `4`, so a kept whole average came back an integer, the kept card was refused, and every reviewed card was read again on a cold request: the query-count test failed, "eight decks or thirty", cold queries 51 to 65 (StateRouteTest.php:1095). A kept average is now read as an integer or a float.
+
+**Deliberate breaks.** A whole average written with its decimal ("5.0"): `test_a_rating_is_said_out_of_five_with_its_count` failed on "one review" and "rounded to a whole", `-'5 out of 5, 1 review' +'5.0 out of 5, 1 review'`. The ratings gate taken out of the adapter: `test_a_card_has_the_rating_the_shop_shows_and_none_where_it_shows_none` failed, "ratings off" (StateRouteTest.php:1507). Each put back, they pass.
+
+**Why:** the plan's #137, with the shop's own numbers so a rating means the same here as on the part's page.
+
+**Status:** Accepted.
+
+### D-393 · A card's rating sits beside its price, and a ready build's pick costs a card one line · 2026-11-25
+
+Issue #137 against #131's whole-card counts (D-391). As D-392 built it, the pick and the rating were two lines under the fit, and the rating sentence wrapped to two on a desktop's 138 to 165 px words column. A card with both grew by about 60 px, and the screen held fewer whole cards on every step: trucks on a desktop 4, 4 and 3 on Kadence, Twenty Twenty-Five and Storefront where #131 holds 6. Measured on lane 1, every count came back to #131's with the two lines hidden, and any line more, in one row or two, cost a row of cards: #131's counts sit at the screen's edge.
+
+- **The rating beside the price, as one star and a short score.** "★ 4.5 (2)": one star and the score (`Words::score()`, one translatable pattern with its context) share the price's row, as Airbnb's, Google Maps' and the app stores' cards show a rating. D-392's five stars in a row needed about 187 px beside a price, and a desktop's words column has 138 to 165; one star and the score take about 60. Seen, they are `aria-hidden`, and the star takes no press, so a press on it is the card's; the sentence "4.5 out of 5, 2 reviews" stays in the card's description as screen-reader text, as the bar's total does, so what is said is unchanged and nothing is said twice. Stars with a count beside a price are how a shop's product cards show a rating, and the sentence is what WCAG 1.1.1 asks for the stars.
+- **The pick keeps its line,** under the fit, where it reads as the fit and the recommendation do. The rating fits beside the price on all three themes at both widths, so a card a ready build picks and the shop rates is one line taller.
+- **The counts, split (Zach, 25 November).** #131's floors hold for a plain card, with no pick and no rating, unchanged on every step, theme and width. A new test holds a card with both to a line more at most, on each theme at both widths, with its rating beside its price. The worst case, every card on the screen a ready build's pick, costs a phone a card: Storefront's trucks 2 to 1, and Kadence's and Twenty Twenty-Five's bearings 3 to 2. Accepted, since only the three ready builds' parts a step carry the line.
+- **Read in the description,** the rating now comes after the price and the pick after the fit and the recommendation, the order they are seen in.
+
+**Tests.** Unit: `WordsTest::test_a_rating_is_shown_short_beside_its_stars` (one review, a half, two places, a whole with a thousands separator, the shop's decimal comma). Browser: "holds as many whole cards in a screen on every step" now on a plain card; "a card with a ready build's pick and a rating is a line taller at most" on each theme; #137's test checks the star and the short score, seen and not said, and the new order. Found on the way: #131's square-picture test and #137's axe check ran a script in the no-js project, which cannot, and timed out there; both now skip that project for that, as the file's other measures do.
+
+**Red runs.** `WordsTest`: "Call to undefined method …Words::score()" (WordsTest.php:274). Browser, before the change: "whole trucks cards in a screen, Expected: >= 6, Received: 4" (builder.spec.ts, Kadence and Twenty Twenty-Five; 3 on Storefront), and on a phone "whole bearings cards, Expected: >= 3, Received: 2". With five stars beside the price, the new test failed on a desktop, "the pick and the rating add a line at most, Expected: <= 26.05, Received: 48.09" on Kadence.
+
+**Deliberate break.** The price's row stacked (`flex-direction: column`): "the pick and the rating add a line at most, Expected: <= 23.47, Received: 42.94" (builder.spec.ts:10367, Kadence, chromium-phone). Put back, it passes.
+
+**Why:** #137's words without undoing #131's screenful, where a shop's parts have them and nowhere else.
 
 **Status:** Accepted.
 

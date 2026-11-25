@@ -151,12 +151,18 @@ defined( 'ABSPATH' ) || exit;
 						<span class="cbuild-card__look" data-wp-bind--hidden="!context.option.hasLook" data-wp-text="context.option.look"></span>
 						<span class="cbuild-card__about" data-wp-bind--id="context.option.about">
 							<?php // The full price large, and the change under it once the step has a pick (D-249). ?>
-							<span class="cbuild-card__price" data-wp-text="context.option.price"></span>
+							<?php // Its rating beside the price where there is room, under it where there isn't (#137, D-392, D-393): the stars and the short score are seen, the sentence is said. ?>
+							<span class="cbuild-card__priced">
+								<span class="cbuild-card__price" data-wp-text="context.option.price"></span>
+								<span class="cbuild-card__rating" data-wp-bind--hidden="!context.option.hasRating"><span class="cbuild-card__star" aria-hidden="true"></span><span class="cbuild-card__score" aria-hidden="true" data-wp-text="context.option.score"></span><span class="cbuild-card__rated screen-reader-text" data-wp-text="context.option.rated"></span></span>
+							</span>
 							<span class="cbuild-card__delta" data-wp-bind--hidden="!context.option.hasDelta" data-wp-text="context.option.delta"></span>
 							<span class="cbuild-card__also" data-wp-bind--hidden="!context.option.hasAlso" data-wp-text="context.option.also"></span>
 							<span data-wp-bind--class="context.option.stockClass" data-wp-text="context.option.stock"></span>
 							<span data-wp-bind--class="context.option.fitClass" data-wp-text="context.option.fit"></span>
 							<span class="cbuild-card__recommended" data-wp-bind--hidden="!context.option.recommended" data-wp-text="context.option.recommendedAs"></span>
+							<?php // The ready builds that pick it (#137, D-392). ?>
+							<span class="cbuild-card__picked" data-wp-bind--hidden="!context.option.hasPickedFor" data-wp-text="context.option.pickedFor"></span>
 						</span>
 					</label>
 					<ul class="cbuild-card__notes" data-wp-bind--id="context.option.notesId">

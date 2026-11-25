@@ -1645,9 +1645,26 @@ final class BuilderView {
 		foreach ( Cast::items( Cast::map( $answer['shelf'] ?? null )['widths'] ?? null ) as $offered ) {
 			$asked = Cast::bool( Cast::map( $offered )['selected'] ?? null ) ? Cast::map( $offered ) : $asked;
 		}
-		$card    = function ( array $option, array $look = array() ) use ( $state, $slot, $counted, $against, $asked ): array {
+		// The ready builds' names, by their places among the kit's, for a card a ready build picks (#137, D-392).
+		$builds = array();
+		foreach ( Cast::items( $answer['presets'] ?? null ) as $preset ) {
+			$preset                                       = Cast::map( $preset );
+			$builds[ Cast::int( $preset['at'] ?? null ) ] = Cast::str( $preset['name'] ?? null );
+		}
+		$card    = function ( array $option, array $look = array() ) use ( $state, $slot, $counted, $against, $asked, $builds ): array {
 			$id   = Cast::int( $option['id'] ?? null );
 			$card = Cast::map( $option['card'] ?? null );
+			// Which ready builds pick it, and its rating, each said on the card where it has one (#137, D-392).
+			$picks = array();
+			foreach ( Cast::items( $option['presets'] ?? null ) as $at ) {
+				$named = $builds[ Cast::int( $at ) ] ?? '';
+				if ( '' !== $named ) {
+					$picks[] = $named;
+				}
+			}
+			$pickedFor = Words::pickedFor( $picks );
+			$rating    = isset( $card['rating'] ) ? Cast::map( $card['rating'] ) : array();
+			$rated     = Cast::str( $rating['text'] ?? null );
 			// A look's card names its product, not a size of it, and the look by what tells it from the product's
 			// others (D-273); a part listed alone keeps its own name.
 			$product = Cast::str( $look['name'] ?? null );
@@ -1756,6 +1773,12 @@ final class BuilderView {
 				'notes'         => $notes,
 				'recommended'   => Cast::bool( $option['recommended'] ?? null ),
 				'recommendedAs' => $against['recommended'],
+				'pickedFor'     => $pickedFor,
+				'hasPickedFor'  => '' !== $pickedFor,
+				// A star and the short score are seen; the sentence is said (D-393).
+				'rated'         => $rated,
+				'score'         => '' === $rated ? '' : Words::score( Cast::float( $rating['average'] ?? null ), Cast::int( $rating['count'] ?? null ) ),
+				'hasRating'     => '' !== $rated,
 				'classes'       => self::classes( $state->id, $slot, $id, $fit, $available, $checked ),
 				// From 1.1.0: the board's image, fetched as the shopper points at a deck's card (D-308).
 				'preload'       => self::preload( $board ),

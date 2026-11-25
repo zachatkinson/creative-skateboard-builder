@@ -1036,6 +1036,8 @@ final class StateRouteTest extends IntegrationTestCase {
 			for ( $at = count( $this->parts ); $at < $upTo; $at++ ) {
 				$this->parts[ 'deck ' . $at ] = $this->part( 'Deck ' . $at, '65', array( 'deck_width' => '8.2500' ), $decks );
 				$layered( $this->parts[ 'deck ' . $at ] );
+				// Each with a review, so each card has a rating, read with the products the cards already load (#137).
+				self::review( $this->parts[ 'deck ' . $at ], 4, $at );
 			}
 			$settled();
 		};
@@ -1077,6 +1079,8 @@ final class StateRouteTest extends IntegrationTestCase {
 		self::assertSame( array( $widths['8.2500'] ), array_column( array_filter( $this->answer( $widen )['steps'], static fn( array $step ): bool => 'deck' === $step['slot'] ), 'picked' ), 'the width moves the deck' );
 		$few = array( $count( false ), $count( true ), $moved( false ), $moved( true ), $widened( false ), $widened( true ) );
 		self::assertNotNull( $this->answer()['options'][0]['board'] ?? null, 'a deck\'s card draws its board' );
+		$rated = array_filter( array_column( array_column( array_column( $this->answer( array( 'width' => '8.25in' ) )['shelf']['looks'], 'part' ), 'card' ), 'rating' ) );
+		self::assertNotSame( array(), $rated, 'the cards counted have their ratings' );
 
 		// More parts than a step lists, and then twice as many.
 		$more( 30 );
@@ -1436,5 +1440,147 @@ final class StateRouteTest extends IntegrationTestCase {
 		self::assertSame( '$60.00', $price() );
 		$dealer = true;
 		self::assertSame( '$45.00', $price() );
+	}
+
+	/**
+	 * A review of a product, as a shopper leaves one, and WooCommerce's numbers worked out again from its reviews: the
+	 * rating's meta is added after `wp_insert_comment()` counts the post's comments (wp-includes/comment.php:2206,
+	 * :2220), so the count is asked for again, as WooCommerce's own review form has it done.
+	 */
+	private static function review( int $product, int $rating, int $shopper ): void {
+		$comment = wp_insert_comment(
+			array(
+				'comment_post_ID'      => $product,
+				'comment_type'         => 'review',
+				'comment_approved'     => 1,
+				'comment_author'       => 'Shopper ' . $shopper,
+				'comment_author_email' => 'shopper+' . $shopper . '@example.com',
+				'comment_content'      => 'Rides well.',
+				'comment_meta'         => array( 'rating' => $rating ),
+			)
+		);
+		self::assertIsInt( $comment );
+		\WC_Comments::clear_transients( $product );
+	}
+
+	/**
+	 * #137 (D-392): a part's card has its star rating and review count from WooCommerce's product API, which Creative
+	 * Reviews keeps right for its reviews, so it shows with that plugin or without it. None where the shop shows no
+	 * ratings (`wc_review_ratings_enabled()`, includes/wc-conditional-functions.php:531) or the part has no reviews. A
+	 * new review moves it, kept card and all, and a variation has its product's.
+	 */
+	public function test_a_card_has_the_rating_the_shop_shows_and_none_where_it_shows_none(): void {
+		$options = array( 'woocommerce_enable_reviews', 'woocommerce_enable_review_rating' );
+		$was     = array_map( 'get_option', array_combine( $options, $options ) );
+		update_option( 'woocommerce_enable_reviews', 'yes' );
+		update_option( 'woocommerce_enable_review_rating', 'yes' );
+		$whole     = $this->whole();
+		$this->kit = $whole['kit'];
+		self::review( $this->parts['truck 139'], 5, 1 );
+		self::review( $this->parts['truck 139'], 4, 2 );
+		$trucks = function (): array {
+			$cards  = array();
+			$answer = $this->answer(
+				array(
+					'picks' => array( 'deck' => $this->parts['deck 8.0'] ),
+					'step'  => 'trucks',
+				)
+			);
+			// The 149s do not fit the 8.0 deck, and are listed as hidden, with their cards.
+			foreach ( array_merge( $answer['options'], $answer['hidden'] ) as $option ) {
+				$cards[ $option['id'] ] = $option['card']['rating'];
+			}
+			return $cards;
+		};
+		self::assertSame(
+			array(
+				'average' => 4.5,
+				'count'   => 2,
+				'text'    => '4.5 out of 5, 2 reviews',
+			),
+			$trucks()[ $this->parts['truck 139'] ]
+		);
+		self::assertNull( $trucks()[ $this->parts['truck 149'] ], 'a part with no reviews' );
+
+		// The shop's ratings off, then its reviews: none, though the card is kept.
+		update_option( 'woocommerce_enable_review_rating', 'no' );
+		self::assertNull( $trucks()[ $this->parts['truck 139'] ], 'ratings off' );
+		update_option( 'woocommerce_enable_review_rating', 'yes' );
+		update_option( 'woocommerce_enable_reviews', 'no' );
+		self::assertNull( $trucks()[ $this->parts['truck 139'] ], 'reviews off' );
+		update_option( 'woocommerce_enable_reviews', 'yes' );
+
+		// A third review: the kept card is read again with the product it was saved with.
+		self::review( $this->parts['truck 139'], 3, 3 );
+		self::assertSame( '4 out of 5, 3 reviews', $trucks()[ $this->parts['truck 139'] ]['text'] ?? null );
+
+		// A deck sold in widths: reviewed as one product, each width has its rating.
+		$parent = new \WC_Product_Variable();
+		$parent->set_name( 'Reviewed widths' );
+		$parent->set_status( 'publish' );
+		$parent->save();
+		wp_set_object_terms( $parent->get_id(), array( $this->categories['deck'] ), 'product_cat' );
+		$variation = new \WC_Product_Variation();
+		$variation->set_parent_id( $parent->get_id() );
+		$variation->set_status( 'publish' );
+		$variation->set_regular_price( '65' );
+		$variation->set_attributes( array( 'width' => '8.0000' ) );
+		$variation->update_meta_data( Options::META_SPECS, array( 'deck_width' => '8.0000' ) );
+		$variation->save();
+		$this->service( SpecIndexer::class )->index( $variation->get_id() );
+		self::review( $parent->get_id(), 4, 4 );
+		$decks = array();
+		foreach ( $this->answer( array( 'width' => '8in' ) )['shelf']['looks'] as $look ) {
+			$decks[ $look['part']['id'] ] = $look['part']['card']['rating'];
+		}
+		self::assertSame( '4 out of 5, 1 review', $decks[ $variation->get_id() ]['text'] ?? null, 'its product\'s' );
+
+		foreach ( $was as $option => $value ) {
+			update_option( $option, $value );
+		}
+	}
+
+	/**
+	 * #137 (D-392): each option names the ready builds shown that pick it, by their places among the kit's, and the
+	 * view's card says so in words; none where the kit's ready builds are not shown (#104).
+	 */
+	public function test_an_option_names_the_ready_builds_shown_that_pick_it(): void {
+		$whole     = $this->whole(
+			null,
+			static fn( array $picks ): array => array(
+				array(
+					'name'  => 'Street',
+					'picks' => $picks,
+				),
+				array(
+					'name'  => 'Ledge',
+					'picks' => array( 'trucks' => $picks['trucks'] ) + $picks,
+				),
+			)
+		);
+		$this->kit = $whole['kit'];
+		$build     = array(
+			'deck' => (string) $whole['picks']['deck'],
+			'step' => 'trucks',
+		);
+		$answer    = $this->answer( array( 'cbuild' => $build ) );
+		$named     = array_column( array_merge( $answer['options'], $answer['hidden'] ), 'presets', 'id' );
+		self::assertSame( array( 0, 1 ), $named[ $this->parts['truck 139'] ] );
+		self::assertSame( array(), $named[ $this->parts['truck 149'] ], 'hidden, and no ready build picks it' );
+		$card = array_column( $answer['view']['step']['options'], null, 'id' )[ $this->parts['truck 139'] ];
+		self::assertSame( array( 'Picked for Street and Ledge', true ), array( $card['pickedFor'], $card['hasPickedFor'] ) );
+
+		$off       = $this->whole( array( 'schema_version' => 1, 'show_presets' => false ) );
+		$this->kit = $off['kit'];
+		$hidden    = $this->answer(
+			array(
+				'cbuild' => array(
+					'deck' => (string) $off['picks']['deck'],
+					'step' => 'trucks',
+				),
+			)
+		);
+		self::assertSame( array( array() ), array_values( array_unique( array_column( array_merge( $hidden['options'], $hidden['hidden'] ), 'presets' ), SORT_REGULAR ) ) );
+		self::assertFalse( array_column( $hidden['view']['step']['options'], null, 'id' )[ $this->parts['truck 139'] ]['hasPickedFor'] );
 	}
 }

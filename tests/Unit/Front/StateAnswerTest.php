@@ -252,6 +252,8 @@ final class StateAnswerTest extends TestCase {
 				'messages'    => array(),
 				'card'        => InMemoryPartCards::listed( 101 ),
 				'board'       => null,
+				// From 1.3.0 (#137): no ready build picks it.
+				'presets'     => array(),
 			),
 			$answer['options'][0]
 		);
@@ -366,6 +368,62 @@ final class StateAnswerTest extends TestCase {
 			'its total and readiness are tested on their own'
 		);
 		self::assertSame( 'Sold in pairs.', self::step( $answer, SlotKey::TRUCKS )['help'] );
+	}
+
+	// #137 (D-392): each option names the ready builds shown that pick it, by their places among the kit's, and its card
+	// has the rating the shop shows, said in words, or none.
+	public function test_an_option_names_the_ready_builds_that_pick_it_and_its_card_has_its_rating(): void {
+		$this->worded();
+		$this->cards->rated[301] = array(
+			'average' => 4.5,
+			'count'   => 12,
+		);
+		$wheels                  = array();
+		foreach ( $this->answer( array( SlotKey::DECK => 101, SlotKey::TRUCKS => 139 ), SlotKey::WHEELS )['options'] as $option ) {
+			$wheels[ $option['id'] ] = $option;
+		}
+		self::assertSame( array( 0 ), $wheels[301]['presets'], 'Street picks it' );
+		self::assertSame( array( 1 ), $wheels[302]['presets'], 'Park picks it' );
+		self::assertSame(
+			array(
+				'average' => 4.5,
+				'count'   => 12,
+				'text'    => '4.5 out of 5, 12 reviews',
+			),
+			$wheels[301]['card']['rating']
+		);
+		self::assertNull( $wheels[302]['card']['rating'], 'no reviews, or the shop shows no ratings' );
+
+		$bearings = $this->answer( self::STREET, SlotKey::BEARINGS )['options'];
+		self::assertSame( array( array( 0, 1 ) ), array_values( array_column( array_filter( $bearings, static fn( array $option ): bool => 501 === $option['id'] ), 'presets' ) ), 'both pick it, in the kit\'s order' );
+
+		// No ready build shown, none named: the kit's Show ready builds off (#104).
+		$this->kits->add(
+			self::KIT,
+			Kit::fromDocuments(
+				KitDocuments::slots(),
+				KitDocuments::rules(),
+				array(
+					'schema_version' => 1,
+					'presets'        => array(
+						array(
+							'name'  => 'Street',
+							'picks' => self::STREET,
+						),
+					),
+				),
+				KitDocuments::assembly(),
+				null,
+				array(
+					'schema_version' => 1,
+					'show_presets'   => false,
+				)
+			),
+			Shop::parts()
+		);
+		$decks = $this->answer( array(), SlotKey::DECK )['options'];
+		self::assertContains( 101, array_column( $decks, 'id' ) );
+		self::assertSame( array( array() ), array_values( array_column( array_filter( $decks, static fn( array $option ): bool => 101 === $option['id'] ), 'presets' ) ) );
 	}
 
 	// Spec, Presets: each tile shows its total, and one holding a sold-out part says so.
@@ -1475,7 +1533,7 @@ final class StateAnswerTest extends TestCase {
 		$card = $cards['30:5:0'];
 		self::assertSame( 30, $card['product'] );
 		self::assertContains( $card['part']['id'], array( 301, 302 ) );
-		self::assertSame( array( 'id', 'brand', 'size', 'delta', 'fit', 'in_stock', 'available', 'quantity', 'picked', 'recommended', 'messages', 'card', 'board' ), array_keys( $card['part'] ), 'the part as an option carries it' );
+		self::assertSame( array( 'id', 'brand', 'size', 'delta', 'fit', 'in_stock', 'available', 'quantity', 'picked', 'recommended', 'messages', 'card', 'board', 'presets' ), array_keys( $card['part'] ), 'the part as an option carries it' );
 		self::assertSame(
 			array(
 				array(

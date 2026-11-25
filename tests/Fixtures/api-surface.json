@@ -312,7 +312,7 @@
         "schema/kit-slots.json": "7c383e3f551b517328d9d195c01e15f9f5dad1a1263a20fa4ff2188592bb820c",
         "schema/order-snapshot.json": "22d23b0213b466dfd4092e7e40ec09574bb4eaed6e99347bd166dadc86c441bb",
         "schema/settings.json": "c6ce801eae753f4d85734fdf81489cc91a4e2db8adf318aa2da21832d7ef9df4",
-        "schema/state.json": "e11e02f3aa42589b7b26e9dd9fa61328f0d95c0108350050c0311d63bdf877dd"
+        "schema/state.json": "281a251a6ab0b37cd91fb37decc272f58817c3bcf52b693855adab3fdbd33517"
     },
     "spec_keys": [
         "deck_width",

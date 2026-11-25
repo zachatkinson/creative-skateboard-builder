@@ -96,7 +96,7 @@ final class WooPartCards implements PartCards {
 	 * @since 0.4.0
 	 *
 	 * @param list<int> $ids Parts' IDs.
-	 * @return array<int, array{name: string, url: string, price: string, stock: string, stock_class: string, image: array{src: string, width: int, height: int, srcset: string, sizes: string}|null, photo: bool, large?: array{src: string, width: int, height: int, srcset: string, sizes: string}|null}>
+	 * @return array<int, array{name: string, url: string, price: string, stock: string, stock_class: string, image: array{src: string, width: int, height: int, srcset: string, sizes: string}|null, photo: bool, large?: array{src: string, width: int, height: int, srcset: string, sizes: string}|null, rating?: array{average: float, count: int}|null}>
 	 */
 	public function cards( array $ids ): array {
 		$ids = array_values( array_unique( array_filter( $ids, static fn( int $id ): bool => $id > 0 ) ) );
@@ -159,11 +159,11 @@ final class WooPartCards implements PartCards {
 		if ( array() !== $others ) {
 			$keep   = array();
 			$missed = $this->products->load( ...array_keys( $others ) );
-			// The parents of variations with no photo and no layer image of their own, read once for them all (the
-			// auditor's 1.0.0 minor 5).
+			// The variations' parents, read once for them all (the auditor's 1.0.0 minor 5): a variation's reviews are its
+			// product's (#137), and one with no photo and no layer image of its own shows its parent's.
 			$wanted = array();
 			foreach ( $missed as $product ) {
-				if ( Cast::int( $product->get_image_id() ) <= 0 && LayerMeta::own( $product ) <= 0 && $product->get_parent_id() > 0 ) {
+				if ( $product->get_parent_id() > 0 ) {
 					$wanted[] = $product->get_parent_id();
 				}
 			}
@@ -181,7 +181,7 @@ final class WooPartCards implements PartCards {
 			}
 			_prime_post_caches( array_values( array_unique( $images ) ), false, true );
 			foreach ( $missed as $id => $product ) {
-				$cards[ $id ] = self::card( $product, $layers[ $id ] );
+				$cards[ $id ] = self::card( $product, $layers[ $id ], $parents[ $product->get_parent_id() ] ?? $product );
 				$keep[ $id ]  = array(
 					'stamp' => $stamps[ $id ],
 					'card'  => $cards[ $id ],
@@ -200,10 +200,16 @@ final class WooPartCards implements PartCards {
 			$this->facts->keep( $context, 'card', $keep );
 		}
 
+		// A rating is kept with its card, and shown only while the shop shows ratings, as its product page does
+		// (`wc_review_ratings_enabled()`, includes/wc-conditional-functions.php:531; #137, D-392).
+		$rated   = wc_review_ratings_enabled();
 		$ordered = array();
 		foreach ( $ids as $id ) {
 			if ( isset( $cards[ $id ] ) ) {
 				$ordered[ $id ] = $cards[ $id ];
+				if ( ! $rated ) {
+					$ordered[ $id ]['rating'] = null;
+				}
 			}
 		}
 		return $ordered;
@@ -426,11 +432,12 @@ final class WooPartCards implements PartCards {
 	/**
 	 * A product's card.
 	 *
-	 * @param WC_Product $product The part.
-	 * @param int        $layer   Its layer image, its own or its parent's, or 0.
-	 * @return array{name: string, url: string, price: string, stock: string, stock_class: string, image: array{src: string, width: int, height: int, srcset: string, sizes: string}|null, photo: bool, large?: array{src: string, width: int, height: int, srcset: string, sizes: string}|null}
+	 * @param WC_Product $product  The part.
+	 * @param int        $layer    Its layer image, its own or its parent's, or 0.
+	 * @param WC_Product $reviewed The product its reviews are of: itself, or a variation's parent.
+	 * @return array{name: string, url: string, price: string, stock: string, stock_class: string, image: array{src: string, width: int, height: int, srcset: string, sizes: string}|null, photo: bool, large?: array{src: string, width: int, height: int, srcset: string, sizes: string}|null, rating?: array{average: float, count: int}|null}
 	 */
-	private static function card( WC_Product $product, int $layer ): array {
+	private static function card( WC_Product $product, int $layer, WC_Product $reviewed ): array {
 		$availability = $product->get_availability();
 		$id           = Cast::int( $product->get_image_id() );
 		$photo        = self::image( $id );
@@ -446,6 +453,26 @@ final class WooPartCards implements PartCards {
 			// Whether the image is the part's photo, not its layer image: a share card wants the photo (D-282).
 			'photo'       => null !== $photo,
 			'large'       => null === $photo ? null : self::image( $id, self::LARGE_SIZE ),
+			'rating'      => self::rating( $reviewed ),
+		);
+	}
+
+	/**
+	 * A product's rating, as WooCommerce keeps it from its reviews (`get_average_rating()` and `get_review_count()`,
+	 * includes/abstracts/abstract-wc-product.php:768, :778), or null where it has none (#137, D-392). Creative Reviews
+	 * keeps these right for its reviews, so this reads the same numbers with it or without it.
+	 *
+	 * @param WC_Product $product The product reviewed.
+	 * @return array{average: float, count: int}|null
+	 */
+	private static function rating( WC_Product $product ): ?array {
+		$count = Cast::int( $product->get_review_count() );
+		if ( $count <= 0 ) {
+			return null;
+		}
+		return array(
+			'average' => min( 5.0, max( 0.0, Cast::float( $product->get_average_rating() ) ) ),
+			'count'   => $count,
 		);
 	}
 
@@ -453,7 +480,7 @@ final class WooPartCards implements PartCards {
 	 * A kept card, when it is one: a cache can hand back anything.
 	 *
 	 * @param mixed $kept What the entry holds for a context.
-	 * @return array{name: string, url: string, price: string, stock: string, stock_class: string, image: array{src: string, width: int, height: int, srcset: string, sizes: string}|null, photo: bool, large?: array{src: string, width: int, height: int, srcset: string, sizes: string}|null}|null
+	 * @return array{name: string, url: string, price: string, stock: string, stock_class: string, image: array{src: string, width: int, height: int, srcset: string, sizes: string}|null, photo: bool, large?: array{src: string, width: int, height: int, srcset: string, sizes: string}|null, rating?: array{average: float, count: int}|null}|null
 	 */
 	private static function read( mixed $kept ): ?array {
 		if ( ! is_array( $kept ) ) {
@@ -477,6 +504,15 @@ final class WooPartCards implements PartCards {
 		if ( ( null !== $image && ! self::kept( $image ) ) || ( null !== $large && ! self::kept( $large ) ) ) {
 			return null;
 		}
+		// A card kept before 1.3.0 has no `rating`, and is read again with it (#137).
+		if ( ! array_key_exists( 'rating', $kept ) ) {
+			return null;
+		}
+		// A whole average comes back from the parts table's JSON as an integer: 4.0 is written `4`.
+		$rating = $kept['rating'];
+		if ( null !== $rating && ! ( is_array( $rating ) && ( is_float( $rating['average'] ?? null ) || is_int( $rating['average'] ?? null ) ) && is_int( $rating['count'] ?? null ) ) ) {
+			return null;
+		}
 		return array(
 			'name'        => $kept['name'],
 			'url'         => $kept['url'],
@@ -497,6 +533,10 @@ final class WooPartCards implements PartCards {
 				'height' => $large['height'],
 				'srcset' => $large['srcset'],
 				'sizes'  => $large['sizes'],
+			),
+			'rating'      => null === $rating ? null : array(
+				'average' => (float) $rating['average'],
+				'count'   => $rating['count'],
 			),
 		);
 	}
