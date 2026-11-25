@@ -8920,6 +8920,29 @@ function runPhp( code: string ): void {
 }
 
 /**
+ * The kit's Ready-build picks on cards and Ratings on cards (D-409), each set as said, or its key taken out with null,
+ * as a kit saved before 1.3.0 has it. The kit's other settings are kept.
+ *
+ * @param picks   Whether a card says the ready builds that pick its part.
+ * @param ratings Whether a card shows its part's rating.
+ */
+function cardSwitches( picks: boolean | null, ratings: boolean | null ): void {
+	const set = ( key: string, on: boolean | null ): string =>
+		null === on ? `unset( $d['${ key }'] );` : `$d['${ key }'] = ${ on };`;
+	runPhp(
+		`$k = wc_get_product( ${
+			fixture().kit
+		} ); $d = $k->documents()['_cbuild_settings'] ?? array( 'schema_version' => 1 ); ${ set(
+			'picks',
+			picks
+		) } ${ set(
+			'ratings',
+			ratings
+		) } $k->setDocument( '_cbuild_settings', $d ); $k->save();`
+	);
+}
+
+/**
  * Makes the page's browser the saved builds test's own customer, made on the first run, with a password set for this
  * run alone: no other test signs in as them, so their cart is theirs (#145).
  *
@@ -10677,6 +10700,71 @@ test.describe( 'Cards side by side on every step (#131)', () => {
 		} );
 	}
 
+	/**
+	 * The whole cards above the bar on each step, the step's first card at the window's top and the list filled to 24
+	 * with copies of it.
+	 *
+	 * @param page   The page.
+	 * @param byHand Whether the first card's pick and rating are hidden here, to make it plain (D-393). Without, the
+	 *               card is as the server drew it, and must have neither shown (D-409).
+	 */
+	const countWhole = async (
+		page: Page,
+		byHand: boolean
+	): Promise< Record< string, number > > => {
+		const counted: Record< string, number > = {};
+		for ( const step of [ ...steps, 'bearings' ] as const ) {
+			await page.goto( at( step ) );
+			await page.waitForSelector( '.cbuild[data-ready]' );
+			await page.evaluate( () => document.fonts.ready );
+			const list = page
+				.locator( '.cbuild-cards:not(.cbuild-cards--sold-out)' )
+				.first();
+			if ( ! byHand ) {
+				await expect(
+					list.locator(
+						'.cbuild-card__picked:visible, .cbuild-card__rating:visible'
+					),
+					`no pick or rating on the ${ step } step`
+				).toHaveCount( 0 );
+			}
+			counted[ step ] = await list.evaluate( ( cards, hide ) => {
+				const first = cards.querySelector( ':scope > li' );
+				if ( hide ) {
+					// A plain card: no ready build's pick and no rating (D-393).
+					first
+						?.querySelectorAll< HTMLElement >(
+							'.cbuild-card__picked, .cbuild-card__rating'
+						)
+						.forEach( ( extra ) => {
+							extra.hidden = true;
+						} );
+				}
+				while (
+					first &&
+					cards.querySelectorAll( ':scope > li' ).length < 24
+				) {
+					cards.append( first.cloneNode( true ) );
+				}
+				first?.scrollIntoView( { block: 'start' } );
+				const bar = document
+					.querySelector( '.cbuild-bar:not([hidden])' )
+					?.getBoundingClientRect();
+				const foot =
+					bar && bar.top > 0 && bar.top < innerHeight
+						? bar.top
+						: innerHeight;
+				return [ ...cards.querySelectorAll( ':scope > li' ) ].filter(
+					( item ) => {
+						const box = item.getBoundingClientRect();
+						return box.top >= 0 && box.bottom <= foot;
+					}
+				).length;
+			}, byHand );
+		}
+		return counted;
+	};
+
 	// The step's first card at the window's top, the list filled to 24 with copies of it: the whole cards above the bar.
 	// Before #131, at 1440 by 900: trucks 2, 2, 3; wheels 2, 2, 3; bearings 8, 8, 9; hardware 8, 8, 6; grip 2, 2, 3 on
 	// Kadence, Twenty Twenty-Five and Storefront. At 390 by 844 each step's count is as it was (D-391). The card is
@@ -10743,46 +10831,7 @@ test.describe( 'Cards side by side on every step (#131)', () => {
 					? { width: 390, height: 844 }
 					: { width: 1440, height: 900 }
 			);
-			const counted: Record< string, number > = {};
-			for ( const step of [ ...steps, 'bearings' ] as const ) {
-				await page.goto( at( step ) );
-				await page.waitForSelector( '.cbuild[data-ready]' );
-				await page.evaluate( () => document.fonts.ready );
-				counted[ step ] = await page
-					.locator( '.cbuild-cards:not(.cbuild-cards--sold-out)' )
-					.first()
-					.evaluate( ( list ) => {
-						const first = list.querySelector( ':scope > li' );
-						// A plain card: no ready build's pick and no rating (D-393).
-						first
-							?.querySelectorAll< HTMLElement >(
-								'.cbuild-card__picked, .cbuild-card__rating'
-							)
-							.forEach( ( extra ) => {
-								extra.hidden = true;
-							} );
-						while (
-							first &&
-							list.querySelectorAll( ':scope > li' ).length < 24
-						) {
-							list.append( first.cloneNode( true ) );
-						}
-						first?.scrollIntoView( { block: 'start' } );
-						const bar = document
-							.querySelector( '.cbuild-bar:not([hidden])' )
-							?.getBoundingClientRect();
-						const foot =
-							bar && bar.top > 0 && bar.top < innerHeight
-								? bar.top
-								: innerHeight;
-						return [
-							...list.querySelectorAll( ':scope > li' ),
-						].filter( ( item ) => {
-							const box = item.getBoundingClientRect();
-							return box.top >= 0 && box.bottom <= foot;
-						} ).length;
-					} );
-			}
+			const counted = await countWhole( page, true );
 			for ( const [ step, least ] of Object.entries(
 				sizes[ phone ? 'phone' : 'desktop' ]
 			) ) {
@@ -10790,6 +10839,47 @@ test.describe( 'Cards side by side on every step (#131)', () => {
 					counted[ step ],
 					`whole ${ step } cards in a screen`
 				).toBeGreaterThanOrEqual( least );
+			}
+		} );
+
+		// D-409: with the kit's Ready-build picks on cards and Ratings on cards off, the server draws each card plain,
+		// with no line kept for either, and the step holds as many whole cards as #131's plain card does.
+		test( `holds as many whole cards with the kit's picks and ratings off on ${ theme }`, async ( {
+			page,
+			context,
+			baseURL,
+		}, info ) => {
+			test.skip(
+				'chromium-desktop' !== info.project.name &&
+					'chromium-phone' !== info.project.name,
+				'A layout count, one engine at each width.'
+			);
+			const phone = info.project.name.includes( 'phone' );
+			await context.addCookies( [
+				{
+					name: 'cbuild_e2e_theme',
+					value: theme,
+					url: baseURL || SITE,
+				},
+			] );
+			await page.setViewportSize(
+				phone
+					? { width: 390, height: 844 }
+					: { width: 1440, height: 900 }
+			);
+			cardSwitches( false, false );
+			try {
+				const counted = await countWhole( page, false );
+				for ( const [ step, least ] of Object.entries(
+					sizes[ phone ? 'phone' : 'desktop' ]
+				) ) {
+					expect(
+						counted[ step ],
+						`whole ${ step } cards in a screen, both off`
+					).toBeGreaterThanOrEqual( least );
+				}
+			} finally {
+				cardSwitches( null, null );
 			}
 		} );
 
@@ -11075,6 +11165,132 @@ test.describe( "Ready builds' picks and ratings on the cards (#137)", () => {
 				'.cbuild-card__picked'
 			)
 		).toHaveText( 'Picked for Street' );
+	} );
+
+	// D-409, the kit's switches: Ready-build picks on cards off, no card says a ready build picks it; Ratings on cards
+	// off, no card has a star or a score. Each leaves the other, and the card keeps no room for what it no longer says:
+	// it is as tall as the same card with that line hidden by hand.
+	test.describe( "with the kit's switches off (D-409)", () => {
+		test.describe.configure( { mode: 'serial' } );
+		test.afterAll( () => cardSwitches( null, null ) );
+		const trucks = () =>
+			linkTo( { deck: id( 'builder-test-deck-8-0' ), step: 'trucks' } );
+		// The 139s' card's height, measured in the page, with what is said hidden by hand first.
+		const tall = ( page: Page, hide: string ): Promise< number > =>
+			card( page, /^Choose Builder test trucks 139/ ).evaluate(
+				( item, selector ) => {
+					item.querySelectorAll< HTMLElement >( selector ).forEach(
+						( shown ) => {
+							shown.hidden = true;
+						}
+					);
+					return item.getBoundingClientRect().height;
+				},
+				hide
+			);
+
+		test( 'Ready-build picks on cards off: no card says one, the rating stays, and no line is kept', async ( {
+			page,
+			javaScriptEnabled,
+		} ) => {
+			let plain = 0;
+			if ( javaScriptEnabled ) {
+				cardSwitches( null, null );
+				await page.goto( trucks() );
+				await expect(
+					card( page, /^Choose Builder test trucks 139/ ).locator(
+						'.cbuild-card__picked'
+					)
+				).toHaveText( 'Picked for Street' );
+				plain = await tall( page, '.cbuild-card__picked' );
+			}
+			cardSwitches( false, null );
+			for ( const link of [ trucks(), wheels() ] ) {
+				await page.goto( link );
+				await expect(
+					page.locator( '.cbuild-step .cbuild-cards' ).first()
+				).toBeVisible();
+				await expect(
+					page.locator( '.cbuild-card__picked:visible' )
+				).toHaveCount( 0 );
+				await expect(
+					page.locator( '.cbuild-step' )
+				).not.toContainText( 'Picked for' );
+			}
+			await page.goto( trucks() );
+			const rated = card( page, /^Choose Builder test trucks 139/ );
+			await expect( rated.locator( '.cbuild-card__rated' ) ).toHaveText(
+				'4.5 out of 5, 2 reviews'
+			);
+			await expect( rated.locator( '.cbuild-card__star' ) ).toBeVisible();
+			await expect(
+				rated.getByRole( 'radio' )
+			).not.toHaveAccessibleDescription( /Picked for/ );
+			if ( javaScriptEnabled ) {
+				expect(
+					await tall( page, '.cbuild-card__nothing' ),
+					'no room kept for the line'
+				).toBeCloseTo( plain, 0 );
+				// The store draws the cards again from the answer, as the server did.
+				await choose( page, 'Builder test trucks 139' );
+				await expect(
+					page.locator( '.cbuild-card__picked:visible' )
+				).toHaveCount( 0 );
+				await expect(
+					rated.locator( '.cbuild-card__rated' )
+				).toHaveText( '4.5 out of 5, 2 reviews' );
+			}
+		} );
+
+		test( 'Ratings on cards off: no star or score, the pick stays, and no room is kept', async ( {
+			page,
+			javaScriptEnabled,
+		} ) => {
+			let plain = 0;
+			if ( javaScriptEnabled ) {
+				cardSwitches( null, null );
+				await page.goto( trucks() );
+				await expect(
+					card( page, /^Choose Builder test trucks 139/ ).locator(
+						'.cbuild-card__score'
+					)
+				).toHaveText( '4.5 (2)' );
+				plain = await tall( page, '.cbuild-card__rating' );
+			}
+			cardSwitches( null, false );
+			for ( const link of [ trucks(), wheels() ] ) {
+				await page.goto( link );
+				await expect(
+					page.locator( '.cbuild-step .cbuild-cards' ).first()
+				).toBeVisible();
+				await expect(
+					page.locator(
+						'.cbuild-card__rating:visible, .cbuild-card__star:visible, .cbuild-card__score:visible'
+					)
+				).toHaveCount( 0 );
+			}
+			await page.goto( trucks() );
+			const picked = card( page, /^Choose Builder test trucks 139/ );
+			await expect( picked.locator( '.cbuild-card__picked' ) ).toHaveText(
+				'Picked for Street'
+			);
+			await expect(
+				picked.getByRole( 'radio' )
+			).not.toHaveAccessibleDescription( /out of 5/ );
+			if ( javaScriptEnabled ) {
+				expect(
+					await tall( page, '.cbuild-card__nothing' ),
+					'no room kept for the rating'
+				).toBeCloseTo( plain, 0 );
+				await choose( page, 'Builder test trucks 139' );
+				await expect(
+					page.locator( '.cbuild-card__rating:visible' )
+				).toHaveCount( 0 );
+				await expect(
+					picked.locator( '.cbuild-card__picked' )
+				).toHaveText( 'Picked for Street' );
+			}
+		} );
 	} );
 
 	test( "says them in French, its decimal separator the shop's", async ( {

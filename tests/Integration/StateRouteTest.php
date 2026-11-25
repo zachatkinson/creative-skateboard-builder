@@ -1585,6 +1585,110 @@ final class StateRouteTest extends IntegrationTestCase {
 	}
 
 	/**
+	 * D-409, wired to #137's cards: the kit's Ready-build picks on cards and Ratings on cards. Picks off, no card says
+	 * "Picked for"; ratings off, or WooCommerce's star ratings off, no card has a star or a score. Each is its own: one
+	 * off leaves the other. A kit saved before 1.2.0, or with 1.2.0's settings and none of the keys, shows both. The
+	 * view says so for the page and the state route alike, so the card's line is hidden, not drawn empty.
+	 */
+	public function test_the_kits_switches_take_the_cards_picks_and_ratings_away_and_a_kit_without_them_shows_both(): void {
+		$options = array( 'woocommerce_enable_reviews', 'woocommerce_enable_review_rating' );
+		$was     = array_map( 'get_option', array_combine( $options, $options ) );
+		update_option( 'woocommerce_enable_reviews', 'yes' );
+		update_option( 'woocommerce_enable_review_rating', 'yes' );
+		self::review( $this->parts['truck 139'], 5, 1 );
+		self::review( $this->parts['truck 139'], 4, 2 );
+		$card = function ( ?array $settings ): array {
+			$whole     = $this->whole(
+				null,
+				static fn( array $picks ): array => array(
+					array(
+						'name'  => 'Street',
+						'picks' => $picks,
+					),
+				),
+				$settings
+			);
+			$this->kit = $whole['kit'];
+			$answer    = $this->answer(
+				array(
+					'cbuild' => array(
+						'deck' => (string) $whole['picks']['deck'],
+						'step' => 'trucks',
+					),
+				)
+			);
+			$card = array_column( $answer['view']['step']['options'], null, 'id' )[ $this->parts['truck 139'] ];
+			return array(
+				'picks'  => array( $card['pickedFor'], $card['hasPickedFor'] ),
+				'rating' => array( $card['score'], $card['rated'], $card['hasRating'] ),
+			);
+		};
+		$picks  = array( 'Picked for Street', true );
+		$rating = array( '4.5 (2)', '4.5 out of 5, 2 reviews', true );
+		$none   = array( '', '', false );
+		foreach ( array(
+			'a kit saved before 1.2.0'               => null,
+			'1.2.0\'s settings, none of the keys'    => array(
+				'schema_version' => 1,
+				'start_button'   => true,
+			),
+			'each said on'                           => array(
+				'schema_version' => 1,
+				'picks'          => true,
+				'ratings'        => true,
+			),
+		) as $case => $settings ) {
+			self::assertSame(
+				array(
+					'picks'  => $picks,
+					'rating' => $rating,
+				),
+				$card( $settings ),
+				$case
+			);
+		}
+		self::assertSame(
+			array(
+				'picks'  => array( '', false ),
+				'rating' => $rating,
+			),
+			$card(
+				array(
+					'schema_version' => 1,
+					'picks'          => false,
+				)
+			),
+			'picks off: no line, and the rating stays'
+		);
+		self::assertSame(
+			array(
+				'picks'  => $picks,
+				'rating' => $none,
+			),
+			$card(
+				array(
+					'schema_version' => 1,
+					'ratings'        => false,
+				)
+			),
+			'ratings off: no star or score, and the picks stay'
+		);
+		update_option( 'woocommerce_enable_review_rating', 'no' );
+		self::assertSame(
+			array(
+				'picks'  => $picks,
+				'rating' => $none,
+			),
+			$card( null ),
+			'the kit\'s on, WooCommerce\'s star ratings off'
+		);
+
+		foreach ( $was as $option => $value ) {
+			update_option( $option, $value );
+		}
+	}
+
+	/**
 	 * A set of wheels in the whole kit's wheels category, indexed.
 	 *
 	 * @param string $name     Its name.

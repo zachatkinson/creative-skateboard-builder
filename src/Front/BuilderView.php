@@ -1668,19 +1668,24 @@ final class BuilderView {
 			$preset                                       = Cast::map( $preset );
 			$builds[ Cast::int( $preset['at'] ?? null ) ] = Cast::str( $preset['name'] ?? null );
 		}
-		$card    = function ( array $option, array $look = array() ) use ( $state, $slot, $counted, $against, $asked, $builds, $swaps ): array {
+		// The kit's switches for the cards' picks and ratings, and a plugin's answer, asked once a step (D-409). A rating
+		// comes only while WooCommerce's star ratings are on, which the card asks itself (D-392).
+		$picking = Shown::picks( $state->id, $state->kit->settings );
+		$rates   = Shown::ratings( $state->id, $state->kit->settings );
+		$card    = function ( array $option, array $look = array() ) use ( $state, $slot, $counted, $against, $asked, $builds, $swaps, $picking, $rates ): array {
 			$id   = Cast::int( $option['id'] ?? null );
 			$card = Cast::map( $option['card'] ?? null );
-			// Which ready builds pick it, and its rating, each said on the card where it has one (#137, D-392).
+			// Which ready builds pick it, and its rating, each said on the card where it has one and the kit shows it
+			// (#137, D-392, D-409).
 			$picks = array();
-			foreach ( Cast::items( $option['presets'] ?? null ) as $at ) {
+			foreach ( $picking ? Cast::items( $option['presets'] ?? null ) : array() as $at ) {
 				$named = $builds[ Cast::int( $at ) ] ?? '';
 				if ( '' !== $named ) {
 					$picks[] = $named;
 				}
 			}
 			$pickedFor = Words::pickedFor( $picks );
-			$rating    = isset( $card['rating'] ) ? Cast::map( $card['rating'] ) : array();
+			$rating    = $rates && isset( $card['rating'] ) ? Cast::map( $card['rating'] ) : array();
 			$rated     = Cast::str( $rating['text'] ?? null );
 			// A look's card names its product, not a size of it, and the look by what tells it from the product's
 			// others (D-273); a part listed alone keeps its own name.
