@@ -226,6 +226,14 @@ final class Options {
 	public const CLASS_REVIEW_DRAWN = 'cbuild-review__photo--drawn';
 
 	/**
+	 * The place just above a step's card list, which the builder renders empty for another plugin's own element
+	 * (#151, D-407).
+	 *
+	 * @since 1.3.0
+	 */
+	public const CLASS_ABOVE_CARDS = 'cbuild-step__above-cards';
+
+	/**
 	 * Order item meta (spec: Data model, Order items). Hidden from customers by their underscore, and kept with the
 	 * shop's order records for good: a key is never renamed.
 	 */
@@ -515,6 +523,7 @@ final class Options {
 			self::CLASS_STEP,
 			self::CLASS_REVIEW_PHOTO,
 			self::CLASS_REVIEW_DRAWN,
+			self::CLASS_ABOVE_CARDS,
 		);
 	}
 

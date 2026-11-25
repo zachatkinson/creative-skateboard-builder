@@ -11136,7 +11136,7 @@ test.describe( 'What another plugin may rely on (#143)', () => {
 
 	/**
 	 * Whether each element the test put in the builder is still where it was put: connected, in the same parent, and
-	 * still its first or last element child.
+	 * still its first or last element child. In the place above the cards it is the place's only child (#151).
 	 *
 	 * @param page The page.
 	 */
@@ -11218,7 +11218,8 @@ test.describe( 'What another plugin may rely on (#143)', () => {
 		expect( late ).toEqual( { ready: true, heard: [] } );
 
 		// Another plugin's own elements, put in once the builder is ready, where Mature Content 1.6.0 puts them: its
-		// veil the last child of the stage, and its notice the first child of the step's form.
+		// veil the last child of the stage, and its notice the first child of the step's form. From 1.3.0 a third in the
+		// place just above the step's cards, where Mature Content asked to put its notice (#151, D-407).
 		await page.evaluate( () => {
 			const own = ( parent: Element, first: boolean ) => {
 				const element = document.createElement( 'div' );
@@ -11242,9 +11243,13 @@ test.describe( 'What another plugin may rely on (#143)', () => {
 			 ).cbuildOwn = [
 				own( document.querySelector( '.cbuild__stage' )!, false ),
 				own( document.querySelector( '.cbuild-step' )!, true ),
+				own(
+					document.querySelector( '.cbuild-step__above-cards' )!,
+					true
+				),
 			];
 		} );
-		const all = [ true, true ];
+		const all = [ true, true, true ];
 
 		// A list narrowed by a width: an answer on the same step.
 		await ride( page, inLocale( info.project.name, '8.5″' ) );
@@ -11350,7 +11355,19 @@ test.describe( 'What another plugin may rely on (#143)', () => {
 			steps
 		);
 		expect( await kept( page ) ).toEqual( all );
-		await expect( page.locator( '.another-plugin' ) ).toHaveCount( 2 );
+		await expect( page.locator( '.another-plugin' ) ).toHaveCount( 3 );
+		// The place's own element alone, and nothing of the builder's in it, after every redraw.
+		expect(
+			await page
+				.locator( '.cbuild-step__above-cards' )
+				.evaluate( ( place ) =>
+					[ ...place.childNodes ].map( ( child ) =>
+						child instanceof Element
+							? child.className
+							: ( child.textContent ?? '' ).trim()
+					)
+				)
+		).toEqual( [ 'another-plugin' ] );
 		expect( await stayed( page ) ).toBe( true );
 	} );
 } );

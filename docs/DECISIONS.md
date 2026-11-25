@@ -155,6 +155,7 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-290 · The state route's currency format is plain text, as its symbol is](#d-290--the-state-routes-currency-format-is-plain-text-as-its-symbol-is--2026-11-19)
 - [D-336 · The state route lists every ready build again, each saying whether it is shown](#d-336--the-state-route-lists-every-ready-build-again-each-saying-whether-it-is-shown--2026-11-23)
 - [D-376 · A rendered event and five builder classes for other plugins](#d-376--a-rendered-event-and-five-builder-classes-for-other-plugins--2026-11-24)
+- [D-407 · A place just above the step's cards for another plugin's element](#d-407--a-place-just-above-the-steps-cards-for-another-plugins-element--2026-11-25)
 
 ### The builder page
 
@@ -6010,6 +6011,22 @@ F30 (#147, D-405) slipped through because the layout-shift tests answered almost
 **Not moved: "each moment answers within 200 ms on a CPU slowed four times, shifts nothing, ...".** With the answers held a second, and the CPU slowed four times, two moments shift: **the step** (Next pressed at once, its answer asked ahead and still held), 0.021 on chromium-desktop (`cbuild-step__fieldset` 358→244, `cbuild-step__more` 522→0) and 0.040 on chromium-phone (`cbuild-step__fieldset` 645→535, the bar's actions 766→783); and **the grip**, 0.001 on chromium-phone (the bar's actions 778→760). Neither is a change to the step's template or styles alone: the step's is the new step laid out when an answer asked ahead comes after Next was pressed, which D-355's ask-ahead removes only where the answer came first. So the test keeps its own observer and quick answers, and the two shifts are left as findings (reported with this work), not tuned away. The same Next a second after the deck's answer, as D-356's test presses it, shifts nothing.
 
 **Why:** a test that answers within the 500 ms CLS leaves out can never see what a late answer moves; holding the answer is the only way the local site shows the demo's case.
+
+**Status:** Accepted.
+
+### D-407 · A place just above the step's cards for another plugin's element · 2026-11-25
+
+Issue #151, Mature Content's ask in Cowork's review of 1.2.0. Mature Content puts its notice first in the step's form (#143, D-376), above the width question, and adds it at the width's answer: on the demo it added 0.155 of layout shift to a width press on a phone. Put just above the card list in Cowork's experiment, it added 0.067, since it comes in with the decks the width brings.
+
+- **The place is an element of the builder's own.** `templates/builder/step.php` renders `<div class="cbuild-step__above-cards"></div>` in the step's fieldset, after the help, the empty step's words and the search's "found" line, and just before `ul.cbuild-cards`. #143's places are the builder's own elements, named by a class in HOOKS.md, which another plugin adds to; this one is the same, except that it holds nothing of the builder's. It has no directive, so the store neither binds nor draws into it, and a plugin's element in it is a child the store did not render, which D-376 found Preact leaves alone. Not chosen: promising "the element just before `.cbuild-cards`" as a sibling, which would leave the plugin's element among the builder's own children, where D-376 promised nothing because a list there may grow next to it.
+- **Where it shows.** It is in the part of the form the deck step hides while it asks its width, so a notice there shows with the cards and not over the question. Empty, it is `display: none` (`:where(.cbuild-step__above-cards:empty)`), so a shop without such a plugin sees no gap. It is rendered on every step, with or without the script.
+- **API.** `Options::CLASS_ABOVE_CARDS` (`@since 1.3.0`), in `Options::cssClasses()` and the API snapshot; HOOKS.md lists the class and adds it to the places another plugin may use, with what Cowork measured.
+
+**Tests.** `BuilderPageTest::test_the_step_has_an_empty_place_for_another_plugin_just_above_its_cards`: on the deck step asking, after a width, and on the trucks step, one empty `div` with its class alone, in the form and its cards' fieldset, the cards' list its next sibling. `builder.spec.ts`, "What another plugin may rely on (#143)", puts a third element in the place and checks that it is still the place's child, the same element, and that nothing of the builder's, element or text, is in the place, after a width, a pick that opens the change panel, Use these, a fold opened, Next twice, a held pick and a turn of the board, on every engine, phone and desktop, fr-ca and rtl.
+
+**Red run.** Before the template change: `test_the_step_has_an_empty_place_for_another_plugin_just_above_its_cards`, "one place a page, Failed asserting that 0 is identical to 1" (BuilderPageTest.php:711); the browser test, "TypeError: Cannot read properties of null (reading 'prepend')" (builder.spec.ts:10583). **Deliberate break:** the place given a directive, `data-wp-text="state.view.heading"`: the browser test failed at Next with the step's heading in the place, `+ "Choose your wheels"` (builder.spec.ts:10730), and the integration test with "its class alone, Failed asserting that 2 is identical to 1" (BuilderPageTest.php:717). The plugin's element itself stayed: Preact leaves a child it did not render even under a text directive, so the test reads the place's text too.
+
+**Why:** a notice about the cards belongs with the cards; a place the builder renders and never touches is the surest promise to make.
 
 **Status:** Accepted.
 

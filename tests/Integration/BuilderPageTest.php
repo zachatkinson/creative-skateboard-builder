@@ -701,6 +701,30 @@ final class BuilderPageTest extends IntegrationTestCase {
 	}
 
 	/**
+	 * #151 (Mature Content's ask, from Cowork's review of 1.2.0): a documented place just above the step's cards, which
+	 * the builder renders empty on every step and never draws into, so another plugin's notice there comes in with the
+	 * cards. In the step's form, inside the part the width question hides, and the cards' list its next sibling.
+	 */
+	public function test_the_step_has_an_empty_place_for_another_plugin_just_above_its_cards(): void {
+		foreach ( array( array(), array( '_width' => '8in' ), array( 'step' => 'trucks', 'deck' => (string) $this->parts['deck 8.0'] ) ) as $sent ) {
+			$dom    = self::dom( $this->kitPage( $sent ) );
+			$places = $dom->query( '//*[contains(concat(" ", normalize-space(@class), " "), " ' . Options::CLASS_ABOVE_CARDS . ' ")]' );
+			self::assertSame( 1, $places->length, 'one place a page' );
+			$place = $places->item( 0 );
+			self::assertInstanceOf( \DOMElement::class, $place );
+			self::assertSame( 'div', $place->nodeName );
+			self::assertSame( 0, $place->childNodes->length, 'rendered empty' );
+			self::assertSame( Options::CLASS_ABOVE_CARDS, $place->getAttribute( 'class' ) );
+			self::assertSame( 1, $place->attributes->length, 'its class alone: nothing the store binds' );
+			self::assertSame( 1, $dom->query( 'ancestor::form[contains(@class,"cbuild-step")]', $place )->length, 'in the step\'s form' );
+			self::assertSame( 1, $dom->query( 'ancestor::fieldset[contains(@class,"cbuild-step__fieldset")]', $place )->length, 'with the cards, hidden while the width is asked' );
+			$next = $dom->query( 'following-sibling::*[1]', $place )->item( 0 );
+			self::assertInstanceOf( \DOMElement::class, $next );
+			self::assertSame( 'cbuild-cards', strtok( $next->getAttribute( 'class' ), ' ' ), 'just above the cards' );
+		}
+	}
+
+	/**
 	 * The deck step at 8″ with more decks than a step lists alone, so it has Sort, as the step's form sends it: Sort's
 	 * row and the count's paragraph, as served.
 	 *

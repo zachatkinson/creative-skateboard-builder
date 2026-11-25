@@ -141,6 +141,11 @@ defined( 'ABSPATH' ) || exit;
 				<button class="cbuild-button cbuild-found__clear" type="submit" value="" data-wp-bind--name="state.view.step.found.clear.name" data-wp-bind--hidden="!state.view.step.found.clear.shown" data-wp-text="state.view.step.found.clear.text"></button>
 			</p>
 		</div>
+		<?php
+		// A place for another plugin's own element just above the cards, such as a notice about them, which comes in with
+		// them (#151): rendered empty, with no directive, so the builder never draws into it (HOOKS.md).
+		?>
+		<div class="cbuild-step__above-cards"></div>
 		<?php // The deck step's cards are compact: the deck small and upright beside its words, two columns on a desktop (F14, #99). ?>
 		<ul class="cbuild-cards" data-wp-class--cbuild-cards--compact="state.view.step.compact">
 			<template data-wp-each--option="state.view.step.options" data-wp-each-key="context.option.id">

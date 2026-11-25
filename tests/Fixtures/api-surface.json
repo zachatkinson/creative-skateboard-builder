@@ -200,6 +200,7 @@
         "cbuild-review__photo",
         "cbuild-review__photo--drawn",
         "cbuild-step",
+        "cbuild-step__above-cards",
         "cbuild__stage"
     ],
     "dom_events": [

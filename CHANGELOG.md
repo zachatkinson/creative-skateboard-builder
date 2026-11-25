@@ -18,6 +18,7 @@ All notable changes to this project are documented here. The format follows [Kee
   - in the builder: the same board for less at the top of the review, each slot's swaps under its review row and on the picked card, each a link that works without JavaScript; after a swap a notice says what it swapped, with Undo, which puts the build back, and focus goes to it, then back to the swap after Undo. A plain card is as tall as before (D-397);
   - **Offer smart swaps**, a switch in a kit's Build tab, `swaps` in `_cbuild_settings`, on by default and for a kit saved before 1.3.0; off, no swap is offered or shown. The filter `cbuild_swaps` answers after it;
   - the state route's `Server-Timing` to a shop manager names `cbuild-swaps`.
+- **A place above the cards for other plugins** (1.3.0): `cbuild-step__above-cards`, an empty element just above a step's card list, which the builder renders on every step and never draws into, so another plugin's element there, such as a notice about the cards, stays through every redraw and comes in with the cards. Mature Content asked for it: its notice there adds 0.067 of layout shift to a width press on a phone, against 0.155 first in the step's form (#151, D-407).
 
 ### Changed
 
