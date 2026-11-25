@@ -9,6 +9,7 @@ declare( strict_types=1 );
 
 namespace CreativeBranding\SkateboardBuilder\Adapter;
 
+use CreativeBranding\SkateboardBuilder\Port\Clock;
 use CreativeBranding\SkateboardBuilder\Port\Queue;
 use CreativeBranding\SkateboardBuilder\Support\Options;
 
@@ -30,6 +31,13 @@ final class ActionSchedulerQueue implements Queue {
 	 * The most failed actions counted: past this the answer is "many".
 	 */
 	public const MOST_FAILED = 100;
+
+	/**
+	 * Constructor.
+	 *
+	 * @param Clock $clock What "a moment to come" is measured from, as the services that give a job its time.
+	 */
+	public function __construct( private Clock $clock ) {}
 
 	/**
 	 * Run an action as soon as the queue can, once.
@@ -155,6 +163,10 @@ final class ActionSchedulerQueue implements Queue {
 
 	/**
 	 * Schedule an action for a moment to come, unless one with the same hook and arguments waits for a moment to come.
+	 * "To come" is after the Clock's now, the clock the caller's timestamp comes from, not the system's. It goes in as
+	 * a timestamp: `as_get_scheduled_actions()` passes `date` to `as_get_datetime_object()` (WooCommerce 11.3.1,
+	 * packages/action-scheduler/functions.php:447 to 449), which takes a `DateTime`, a timestamp or a string, and
+	 * throws a TypeError for the Clock's `DateTimeImmutable` (functions.php:489 to 495).
 	 *
 	 * @since 1.2.0
 	 *
@@ -163,7 +175,7 @@ final class ActionSchedulerQueue implements Queue {
 	 * @param array<string, mixed> $args      Its arguments.
 	 */
 	public function scheduleDistinct( int $timestamp, string $hook, array $args ): void {
-		if ( ! function_exists( 'as_schedule_single_action' ) || ! function_exists( 'as_get_scheduled_actions' ) || ! function_exists( 'as_get_datetime_object' ) ) {
+		if ( ! function_exists( 'as_schedule_single_action' ) || ! function_exists( 'as_get_scheduled_actions' ) ) {
 			return;
 		}
 		$waiting = as_get_scheduled_actions(
@@ -172,7 +184,7 @@ final class ActionSchedulerQueue implements Queue {
 				'args'         => $args,
 				'group'        => Options::QUEUE_GROUP,
 				'status'       => \ActionScheduler_Store::STATUS_PENDING,
-				'date'         => as_get_datetime_object(),
+				'date'         => $this->clock->now()->getTimestamp(),
 				'date_compare' => '>',
 				'per_page'     => 1,
 			),
