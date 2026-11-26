@@ -15,7 +15,11 @@ const fixture = () =>
 			path.join( process.cwd(), 'tmp', 'e2e-builder.json' ),
 			'utf8'
 		)
-	) as { page: string; widths: { page: string } };
+	) as {
+		page: string;
+		widths: { page: string };
+		parts: Record< string, number >;
+	};
 
 test.describe( 'The builder in French', () => {
 	test.beforeEach( async ( { page }, info ) => {
@@ -53,6 +57,31 @@ test.describe( 'The builder in French', () => {
 		await expect( page.locator( '.cbuild__status' ) ).toHaveText(
 			'La boutique n’a pas répondu à temps. Réessayez dans un instant.'
 		);
+	} );
+
+	// Milestone 13's walkthrough (D-460): a swap of two parts says them as French joins two, in the plugin's own
+	// words, the slots by the kit's own labels. Core's French for Canada joined them as "wheels et .hardware".
+	test( 'says what a swap changed as French joins a list', async ( {
+		page,
+	} ) => {
+		const parts = fixture().parts;
+		const url = new URL( fixture().page );
+		for ( const [ slot, sku ] of Object.entries( {
+			deck: 'builder-test-deck-8-0',
+			trucks: 'builder-test-trucks-139',
+			wheels: 'builder-test-wheels-54',
+			bearings: 'builder-test-bearings',
+			hardware: 'builder-test-bolts-1-25',
+			grip: 'builder-test-grip',
+		} ) ) {
+			url.searchParams.set( `cbuild[${ slot }]`, String( parts[ sku ] ) );
+		}
+		url.searchParams.set( 'cbuild[step]', 'review' );
+		await page.goto( url.toString() );
+		await page.locator( '#cbuild-swap-board' ).click();
+		const said = page.locator( '.cbuild-swapped__text' );
+		await expect( said ).toHaveText( 'Échangé\u00A0: wheels et hardware.' );
+		await expect( said ).not.toContainText( ' et .' );
 	} );
 
 	// F31 (#148, D-399): a deck's six other widths, counted in French, with its plural.

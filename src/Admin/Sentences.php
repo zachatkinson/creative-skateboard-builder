@@ -20,6 +20,7 @@ use CreativeBranding\SkateboardBuilder\Domain\Measure\MeasureError;
 use CreativeBranding\SkateboardBuilder\Domain\Rule\MessageCode;
 use CreativeBranding\SkateboardBuilder\Domain\Spec\Origin;
 use CreativeBranding\SkateboardBuilder\Domain\Spec\SpecKey;
+use CreativeBranding\SkateboardBuilder\Front\Words;
 use CreativeBranding\SkateboardBuilder\Port\UploadRefused;
 use CreativeBranding\SkateboardBuilder\Port\PartsKeptOut;
 use CreativeBranding\SkateboardBuilder\Service\CatalogueCheck;
@@ -285,6 +286,6 @@ final class Sentences {
 	 * @param string $ids IDs joined with `, `.
 	 */
 	private static function ids( string $ids ): string {
-		return '' === $ids ? '' : wp_sprintf( '%l', explode( ', ', $ids ) );
+		return '' === $ids ? '' : Words::joined( explode( ', ', $ids ) );
 	}
 }

@@ -1982,7 +1982,7 @@ final class BuilderView {
 				'recommended' => __( 'Recommended', 'creative-skateboard-builder' ),
 			);
 		}
-		$parts = wp_sprintf( '%l', array_map( static fn( string $slot ): string => Words::inSentence( $label( $slot ) ), $slots ) );
+		$parts = Words::joined( array_map( static fn( string $slot ): string => Words::inSentence( $label( $slot ) ), $slots ) );
 		return array(
 			/* translators: %s: the parts picked before, such as "trucks and risers". */
 			'fits'        => sprintf( __( 'Fits your %s', 'creative-skateboard-builder' ), $parts ),

@@ -379,6 +379,7 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-233 · French ships, complete, and the checks require it](#d-233--french-ships-complete-and-the-checks-require-it--2026-11-18)
 - [D-234 · The fr-ca project keeps the plugin in English, and one spec walks it in French](#d-234--the-fr-ca-project-keeps-the-plugin-in-english-and-one-spec-walks-it-in-french--2026-11-18)
 - [D-260 · French isn't read by a person before 1.0.0](#d-260--french-isnt-read-by-a-person-before-100--2026-11-18)
+- [D-460 · A list is joined in the plugin's own words, never WordPress's translation of them](#d-460--a-list-is-joined-in-the-plugins-own-words-never-wordpresss-translation-of-them--2026-11-26)
 
 ### Performance
 
@@ -6696,5 +6697,21 @@ Found with D-450, by a search of `src/` for `wp_add_inline_style()` on a handle 
 **Deliberate break.** With `wp_enqueue_style()` taken out of the five, all five failed again. Put back, they passed, with `SpecTablesScreenTest` and `PartSpecsPanelTest` reading the rules from the new handles.
 
 **Why:** as D-450: a rule the plugin needs is the plugin's to print.
+
+**Status:** Accepted.
+
+### D-460 · A list is joined in the plugin's own words, never WordPress's translation of them · 2026-11-26
+
+Milestone 13's walkthrough, a should-fix. After a smart swap of two parts the notice read "Échangé : wheels et .hardware." in French (`docs/reviews/M13/walkthrough/desktop-swap-notice-light-fr.avif`). The builder joined its lists with `wp_sprintf( '%l', … )`, and `wp_sprintf_l()` (wp-includes/formatting.php:5407) takes its three separators from core's own strings: "%1$s, %2$s" (line 5433), "%1$s, and %2$s" (5435) and "%1$s and %2$s" (5437). Core's French for Canada, as wp-env installs it (wp-content/languages/fr_CA.po, revised 20 July 2026, and its fr_CA.l10n.php), translates the last as "%1$s et %2$s." with a full stop (fr_CA.po:20322 and 20323), so two items were "a et .b", and the second as "%1$s, et %2$s" (10753 and 10754), so three were "a, b, et c", with a comma before "et" that French doesn't write. The plugin can't correct core's translation, and a shop's may differ again.
+
+**Decision:** one helper, `Front\Words::joined()`, joins every list the plugin says, through its own text domain: one item alone; two in the pattern "%1$s and %2$s" (context "the last two items in a list", with a translator comment); more by the list separator `Words::either()` already uses (", ", context "between values in a list") and the last two in that pattern. `either()` and `joined()` share one private `series()`. The French is "%1$s et %2$s": "roues et quincaillerie", "roues, roulements et quincaillerie". Every `wp_sprintf( '%l' )` and `wp_sprintf_l()` in `src/` is switched: the swap notice, "Also in", "Picked for", the share card's name (`complete()`), "Fits your" and "Recommended for your" (BuilderView), the Catalogue check's IDs (Admin\Sentences), Site Health's part names and the privacy export's parts. Gate 2 now bans `wp_sprintf()` and `wp_sprintf_l()`, with its fixture, so no list goes back to core's words.
+
+English lists of three or more lose core's comma before "and": "Deck, Trucks and Wheels", as `either()`'s "7.75″, 8.125″ or 9″" and the docblocks' examples already wrote. A share card's `og:title` for a build of three or more named parts changes so in English.
+
+**Tests.**
+
+- **Red run.** `ListWordsTest::test_two_and_three_items_are_joined_in_the_plugins_french_not_cores`, core's French separators given as fr_CA.po has them and the plugin's own French loaded: "no full stop inside the list", expected "Échangé : roues et quincaillerie." and got "Échangé : roues et .quincaillerie." (ListWordsTest.php:58). `ListWordsTest::test_two_and_three_items_are_joined_in_english_with_no_comma_before_and`: "Swapped: wheels, bearings, and hardware." (ListWordsTest.php:37). In the browser, french.spec.ts "says what a swap changed as French joins a list" on fr-ca: received "Échangé : wheels et .hardware." (french.spec.ts:83).
+- **After.** All three pass, with `WordsTest::test_a_list_is_one_item_alone_two_joined_by_and_and_more_by_commas_and_the_last_and` for none to four items. `ShareCardTest`'s and `PrivacyTest`'s English lists of three or more expect no comma before "and"; the unit shims lose `wp_sprintf()`.
+- **Deliberate break.** `joined()` handed back to `wp_sprintf( '%l' )`: both `ListWordsTest` cases fail again, "Échangé : roues et .quincaillerie." (ListWordsTest.php:59) and "Swapped: wheels, bearings, and hardware." (ListWordsTest.php:37).
 
 **Status:** Accepted.

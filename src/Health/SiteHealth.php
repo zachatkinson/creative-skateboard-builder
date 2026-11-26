@@ -15,6 +15,7 @@ use CreativeBranding\SkateboardBuilder\Admin\CheckScreen;
 use CreativeBranding\SkateboardBuilder\Admin\ImportScreen;
 use CreativeBranding\SkateboardBuilder\Admin\Labels;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\BuildTerms;
+use CreativeBranding\SkateboardBuilder\Front\Words;
 use CreativeBranding\SkateboardBuilder\Hookable;
 use CreativeBranding\SkateboardBuilder\Port\MigrationStore;
 use CreativeBranding\SkateboardBuilder\Port\ShopSettings;
@@ -296,7 +297,7 @@ final class SiteHealth implements Hookable {
 		if ( array() === $names ) {
 			return '';
 		}
-		$list = wp_sprintf_l( '%l', $names );
+		$list = Words::joined( $names );
 		if ( count( $parts ) > self::NAMED ) {
 			/* translators: %s: the names of five parts, as a list. */
 			return sprintf( __( 'Among them: %s.', 'creative-skateboard-builder' ), $list );

@@ -469,9 +469,19 @@ final class WordsTest extends TestCase {
 		self::assertSame( 'Step up: Bones 54 mm, $0.50 less', Words::swap( 'better', 'Bones 54 mm', -50, '$0.50' ) );
 		self::assertSame( 'Step up: Bones 54 mm, same price', Words::swap( 'better', 'Bones 54 mm', 0, '$0.00' ) );
 		self::assertSame( 'Swapped: wheels.', Words::swapped( array( 'Wheels' ) ) );
-		// The slots as the site's language joins a list, each in its sentence's case, not run together with commas (the
-		// shim's %l writes English's).
+		// The slots as the page's language joins a list, each in its sentence's case, not run together with commas.
 		self::assertSame( 'Swapped: wheels and hardware.', Words::swapped( array( 'Wheels', 'Hardware' ) ) );
 		self::assertSame( 'Swapped: wheels, hardware and bearings.', Words::swapped( array( 'Wheels', 'Hardware', 'Bearings' ) ) );
+	}
+
+	// Milestone 13's walkthrough (D-460): a list joined in the plugin's own words, never core's. In French,
+	// tests/Integration/ListWordsTest.php.
+	public function test_a_list_is_one_item_alone_two_joined_by_and_and_more_by_commas_and_the_last_and(): void {
+		self::assertSame( '', Words::joined( array() ) );
+		self::assertSame( 'wheels', Words::joined( array( 'wheels' ) ) );
+		self::assertSame( 'wheels and hardware', Words::joined( array( 'wheels', 'hardware' ) ) );
+		self::assertSame( 'wheels, bearings and hardware', Words::joined( array( 'wheels', 'bearings', 'hardware' ) ) );
+		self::assertSame( 'deck, wheels, bearings and hardware', Words::joined( array( 'deck', 'wheels', 'bearings', 'hardware' ) ) );
+		self::assertSame( '8″, 8.5″ or 9″', Words::either( array( '8″', '8.5″', '9″' ) ), 'the choice takes the same separator' );
 	}
 }

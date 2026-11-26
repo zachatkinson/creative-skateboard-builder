@@ -442,7 +442,7 @@ final class Words {
 			return sprintf( _n( 'Also in %s other width', 'Also in %s other widths', $count, 'creative-skateboard-builder' ), number_format_i18n( $count ) );
 		}
 		/* translators: %s: one size, or two joined as the site's language joins a list, such as 8″ and 8.5″. */
-		return sprintf( __( 'Also in %s', 'creative-skateboard-builder' ), wp_sprintf( '%l', $sizes ) );
+		return sprintf( __( 'Also in %s', 'creative-skateboard-builder' ), self::joined( $sizes ) );
 	}
 
 	/**
@@ -473,7 +473,7 @@ final class Words {
 			return '';
 		}
 		/* translators: %s: ready builds' names joined as the site's language joins a list, such as Street and Cruiser. */
-		return sprintf( __( 'Picked for %s', 'creative-skateboard-builder' ), wp_sprintf( '%l', $names ) );
+		return sprintf( __( 'Picked for %s', 'creative-skateboard-builder' ), self::joined( $names ) );
 	}
 
 	/**
@@ -569,6 +569,33 @@ final class Words {
 	 * @param list<string> $values The values, in order.
 	 */
 	public static function either( array $values ): string {
+		/* translators: 1: values joined by commas, such as 7.75″, 8.125″. 2: the last value, such as 9″. */
+		return self::series( $values, __( '%1$s or %2$s', 'creative-skateboard-builder' ) );
+	}
+
+	/**
+	 * Items said as a list in the page's language, as "wheels, bearings and hardware" (D-460): the last two joined by
+	 * "and", the rest by commas, each through the plugin's own patterns. Never `wp_sprintf( '%l' )`, whose words are
+	 * WordPress's own translation's: core's French for Canada joins two as "%1$s et %2$s.", which said "wheels et
+	 * .hardware".
+	 *
+	 * @since 1.3.0
+	 *
+	 * @param list<string> $items The items, in order.
+	 */
+	public static function joined( array $items ): string {
+		/* translators: 1: items joined by commas, or the first of two, such as wheels, bearings. 2: the last item, such as hardware. */
+		return self::series( $items, _x( '%1$s and %2$s', 'the last two items in a list', 'creative-skateboard-builder' ) );
+	}
+
+	/**
+	 * Values in a line: one alone, two in the pattern given, more by the list's separator and the last two in the
+	 * pattern.
+	 *
+	 * @param list<string> $values   The values, in order.
+	 * @param string       $last_two The pattern that joins the last two, translated, such as "%1$s and %2$s".
+	 */
+	private static function series( array $values, string $last_two ): string {
 		$last = array_pop( $values );
 		if ( null === $last ) {
 			return '';
@@ -576,8 +603,7 @@ final class Words {
 		if ( array() === $values ) {
 			return $last;
 		}
-		/* translators: 1: values joined by commas, such as 7.75″, 8.125″. 2: the last value, such as 9″. */
-		return sprintf( __( '%1$s or %2$s', 'creative-skateboard-builder' ), implode( _x( ', ', 'between values in a list', 'creative-skateboard-builder' ), $values ), $last );
+		return sprintf( $last_two, implode( _x( ', ', 'between values in a list', 'creative-skateboard-builder' ), $values ), $last );
 	}
 
 	/**
@@ -590,7 +616,7 @@ final class Words {
 	 * @param list<string> $parts The parts a complete is known by, each as branded() names it.
 	 */
 	public static function complete( string $width, array $parts ): string {
-		$list = wp_sprintf( '%l', $parts );
+		$list = self::joined( $parts );
 		if ( '' === $width ) {
 			if ( '' === $list ) {
 				return __( 'A complete', 'creative-skateboard-builder' );
@@ -670,7 +696,7 @@ final class Words {
 	 */
 	public static function swapped( array $labels ): string {
 		/* translators: %s: slots' labels joined as the site's language joins a list, such as wheels and hardware. */
-		return sprintf( __( 'Swapped: %s.', 'creative-skateboard-builder' ), wp_sprintf( '%l', array_map( self::inSentence( ... ), $labels ) ) );
+		return sprintf( __( 'Swapped: %s.', 'creative-skateboard-builder' ), self::joined( array_map( self::inSentence( ... ), $labels ) ) );
 	}
 
 	/**

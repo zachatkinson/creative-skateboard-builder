@@ -105,7 +105,7 @@ final class ShareCardTest extends CartTestCase {
 	public function test_a_build_links_page_carries_its_name_total_build_link_and_the_decks_layer_until_the_picture_is_made(): void {
 		$build = array_map( 'strval', $this->picks() ) + array( 'step' => 'review' );
 		$tags  = $this->head( $build );
-		self::assertSame( array( '8.5″ complete: Deck, Trucks, and Wheels' ), $tags['og:title'], 'the deck\'s width heads the name; each part by its product\'s name, as these have no brand (M1), joined as WordPress joins a list' );
+		self::assertSame( array( '8.5″ complete: Deck, Trucks and Wheels' ), $tags['og:title'], 'the deck\'s width heads the name; each part by its product\'s name, as these have no brand (M1), joined as the plugin joins a list (D-460)' );
 		self::assertSame( $tags['og:title'], $tags['twitter:title'] );
 		self::assertSame( array( 'Total: $183.00' ), $tags['og:description'], 'the total: the parts at the shop\'s prices, a truck sold singly counted twice' );
 		self::assertSame( array( 'website' ), $tags['og:type'] );
@@ -219,7 +219,7 @@ final class ShareCardTest extends CartTestCase {
 		}
 		$this->service( Kits::class )->forget( ...array_values( $this->parts ) );
 		$tags = $this->head( array_map( 'strval', $this->picks() ) );
-		self::assertSame( array( '8.5″ complete: Baker, Independent 8.5″, and Wheels' ), $tags['og:title'] );
+		self::assertSame( array( '8.5″ complete: Baker, Independent 8.5″ and Wheels' ), $tags['og:title'] );
 	}
 
 	public function test_the_cards_name_and_total_are_in_the_pages_language(): void {
