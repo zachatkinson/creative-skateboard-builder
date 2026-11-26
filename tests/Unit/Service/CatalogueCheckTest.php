@@ -167,6 +167,27 @@ final class CatalogueCheckTest extends TestCase {
 		self::assertCount( 4, $lines );
 	}
 
+	// #139, D-473: a deck or wheel the 3D view draws a usual size for is listed with the size to fill in, on a kit whose
+	// 3D view is on, and on no other.
+	public function test_a_deck_or_wheel_the_3d_view_assumes_a_size_for_is_listed_where_the_kits_3d_view_is_on(): void {
+		$parts             = self::stocked();
+		$parts['deck'][]   = Parts::of( array( 'deck_width' => '8.25', 'deck_length' => '32', 'hole_pattern' => 'new_school', 'set_size' => 1, 'nose_length' => '7', 'kick_angle' => 20 ), 102 );
+		$parts['wheels'][] = Parts::of( array( 'wheel_diameter' => '54', 'set_size' => 4 ), 302 );
+		$parts['trucks'][] = Parts::indy( '144', array( 'baseplate' => 'new_school', 'max_wheel' => '56', 'axle_diameter' => '8', 'set_size' => 2 ) );
+		$this->kits->add( 5, KitDocuments::kit(), $parts );
+		self::assertSame( array(), self::lines( $this->check->run() ), 'the 3D view off: nothing new' );
+
+		$this->kits->add( 5, Kit::fromDocuments( KitDocuments::slots(), KitDocuments::rules(), KitDocuments::presets(), KitDocuments::assembly(), null, null, array( 'schema_version' => 1, 'view_3d' => true ) ), $parts );
+		self::assertSame(
+			array(
+				'spec_assumed part=102 kit=5 deck tail_length note=scene_assumed',
+				'spec_assumed part=102 kit=5 deck concave_depth note=scene_assumed',
+				'spec_assumed part=302 kit=5 wheels wheel_width note=scene_assumed',
+			),
+			array_values( array_filter( self::lines( $this->check->run() ), static fn( string $line ): bool => str_contains( $line, 'part=102' ) || str_contains( $line, 'part=302' ) ) )
+		);
+	}
+
 	// The auditor's should-fix 11 and the spec reviewer's 3, milestone 4: a kit whose settings stopped reading was left
 	// out of the check, so nothing told the owner that no shopper could open it.
 	public function test_a_kit_whose_settings_do_not_read_is_listed(): void {

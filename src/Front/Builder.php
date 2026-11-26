@@ -74,6 +74,13 @@ final class Builder {
 	private ?GuidedStart $guided = null;
 
 	/**
+	 * The 3D view's scene of the build (from 1.4.0, #139).
+	 *
+	 * @var SceneView|null
+	 */
+	private ?SceneView $scene = null;
+
+	/**
 	 * Constructor.
 	 *
 	 * @since 0.6.0
@@ -126,6 +133,20 @@ final class Builder {
 	public function withGuide( GuidedStart $guided ): self {
 		$builder         = clone $this;
 		$builder->guided = $guided;
+		return $builder;
+	}
+
+	/**
+	 * The builder with the 3D view's scene, which the view carries where the kit's 3D view is on (#139). Only this
+	 * release's container calls it, so a builder an earlier release's container makes mid-update carries none (D-208).
+	 *
+	 * @since 1.4.0
+	 *
+	 * @param SceneView $scene The 3D view's scene.
+	 */
+	public function withScene( SceneView $scene ): self {
+		$builder        = clone $this;
+		$builder->scene = $scene;
 		return $builder;
 	}
 
@@ -233,6 +254,11 @@ final class Builder {
 		$view   = $this->view->of( $state, $answer, $link, $base, $steps, $stopped, $moved['said'] ?? '' );
 		if ( null !== $this->guided && $link->guide->asked && BuilderView::atStart( $state, $link ) && Shown::guide( $state->id, $state->kit->settings ) ) {
 			$view['guide'] = BuilderView::guide( $state, $answer, $link, $base, $this->guided->of( $state, $link->guide ) );
+		}
+		// The 3D view's scene, only where the kit's 3D view is on and a deck is picked (#139, D-470).
+		$scene = $this->scene?->of( $state );
+		if ( null !== $scene ) {
+			$view['scene'] = $scene;
 		}
 		return array(
 			'state'  => $state,

@@ -15,6 +15,7 @@
         "cbuild_part_rank",
         "cbuild_preset_label",
         "cbuild_price_context",
+        "cbuild_scene",
         "cbuild_slot_label",
         "cbuild_start_button",
         "cbuild_summary_notes",

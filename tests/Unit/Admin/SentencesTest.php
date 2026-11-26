@@ -132,6 +132,10 @@ final class SentencesTest extends TestCase {
 				$finding( 'spec_assumed', 'decks', 'hole_pattern' ),
 				'Deck hole pattern is not filled in, so the builder assumes the usual one.',
 			),
+			'a size the 3D view assumed'             => array(
+				$finding( 'spec_assumed', 'deck', 'nose_length', array( 'note' => 'scene_assumed' ) ),
+				'Nose length is not filled in, so the 3D view draws the usual one. The part is still offered.',
+			),
 			'a preset names a part not in the slot'  => array(
 				$finding(
 					'preset_broken',

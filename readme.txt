@@ -106,6 +106,7 @@ Yes. Its hooks, REST routes, block attributes, settings keys, order item keys, C
 
 = 1.4.0 =
 * A deck's nose and tail lengths, its concave depth and kick angle, and a wheel's width can be given on Part specs and in the specs import. Each is optional.
+* On a kit whose 3D view is on, the Catalogue check names a deck or wheel it draws at a usual size, with the size to fill in.
 
 = 1.3.0 =
 * My builds compares up to three saved builds side by side, at today's prices. The parts that differ and the gap between the totals are said in words, and a part changed since the save is named.

@@ -332,6 +332,7 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-378 · An update's index jobs are due five minutes on, past any runner the earlier release started](#d-378--an-updates-index-jobs-are-due-five-minutes-on-past-any-runner-the-earlier-release-started--2026-11-24)
 - [D-470 · The 3D scene is measured in the domain, on the 2D picture's own frame](#d-470--the-3d-scene-is-measured-in-the-domain-on-the-2d-pictures-own-frame--2026-11-26)
 - [D-471 · A wheel's width is its spec, or three fifths of its diameter](#d-471--a-wheels-width-is-its-spec-or-three-fifths-of-its-diameter--2026-11-26)
+- [D-475 · The 3D view's textures are the plugin's own renditions, and only a part drawn as it is has one](#d-475--the-3d-views-textures-are-the-plugins-own-renditions-and-only-a-part-drawn-as-it-is-has-one--2026-11-26)
 
 ### Cart, checkout and orders
 
@@ -6913,5 +6914,19 @@ The 3D view (#139) is two switches on the Build tab, as every optional shopper f
 - **`view_3d` is off where a kit has none.** D-409's switches are on by default because they show what 1.2.0 already showed. The 3D view is new and loads a script of its own when pressed, so an update changes no builder until the shop ticks it.
 - **`tricks` is on where a kit has none**, as D-409's are, and the Build tab shows its box only once the kit is saved with the 3D view on. A box that does nothing while unticked would only be noise. A form without it keeps what the kit has, as each switch's does.
 - **Both are in `_cbuild_settings`**, so a rollback to 1.3.0 still reads the kit (D-354), and each is a boolean that the schema refuses as anything else.
+
+**Status:** Accepted.
+
+### D-475 · The 3D view's textures are the plugin's own renditions, and only a part drawn as it is has one · 2026-11-26
+
+The scene (D-470) carries each drawn part's texture, which another plugin may want hidden (Mature Content, D-468).
+
+**Decision:**
+
+- **A texture is the part's layer image, as the picture draws it:** its largest WebP rendition (`LayerArtwork`, two pixels to the millimetre where the image has them), or the image's own file before its renditions are made. Same origin, so WebGL may read it.
+- **`cbuild_composed_layer` is asked with the use `3d`**, for each drawn part with a layer image, each time the view carries a scene. Only `as_is` gives a texture. `blurred` and `left_out` give none, and the part is drawn in its colour: no blurred rendition exists, and a sharp one would show what the answer hid. The answer is baked into that page view, so a plugin that lets a shopper reveal the artwork answers `as_is` and blurs `.cbuild-3d__canvas` by its classes (D-468).
+- **The deck's top and the grip share the grip's texture**, and the bottom is the deck's.
+- **`cbuild_scene` answers last.** An answer that is no array with a `deck` is passed over, and the domain's scene kept, so a broken plugin can't take the deck away.
+- **The scene is in the view only where the kit's 3D view is on** (D-474) and a deck with a width is picked; otherwise `view.scene` is absent, and nothing is asked of another plugin.
 
 **Status:** Accepted.

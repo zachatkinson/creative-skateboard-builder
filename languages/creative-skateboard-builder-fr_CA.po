@@ -955,29 +955,29 @@ msgid "Variation #%1$d: %2$s"
 msgstr "Variation #%1$d : %2$s"
 
 #. translators: %s: what was typed in the Layer image field.
-#: src/Admin/Sentences.php:205
+#: src/Admin/Sentences.php:209
 #, php-format
 msgid "Layer image was not saved: \"%s\" is not the ID of an image in the Media Library."
 msgstr "L’image de calque n’a pas été enregistrée : « %s » n’est pas l’ID d’une image de la médiathèque."
 
 #. translators: %s: a file's media type, such as image/jpeg.
-#: src/Admin/Sentences.php:211
+#: src/Admin/Sentences.php:215
 #, php-format
 msgid "Layer image was not saved: it is %s, and a layer must be a PNG, WebP or AVIF with a transparent background."
 msgstr "L’image de calque n’a pas été enregistrée : elle est en %s, et un calque doit être un PNG, WebP ou AVIF à fond transparent."
 
 #. translators: %s: a file's media type, such as image/avif.
-#: src/Admin/Sentences.php:213
+#: src/Admin/Sentences.php:217
 #, php-format
 msgid "Layer image was not saved: it is %s, and this server's image library cannot read that type. Upload the cut-out as a PNG or WebP, or ask your host to turn on AVIF in GD or Imagick."
 msgstr "L’image de calque n’a pas été enregistrée : elle est en %s, et la bibliothèque d’images de ce serveur ne peut pas lire ce type. Téléversez le détourage en PNG ou en WebP, ou demandez à votre hébergeur d’activer AVIF dans GD ou Imagick."
 
-#: src/Admin/Sentences.php:214
+#: src/Admin/Sentences.php:218
 msgid "Layer image was not saved: its corners are not transparent. Export the cut-out with a transparent background."
 msgstr "L’image de calque n’a pas été enregistrée : ses coins ne sont pas transparents. Exportez le détourage avec un fond transparent."
 
 #. translators: 1: a number of pixels. 2: another.
-#: src/Admin/Sentences.php:216
+#: src/Admin/Sentences.php:220
 #, php-format
 msgid "Layer image was not saved: it is too small for the size the picture draws this part. It needs at least %1$s pixels across or %2$s along."
 msgstr "L’image de calque n’a pas été enregistrée : elle est trop petite pour la taille à laquelle l’illustration dessine cette pièce. Il lui faut au moins %1$s pixels en largeur ou %2$s en longueur."
@@ -1155,254 +1155,254 @@ msgid "%1$s is missing, so the part is not offered in the slot \"%2$s\"."
 msgstr "Il manque %1$s, donc la pièce n’est pas proposée dans l’emplacement « %2$s »."
 
 #. translators: %s: a spec's name.
-#: src/Admin/Sentences.php:92
+#: src/Admin/Sentences.php:96
 #, php-format
 msgid "%s is not filled in, so the builder assumes the usual one."
 msgstr "Le champ %s est vide, donc le configurateur prend la valeur habituelle."
 
 #. translators: %s: a slot's key, such as trucks.
-#: src/Admin/Sentences.php:95
+#: src/Admin/Sentences.php:99
 #, php-format
 msgid "It has no layer image, so the picture shows its labelled photo in the slot \"%s\". Add one on its Part specs, under Picture."
 msgstr "Elle n’a pas d’image de calque, donc l’illustration affiche sa photo étiquetée dans l’emplacement « %s ». Ajoutez-en une sous Caractéristiques de la pièce, section Illustration."
 
 #. translators: 1: a preset's name. 2: a slot's key.
-#: src/Admin/Sentences.php:106
+#: src/Admin/Sentences.php:110
 #, php-format
 msgid "The preset \"%1$s\" names it for the slot \"%2$s\", and it is not one of that slot's parts now."
 msgstr "Le modèle prêt « %1$s » la nomme pour l’emplacement « %2$s », et elle ne fait plus partie des pièces de cet emplacement."
 
 #. translators: 1: a preset's name. 2: a slot's key.
-#: src/Admin/Sentences.php:108
+#: src/Admin/Sentences.php:112
 #, php-format
 msgid "The preset \"%1$s\" names it for the slot \"%2$s\", and it is sold out."
 msgstr "Le modèle prêt « %1$s » la nomme pour l’emplacement « %2$s », et elle est en rupture de stock."
 
 #. translators: 1: a preset's name. 2: a slot's key.
-#: src/Admin/Sentences.php:111
+#: src/Admin/Sentences.php:115
 #, php-format
 msgid "The preset \"%1$s\" names it for the slot \"%2$s\", and it no longer fits the preset's other parts."
 msgstr "Le modèle prêt « %1$s » la nomme pour l’emplacement « %2$s », et elle n’est plus compatible avec les autres pièces du modèle prêt."
 
-#: src/Admin/Sentences.php:125
+#: src/Admin/Sentences.php:129
 msgid "Choose a CSV file first."
 msgstr "Choisissez d’abord un fichier CSV."
 
-#: src/Admin/Sentences.php:126
+#: src/Admin/Sentences.php:130
 msgid "The file did not arrive whole. Choose it again."
 msgstr "Le fichier n’est pas arrivé en entier. Choisissez-le de nouveau."
 
-#: src/Admin/Sentences.php:127
+#: src/Admin/Sentences.php:131
 msgid "That is not a .csv file. Save the sheet as CSV and choose it again."
 msgstr "Ce n’est pas un fichier .csv. Enregistrez la feuille en CSV et choisissez-la de nouveau."
 
-#: src/Admin/Sentences.php:128
+#: src/Admin/Sentences.php:132
 msgid "The file is over 2 MB. Split it into smaller files."
 msgstr "Le fichier dépasse 2 Mo. Divisez-le en fichiers plus petits."
 
-#: src/Admin/Sentences.php:129
+#: src/Admin/Sentences.php:133
 msgid "The file is not saved as UTF-8. Save it as CSV UTF-8 and choose it again."
 msgstr "Le fichier n’est pas enregistré en UTF-8. Enregistrez-le en CSV UTF-8 et choisissez-le de nouveau."
 
-#: src/Admin/Sentences.php:130
+#: src/Admin/Sentences.php:134
 msgid "The file has no rows under its headings."
 msgstr "Le fichier n’a aucune ligne sous ses en-têtes."
 
-#: src/Admin/Sentences.php:131
+#: src/Admin/Sentences.php:135
 msgid "The file has more than 5,000 rows. Split it into smaller files."
 msgstr "Le fichier compte plus de 5 000 lignes. Divisez-le en fichiers plus petits."
 
-#: src/Admin/Sentences.php:132
+#: src/Admin/Sentences.php:136
 msgid "The file has no column for what parts are matched by. Add an id or a sku column, or change the choice below."
 msgstr "Le fichier n’a pas de colonne qui sert à associer les pièces. Ajoutez une colonne id ou sku, ou changez le choix ci-dessous."
 
-#: src/Admin/Sentences.php:133
+#: src/Admin/Sentences.php:137
 msgid "A column is in the file twice. Keep one of each."
 msgstr "Une colonne figure deux fois dans le fichier. Gardez-en une de chaque."
 
-#: src/Admin/Sentences.php:134
+#: src/Admin/Sentences.php:138
 msgid "The file has no spec columns, so there is nothing to import."
 msgstr "Le fichier n’a aucune colonne de caractéristiques, donc il n’y a rien à importer."
 
-#: src/Admin/Sentences.php:135
+#: src/Admin/Sentences.php:139
 msgid "An import is running. Wait for it to finish."
 msgstr "Une importation est en cours. Attendez qu’elle se termine."
 
-#: src/Admin/Sentences.php:163
+#: src/Admin/Sentences.php:167
 msgid "The row does not say which part it is for."
 msgstr "La ligne n’indique pas à quelle pièce elle s’applique."
 
 #. translators: %s: an ID or a SKU.
-#: src/Admin/Sentences.php:165
+#: src/Admin/Sentences.php:169
 #, php-format
 msgid "\"%s\" is in the file more than once. Keep one row for it."
 msgstr "« %s » figure plus d’une fois dans le fichier. Gardez une seule ligne pour cette valeur."
 
 #. translators: %s: an ID or a SKU.
-#: src/Admin/Sentences.php:167
+#: src/Admin/Sentences.php:171
 #, php-format
 msgid "No product is \"%s\"."
 msgstr "Aucun produit ne correspond à « %s »."
 
 #. translators: %s: a SKU.
-#: src/Admin/Sentences.php:169
+#: src/Admin/Sentences.php:173
 #, php-format
 msgid "The product with this ID does not have the SKU \"%s\". Check the row is for this shop, or match parts by SKU."
 msgstr "Le produit qui a cet ID n’a pas l’UGS « %s ». Vérifiez que la ligne est bien pour ce magasin, ou associez les pièces par UGS."
 
 #. translators: %s: a chart's name.
-#: src/Admin/Sentences.php:171
+#: src/Admin/Sentences.php:175
 #, php-format
 msgid "There is no chart named \"%s\". Add it under Spec tables first."
 msgstr "Aucun tableau ne s’appelle « %s ». Ajoutez-le d’abord sous Tableaux de caractéristiques."
 
 #. translators: %s: a chart's name.
-#: src/Admin/Sentences.php:173
+#: src/Admin/Sentences.php:177
 #, php-format
 msgid "More than one chart is named \"%s\". Rename one under Spec tables."
 msgstr "Plus d’un tableau s’appelle « %s ». Renommez-en un sous Tableaux de caractéristiques."
 
 #. translators: %s: a size in a chart.
-#: src/Admin/Sentences.php:175
+#: src/Admin/Sentences.php:179
 #, php-format
 msgid "The chart has no size \"%s\"."
 msgstr "Le tableau n’a pas de taille « %s »."
 
-#: src/Admin/Sentences.php:176
+#: src/Admin/Sentences.php:180
 #: src/Admin/SpecTablesScreen.php:345
 msgid "The size is too long. Use 40 characters or fewer."
 msgstr "La taille est trop longue. Utilisez 40 caractères ou moins."
 
 #. translators: 1: a deck's width with its unit, such as 8.6 in. 2: another, such as 8.375 in.
-#: src/Admin/Sentences.php:178
+#: src/Admin/Sentences.php:182
 #, php-format
 msgid "The narrowest deck, %1$s, is wider than the widest deck, %2$s."
 msgstr "La planche la plus étroite, %1$s, est plus large que la planche la plus large, %2$s."
 
-#: src/Admin/Sentences.php:179
+#: src/Admin/Sentences.php:183
 #: src/Admin/SpecTablesScreen.php:328
 #: src/Admin/SpecTablesScreen.php:343
 msgid "That chart is no longer there."
 msgstr "Ce tableau n’existe plus."
 
 #. translators: %s: what a cell held.
-#: src/Admin/Sentences.php:181
+#: src/Admin/Sentences.php:185
 #, php-format
 msgid "\"%s\" is not a measurement. Use a number, or a fraction such as 8 1/4."
 msgstr "« %s » n’est pas une mesure. Utilisez un nombre, ou une fraction comme 8 1/4."
 
 #. translators: %s: what a cell held.
-#: src/Admin/Sentences.php:183
+#: src/Admin/Sentences.php:187
 #, php-format
 msgid "The fraction in \"%s\" divides by zero."
 msgstr "La fraction dans « %s » divise par zéro."
 
 #. translators: %s: what a cell held.
-#: src/Admin/Sentences.php:185
+#: src/Admin/Sentences.php:189
 #, php-format
 msgid "\"%s\" is below zero."
 msgstr "« %s » est inférieur à zéro."
 
 #. translators: %s: what a cell held.
-#: src/Admin/Sentences.php:187
+#: src/Admin/Sentences.php:191
 #, php-format
 msgid "\"%s\" is not a value this column takes."
 msgstr "« %s » n’est pas une valeur que cette colonne accepte."
 
 #. translators: %s: a field's name.
-#: src/Admin/Sentences.php:236
+#: src/Admin/Sentences.php:240
 #, php-format
 msgid "%s: fill this in."
 msgstr "%s : remplissez ce champ."
 
 #. translators: %s: a field's name.
-#: src/Admin/Sentences.php:238
+#: src/Admin/Sentences.php:242
 #, php-format
 msgid "%s: type a number, such as 0.25."
 msgstr "%s : tapez un nombre, comme 0.25."
 
 #. translators: 1: a field's name. 2: the most units a slot takes. 3: the most slots a kit takes. 4: the most presets a kit takes.
-#: src/Admin/Sentences.php:240
+#: src/Admin/Sentences.php:244
 #, php-format
 msgid "%1$s: this is more than the kit takes, or less. A slot takes 1 to %2$d units, a kit %3$d slots and %4$d presets, and text no more than its field allows."
 msgstr "%1$s : c’est plus ou moins que ce que l’ensemble accepte. Un emplacement accepte de 1 à %2$d unités, un ensemble %3$d emplacements et %4$d modèles prêts, et un texte pas plus long que ce que son champ permet."
 
 #. translators: %s: a field's name.
-#: src/Admin/Sentences.php:242
+#: src/Admin/Sentences.php:246
 #, php-format
 msgid "%s: the kit already has a slot of this kind. A kit takes one of each."
 msgstr "%s : l’ensemble a déjà un emplacement de ce type. Un ensemble en accepte un de chaque type."
 
 #. translators: %s: a field's name.
-#: src/Admin/Sentences.php:244
+#: src/Admin/Sentences.php:248
 #, php-format
 msgid "%s: the deck's slot must come first, since every other part is checked against the deck. Move it up."
 msgstr "%s : l’emplacement de la planche doit venir en premier, car chaque autre pièce est vérifiée par rapport à la planche. Déplacez-le vers le haut."
 
 #. translators: %s: a field's name.
-#: src/Admin/Sentences.php:246
+#: src/Admin/Sentences.php:250
 #, php-format
 msgid "%s: the risers' slot must come before the hardware's, since the bolts' length depends on the riser. Move it up."
 msgstr "%s : l’emplacement des risers doit venir avant celui de la quincaillerie, car la longueur des boulons dépend du riser. Déplacez-le vers le haut."
 
 #. translators: %s: a field's name.
-#: src/Admin/Sentences.php:248
+#: src/Admin/Sentences.php:252
 #, php-format
 msgid "%s: this must not be less than the figure before it."
 msgstr "%s : ce chiffre ne doit pas être inférieur au précédent."
 
 #. translators: %s: a field's name.
-#: src/Admin/Sentences.php:250
+#: src/Admin/Sentences.php:254
 #, php-format
 msgid "%s: the kit has no such slot now. Clear the part, or keep the slot."
 msgstr "%s : l’ensemble n’a plus cet emplacement. Retirez la pièce, ou gardez l’emplacement."
 
 #. translators: %s: a field's name.
-#: src/Admin/Sentences.php:252
+#: src/Admin/Sentences.php:256
 #, php-format
 msgid "%s: choose a part. A build must have one."
 msgstr "%s : choisissez une pièce. Un montage doit en avoir une."
 
-#: src/Admin/Sentences.php:253
+#: src/Admin/Sentences.php:257
 msgid "The slots were not saved. A preset the kit already has names a slot these leave out, or leaves empty one a build must now have. Put that preset right, or remove it, in the same save."
 msgstr "Les emplacements n’ont pas été enregistrés. Un modèle prêt de l’ensemble nomme un emplacement qui n’y figure plus, ou laisse vide un emplacement qu’un montage doit maintenant avoir. Corrigez ce modèle prêt, ou retirez-le, dans le même enregistrement."
 
 #. translators: %s: a field's name.
-#: src/Admin/Sentences.php:255
+#: src/Admin/Sentences.php:259
 #, php-format
 msgid "%s: type a wheelbase from 10 to 20 in, or leave it empty."
 msgstr "%s : tapez un empattement de 10 à 20 po, ou laissez le champ vide."
 
-#: src/Admin/Sentences.php:268
+#: src/Admin/Sentences.php:272
 msgid "Presets need the kit's slots. Put the slots right and save, then add the presets."
 msgstr "Les modèles prêts ont besoin des emplacements de l’ensemble. Corrigez les emplacements et enregistrez, puis ajoutez les modèles prêts."
 
 #. translators: 1: a field's name. 2: a product's name. 3: a slot's label.
-#: src/Admin/Sentences.php:270
+#: src/Admin/Sentences.php:274
 #, php-format
 msgid "%1$s: %2$s is not a part the %3$s slot takes, or it cannot be bought now."
 msgstr "%1$s : %2$s n’est pas une pièce que l’emplacement %3$s accepte, ou elle ne peut pas être achetée en ce moment."
 
 #. translators: 1: a field's name. 2: a product's name. 3: a rule's number, such as R1.
-#: src/Admin/Sentences.php:273
+#: src/Admin/Sentences.php:277
 #, php-format
 msgid "%1$s: %2$s lacks a spec that rule %3$s reads, so the builder does not offer it. Fill it in on its Part specs."
 msgstr "%1$s : il manque à %2$s une caractéristique que la règle %3$s lit, donc le configurateur ne la propose pas. Remplissez-la dans ses caractéristiques de pièce."
 
 #. translators: 1: a field's name. 2: a product's name. 3: a rule's number, such as R1. 4: a preset's name.
-#: src/Admin/Sentences.php:275
+#: src/Admin/Sentences.php:279
 #, php-format
 msgid "%1$s: %2$s does not fit the other parts of \"%4$s\". Rule %3$s does not let them go together."
 msgstr "%1$s : %2$s n’est pas compatible avec les autres pièces de « %4$s ». La règle %3$s ne permet pas de les assembler."
 
 #. translators: %s: a field's name.
-#: src/Admin/Sentences.php:277
+#: src/Admin/Sentences.php:281
 #, php-format
 msgid "%s: this is not a value the field takes."
 msgstr "%s : ce n’est pas une valeur que ce champ accepte."
 
 #. translators: %s: a section's name.
-#: src/Admin/Sentences.php:279
+#: src/Admin/Sentences.php:283
 #, php-format
 msgid "%s: what was sent could not be read. Load the page again and try once more."
 msgstr "%s : ce qui a été envoyé n’a pas pu être lu. Rechargez la page et réessayez."
@@ -4424,7 +4424,7 @@ msgstr[0] "Filtres, %s choisi"
 msgstr[1] "Filtres, %s choisis"
 
 #. translators: 1: a list of variations' IDs, such as 11, 12. 2: a slot's key, such as deck.
-#: src/Admin/Sentences.php:98
+#: src/Admin/Sentences.php:102
 #, php-format
 msgid "Its variations %1$s share a photo, so the builder shows them as one card in the slot \"%2$s\" and asks for the rest after the pick."
 msgstr "Ses variations %1$s ont la même photo : le configurateur les montre en une seule carte dans l’emplacement « %2$s » et demande le reste après le choix."
@@ -4471,13 +4471,13 @@ msgid "The part's cut-out on a transparent background, a PNG, WebP or AVIF from 
 msgstr "Le détourage de la pièce sur fond transparent, un PNG, WebP ou AVIF de la médiathèque. Choisissez-en un, ou saisissez l’ID de son fichier joint. Si le champ reste vide, l’illustration affiche la photo étiquetée de la pièce. L’image du produit et la galerie restent telles quelles : seule l’illustration du configurateur utilise cette image."
 
 #. translators: %s: a file's name.
-#: src/Admin/Sentences.php:207
+#: src/Admin/Sentences.php:211
 #, php-format
 msgid "Layer image was not saved: no image in the Media Library has the file name \"%s\"."
 msgstr "L’image de calque n’a pas été enregistrée : aucune image de la médiathèque n’a le nom de fichier « %s »."
 
 #. translators: 1: a file's name. 2: the attachment IDs of the images with that name, such as 12, 40.
-#: src/Admin/Sentences.php:209
+#: src/Admin/Sentences.php:213
 #, php-format
 msgid "Layer image was not saved: more than one image in the Media Library has the file name \"%1$s\" (IDs %2$s). Use the ID of the one you mean."
 msgstr "L’image de calque n’a pas été enregistrée : plusieurs images de la médiathèque ont le nom de fichier « %1$s » (ID %2$s). Utilisez l’ID de celle que vous voulez."
@@ -4495,7 +4495,7 @@ msgid "Brand or name, like %s"
 msgstr "Marque ou nom, comme %s"
 
 #. translators: 1: a deck's name, such as Hard Hat. 2: the width it is now, such as 8.5″.
-#: src/Front/Builder.php:272
+#: src/Front/Builder.php:298
 #, php-format
 msgid "%1$s is now %2$s."
 msgstr "%1$s est maintenant en %2$s."
@@ -4651,7 +4651,7 @@ msgid "Page %d"
 msgstr "Page %d"
 
 #. translators: %s: a field's name, Builder page.
-#: src/Admin/Sentences.php:257
+#: src/Admin/Sentences.php:261
 #, php-format
 msgid "%s: choose one of the pages listed, or the kit's own page. A page is listed when it is published and holds this kit's Builder block."
 msgstr "%s : choisissez une des pages de la liste, ou la page du kit. Une page est dans la liste si elle est publiée et a le bloc Configurateur de ce kit."
@@ -4730,13 +4730,13 @@ msgid "Width guide, row %1$d, %2$s"
 msgstr "Guide des largeurs, ligne %1$d, %2$s"
 
 #. translators: %s: a field's name.
-#: src/Admin/Sentences.php:259
+#: src/Admin/Sentences.php:263
 #, php-format
 msgid "%s: type a width from 5 to 12 in."
 msgstr "%s : tapez une largeur de 5 à 12 po."
 
 #. translators: %s: a field's name.
-#: src/Admin/Sentences.php:267
+#: src/Admin/Sentences.php:271
 #, php-format
 msgid "%s: the guide already has a row for this shoe size. Give each row its own."
 msgstr "%s : le guide a déjà une ligne pour cette pointure. Donnez à chaque ligne la sienne."
@@ -4759,11 +4759,11 @@ msgstr "Cochée, aucun ensemble ne propose les variations de ce produit, quelle 
 msgid "Ticked, no kit offers this part. It stays in the shop, and the Catalogue check lists it."
 msgstr "Cochée, aucun ensemble ne propose cette pièce. Elle reste en boutique, et la vérification du catalogue la liste."
 
-#: src/Admin/Sentences.php:101
+#: src/Admin/Sentences.php:105
 msgid "Not offered in the builder is ticked on its product's Part specs, so no kit offers it or the product's other variations."
 msgstr "« Non proposé dans le configurateur » est coché dans les caractéristiques de son produit, donc aucun ensemble ne la propose, ni les autres variations du produit."
 
-#: src/Admin/Sentences.php:102
+#: src/Admin/Sentences.php:106
 msgid "Not offered in the builder is ticked on its Part specs, so no kit offers it."
 msgstr "« Non proposé dans le configurateur » est coché dans ses caractéristiques, donc aucun ensemble ne la propose."
 
@@ -4842,13 +4842,13 @@ msgid "A number of business days, such as 2, or a range, such as 2-4, from 0 to 
 msgstr "Un nombre de jours ouvrables, par exemple 2, ou un intervalle, par exemple 2-4, de 0 à 60. Les clients ne le voient pas. Une extension qui donne une date de livraison peut en tenir compte. Laissez-le vide s’il n’y en a pas."
 
 #. translators: %s: a field's name, Assembly time in business days.
-#: src/Admin/Sentences.php:263
+#: src/Admin/Sentences.php:267
 #, php-format
 msgid "%s: type a number of business days, such as 2, or a range with the fewer first, such as 2-4."
 msgstr "%s : tapez un nombre de jours ouvrables, par exemple 2, ou un intervalle, le plus petit nombre d’abord, par exemple 2-4."
 
 #. translators: 1: a field's name, Assembly time in business days. 2: the most business days it may be, 60.
-#: src/Admin/Sentences.php:265
+#: src/Admin/Sentences.php:269
 #, php-format
 msgid "%1$s: type business days from 0 to %2$d, such as 2 or 2-4."
 msgstr "%1$s : tapez de 0 à %2$d jours ouvrables, par exemple 2 ou 2-4."
@@ -4969,7 +4969,7 @@ msgid "The kit's wheel guide was not saved. The Build tab shows it as you typed 
 msgstr "Le guide des roues de l’ensemble n’a pas été enregistré. L’onglet Montage l’affiche tel que vous l’avez saisi, avec ce qu’il faut corriger."
 
 #. translators: %s: the field, such as "Wheel guide, Street, Smallest wheel".
-#: src/Admin/Sentences.php:261
+#: src/Admin/Sentences.php:265
 #, php-format
 msgid "%s: type a size from 40 to 90 mm."
 msgstr "%s : tapez une taille de 40 à 90 mm."
@@ -5334,3 +5334,9 @@ msgstr "Boutons de figures"
 #: src/Admin/BuildTab.php:1125
 msgid "The 3D view offers buttons that play an ollie, a kickflip, a heelflip, a pop shove-it and a 360 flip. None plays until it is pressed."
 msgstr "La vue 3D propose des boutons qui jouent un ollie, un kickflip, un heelflip, un pop shove-it et un 360 flip. Aucun ne joue avant qu’on l’appuie."
+
+#. translators: %s: a spec's name, such as Nose length.
+#: src/Admin/Sentences.php:93
+#, php-format
+msgid "%s is not filled in, so the 3D view draws the usual one. The part is still offered."
+msgstr "Le champ %s est vide, donc la vue 3D dessine la valeur habituelle. La pièce est toujours offerte."

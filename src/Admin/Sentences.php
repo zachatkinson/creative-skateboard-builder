@@ -88,6 +88,10 @@ final class Sentences {
 				/* translators: 1: a spec's name. 2: a slot's key. */
 				return sprintf( __( '%1$s is missing, so the part is not offered in the slot "%2$s".', 'creative-skateboard-builder' ), $spec, $finding->slot );
 			case CatalogueCheck::ASSUMED:
+				if ( CatalogueCheck::SCENE_ASSUMED === ( $values['note'] ?? '' ) ) {
+					/* translators: %s: a spec's name, such as Nose length. */
+					return sprintf( __( '%s is not filled in, so the 3D view draws the usual one. The part is still offered.', 'creative-skateboard-builder' ), $spec );
+				}
 				/* translators: %s: a spec's name. */
 				return sprintf( __( '%s is not filled in, so the builder assumes the usual one.', 'creative-skateboard-builder' ), $spec );
 			case CatalogueCheck::LAYER_MISSING:
