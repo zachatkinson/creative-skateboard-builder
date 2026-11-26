@@ -9,7 +9,7 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-11-26T21:45:12+00:00\n"
+"POT-Creation-Date: 2026-11-26T22:29:43+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: creative-skateboard-builder\n"
@@ -5349,7 +5349,37 @@ msgstr ""
 msgid "Graphic close-up"
 msgstr ""
 
-#: templates/builder/three.php:40
+#: templates/builder/three.php:43
+msgctxt "a skateboard trick"
+msgid "Ollie"
+msgstr ""
+
+#: templates/builder/three.php:44
+msgctxt "a skateboard trick"
+msgid "Kickflip"
+msgstr ""
+
+#: templates/builder/three.php:45
+msgctxt "a skateboard trick"
+msgid "Heelflip"
+msgstr ""
+
+#: templates/builder/three.php:46
+msgctxt "a skateboard trick"
+msgid "Pop shove-it"
+msgstr ""
+
+#: templates/builder/three.php:47
+msgctxt "a skateboard trick"
+msgid "360 flip"
+msgstr ""
+
+#: templates/builder/three.php:50
+msgctxt "skateboard tricks the 3D view plays"
+msgid "Tricks"
+msgstr ""
+
+#: templates/builder/three.php:57
 msgid "The 3D view can’t be shown here, so the board is drawn flat."
 msgstr ""
 
