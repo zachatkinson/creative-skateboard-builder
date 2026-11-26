@@ -67,7 +67,8 @@ final class PrivacyTest extends CartTestCase {
 		self::assertSame( 'Street', $data['Name'] );
 		self::assertSame( 'Complete', $data['Kit'] );
 		self::assertStringContainsString( 'Deck', $data['Parts'] );
-		self::assertStringContainsString( ', and ', $data['Parts'], 'a list in the site\'s language, as WordPress joins one' );
+		self::assertStringEndsWith( ' and Grip', $data['Parts'], 'a list in the site\'s language, in the plugin\'s own words (D-460)' );
+		self::assertStringNotContainsString( ', and ', $data['Parts'] );
 		self::assertSame( 'Yes', $data['Assembly'] );
 		self::assertMatchesRegularExpression( '/\A\d{4}-\d\d-\d\d \d\d:\d\d:\d\d UTC\z/', $data['Saved first'] );
 		self::assertStringNotContainsString( 'Ben', (string) wp_json_encode( $export ) );

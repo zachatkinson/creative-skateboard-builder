@@ -91,6 +91,7 @@
 .cbuild.cbuild .cbuild-progress__list,
 .cbuild.cbuild .cbuild-cards,
 .cbuild.cbuild .cbuild-presets__tiles,
+.cbuild.cbuild .cbuild-guide__tiles,
 .cbuild.cbuild .cbuild-picture__items,
 .cbuild.cbuild .cbuild-review__items,
 .cbuild.cbuild .cbuild-changes__kept,
@@ -104,6 +105,7 @@
 .cbuild .cbuild-progress__step,
 .cbuild .cbuild-cards > li,
 .cbuild .cbuild-presets__tiles > li,
+.cbuild .cbuild-guide__tiles > li,
 .cbuild .cbuild-picture__items > li,
 .cbuild .cbuild-review__items > li,
 .cbuild .cbuild-changes__kept > li,
@@ -217,6 +219,27 @@
 }
 
 /*
+ * The block margins of the builder's own words at two classes' weight (D-419): a theme's margin for a paragraph, a
+ * heading or a list in its content, a class and an element as Kadence's `.single-content p` and `.single-content h3`,
+ * outranked the reset at no weight, and moved the review's lines, the guide's questions, a step's lead, the stage's
+ * words and the change panel. The builder spaces its words by its grids' gaps, so a paragraph, a list and the step's
+ * heading have none; a section's heading keeps the browser's own, which the builder was drawn with. Only the block
+ * margins: a list's marker and indent, and every colour and size, stay the theme's at no weight. The builder's own
+ * margins for these elements are set after this at its weight.
+ */
+.cbuild.cbuild :where(p, ul, ol, dl, dd, figure, h1, h2) {
+	margin-block: 0;
+}
+
+.cbuild.cbuild :where(h3) {
+	margin-block: 1em;
+}
+
+.cbuild.cbuild :where(h4) {
+	margin-block: 1.33em;
+}
+
+/*
  * The frame (spec: The layout): the rail across the top, then the stage and the panel, the footer pinned at the
  * panel's foot. Narrower than 64rem the stage sits on top, sticky at 40 to 45 % of the screen's height, and the panel
  * scrolls with the page under it; on a phone the board is turned a quarter turn to fill that space. From 64rem the
@@ -300,8 +323,12 @@
 }
 
 :where(.cbuild__heading + .cbuild-step__lead) {
-	margin-block-start: calc(var(--cbuild-gap-small) - var(--cbuild-gap));
 	color: var(--cbuild-muted);
+}
+
+/* Its margin at the words' reset's weight, after it (D-419). */
+.cbuild.cbuild :where(.cbuild__heading + .cbuild-step__lead) {
+	margin-block-start: calc(var(--cbuild-gap-small) - var(--cbuild-gap));
 }
 
 /* Full width, as the block is unless the editor chose otherwise (D-283), the stacked builder has no theme column to
@@ -611,6 +638,9 @@
 :where(.cbuild-errors__list) {
 	display: grid;
 	gap: 0.25rem;
+}
+
+.cbuild.cbuild :where(.cbuild-errors__list) {
 	margin-block-start: var(--cbuild-gap-small);
 }
 
@@ -864,8 +894,11 @@
 	margin-block-end: var(--cbuild-gap-small);
 }
 
-:where(.cbuild-width__none) {
+.cbuild.cbuild :where(.cbuild-width__none) {
 	margin-block: var(--cbuild-gap-small) 0;
+}
+
+:where(.cbuild-width__none) {
 	color: var(--cbuild-muted);
 	font-size: var(--cbuild-small);
 }
@@ -956,6 +989,12 @@
 	box-shadow: 0 0 0 4px var(--cbuild-focus-contrast);
 }
 
+/* The place above the cards for another plugin's element (#151): out of the layout while it holds nothing, so a shop
+   with no such plugin sees no gap. */
+:where(.cbuild-step__above-cards:empty) {
+	display: none;
+}
+
 /* The brand chips in one row on a desktop (#98), a "priority+" row: the store measures which chips fit beside
    "N more" and marks the rest past the row. A chip past the row, and the button with nothing to open, leave the flow
    and the sight of every reader but keep their widths, so the store can measure them. Without the script nothing is
@@ -1020,6 +1059,32 @@
 			overflow: clip;
 			animation: cbuild-unclip 0s 4s forwards;
 		}
+	}
+}
+
+@media (scripting: enabled) {
+	/* After an answer that changes the brands, the store lays the row out again over a frame or three: until it has, the
+	   row keeps to one line, its chips side by side at their own widths and the rest clipped, so chips it has not
+	   measured never draw a second line that the fold then takes away (F30, D-405). One line is a chip's height on any
+	   theme, with or without its border counted in. Not while the shopper has opened the rest. Back to wrapping after
+	   4 s, as above, should the store never finish. */
+	@container cbuild (width >= 48rem) {
+		.cbuild .cbuild-chips__options--laying {
+			flex-wrap: nowrap;
+			overflow: clip;
+			animation: cbuild-rewrap 0s 4s forwards;
+		}
+
+		.cbuild .cbuild-chips__options--laying > * {
+			flex-shrink: 0;
+		}
+	}
+}
+
+@keyframes cbuild-rewrap {
+	to {
+		flex-wrap: wrap;
+		overflow: visible;
 	}
 }
 
@@ -1200,50 +1265,43 @@
 	z-index: 1;
 }
 
+/*
+ * Every step's card puts the part's picture at its start, beside its words, as the deck step's compact cards do
+ * (#131, D-391): a square 5rem box, the size the square product photos of trucks, wheels and bearings still show
+ * their colour and finish at, then the brand, the name and the look, the full price large and what it changes in
+ * smaller type (D-249). The box is square whatever the image, which is fitted into it, so nothing moves as it loads:
+ * by its shape, not a height, which a theme's `img { height: auto }` would win over. The words take the rest of the
+ * card's width, the theme's smallest step from the picture, and the chosen card's tick sits on the picture's corner
+ * rather than over them, so they wrap no more than beside the 5.5rem photo phones had before.
+ */
 :where(.cbuild-card__body) {
 	display: grid;
-	grid-template-columns: minmax(0, 1fr);
-	align-content: start;
-	gap: 0.125rem;
+	grid-template-columns: 5rem minmax(0, 1fr);
+	align-content: center;
+	gap: 0.125rem var(--cbuild-gap-small);
 	cursor: pointer;
 }
 
-/* The prototype's card: the photo large on top, then the brand, the name and the look, the full price large and
-   what it changes in smaller type (D-249). On a phone, where a card spans the panel, the photo sits beside the
-   words, so a long step isn't a column of photos. */
+:where(.cbuild-card__body > :not(.cbuild-card__photo)) {
+	grid-column: 2;
+}
+
 :where(.cbuild-card__photo) {
-	inline-size: 100%;
+	grid-row: 1 / span 4;
+	align-self: center;
+	inline-size: 5rem;
 	block-size: auto;
 	aspect-ratio: 1;
-	margin-block-end: var(--cbuild-gap-small);
 	object-fit: contain;
 	border-radius: calc(var(--cbuild-radius) / 2);
 }
 
-@container cbuild (max-width: 47.99rem) {
-	:where(.cbuild-card__body) {
-		grid-template-columns: 5.5rem minmax(0, 1fr);
-		column-gap: var(--cbuild-gap-small);
-	}
+:where(.cbuild-card__body:not(:has(> .cbuild-card__photo:not([hidden])))) {
+	grid-template-columns: minmax(0, 1fr);
+}
 
-	:where(.cbuild-card__body > :not(.cbuild-card__photo)) {
-		grid-column: 2;
-	}
-
-	:where(.cbuild-card__photo) {
-		grid-row: 1 / span 4;
-		margin-block-end: 0;
-	}
-
-	:where(.cbuild-card__body:not(:has(> .cbuild-card__photo:not([hidden])))) {
-		grid-template-columns: minmax(0, 1fr);
-	}
-
-	:where(
-		.cbuild-card__body:not(:has(> .cbuild-card__photo:not([hidden]))) > *
-	) {
-		grid-column: 1;
-	}
+:where(.cbuild-card__body:not(:has(> .cbuild-card__photo:not([hidden]))) > *) {
+	grid-column: 1;
 }
 
 // The card's details, which describe its radio: a grid of its own, not display: contents, which older Safari left
@@ -1296,6 +1354,43 @@
 	font-size: var(--cbuild-small);
 }
 
+/* A part's rating beside its price where the card has room, under it where it hasn't, and a ready build's pick on its
+   own line under the stock and the fit (#137, D-392, D-393): a card with both grows by a line at most, wherever its
+   price row has room. Five stars, filled to the nearest half from the line's start, and the short score are seen;
+   the sentence is what is said. */
+:where(.cbuild-card__priced) {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 0 0.5rem;
+}
+
+:where(.cbuild-card__picked) {
+	font-size: var(--cbuild-small);
+	font-weight: 600;
+}
+
+:where(.cbuild-card__rating) {
+	display: flex;
+	align-items: center;
+	gap: 0 0.25rem;
+	color: var(--cbuild-muted);
+	font-size: var(--cbuild-small);
+	white-space: nowrap;
+}
+
+/* One star before the score, as "★ 4.5 (2)": five in a row did not fit beside a price on a desktop's card (D-393). */
+:where(.cbuild-card__star) {
+	flex: none;
+	inline-size: 1em;
+	block-size: 1em;
+	background: var(--cbuild-text);
+	mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 2.5l2.9 6.1 6.6.8-4.9 4.6 1.3 6.6L12 17.3l-5.9 3.3 1.3-6.6-4.9-4.6 6.6-.8z'/%3E%3C/svg%3E")
+		center / contain no-repeat;
+	// Drawn, never pressed: a press on it is the card's, as on its words.
+	pointer-events: none;
+}
+
 /* A card with no notes leaves no gap for them; the list holds its template, so it is never :empty. */
 :where(.cbuild-card__notes:not(:has(li))) {
 	display: none;
@@ -1305,9 +1400,59 @@
 	font-size: var(--cbuild-small);
 }
 
+/* Smart swaps (#135, D-397): links under the picked card and under a review row, over the card's radio, which lies
+   over the whole card. Only the picked card has any, so a plain card is as tall as before. */
+:where(.cbuild-card__swaps, .cbuild-review__swaps) {
+	position: relative;
+	z-index: 1;
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.25rem var(--cbuild-gap-small);
+}
+
+:where(.cbuild-review__swaps) {
+	grid-column: 2 / -1;
+}
+
+:where(.cbuild-swap:not(.cbuild-button)) {
+	display: inline-flex;
+	align-items: center;
+	min-block-size: 1.5rem;
+	font-size: var(--cbuild-small);
+}
+
+/* A list whose picked card has swaps keeps each card its own height, so the line they take makes no plain card in its
+   row taller (#135, D-397). */
+:where(.cbuild-cards:has(.cbuild-card__swaps:not([hidden])) > li) {
+	align-self: start;
+}
+
+/* After a swap: what it swapped, and Undo. */
+:where(.cbuild-swapped) {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 0.25rem var(--cbuild-gap-small);
+	padding: var(--cbuild-gap-small) var(--cbuild-gap);
+	border: 1px solid var(--cbuild-line);
+	border-inline-start: 0.25rem solid var(--cbuild-accent);
+	border-radius: var(--cbuild-radius);
+	background: var(--cbuild-surface);
+}
+
+:where(.cbuild-swapped__undo) {
+	display: inline-flex;
+	align-items: center;
+	min-block-size: 1.5rem;
+}
+
 /* A link on its own line in the card: a phone's 44 px target (spec: Targets), its words still small. */
 @container cbuild (max-width: 47.99rem) {
-	:where(.cbuild-card__page) {
+	:where(
+		.cbuild-card__page,
+		.cbuild-swap:not(.cbuild-button),
+		.cbuild-swapped__undo
+	) {
 		display: inline-flex;
 		align-items: center;
 		min-block-size: var(--cbuild-target);
@@ -1316,8 +1461,8 @@
 
 /*
  * The deck step's compact cards (F14, #99): the deck small and upright at the start, its board's cut-out on the
- * card's own ground, or its photo; then the brand, the name, the price and its change on one line, and the widths
- * and the stock, about 134 px high. At most two columns, so six show at once on a desktop, and one in a panel
+ * card's own ground, or its photo; then the brand, the name, the price, its change and the stock on one line where
+ * they fit, and the widths, named or counted (D-399), about 134 px high. At most two columns, so six show at once on a desktop, and one in a panel
  * narrower than two of them, a phone's. The picture's box is the column's width and 7rem tall, whatever the image
  * (BuilderView's CARD_DECK), so nothing moves as it loads; the image is fitted into it. The words keep clear of the
  * chosen card's tick, picked or not, so a pick moves nothing. The picture and the words are the builder's gap apart,
@@ -1336,34 +1481,26 @@
 :where(.cbuild-cards--compact) :where(.cbuild-card__body) {
 	grid-template-columns: 3.5rem minmax(0, 1fr);
 	column-gap: var(--cbuild-gap);
-	align-content: center;
 	padding-inline-end: 1.75rem;
 }
 
-:where(.cbuild-cards--compact)
-	:where(.cbuild-card__body > :not(.cbuild-card__photo)) {
-	grid-column: 2;
-}
-
 :where(.cbuild-cards--compact) :where(.cbuild-card__photo) {
-	grid-row: 1 / span 4;
-	align-self: center;
 	inline-size: 100%;
 	block-size: 7rem;
 	aspect-ratio: auto;
-	margin-block-end: 0;
+}
+
+// The deck's box is 7rem tall whatever the theme (F31, D-399). Kadence and Storefront set `img { height: auto }`, which
+// outranks a `:where()` rule, so a deck's upright layer image was drawn at the column's width and its own shape, 211 px
+// tall, and the card with it; and before the script, a lazy photo whose `sizes` starts with core's `auto` took core's
+// 1,500 px placeholder height. Set at `.cbuild` weight, as the theme's lists are (D-321).
+.cbuild .cbuild-cards--compact .cbuild-card__photo {
+	block-size: 7rem;
 }
 
 :where(.cbuild-cards--compact)
 	:where(.cbuild-card__body:not(:has(> .cbuild-card__photo:not([hidden])))) {
 	grid-template-columns: minmax(0, 1fr);
-}
-
-:where(.cbuild-cards--compact)
-	:where(
-		.cbuild-card__body:not(:has(> .cbuild-card__photo:not([hidden]))) > *
-	) {
-	grid-column: 1;
 }
 
 :where(.cbuild-cards--compact) :where(.cbuild-card__about) {
@@ -1378,8 +1515,9 @@
 	flex-basis: 100%;
 }
 
+// The stock beside the price and its change where the line has room, so a deck's card is a line shorter (F31, D-399).
 :where(.cbuild-cards--compact)
-	:where(.cbuild-card__price, .cbuild-card__delta) {
+	:where(.cbuild-card__priced, .cbuild-card__delta, .cbuild-card__stock) {
 	flex-basis: auto;
 }
 
@@ -1432,6 +1570,24 @@
 		center / 100% no-repeat;
 }
 
+/* Beside a square picture the tick sits on the picture's corner, in its column, so the words keep their width (#131,
+   D-391). A deck's compact card keeps it at the end, its words clear of it (D-322). */
+:where(
+	.cbuild-cards:not(.cbuild-cards--compact)
+		.cbuild-card:has(
+			> .cbuild-card__body > .cbuild-card__photo:not([hidden])
+		)
+)::before,
+:where(
+	.cbuild-cards:not(.cbuild-cards--compact)
+		.cbuild-card:has(
+			> .cbuild-card__body > .cbuild-card__photo:not([hidden])
+		)
+)::after {
+	inset-inline-start: var(--cbuild-gap-small);
+	inset-inline-end: auto;
+}
+
 :where(.cbuild-card--sold-out) :where(.cbuild-card__body) {
 	cursor: not-allowed;
 }
@@ -1449,6 +1605,9 @@
 :where(.cbuild-hidden__groups, .cbuild-hidden__parts) {
 	display: grid;
 	gap: 0.25rem;
+}
+
+.cbuild.cbuild :where(.cbuild-hidden__groups, .cbuild-hidden__parts) {
 	margin-block-start: var(--cbuild-gap-small);
 }
 
@@ -1594,8 +1753,8 @@
 	clip-path: polygon(14% 44%, 0 59%, 39% 100%, 100% 22%, 86% 8%, 39% 72%);
 }
 
-:where(.cbuild-picture__heading) {
-	margin: 0;
+.cbuild.cbuild :where(.cbuild-picture__heading) {
+	margin-block: 0;
 }
 
 :where(.cbuild-picture__side) {
@@ -1610,12 +1769,16 @@
 	box-sizing: border-box;
 	block-size: min(60vh, 36rem);
 	aspect-ratio: 1 / 4;
-	margin: var(--cbuild-gap) auto;
+	margin-inline: auto;
 	padding: var(--cbuild-gap-small);
 	border: 2px dashed var(--cbuild-line);
 	border-radius: 999px;
 	color: var(--cbuild-muted);
 	text-align: center;
+}
+
+.cbuild.cbuild :where(.cbuild-picture__empty) {
+	margin-block: var(--cbuild-gap);
 }
 
 /*
@@ -1766,6 +1929,10 @@
 	grid-template-rows: minmax(0, 1fr);
 	grid-auto-rows: auto;
 	min-block-size: 0;
+}
+
+.cbuild.cbuild
+	:where(.cbuild__stage .cbuild-picture--hero .cbuild-picture__items) {
 	margin-block: var(--cbuild-gap-small);
 }
 
@@ -1893,7 +2060,8 @@
 	gap: var(--cbuild-gap-small);
 }
 
-:where(.cbuild-presets__tiles) {
+/* The ready builds' tiles, and the guided start's builds in the same tiles (#134). */
+:where(.cbuild-presets__tiles, .cbuild-guide__tiles) {
 	display: grid;
 	grid-template-columns: repeat(auto-fill, minmax(min(100%, 15rem), 1fr));
 	gap: var(--cbuild-gap-small);
@@ -1914,6 +2082,12 @@
 	object-fit: contain;
 }
 
+/* A tile's lines sit close, at two classes' weight: a theme's margin for a paragraph in its content, a class and an
+   element as Kadence's `.single-content p`, outranked the reset at no weight and put 32 px under each (D-418). */
+.cbuild-preset .cbuild-preset__form > p {
+	margin: 0;
+}
+
 :where(.cbuild-preset__name, .cbuild-preset__total) {
 	font-weight: 600;
 }
@@ -1921,6 +2095,63 @@
 :where(.cbuild-preset__description, .cbuild-preset__notes) {
 	color: var(--cbuild-muted);
 	font-size: var(--cbuild-small);
+}
+
+/* The guided start (#134): a disclosure at the start, its questions one form, and the builds it recommends. */
+:where(.cbuild-guide, .cbuild-guide__builds, .cbuild-guide__form) {
+	display: grid;
+	gap: var(--cbuild-gap-small);
+}
+
+:where(.cbuild-guide__summary) {
+	display: inline-flex;
+	align-items: center;
+	min-block-size: var(--cbuild-target);
+	font-weight: 600;
+	text-decoration: underline;
+	cursor: pointer;
+}
+
+.cbuild :where(.cbuild-guide__question) {
+	display: grid;
+	gap: 0.25rem;
+}
+
+:where(.cbuild-guide__question > legend) {
+	margin-block-end: 0.25rem;
+	font-weight: 600;
+}
+
+/* Each answer a whole row of target height, so a thumb can press its words as well as its circle. */
+:where(.cbuild-guide__choice) {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+	min-block-size: var(--cbuild-target);
+	cursor: pointer;
+}
+
+:where(.cbuild-guide__hint, .cbuild-guide__reasons, .cbuild-guide__none) {
+	color: var(--cbuild-muted);
+	font-size: var(--cbuild-small);
+}
+
+:where(.cbuild-guide__budget) {
+	inline-size: 8rem;
+	min-block-size: var(--cbuild-target);
+}
+
+:where(.cbuild-guide__actions) {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--cbuild-gap-small);
+}
+
+:where(.cbuild-guide__skip, .cbuild-guide__width) {
+	display: inline-flex;
+	align-items: center;
+	min-block-size: var(--cbuild-target);
 }
 
 /* The change panel and the review. */
@@ -1939,10 +2170,11 @@
 	font-size: var(--cbuild-small);
 }
 
-/* A row of the review, as the prototype has it: the slot, the part with its fit under it, the price, and Change. */
+/* A row of the review, as the prototype has it: the slot, the part with its fit under it, the price, and Change, after
+   the part's thumbnail (#132, D-403). */
 :where(.cbuild-review__item) {
 	display: grid;
-	grid-template-columns: minmax(5rem, auto) minmax(0, 1fr) auto auto;
+	grid-template-columns: 3rem minmax(5rem, auto) minmax(0, 1fr) auto auto;
 	align-items: center;
 	gap: 0 var(--cbuild-gap-small);
 	padding: var(--cbuild-gap-small);
@@ -1951,57 +2183,80 @@
 	background: var(--cbuild-surface);
 }
 
+/* The thumbnail's place, a 3rem square kept whether or not the part has a picture, so nothing moves as it loads or
+   from row to row. Square by its inline size and shape, as the cards' (D-391): a theme's img { height: auto } outranks
+   :where(). The picture is fitted into it whole. */
+:where(.cbuild-review__thumb) {
+	display: block;
+	grid-area: 1 / 1 / span 2;
+	align-self: center;
+	inline-size: 3rem;
+	aspect-ratio: 1;
+}
+
+:where(.cbuild-review__photo) {
+	display: block;
+	inline-size: 100%;
+	block-size: auto;
+	aspect-ratio: 1;
+	object-fit: contain;
+	border-radius: calc(var(--cbuild-radius) / 2);
+}
+
 :where(.cbuild-review__slot) {
-	grid-row: 1 / span 2;
+	grid-area: 1 / 2 / span 2;
 	color: var(--cbuild-muted);
 	font-size: var(--cbuild-small);
 }
 
 :where(.cbuild-review__name) {
-	grid-column: 2;
+	grid-column: 3;
 	font-weight: 600;
 }
 
 :where(.cbuild-review__fit) {
-	grid-column: 2;
+	grid-column: 3;
 	color: var(--cbuild-muted);
 	font-size: var(--cbuild-small);
 }
 
 :where(.cbuild-review__amount) {
-	grid-area: 1 / 3 / span 2;
+	grid-area: 1 / 4 / span 2;
 	font-variant-numeric: tabular-nums;
 	white-space: nowrap;
 }
 
 :where(.cbuild-review__change) {
-	grid-area: 1 / 4 / span 2;
+	grid-area: 1 / 5 / span 2;
 	padding-inline: 0.875rem;
 	font-size: 1rem;
 	text-decoration: none;
 }
 
-/* Narrow: the slot over the part, the price and Change beside them. */
+/* Narrow: the thumbnail, then the slot over the part, the price and Change beside them. */
 @container cbuild (max-width: 30rem) {
 	:where(.cbuild-review__item) {
-		grid-template-columns: minmax(0, 1fr) auto auto;
+		grid-template-columns: 3rem minmax(0, 1fr) auto auto;
+	}
+
+	:where(.cbuild-review__thumb) {
+		grid-row: 1 / span 3;
 	}
 
 	:where(.cbuild-review__slot) {
-		grid-row: auto;
-		grid-column: 1;
+		grid-area: auto / 2;
 	}
 
 	:where(.cbuild-review__name, .cbuild-review__fit) {
-		grid-column: 1;
+		grid-column: 2;
 	}
 
 	:where(.cbuild-review__amount) {
-		grid-area: 1 / 2 / span 3;
+		grid-area: 1 / 3 / span 3;
 	}
 
 	:where(.cbuild-review__change) {
-		grid-area: 1 / 3 / span 3;
+		grid-area: 1 / 4 / span 3;
 	}
 }
 
@@ -2070,6 +2325,33 @@
 	:where(form) {
 		margin: 0;
 	}
+}
+
+/*
+ * A part picked, outlined (#138, D-413): each layer's ::after, drawn over its box and hidden. The motion module shows
+ * it for 600 ms by transform and opacity, or where motion is calm by `data-outlined` and a fade. It sits inside the
+ * layer's box, so it reaches past nothing and lays nothing out again. The board's top paints its deck and grip
+ * through their outline as a mask, which would cut a ring away: there the part's own shape is tinted instead.
+ */
+:where(.cbuild-board__layer)::after {
+	position: absolute;
+	box-sizing: border-box;
+	border: 2px solid var(--cbuild-accent);
+	border-radius: 4px;
+	content: "";
+	inset: 0;
+	opacity: 0;
+	pointer-events: none;
+}
+
+:where(.cbuild-board__layer[data-outlined])::after {
+	opacity: 1;
+}
+
+:where(.cbuild-board--top)
+	:where(.cbuild-board__layer--deck, .cbuild-board__layer--grip)::after {
+	border: 0;
+	background: color-mix(in srgb, var(--cbuild-accent) 35%, transparent);
 }
 
 /*
@@ -2174,6 +2456,11 @@
 
 	:where(.cbuild-button--primary, .cbuild-step__next) {
 		border: 2px solid ButtonText;
+	}
+
+	/* A part picked is outlined in the system's highlight (D-413). */
+	:where(.cbuild-board__layer)::after {
+		border-color: Highlight;
 	}
 
 	/* The board's top is a picture, as its images are: its maple is not the system's ground. */
@@ -2334,8 +2621,9 @@
 }
 
 /* The footer's buttons at the reader's own base size, not a theme's larger body text, so Back and Next fit beside
-   the total on a phone. */
-:where(.cbuild-bar__next, .cbuild-bar__back) {
+   the total on a phone. At two classes' weight, as the plain button's reset (D-321): a theme's padding for every
+   `button` outweighed it at no weight and put the bar's buttons under the total (D-417). */
+.cbuild.cbuild :where(.cbuild-bar__next, .cbuild-bar__back) {
 	flex: none;
 	padding-inline: 0.875rem;
 	font-size: 1rem;
@@ -2429,6 +2717,14 @@
 	gap: 0.25rem;
 	color: var(--cbuild-muted);
 	font-size: var(--cbuild-small);
+}
+
+/* Their lines are spaced by the gap alone, at two classes' weight: a theme's margin for a paragraph or a list in its
+   content, as Kadence's `.single-content p` (a class and an element), outranked the reset at no weight, 32 px under
+   each line on a phone at the review (#150, D-417). */
+.cbuild-bar .cbuild-bar__more-lines > * {
+	margin: 0;
+	padding: 0;
 }
 
 @container cbuild (min-width: 64rem) {

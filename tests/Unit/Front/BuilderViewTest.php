@@ -9,7 +9,11 @@ declare( strict_types=1 );
 
 namespace CreativeBranding\SkateboardBuilder\Tests\Unit\Front;
 
+use CreativeBranding\SkateboardBuilder\Domain\Guide\Span;
+use CreativeBranding\SkateboardBuilder\Domain\Guide\Tier;
+use CreativeBranding\SkateboardBuilder\Domain\Kit\Kit;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\SlotKey;
+use CreativeBranding\SkateboardBuilder\Domain\Measure\Measure;
 use CreativeBranding\SkateboardBuilder\Front\BuilderView;
 use CreativeBranding\SkateboardBuilder\Front\BuildLink;
 use CreativeBranding\SkateboardBuilder\Service\BuildState;
@@ -45,6 +49,10 @@ final class BuilderViewTest extends TestCase {
 		);
 		$this->kits = new InMemoryKits();
 		$this->kits->add( self::KIT, KitDocuments::kit( $slots ), Shop::parts() + array( 'stickers' => array() ) );
+	}
+
+	protected function tearDown(): void {
+		unset( $GLOBALS['cbuild_test_filters'] );
 	}
 
 	/**
@@ -261,6 +269,49 @@ final class BuilderViewTest extends TestCase {
 			'a list, as the template iterates it and the store reads it from JSON, not a map by slot'
 		);
 		self::assertTrue( $tiles[1]['hasTotal'], 'a part sold out still counts' );
+	}
+
+	// D-408: a build the guide recommends shows its deck's card picture, which is the deck's layer image where it has no
+	// photo (D-282). That picture is marked drawn, as the card's is, so a plugin that flags the layer image alone finds
+	// it; a photo is not, and a part's classes are merged either way (D-309).
+	public function test_a_guide_tile_showing_a_decks_layer_image_is_marked_drawn_and_a_photo_is_not(): void {
+		$state = ( new BuildState( $this->kits, new InMemoryShopSettings(), new FakeLogger() ) )->of( self::KIT, array(), null, SlotKey::DECK );
+		self::assertNotNull( $state );
+		$image = array(
+			'src'    => 'https://shop.test/deck.png',
+			'width'  => 76,
+			'height' => 300,
+			'srcset' => '',
+			'sizes'  => '',
+		);
+		$build = static fn( \CreativeBranding\SkateboardBuilder\Domain\Guide\Tier $tier, int $deck, bool $drawn ): array => array(
+			'tier'  => $tier,
+			'picks' => array( SlotKey::DECK => $deck ),
+			'total' => '$100.00',
+			'image' => $image,
+			'drawn' => $drawn,
+		);
+		$GLOBALS['cbuild_test_filters']['cbuild_part_classes'] = static fn( array $classes, int $part ): array => 31 === $part ? array( 'is-flagged' ) : $classes;
+		try {
+			$guide = BuilderView::guide(
+				$state,
+				array(),
+				new BuildLink(),
+				self::BASE,
+				array(
+					'builds' => array(
+						$build( \CreativeBranding\SkateboardBuilder\Domain\Guide\Tier::Budget, 31, true ),
+						$build( \CreativeBranding\SkateboardBuilder\Domain\Guide\Tier::Premium, 32, false ),
+					),
+				)
+			);
+		} finally {
+			unset( $GLOBALS['cbuild_test_filters'] );
+		}
+		self::assertSame(
+			array( 'cbuild-preset__photo cbuild-preset__photo--drawn is-flagged', 'cbuild-preset__photo' ),
+			array_column( $guide['tiles'], 'photoClasses' )
+		);
 	}
 
 	// The auditor's 1.1.0 should-fix 2: the answer lists every ready build, each saying whether it is shown, and the
@@ -680,5 +731,438 @@ final class BuilderViewTest extends TestCase {
 		self::assertSame( array( false, false, true ), array( $view['isStep'], $view['isReview'], $view['isChanges'] ) );
 
 		self::assertFalse( $this->reopened( array() )['changes']['hasItems'], 'a build changed only in price has no items' );
+	}
+
+	/**
+	 * The guided start's view (#134) at the kit's start, or at the step and picks the link has.
+	 *
+	 * @param BuildLink                 $link        The address.
+	 * @param array<string, mixed>|null $recommended What the guided start recommends, or null where not asked.
+	 * @param array<string, mixed>|null $settings    The kit's settings document, or null for none.
+	 * @return array<string, mixed>
+	 */
+	private function guide( BuildLink $link, ?array $recommended = null, ?array $settings = null ): array {
+		if ( null !== $settings ) {
+			$slots            = KitDocuments::slots();
+			$slots['slots'][] = array(
+				'key'      => 'stickers',
+				'label'    => 'Stickers',
+				'required' => false,
+				'units'    => 1,
+			);
+			$kit              = Kit::fromDocuments( $slots, KitDocuments::rules(), KitDocuments::presets(), KitDocuments::assembly(), null, null, array( 'schema_version' => 1 ) + $settings );
+			$this->kits->add( self::KIT, $kit, Shop::parts() + array( 'stickers' => array() ) );
+		}
+		$state = ( new BuildState( $this->kits, new InMemoryShopSettings(), new FakeLogger() ) )->of( self::KIT, $link->picks, null, $link->step );
+		self::assertNotNull( $state );
+		return BuilderView::guide( $state, array( 'currency' => array( 'symbol' => '$' ) ), $link, self::BASE, $recommended );
+	}
+
+	/**
+	 * A choice of the guided start's questions.
+	 *
+	 * @return array{value: string, label: string, checked: bool}
+	 */
+	private static function choice( string $value, string $label, bool $checked ): array {
+		return compact( 'value', 'label', 'checked' );
+	}
+
+	// #134: Help me choose's questions at the builder's start, as a GET form under cbuild[_guide], each answer the
+	// shopper gave checked, "Not sure" checked where they gave none, the budget as typed, and Skip to the page itself.
+	public function test_the_guided_starts_questions_are_a_form_with_each_answer_given_checked(): void {
+		$link = BuildLink::read(
+			array(
+				'_guide' => array(
+					'shoe'   => '1',
+					'style'  => 'park',
+					'budget' => '150',
+				),
+			)
+		);
+		self::assertSame(
+			array(
+				'offered' => true,
+				'shown'   => true,
+				'asked'   => false,
+				'summary' => 'Help me choose',
+				'intro'   => 'Answer what you know and leave the rest. Each answer is optional.',
+				'shoe'    => array(
+					'shown'   => true,
+					'legend'  => 'Your shoe size (US)',
+					'name'    => 'cbuild[_guide][shoe]',
+					'choices' => array(
+						self::choice( '', 'Not sure', false ),
+						self::choice( '0', '6.5 or smaller', false ),
+						self::choice( '1', '7 to 8', true ),
+						self::choice( '2', '8.5 to 9', false ),
+						self::choice( '3', '9.5 and larger', false ),
+					),
+				),
+				'style'   => array(
+					'legend'  => 'Where do you skate?',
+					'name'    => 'cbuild[_guide][style]',
+					'choices' => array(
+						self::choice( '', 'Not sure', false ),
+						self::choice( 'street', 'Street', false ),
+						self::choice( 'park', 'Skatepark', true ),
+						self::choice( 'bowl', 'Bowl and transition', false ),
+						self::choice( 'cruising', 'Cruising', false ),
+					),
+				),
+				'budget'  => array(
+					'label' => 'Your budget ($)',
+					'hint'  => 'A whole amount. Leave it empty for any.',
+					'name'  => 'cbuild[_guide][budget]',
+					'value' => '150',
+				),
+				'asks'    => array(
+					'name'  => 'cbuild[_guide][asked]',
+					'value' => '1',
+				),
+				'submit'  => 'Show builds',
+				'skip'    => array(
+					'url'  => self::BASE,
+					'text' => 'Skip to the builder',
+				),
+				'heading' => 'Builds for you',
+				'reasons' => array(),
+				'tiles'   => array(),
+				'hasNone' => false,
+				'none'    => 'The shop cannot make a build from these answers right now. Leave one blank, or skip to the builder.',
+				'width'   => array(
+					'shown' => false,
+					'url'   => '',
+					'text'  => '',
+				),
+			),
+			$this->guide( $link )
+		);
+
+		$blank = $this->guide( new BuildLink() );
+		self::assertSame( array( true, false, false, false, false ), array_column( $blank['shoe']['choices'], 'checked' ), 'nothing answered is Not sure' );
+		self::assertSame( array( true, false, false, false, false ), array_column( $blank['style']['choices'], 'checked' ) );
+		self::assertSame( '', $blank['budget']['value'] );
+	}
+
+	// #134, D-404: the questions show at the start alone, until a width is pressed, which is the shopper's own answer;
+	// builds asked for stay with the width they bring. A kit's Help me choose off, or a plugin's answer, draws none.
+	public function test_the_guided_start_shows_at_the_start_until_a_width_is_pressed_and_only_where_it_is_offered(): void {
+		$asked = array( 'builds' => array() );
+		$width = ( new BuildLink() )->shelved( new \CreativeBranding\SkateboardBuilder\Service\ShelfQuery( '8in' ) );
+		$shown = fn( BuildLink $link, ?array $recommended ): array => array_intersect_key( $this->guide( $link, $recommended ), array_flip( array( 'offered', 'shown', 'asked', 'summary' ) ) );
+
+		self::assertSame( array( 'offered' => true, 'shown' => true, 'asked' => false, 'summary' => 'Help me choose' ), $shown( new BuildLink(), null ) );
+		self::assertSame( array( 'offered' => true, 'shown' => true, 'asked' => true, 'summary' => 'Change your answers' ), $shown( new BuildLink(), $asked ) );
+		self::assertSame( array( 'offered' => true, 'shown' => false, 'asked' => false, 'summary' => 'Help me choose' ), $shown( $width, null ), 'a width pressed' );
+		self::assertSame( array( 'offered' => true, 'shown' => true, 'asked' => true, 'summary' => 'Change your answers' ), $shown( $width, $asked ), 'builds asked for, with their width' );
+		self::assertFalse( $this->guide( new BuildLink( array( SlotKey::DECK => 101 ), null, SlotKey::DECK ) )['shown'], 'a build begun' );
+		self::assertFalse( $this->guide( new BuildLink( array(), null, SlotKey::TRUCKS ) )['shown'], 'another step' );
+
+		$GLOBALS['cbuild_test_filters']['cbuild_help_me_choose'] = static fn( bool $guided, int $kit ): bool => ! ( $guided && self::KIT === $kit );
+		self::assertSame( array( 'offered' => false, 'shown' => false, 'asked' => false, 'summary' => 'Change your answers' ), $shown( new BuildLink(), $asked ), 'off' );
+	}
+
+	// #134: the builder is at its start on the kit's first step with nothing picked and no ready build.
+	public function test_the_builder_is_at_its_start_on_the_first_step_with_nothing_picked_and_no_ready_build(): void {
+		$at = function ( BuildLink $link ): bool {
+			$state = ( new BuildState( $this->kits, new InMemoryShopSettings(), new FakeLogger() ) )->of( self::KIT, $link->picks, null, $link->step );
+			self::assertNotNull( $state );
+			return BuilderView::atStart( $state, $link );
+		};
+		self::assertTrue( $at( new BuildLink() ) );
+		self::assertTrue( $at( new BuildLink( array(), null, SlotKey::DECK ) ) );
+		self::assertFalse( $at( new BuildLink( array(), null, SlotKey::TRUCKS ) ), 'another step' );
+		self::assertFalse( $at( new BuildLink( array(), null, State::REVIEW ) ), 'the review' );
+		self::assertFalse( $at( new BuildLink( array( SlotKey::DECK => 101 ), null, SlotKey::DECK ) ), 'a pick' );
+		self::assertFalse( $at( new BuildLink( array(), null, SlotKey::DECK, null, 0 ) ), 'a ready build' );
+	}
+
+	// #114, #134: a kit's own width guide asks for a shoe size in its own words, not as US sizes; a kit that hides the
+	// guide asks no shoe size.
+	public function test_the_shoe_question_follows_the_kits_width_guide(): void {
+		$own = $this->guide(
+			new BuildLink(),
+			null,
+			array(
+				'width_guide' => array(
+					'rows' => array(
+						array( 'shoe' => 'EU 38 to 40', 'from' => '7.75', 'to' => '8' ),
+						array( 'shoe' => 'EU 41 and up', 'from' => '8.25' ),
+					),
+				),
+			)
+		);
+		self::assertTrue( $own['shoe']['shown'] );
+		self::assertSame( 'Your shoe size', $own['shoe']['legend'] );
+		self::assertSame( array( 'Not sure', 'EU 38 to 40', 'EU 41 and up' ), array_column( $own['shoe']['choices'], 'label' ) );
+
+		$hidden = $this->guide( new BuildLink(), null, array( 'width_guide' => array( 'shown' => false ) ) );
+		self::assertFalse( $hidden['shoe']['shown'] );
+		self::assertSame( array( self::choice( '', 'Not sure', true ) ), $hidden['shoe']['choices'] );
+	}
+
+	/**
+	 * A build the guided start recommends.
+	 *
+	 * @param array<string, int> $picks Its picks.
+	 * @return array<string, mixed>
+	 */
+	private static function recommendedBuild( Tier $tier, array $picks, string $total, string $over = '' ): array {
+		return array(
+			'tier'  => $tier,
+			'picks' => $picks,
+			'total' => $total,
+			'over'  => $over,
+			'image' => null,
+			'drawn' => false,
+		);
+	}
+
+	// #134: the builds recommended, each a tile that starts it at the review, and why, a sentence each: the width and
+	// the shoe size it is for, the wheels and where they suit, the budget, and how many builds. A width found is a link
+	// to build one's own at it.
+	public function test_the_builds_recommended_are_tiles_with_why_in_a_sentence_each(): void {
+		$guide = $this->guide(
+			BuildLink::read( array( '_guide' => array( 'shoe' => '1', 'style' => 'park', 'budget' => '150', 'asked' => '1' ) ) ),
+			array(
+				'shoe'   => '7 to 8',
+				'width'  => Measure::inches( 80000 ),
+				'noDeck' => false,
+				'wheels' => new Span( Measure::millimetres( 530000 ), Measure::millimetres( 560000 ) ),
+				'budget' => 150,
+				'over'   => false,
+				'builds' => array(
+					self::recommendedBuild( Tier::Budget, array( SlotKey::DECK => 101, SlotKey::WHEELS => 301 ), '$140.00' ),
+					array( 'tier' => 'mid' ) + self::recommendedBuild( Tier::Mid, array( SlotKey::DECK => 102 ), '$145.00' ),
+					self::recommendedBuild( Tier::Premium, array( SlotKey::DECK => 102 ), '$150.00' ),
+				),
+			)
+		);
+		self::assertSame(
+			array(
+				array( 'text' => 'Deck width 8″, for shoe size 7 to 8.' ),
+				array( 'text' => "Wheels of 53\u{00A0}mm to 56\u{00A0}mm suit a skatepark." ),
+				array( 'text' => 'Every build here is within your budget.' ),
+				array( 'text' => '3 builds fit and are in stock.' ),
+			),
+			$guide['reasons']
+		);
+		self::assertSame( array( 'Budget build', 'High-end build' ), array_column( $guide['tiles'], 'name' ), 'a build with no tier has no tile' );
+		self::assertSame( array( 'The lowest-priced part that fits in each slot.', 'The highest-priced part that fits in each slot.' ), array_column( $guide['tiles'], 'description' ) );
+		self::assertSame( array( '$140.00', '$150.00' ), array_column( $guide['tiles'], 'total' ) );
+		self::assertSame( array( array(), array() ), array_column( $guide['tiles'], 'notes' ), 'within the budget' );
+		self::assertSame(
+			array(
+				array( 'name' => 'cbuild[deck]', 'value' => '101' ),
+				array( 'name' => 'cbuild[wheels]', 'value' => '301' ),
+				array( 'name' => 'cbuild[step]', 'value' => 'review' ),
+			),
+			$guide['tiles'][0]['fields']
+		);
+		self::assertFalse( $guide['hasNone'] );
+		self::assertSame(
+			array(
+				'shown' => true,
+				'url'   => self::BASE . '?' . http_build_query( array( 'cbuild' => array( '_width' => '8in' ) ) ),
+				'text'  => 'Build your own at 8″',
+			),
+			$guide['width']
+		);
+	}
+
+	// #134: no deck for the shoe size takes any width, said; wheels for no style asked are said as sizes; no build within
+	// the budget names the closest, and each build over it says by how much.
+	public function test_builds_over_the_budget_say_by_how_much_and_no_deck_for_the_shoe_size_is_said(): void {
+		$guide = $this->guide(
+			BuildLink::read( array( '_guide' => array( 'shoe' => '3', 'budget' => '100', 'asked' => '1' ) ) ),
+			array(
+				'shoe'   => '9.5 and larger',
+				'width'  => null,
+				'noDeck' => true,
+				'wheels' => new Span( Measure::millimetres( 530000 ), Measure::millimetres( 560000 ) ),
+				'budget' => 100,
+				'over'   => true,
+				'builds' => array( self::recommendedBuild( Tier::Only, array( SlotKey::DECK => 101 ), '$140.00', '$40.00' ) ),
+			)
+		);
+		self::assertSame(
+			array(
+				array( 'text' => 'No deck for shoe size 9.5 and larger is in stock right now, so the builds take any width.' ),
+				array( 'text' => "Wheels of 53\u{00A0}mm to 56\u{00A0}mm." ),
+				array( 'text' => 'No build comes within your budget. The closest is $140.00.' ),
+				array( 'text' => '1 build fits and is in stock.' ),
+			),
+			$guide['reasons']
+		);
+		self::assertSame( array( 'Ready build' ), array_column( $guide['tiles'], 'name' ) );
+		self::assertSame( array( array( 'text' => 'Over your budget by $40.00.' ) ), $guide['tiles'][0]['notes'] );
+		self::assertSame(
+			array(
+				'shown' => false,
+				'url'   => '',
+				'text'  => '',
+			),
+			$guide['width'],
+			'no width to build one\'s own at'
+		);
+	}
+
+	// #134, D-433: answers no build can be made from say so, and a budget that was no amount says it was left out; with
+	// no builds there is no budget or count to say, and no width or wheels where none were found.
+	public function test_answers_no_build_is_made_from_say_so_and_a_budget_left_out_is_said(): void {
+		$guide = $this->guide(
+			BuildLink::read( array( '_guide' => array( 'budget' => 'ten', 'asked' => '1' ) ) ),
+			array(
+				'shoe'   => '',
+				'width'  => null,
+				'noDeck' => false,
+				'wheels' => null,
+				'budget' => 100,
+				'over'   => false,
+				'builds' => array(),
+			)
+		);
+		self::assertSame( array( array( 'text' => 'Your budget was left out: type an amount, such as 150.' ) ), $guide['reasons'] );
+		self::assertSame( array(), $guide['tiles'] );
+		self::assertTrue( $guide['hasNone'] );
+		self::assertFalse( $this->guide( new BuildLink() )['hasNone'], 'nothing asked, nothing to say' );
+
+		// Builds with no budget asked: the count alone.
+		$any = $this->guide(
+			BuildLink::read( array( '_guide' => array( 'asked' => '1' ) ) ),
+			array(
+				'shoe'   => '',
+				'width'  => null,
+				'noDeck' => false,
+				'wheels' => null,
+				'budget' => null,
+				'over'   => false,
+				'builds' => array( self::recommendedBuild( Tier::Only, array( SlotKey::DECK => 101 ), '$140.00' ) ),
+			)
+		);
+		self::assertSame( array( array( 'text' => '1 build fits and is in stock.' ) ), $any['reasons'] );
+	}
+
+	// #137, D-392, D-409: a card names the ready builds that pick it, by the answer's names for their places, and its
+	// rating, short beside its stars and in full for a reader; each where the kit shows it.
+	public function test_a_card_names_the_ready_builds_that_pick_it_and_its_rating_where_the_kit_shows_them(): void {
+		$rated  = array(
+			'presets' => array( 1, 0, 7 ),
+			'card'    => array(
+				'name'   => 'Part 301',
+				'rating' => array(
+					'text'    => '4.5 out of 5, 12 reviews',
+					'average' => 4.5,
+					'count'   => 12,
+				),
+			),
+		) + self::option( 301, 'fits' );
+		$answer = array(
+			'options' => array( $rated, self::option( 302, 'fits' ) ),
+			'presets' => array(
+				array( 'at' => 0, 'name' => 'Street' ),
+				array( 'at' => 1, 'name' => 'Park' ),
+			),
+			'steps'   => self::steps(),
+		);
+		$said   = fn(): array => array_map(
+			static fn( array $card ): array => array_intersect_key( $card, array_flip( array( 'pickedFor', 'hasPickedFor', 'rated', 'score', 'hasRating' ) ) ),
+			array_column( $this->step( $answer, SlotKey::WHEELS )['options'], null, 'id' )
+		);
+		$none   = array(
+			'pickedFor'    => '',
+			'hasPickedFor' => false,
+			'rated'        => '',
+			'score'        => '',
+			'hasRating'    => false,
+		);
+		self::assertSame(
+			array(
+				301 => array(
+					'pickedFor'    => 'Picked for Park and Street',
+					'hasPickedFor' => true,
+					'rated'        => '4.5 out of 5, 12 reviews',
+					'score'        => '4.5 (12)',
+					'hasRating'    => true,
+				),
+				302 => $none,
+			),
+			$said(),
+			'a place no ready build has is no name'
+		);
+
+		$GLOBALS['cbuild_test_filters']['cbuild_card_picks']   = static fn(): bool => false;
+		$GLOBALS['cbuild_test_filters']['cbuild_card_ratings'] = static fn(): bool => false;
+		self::assertSame( array( 301 => $none, 302 => $none ), $said(), 'the kit shows neither' );
+	}
+
+	// #135, D-397: the change panel shows no swap's notice, though the address still holds the swap's Undo.
+	public function test_the_change_panel_shows_no_swaps_notice(): void {
+		$answer = array(
+			'changes' => array(
+				'kept'     => array(),
+				'changes'  => array(
+					array(
+						'slot'     => 'wheels',
+						'label'    => 'Wheels',
+						'name'     => 'Retna',
+						'messages' => array(),
+						'closest'  => array(),
+					),
+				),
+				'proposed' => array(),
+			),
+		);
+		$link   = new BuildLink( array( SlotKey::DECK => 101, SlotKey::WHEELS => 301 ), null, SlotKey::TRUCKS, undo: array( SlotKey::WHEELS => 302 ) );
+		self::assertTrue( $this->view( array(), SlotKey::TRUCKS, $link )['swapped']['shown'], 'a step says the swap' );
+		$panel = $this->view( $answer, SlotKey::TRUCKS, $link )['swapped'];
+		self::assertFalse( $panel['shown'] );
+		self::assertSame( 'Swapped: wheels.', $panel['text'], 'the rest as the step has it' );
+	}
+
+	// #136, D-254: what changed in a saved build, in words My builds' compare and the reopened build both say: each new
+	// price by its slot, then and now; the reopened build's panel lists the prices' words alone.
+	public function test_a_saved_builds_new_prices_are_said_by_slot_then_and_now(): void {
+		$reopened = array(
+			'changes' => array(),
+			'prices'  => array(
+				array(
+					'slot'  => 'trucks',
+					'label' => 'Truck set',
+					'part'  => 149,
+					'name'  => 'Indy 149',
+					'then'  => '$54.00',
+					'now'   => '$59.00',
+				),
+			),
+			'then'    => '$184.00',
+			'now'     => '$189.00',
+		);
+		self::assertSame(
+			array(
+				'changes' => array(),
+				'prices'  => array(
+					array(
+						'slot' => 'trucks',
+						'text' => 'Indy 149: $54.00 when you saved, $59.00 now',
+					),
+				),
+				'totals'  => 'Total: $184.00 when you saved, $189.00 now',
+			),
+			BuilderView::changedWords( $reopened )
+		);
+		$state = ( new BuildState( $this->kits, new InMemoryShopSettings(), new FakeLogger() ) )->of( self::KIT, array(), null, State::REVIEW );
+		self::assertNotNull( $state );
+		$view = ( new BuilderView() )->reopened(
+			array(),
+			$reopened + array(
+				'picks' => array( SlotKey::DECK => 101 ),
+				'first' => SlotKey::TRUCKS,
+			),
+			$state,
+			null
+		);
+		self::assertSame( array( array( 'text' => 'Indy 149: $54.00 when you saved, $59.00 now' ) ), $view['changes']['prices'] );
+		self::assertTrue( $view['changes']['hasPrices'] );
 	}
 }

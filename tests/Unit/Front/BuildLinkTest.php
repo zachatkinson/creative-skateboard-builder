@@ -9,8 +9,10 @@ declare( strict_types=1 );
 
 namespace CreativeBranding\SkateboardBuilder\Tests\Unit\Front;
 
+use CreativeBranding\SkateboardBuilder\Domain\Guide\RidingStyle;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Slots;
 use CreativeBranding\SkateboardBuilder\Front\BuildLink;
+use CreativeBranding\SkateboardBuilder\Front\GuideAnswers;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Domain\KitDocuments;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
@@ -402,5 +404,200 @@ final class BuildLinkTest extends TestCase {
 
 	public function test_a_query_that_is_not_utf_8_is_no_query_even_with_a_control_character_in_it(): void {
 		self::assertSame( '', BuildLink::read( array( '_q' => "Retna\t\xff" ) )->shelf->query );
+	}
+
+	public function test_the_guided_starts_answers_travel_under_guide_and_change_nothing_else(): void {
+		$link = BuildLink::read(
+			array(
+				'_guide' => array(
+					'shoe'   => '2',
+					'style'  => 'bowl',
+					'budget' => '180',
+					'asked'  => '1',
+				),
+			)
+		);
+		self::assertSame( array( 2, RidingStyle::Bowl, 180, true ), array( $link->guide->shoe, $link->guide->style, $link->guide->budget, $link->guide->asked ) );
+		self::assertFalse( $link->isClean(), 'answers are a state' );
+		self::assertSame( array( '_guide' => array( 'shoe' => '2', 'style' => 'bowl', 'budget' => '180', 'asked' => '1' ) ), $link->query( self::slots() ) );
+		self::assertSame( array(), ( new BuildLink() )->query( self::slots() ) );
+		$asked = BuildLink::read( array( '_guide' => array( 'asked' => '1' ) ) );
+		self::assertSame( array( '_guide' => array( 'asked' => '1' ) ), $asked->query( self::slots() ), 'every answer left blank is still an answer' );
+		self::assertSame( array( 'deck' => '12', 'step' => 'review', '_guide' => array( 'style' => 'street' ) ), BuildLink::read( array( 'deck' => '12', 'step' => 'review', '_guide' => array( 'style' => 'street' ) ) )->query( self::slots() ), 'after the build' );
+		self::assertTrue( $link->at( 'deck' )->guide->isEmpty(), 'a step taken leaves the answers behind' );
+		self::assertTrue( $link->pick( 'deck', 12 )->guide->isEmpty() );
+		self::assertTrue( $link->shared()->guide->isEmpty(), 'and a shared link carries none' );
+		self::assertSame( $link->guide, ( new BuildLink() )->guided( $link->guide )->guide );
+	}
+
+	/**
+	 * Answers that are none.
+	 *
+	 * @return array<string, array{mixed}>
+	 */
+	public static function notAnswers(): array {
+		return array(
+			'not a list'         => array( 'street' ),
+			'a shoe row too far' => array( array( 'shoe' => '12' ) ),
+			'a shoe not a row'   => array( array( 'shoe' => '-1' ) ),
+			'a shoe as 02'       => array( array( 'shoe' => '02' ) ),
+			'a shoe of words'    => array( array( 'shoe' => 'ten' ) ),
+			'a style not asked'  => array( array( 'style' => 'vert' ) ),
+			'a style in capitals' => array( array( 'style' => 'Street' ) ),
+			'a budget of none'   => array( array( 'budget' => '0' ) ),
+			'a budget too long'  => array( array( 'budget' => '1000000' ) ),
+			'a budget below'     => array( array( 'budget' => '-5' ) ),
+			'a budget as a list' => array( array( 'budget' => array( '5' ) ) ),
+			'asked as anything'  => array( array( 'asked' => 'yes' ) ),
+		);
+	}
+
+	/**
+	 * @param mixed $sent What was sent under `_guide`.
+	 */
+	#[DataProvider( 'notAnswers' )]
+	public function test_what_is_no_answer_is_left_out( mixed $sent ): void {
+		self::assertTrue( BuildLink::read( array( '_guide' => $sent ) )->isClean() );
+		self::assertTrue( GuideAnswers::read( $sent )->isEmpty() );
+	}
+
+	/**
+	 * Budgets as a shopper types them, forgiven (the auditor's 1.3.0 should-fix 4, D-433).
+	 *
+	 * @return array<string, array{string, int}>
+	 */
+	public static function typedBudgets(): array {
+		return array(
+			'a decimal amount, rounded up'   => array( '150.50', 151 ),
+			'a decimal amount, rounded down' => array( '150.49', 150 ),
+			'one decimal'                    => array( '99.5', 100 ),
+			'a currency sign'                => array( '$150', 150 ),
+			'a sign after, with a space'     => array( '150 €', 150 ),
+			'a comma for thousands'          => array( '1,000', 1000 ),
+			'a point for thousands'          => array( '1.000', 1000 ),
+			'a space for thousands'          => array( '1 000', 1000 ),
+			'a no-break space for thousands' => array( "1\u{00A0}000", 1000 ),
+			'thousands and decimals'         => array( '$1,234.56', 1235 ),
+			'French thousands and decimals'  => array( '1 234,49 $', 1234 ),
+			'a decimal comma'                => array( '150,50', 151 ),
+			'spaces around'                  => array( ' 150 ', 150 ),
+			'a leading zero'                 => array( '0150', 150 ),
+			'the most'                       => array( '999,999.49', 999999 ),
+		);
+	}
+
+	#[DataProvider( 'typedBudgets' )]
+	public function test_a_budget_typed_with_a_sign_separators_or_decimals_is_read( string $typed, int $budget ): void {
+		$guide = GuideAnswers::read( array( 'budget' => $typed ) );
+		self::assertSame( $budget, $guide->budget );
+		self::assertFalse( $guide->budgetLeftOut );
+	}
+
+	/**
+	 * Budgets that are no amount, even forgiven.
+	 *
+	 * @return array<string, array{string}>
+	 */
+	public static function unreadBudgets(): array {
+		return array(
+			'words'                 => array( 'ten' ),
+			'below nothing'         => array( '-5' ),
+			'two decimal points'    => array( '1.2.3' ),
+			'three decimals'        => array( '12.345.6' ),
+			'thousands mixed'       => array( '1,000.000,5' ),
+			'a range'               => array( '100-200' ),
+			'too much'              => array( '1000000' ),
+			'too much, rounded'     => array( '999,999.50' ),
+			'a sign alone'          => array( '$' ),
+			'a euro sign alone'     => array( '€' ),
+			'too long to be typed'  => array( str_repeat( '1', 40 ) ),
+		);
+	}
+
+	#[DataProvider( 'unreadBudgets' )]
+	public function test_a_budget_that_is_no_amount_is_left_out_and_said_so( string $typed ): void {
+		$guide = GuideAnswers::read(
+			array(
+				'budget' => $typed,
+				'asked'  => '1',
+			)
+		);
+		self::assertNull( $guide->budget );
+		self::assertTrue( $guide->budgetLeftOut );
+		self::assertSame( array( 'asked' => '1' ), $guide->query(), 'what is no amount is not carried in the link' );
+		self::assertTrue( GuideAnswers::read( array( 'budget' => $typed ) )->isEmpty(), 'and is no answer of its own' );
+	}
+
+	public function test_an_empty_budget_is_any_and_is_not_said_to_be_left_out(): void {
+		foreach ( array( '', ' ', '0' ) as $typed ) {
+			$guide = GuideAnswers::read( array( 'budget' => $typed ) );
+			self::assertNull( $guide->budget, $typed );
+			self::assertFalse( $guide->budgetLeftOut, $typed );
+		}
+	}
+
+	// D-433: a budget of twenty characters is read, spaces and all; one longer is too long to be typed, whatever it holds.
+	public function test_a_budget_typed_in_twenty_characters_is_read_and_one_longer_is_left_out(): void {
+		$twenty = '$1,234.56' . str_repeat( ' ', 11 );
+		self::assertSame( 20, strlen( $twenty ) );
+		self::assertSame( 1235, GuideAnswers::read( array( 'budget' => $twenty ) )->budget );
+		$longer = GuideAnswers::read( array( 'budget' => $twenty . ' ' ) );
+		self::assertNull( $longer->budget );
+		self::assertTrue( $longer->budgetLeftOut );
+	}
+
+	// A budget that is not UTF-8 is no amount: the browser sends none such, and nothing of it is read.
+	public function test_a_budget_that_is_not_utf_8_is_no_budget(): void {
+		self::assertNull( GuideAnswers::read( array( 'budget' => "\xff150" ) )->budget );
+	}
+
+	// D-208, D-425: answers built with nothing given, as an earlier release's container builds them, leave no budget out.
+	public function test_answers_built_with_nothing_given_have_no_budget_left_out(): void {
+		self::assertFalse( ( new GuideAnswers() )->budgetLeftOut );
+		self::assertFalse( ( new GuideAnswers( 1, 'street', 100, true ) )->budgetLeftOut );
+	}
+
+	public function test_the_largest_answers_are_kept(): void {
+		$guide = GuideAnswers::read( array( 'shoe' => '11', 'budget' => '999999' ) );
+		self::assertSame( array( 11, 999999 ), array( $guide->shoe, $guide->budget ) );
+		self::assertSame( 0, GuideAnswers::read( array( 'shoe' => '0' ) )->shoe );
+		self::assertSame( 1, GuideAnswers::read( array( 'budget' => '1' ) )->budget );
+	}
+
+	public function test_a_swaps_link_carries_the_picks_its_undo_puts_back_and_no_link_made_from_it_does(): void {
+		$link    = BuildLink::read(
+			array(
+				'deck'     => '12',
+				'wheels'   => '31',
+				'hardware' => '61',
+				'step'     => 'review',
+			)
+		);
+		$swapped = $link->pick( 'wheels', 30 )->pick( 'hardware', 60 )->undoing( $link->picks );
+		self::assertSame(
+			array(
+				'deck'     => '12',
+				'wheels'   => '30',
+				'hardware' => '60',
+				'step'     => 'review',
+				'_undo'    => array(
+					'deck'     => '12',
+					'wheels'   => '31',
+					'hardware' => '61',
+				),
+			),
+			$swapped->query( self::slots() ),
+			'in slot order, after the rest'
+		);
+		$read = BuildLink::read( $swapped->query( self::slots() ) );
+		self::assertSame( array( 'deck' => 12, 'wheels' => 31, 'hardware' => 61 ), $read->undo, 'read back' );
+		self::assertFalse( BuildLink::read( array( '_undo' => array( 'deck' => '1' ) ) )->isClean(), 'an undo alone is a state' );
+		foreach ( array( 'at' => $read->at( 'review' ), 'pick' => $read->pick( 'grip', 7 ), 'assembled' => $read->assembled( true ), 'shared' => $read->shared(), 'after' => $read->after( array() ), 'filtered' => $read->filtered( 'a', '' ), 'showing' => $read->showing( 48 ), 'replacing' => $read->replacing( 'abc' ), 'shelved' => $read->shelved( new \CreativeBranding\SkateboardBuilder\Service\ShelfQuery() ), 'leave' => $read->leave( 'grip' ) ) as $made => $other ) {
+			self::assertSame( array(), $other->undo, $made . ' leaves the undo behind: it is the swap\'s alone' );
+		}
+		foreach ( array( array( '_undo' => 'deck' ), array( '_undo' => array( 'deck' => 'x', 'Deck' => '1', 'trucks' => '0' ) ) ) as $sent ) {
+			self::assertSame( array(), BuildLink::read( $sent )->undo, 'IDs alone, each a slot\'s' );
+		}
+		self::assertSame( array( 'deck' => '12' ), ( new BuildLink( undo: array( 'deck' => 12, 'bolts' => 8 ) ) )->query( self::slots() )['_undo'], 'a slot the kit lacks is left out' );
 	}
 }

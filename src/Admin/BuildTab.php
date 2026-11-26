@@ -9,6 +9,8 @@ declare( strict_types=1 );
 
 namespace CreativeBranding\SkateboardBuilder\Admin;
 
+use CreativeBranding\SkateboardBuilder\Domain\Guide\RidingStyle;
+use CreativeBranding\SkateboardBuilder\Domain\Guide\WheelGuide;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Assembly;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Kit;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Preset;
@@ -21,6 +23,7 @@ use CreativeBranding\SkateboardBuilder\Domain\Picture\Layout;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Slots;
 use CreativeBranding\SkateboardBuilder\Front\BuilderPlace;
 use CreativeBranding\SkateboardBuilder\Front\WidthGuide;
+use CreativeBranding\SkateboardBuilder\Front\Words;
 use CreativeBranding\SkateboardBuilder\Port\ShopSettings;
 use CreativeBranding\SkateboardBuilder\Service\KitEditor;
 use CreativeBranding\SkateboardBuilder\Support\Options;
@@ -84,7 +87,12 @@ final class BuildTab {
 	private const BUILT  = 'build/admin/build-tab';
 
 	/**
-	 * The tab's styles, added to WooCommerce's admin style sheet. WooCommerce floats a field's label into a column
+	 * The tab's style handle, the plugin's own (D-450).
+	 */
+	private const STYLE = 'cbuild-build-tab';
+
+	/**
+	 * The tab's styles, on a handle of the plugin's own beside WooCommerce's admin style sheet. WooCommerce floats a field's label into a column
 	 * 150 pixels wide, which these labels do not fit, least of all at phone width or in translation, so each label
 	 * stands above its field. Then a row's outline, its buttons in a line with targets 30 pixels high, a group's
 	 * heading 34 pixels high, and the list of what was not saved.
@@ -136,6 +144,12 @@ final class BuildTab {
 	private const GUIDE = 'settings-width_guide';
 
 	/**
+	 * The wheel guide's section, kept in the settings document (1.3.0, #134): its name after the prefix of every
+	 * control's ID, as a problem's path gives it.
+	 */
+	private const WHEELS = 'settings-wheel_guide';
+
+	/**
 	 * The assembly time's field, kept in the settings document (1.2.0, #142) and shown in the Assembly section beside
 	 * the lead time: its name after the prefix of every control's ID.
 	 */
@@ -185,7 +199,11 @@ final class BuildTab {
 	 * @since 0.4.0
 	 */
 	public function styles(): void {
-		wp_add_inline_style( 'woocommerce_admin_styles', self::STYLES );
+		// A handle of the plugin's own with no file, not one another enqueues: WordPress prints what is added to it
+		// and asks for nothing (D-450).
+		wp_register_style( self::STYLE, false, array(), CBUILD_VERSION );
+		wp_add_inline_style( self::STYLE, self::STYLES );
+		wp_enqueue_style( self::STYLE );
 		// A checkout that was never built has no script; the tab saves without it, and the zip is checked for it.
 		$built = is_readable( CBUILD_PATH . self::BUILT . '.asset.php' ) ? require CBUILD_PATH . self::BUILT . '.asset.php' : null;
 		if ( ! is_array( $built ) || ! is_string( $built['version'] ?? null ) ) {
@@ -437,13 +455,19 @@ final class BuildTab {
 				__( 'Under the deck step\'s question "What width do you ride?", "Not sure of your width?" opens a table of shoe sizes and the deck widths each rides.', 'creative-skateboard-builder' ),
 				$this->guide( $shown[ KitEditor::SETTINGS ] ),
 			),
+			self::WHEELS        => array(
+				__( 'Wheel guide', 'creative-skateboard-builder' ),
+				__( 'Before the first step, "Help me choose" asks where the shopper skates and recommends wheels in these sizes, and its ready builds have them. Leave a style empty for the builder\'s sizes, from published wheel guides.', 'creative-skateboard-builder' ),
+				$this->wheels( $shown[ KitEditor::SETTINGS ] ),
+			),
 		) as $name => $section ) {
 			// The settings document (1.2.0, D-354) is shown in three sections: the Builder page and the start button in
 			// Layout, the width guide in a section of its own, and the assembly time in Assembly (#142). Each lists the
 			// problems in its own fields, and is shown as typed where the settings were refused for one of them.
-			$problems = self::GUIDE === $name ? array() : ( $listed[ $name ] ?? array() );
+			$own      = self::GUIDE === $name || self::WHEELS === $name;
+			$problems = $own ? array() : ( $listed[ $name ] ?? array() );
 			$typed    = isset( $refused[ $name ] );
-			if ( KitEditor::LAYOUT === $name || self::GUIDE === $name || KitEditor::ASSEMBLY === $name ) {
+			if ( KitEditor::LAYOUT === $name || $own || KitEditor::ASSEMBLY === $name ) {
 				$own      = array_values( array_filter( $listed[ KitEditor::SETTINGS ] ?? array(), static fn( array $problem ): bool => self::home( $problem['field'] ) === $name ) );
 				$problems = array( ...$problems, ...$own );
 				$typed    = $typed || ( isset( $refused[ KitEditor::SETTINGS ] ) && array() !== $own );
@@ -817,13 +841,14 @@ final class BuildTab {
 	}
 
 	/**
-	 * The section a settings field is shown in, by its control's ID: Width guide, Assembly or Layout.
+	 * The section a settings field is shown in, by its control's ID: Width guide, Wheel guide, Assembly or Layout.
 	 *
 	 * @param string $field The control's ID.
 	 */
 	private static function home( string $field ): string {
 		return match ( true ) {
 			str_starts_with( $field, self::IDS . '-' . self::GUIDE ) => self::GUIDE,
+			str_starts_with( $field, self::IDS . '-' . self::WHEELS ) => self::WHEELS,
 			self::IDS . '-' . self::DAYS === $field => KitEditor::ASSEMBLY,
 			default => KitEditor::LAYOUT,
 		};
@@ -1023,6 +1048,18 @@ final class BuildTab {
 			false !== ( $settings['start_button'] ?? true ) ? '1' : '',
 			array( 'note' => __( 'Puts "Build a complete with this deck" on the page of each part the kit\'s first slot offers. Where several kits offer a part, the one with the lowest menu order shows it, and the Products screen\'s Sorting sets that order. Off, the next of them shows it.', 'creative-skateboard-builder' ) )
 		);
+		// Smart swaps (#135, D-397): an unticked box sends 0, so a form that sends nothing keeps the kit's.
+		$found[] = $this->field(
+			self::IDS . '-settings-swaps',
+			self::FIELD . '[settings][swaps]',
+			__( 'Offer smart swaps', 'creative-skateboard-builder' ),
+			'checkbox',
+			false !== ( $settings['swaps'] ?? true ) ? '1' : '',
+			array(
+				'note'     => __( 'On the review and on the chosen card, offers the same board for less and a part for less or a better one in each slot, each checked to fit the build. Off, the builder offers none.', 'creative-skateboard-builder' ),
+				'unticked' => '0',
+			)
+		);
 		return array(
 			array(
 				'id'     => $id . '-fields',
@@ -1042,7 +1079,57 @@ final class BuildTab {
 				'fields' => $found,
 				'more'   => array(),
 			),
+			array(
+				'id'     => $id . '-shown',
+				'legend' => __( 'Shown in the builder', 'creative-skateboard-builder' ),
+				'moves'  => false,
+				'fold'   => '',
+				'open'   => true,
+				'fields' => $this->switches( $settings ),
+				'more'   => array(),
+			),
 		);
+	}
+
+	/**
+	 * The Layout section's switches for what the builder shows (1.3.0, D-409): "Help me choose" at its start, and on
+	 * the cards the ready builds that pick a part and its rating, kept in the settings document. Each is ticked for a
+	 * kit that has none, as one saved before 1.3.0, and its box sends 0 unticked, so a form that sends none keeps the
+	 * kit's.
+	 *
+	 * @param array<mixed> $settings The settings document to show.
+	 * @return list<array<string, mixed>>
+	 */
+	private function switches( array $settings ): array {
+		$fields = array();
+		foreach ( array(
+			'guide'   => array(
+				__( 'Help me choose', 'creative-skateboard-builder' ),
+				__( 'At the builder\'s start, offers a few optional questions that recommend ready builds. Off, the builder starts at its first step with no questions.', 'creative-skateboard-builder' ),
+			),
+			'picks'   => array(
+				__( 'Ready-build picks on cards', 'creative-skateboard-builder' ),
+				__( 'A card whose part a ready build uses says which, such as "Picked for Street". Off, no card says it.', 'creative-skateboard-builder' ),
+			),
+			'ratings' => array(
+				__( 'Ratings on cards', 'creative-skateboard-builder' ),
+				__( 'A card whose part has reviews shows its star and score. Off, no card shows them. They are never shown while WooCommerce\'s star ratings are off.', 'creative-skateboard-builder' ),
+			),
+		) as $key => [ $label, $note ] ) {
+			$on       = $settings[ $key ] ?? true;
+			$fields[] = $this->field(
+				self::IDS . '-settings-' . $key,
+				self::FIELD . '[settings][' . $key . ']',
+				$label,
+				'checkbox',
+				false === $on ? '' : '1',
+				array(
+					'note'     => $note,
+					'unticked' => '0',
+				)
+			);
+		}
+		return $fields;
 	}
 
 	/**
@@ -1160,6 +1247,49 @@ final class BuildTab {
 				'more'   => array(),
 				'hidden' => $at >= $shown,
 				'remove' => __( 'Remove', 'creative-skateboard-builder' ),
+			);
+		}
+		return $groups;
+	}
+
+	/**
+	 * The Wheel guide section's fields (1.3.0, #134): a group a riding style, with its smallest and largest wheel. A
+	 * style the kit gives no sizes shows empty fields, and its note says the builder's sizes it then has.
+	 *
+	 * @param array<mixed> $document The settings document to show.
+	 * @return list<array{id: string, legend: string, moves: bool, fold: string, open: bool, fields: list<array<string, mixed>>, more: list<array<string, mixed>>}>
+	 */
+	private function wheels( array $document ): array {
+		$id    = self::IDS . '-' . self::WHEELS;
+		$name  = self::FIELD . '[settings][wheel_guide]';
+		$rows  = array();
+		$guide = is_array( $document['wheel_guide'] ?? null ) ? $document['wheel_guide'] : array();
+		foreach ( self::rows( $guide, 'rows' ) as $row ) {
+			$rows[ self::text( $row, 'style' ) ] = $row;
+		}
+		$groups = array();
+		foreach ( RidingStyle::cases() as $style ) {
+			$row      = $rows[ $style->value ] ?? array();
+			$plugins  = WheelGuide::plugins()->span( $style );
+			$groups[] = array(
+				'id'     => $id . '-' . $style->value,
+				'legend' => Words::style( $style ),
+				'moves'  => false,
+				'fold'   => '',
+				'open'   => true,
+				'fields' => array(
+					$this->field( $id . '-' . $style->value . '-from', $name . '[' . $style->value . '][from]', __( 'Smallest wheel (mm)', 'creative-skateboard-builder' ), 'text', self::measure( $row['from'] ?? '' ) ),
+					$this->field(
+						$id . '-' . $style->value . '-to',
+						$name . '[' . $style->value . '][to]',
+						__( 'Largest wheel (mm)', 'creative-skateboard-builder' ),
+						'text',
+						self::measure( $row['to'] ?? '' ),
+						/* translators: 1: the smallest wheel size the builder recommends, such as 50 mm. 2: the largest, such as 54 mm. */
+						array( 'note' => sprintf( __( 'Leave both empty for the builder\'s %1$s to %2$s. Leave this one empty for the smallest alone.', 'creative-skateboard-builder' ), Words::measure( $plugins->from ), Words::measure( $plugins->to ?? $plugins->from ) ) )
+					),
+				),
+				'more'   => array(),
 			);
 		}
 		return $groups;
@@ -1372,6 +1502,7 @@ final class BuildTab {
 			'wheelbase'          => __( 'Wheelbase where a deck gives none', 'creative-skateboard-builder' ),
 			'start_button'       => __( 'Show "Build a complete with this deck" on its parts\' pages', 'creative-skateboard-builder' ),
 			'builder_page'       => __( 'Builder page', 'creative-skateboard-builder' ),
+			'swaps'              => __( 'Offer smart swaps', 'creative-skateboard-builder' ),
 			'stage_side'         => __( 'Stage side on a desktop', 'creative-skateboard-builder' ),
 			'board_size'         => __( 'Board size on a desktop', 'creative-skateboard-builder' ),
 			'search'             => __( 'Search in the steps', 'creative-skateboard-builder' ),
@@ -1380,8 +1511,18 @@ final class BuildTab {
 			'width_guide'        => __( 'Width guide', 'creative-skateboard-builder' ),
 			'width_guide.rows'   => __( 'Width guide', 'creative-skateboard-builder' ),
 			'width_guide.shown'  => __( 'Show the width guide', 'creative-skateboard-builder' ),
+			'wheel_guide'        => __( 'Wheel guide', 'creative-skateboard-builder' ),
+			'wheel_guide.rows'   => __( 'Wheel guide', 'creative-skateboard-builder' ),
+			'guide'              => __( 'Help me choose', 'creative-skateboard-builder' ),
+			'picks'              => __( 'Ready-build picks on cards', 'creative-skateboard-builder' ),
+			'ratings'            => __( 'Ratings on cards', 'creative-skateboard-builder' ),
 		);
 		$found  = array();
+		if ( 1 === preg_match( '/\Awheel_guide\.([a-z]+)\.(from|to)\z/', $path, $found ) && null !== RidingStyle::tryFrom( $found[1] ) ) {
+			$label = 'from' === $found[2] ? __( 'Smallest wheel', 'creative-skateboard-builder' ) : __( 'Largest wheel', 'creative-skateboard-builder' );
+			/* translators: 1: a riding style, such as Street. 2: a field's label, such as Smallest wheel. */
+			return sprintf( __( 'Wheel guide, %1$s, %2$s', 'creative-skateboard-builder' ), Words::style( RidingStyle::from( $found[1] ) ), $label );
+		}
 		if ( 1 === preg_match( '/\Awidth_guide\.rows\[(\d+)\]\.?(.*)\z/', $path, $found ) ) {
 			$label = array(
 				'shoe' => __( 'Shoe size', 'creative-skateboard-builder' ),
@@ -1491,6 +1632,7 @@ final class BuildTab {
 		return match ( $field ) {
 			'builder_page' => __( 'The kit\'s Builder page was not saved. The Build tab shows it as you chose it, with what to put right.', 'creative-skateboard-builder' ),
 			'width_guide'  => __( 'The kit\'s width guide was not saved. The Build tab shows it as you typed it, with what to put right.', 'creative-skateboard-builder' ),
+			'wheel_guide'  => __( 'The kit\'s wheel guide was not saved. The Build tab shows it as you typed it, with what to put right.', 'creative-skateboard-builder' ),
 			'lead_days'    => __( 'The kit\'s assembly time in business days was not saved. The Build tab shows it as you typed it, with what to put right.', 'creative-skateboard-builder' ),
 			// A field the editor never refuses alone: the sentence for the whole settings is true of it.
 			default        => self::refused( KitEditor::SETTINGS ),

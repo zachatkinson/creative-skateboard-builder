@@ -45,6 +45,11 @@ final class ImportScreen {
 	public const SHOWN = 200;
 
 	/**
+	 * The screen's style handle, the plugin's own (D-450).
+	 */
+	private const STYLE = 'cbuild-import';
+
+	/**
 	 * The screen's only style: a wide table scrolls inside its own box, not the page.
 	 */
 	private const STYLES = '.cbuild-scroll{overflow-x:auto;margin:0 0 16px}';
@@ -93,7 +98,11 @@ final class ImportScreen {
 	 * @since 0.3.0
 	 */
 	public function styles(): void {
-		wp_add_inline_style( 'common', self::STYLES );
+		// A handle of the plugin's own with no file, not one another enqueues: WordPress prints what is added to it
+		// and asks for nothing (D-450).
+		wp_register_style( self::STYLE, false, array(), CBUILD_VERSION );
+		wp_add_inline_style( self::STYLE, self::STYLES );
+		wp_enqueue_style( self::STYLE );
 	}
 
 	/**

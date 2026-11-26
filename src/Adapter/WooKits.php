@@ -25,6 +25,7 @@ use CreativeBranding\SkateboardBuilder\Port\SpecIndex;
 use CreativeBranding\SkateboardBuilder\Support\Cast;
 use CreativeBranding\SkateboardBuilder\Support\NotOffered;
 use CreativeBranding\SkateboardBuilder\Support\Options;
+use CreativeBranding\SkateboardBuilder\Support\PartRank;
 use WC_Product;
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -450,7 +451,10 @@ final class WooKits implements Kits {
 				self::stock( $part ),
 				$own,
 				isset( $specs[ $id ] ) ? $specs[ $id ]->toIndex() : array(),
-				$now
+				$now,
+				// Its rank, kept with the rest so a warm answer loads no product for smart swaps (D-434); a variation
+				// with none takes its product's, as its other Part specs do.
+				PartRank::own( $part ) ?? ( $variation && isset( $parents[ $part->get_parent_id() ] ) ? PartRank::own( $parents[ $part->get_parent_id() ] ) : null )
 			);
 		}
 		return $facts;
@@ -492,7 +496,7 @@ final class WooKits implements Kits {
 		$chosen = array_slice( $chosen, 0, self::MAX_PARTS, true );
 		$parts  = array();
 		foreach ( $chosen as $id => $fact ) {
-			$parts[] = new Part( $id, $fact->brand, Specs::fromIndex( $fact->specs ), $fact->price, $fact->inStock, $fact->stock );
+			$parts[] = new Part( $id, $fact->brand, Specs::fromIndex( $fact->specs ), $fact->price, $fact->inStock, $fact->stock, $fact->rank );
 		}
 		return $parts;
 	}

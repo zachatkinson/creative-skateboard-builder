@@ -170,7 +170,7 @@ final class GripRenditionsTest extends CartTestCase {
 
 		$result = $this->service( SiteHealth::class )->pictures();
 		self::assertSame( '6 parts\' layer images have no resized copies', $result['label'] );
-		self::assertMatchesRegularExpression( '/Among them: (Sheet &lt;b&gt;[1-6]&lt;\/b&gt;, ){4}and Sheet &lt;b&gt;[1-6]&lt;\/b&gt;\./', $result['description'], 'five names, as text' );
+		self::assertMatchesRegularExpression( '/Among them: (Sheet &lt;b&gt;[1-6]&lt;\/b&gt;, ){3}Sheet &lt;b&gt;[1-6]&lt;\/b&gt; and Sheet &lt;b&gt;[1-6]&lt;\/b&gt;\./', $result['description'], 'five names, as text' );
 	}
 
 	// D-373: a shop that updates to 1.2.0 gets the fix it installed with no step of its own. The update queues the

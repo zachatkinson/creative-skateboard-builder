@@ -152,6 +152,34 @@ for ( const theme of THEMES ) {
 							)
 						)
 						.toBe( true );
+					// And until the page has done moving, as the moments' shots below wait: the step's crossing over, and
+					// the outline the preset's parts draw on the board (#138, D-413) gone. Where motion is calm the outline
+					// is held 450 ms by `data-outlined`, a mark no animation shows, and the shot took it or not by when the
+					// page settled: 52 of 54 shots began with it, and 2 kept it (Storefront light, tablet and phone, 468
+					// and 477 pixels; D-415).
+					await expect
+						.poll( () =>
+							on.evaluate(
+								() =>
+									! document.documentElement.classList.contains(
+										'cbuild-crossing'
+									) &&
+									! document.querySelector(
+										'.cbuild [data-outlined]'
+									) &&
+									document
+										.getAnimations()
+										.every(
+											( animation ) =>
+												'running' !==
+													animation.playState ||
+												Infinity ===
+													animation.effect?.getComputedTiming()
+														.iterations
+										)
+							)
+						)
+						.toBe( true );
 					await still( on, size.width, size.height );
 					await expect( builder ).toHaveScreenshot(
 						`${ theme }-${ scheme }-${ size.name }-review.png`,

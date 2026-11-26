@@ -131,6 +131,73 @@ final class BuilderYoastTest extends IntegrationTestCase {
 		self::assertMatchesRegularExpression( '#^Step 1 of \d+: Deck - Build a complete - Test Blog$#', wp_get_document_title() );
 	}
 
+	/**
+	 * The `@type` of every node in the page's JSON-LD: Yoast's graph in the head, and WooCommerce's in the footer,
+	 * which it makes on a product's page at `woocommerce_single_product_summary` (WooCommerce 11.3.1,
+	 * `includes/class-wc-structured-data.php:42`) and prints at `wp_footer` (:48). The test makes the product's
+	 * markup as that action would, with a structured data object of its own.
+	 *
+	 * @param int      $post    The page.
+	 * @param int|null $product The product the page shows, or null for a page that shows none.
+	 * @return list<string>
+	 */
+	private function types( int $post, ?int $product = null ): array {
+		$html = $this->head( $post );
+		$data = new \WC_Structured_Data();
+		if ( null !== $product ) {
+			$data->generate_product_data( wc_get_product( $product ) );
+		}
+		ob_start();
+		echo apply_filters( 'the_content', (string) get_post_field( 'post_content', $post ) ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- read, not printed.
+		$data->output_structured_data();
+		$html .= (string) ob_get_clean();
+
+		$types = array();
+		preg_match_all( '#<script type="application/ld\+json"[^>]*>(.*?)</script>#s', $html, $scripts );
+		self::assertNotEmpty( $scripts[1], 'the page prints JSON-LD' );
+		foreach ( $scripts[1] as $json ) {
+			$graph = json_decode( $json, true, 512, JSON_THROW_ON_ERROR );
+			array_walk_recursive(
+				$graph,
+				static function ( mixed $value, mixed $key ) use ( &$types ): void {
+					if ( '@type' === $key && is_string( $value ) ) {
+						$types[] = $value;
+					}
+				}
+			);
+		}
+		return $types;
+	}
+
+	/**
+	 * #141: with Yoast SEO and WooCommerce's structured data both, a kit's page and the Builder block's page print no
+	 * Product, and a part's page keeps WooCommerce's. Yoast SEO 28.8 makes no Product piece of its own (its pieces are
+	 * `src/generators/schema/`), so the kit's comes only from WooCommerce, which `KitHooks::markup()` empties (D-100).
+	 */
+	public function test_with_yoast_a_kits_page_and_the_builder_page_print_no_product_and_a_parts_page_keeps_it(): void {
+		$kit  = KitFactory::kit( 'Complete' )->get_id();
+		$page = self::factory()->post->create(
+			array(
+				'post_type'    => 'page',
+				'post_status'  => 'publish',
+				'post_content' => '<!-- wp:creative-skateboard-builder/builder {"kit":' . $kit . '} /-->',
+			)
+		);
+		$part = new \WC_Product_Simple();
+		$part->set_name( 'A deck' );
+		$part->set_status( 'publish' );
+		$part->set_regular_price( '50' );
+		$part->save();
+
+		$kitTypes = $this->types( $kit, $kit );
+		self::assertContains( 'WebPage', $kitTypes, "Yoast's graph is on the kit's page" );
+		self::assertNotContains( 'Product', $kitTypes, "the kit's page" );
+		$pageTypes = $this->types( $page );
+		self::assertContains( 'WebPage', $pageTypes, "Yoast's graph is on the Builder page" );
+		self::assertNotContains( 'Product', $pageTypes, 'the Builder page' );
+		self::assertContains( 'Product', $this->types( $part->get_id(), $part->get_id() ), "a part's page keeps its markup" );
+	}
+
 	public function test_yoasts_own_robots_tag_says_noindex_where_wordpress_prints_none(): void {
 		// A theme or plugin that takes wp_robots out of the head leaves the robots tag to Yoast's own presenter
 		// (`src/integrations/front-end-integration.php:432`).

@@ -184,7 +184,7 @@ tools/                    gates.sh, integration/ (PHPUnit 9.6), build, release, 
 
 - The block's stylesheet uses `@wordpress/stylelint-config` (SCSS) and Prettier.
 - Logical properties throughout.
-- Classes follow BEM under the `cbuild-` prefix. Base rules sit inside `:where()`, so themes override them without fighting specificity.
+- Classes follow BEM under the `cbuild-` prefix. Base rules sit inside `:where()`, so themes override them without fighting specificity. The exceptions are the resets and sizes a theme's rule for a bare element or for its content's elements would beat, each at the least weight that wins: a fieldset's and a plain button's reset (D-321), the bar's buttons (D-417), and the block margins of the builder's paragraphs, headings and lists (D-419). Colours, type, a list's marker and its indent stay at no weight.
 - Every colour, size and font is a `--cbuild-*` custom property that falls back to the theme's presets (`--wp--preset--*`).
 - Container queries lay out the cards, so the builder works in a narrow column as well as full width.
 - `:focus-visible` rings, `forced-colors` support and `prefers-reduced-motion`.

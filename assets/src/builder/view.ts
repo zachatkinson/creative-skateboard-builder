@@ -50,6 +50,7 @@ import {
 	cross,
 	cut,
 	measured,
+	outline,
 	play,
 	type Currency,
 } from './motion';
@@ -104,6 +105,10 @@ interface State {
 	readonly rests: boolean;
 	/** Whether "N more" has nothing to open: out of sight, but laid out, so it can be measured. */
 	readonly idle: boolean;
+	/** The chips the brand row was last laid out for, once its measuring settled (F30, D-405). */
+	laid: string;
+	/** Whether the brand row shows chips it has not yet been laid out for: it then shows its first line alone. */
+	readonly laying: boolean;
 	/** Whether the rest are open. */
 	readonly open: boolean;
 	/** The button's words: how many it holds, or Show fewer once open, from the server's. */
@@ -352,6 +357,16 @@ function steadyPress( event: Event ): void {
 let adding = false;
 
 /**
+ * A smart swap's press (#135, D-397): the swap control pressed, by its ID, and whether the press was its Undo. After a
+ * swap focus goes to the notice that says it, which holds Undo; after Undo, back to the control that made the swap.
+ */
+const swapPress: { from: string; undo: boolean; pressed: boolean } = {
+	from: '',
+	undo: false,
+	pressed: false,
+};
+
+/**
  * What the shopper reads first after a step changes, by the template's classes.
  *
  * @param view The view now shown.
@@ -390,6 +405,27 @@ function say(
 		! before.isChanges &&
 		! view.errors.shown &&
 		view.step.slot === before.step.slot;
+	// A swap stays on the step, and the control pressed may be gone: focus goes to the notice, which says the swap and
+	// holds Undo, and after Undo back to the control that made it (#135, D-397). The region says the build and total.
+	const swapped = swapPress.pressed;
+	swapPress.pressed = false;
+	if ( stays && swapped ) {
+		state.status = view.status;
+		const undone = swapPress.undo && ! view.swapped.shown;
+		window.requestAnimationFrame( () => {
+			const control = undone
+				? root?.querySelector< HTMLElement >(
+						`[id="${ swapPress.from }"]`
+					)
+				: null;
+			( view.swapped.shown
+				? root?.querySelector< HTMLElement >( '.cbuild-swapped' )
+				: ( control ??
+					root?.querySelector< HTMLElement >( first( view ) ) )
+			)?.focus();
+		} );
+		return;
+	}
 	if ( stays ) {
 		const was = before.step.options ?? [];
 		// A view with no list lists no more than the one before.
@@ -626,14 +662,14 @@ function moments(
 	// The side shown alone: the top has a deck and wheels of its own, keyed as the underside's are.
 	const upper = true === after.picture?.turned;
 	const side = upper ? 'top' : 'board';
-	build(
-		board( upper ),
+	const then =
 		before.picture?.turned === after.picture?.turned
 			? ( before.picture?.[ side ]?.layers ?? [] )
-			: ( after.picture?.[ side ]?.layers ?? [] ),
-		after.picture?.[ side ]?.layers ?? [],
-		quiet
-	);
+			: ( after.picture?.[ side ]?.layers ?? [] );
+	const now = after.picture?.[ side ]?.layers ?? [];
+	build( board( upper ), then, now, quiet );
+	// The part picked, outlined on the board for the eye (#138, D-413).
+	outline( board( upper ), then, now, quiet );
 	if ( was ) {
 		close( was, quiet );
 	}
@@ -814,6 +850,18 @@ let frame = 0;
 const laid = new WeakMap< Element, string >();
 
 /**
+ * What a row of chips is laid out for: each chip's value, count and whether it is chosen. A view that changes any of
+ * them lays the row out again.
+ *
+ * @param group The chips' group.
+ */
+function marked( group: Chipped[ 'group' ] ): string {
+	return ( group?.inputs ?? [] )
+		.map( ( chip ) => [ chip.value, chip.count, chip.checked ].join( ':' ) )
+		.join( ' ' );
+}
+
+/**
  * Each row's watcher for a change of size, its own or a chip's.
  */
 const rowWatchers = new WeakMap< Element, ResizeObserver >();
@@ -831,12 +879,15 @@ function lay( options: HTMLElement, least = 0, passes = ROW_PASSES ): void {
 	frame = window.requestAnimationFrame( () => {
 		const found = shut( options, least );
 		if ( found.values.join( '\n' ) === state.shut.join( '\n' ) ) {
+			state.laid = laid.get( options ) ?? '';
 			return;
 		}
 		state.shut = found.values;
 		if ( passes > 1 ) {
 			lay( options, found.button, passes - 1 );
+			return;
 		}
+		state.laid = laid.get( options ) ?? '';
 	} );
 }
 
@@ -942,8 +993,9 @@ function foretell( view: Shown, value: string ): void {
  * Fold the width question to its chosen line at the press of a width, as its answer will: the widths behind the line
  * that says the one pressed, with Change, and the step's list, which the answer fills, under it (F20, #118; D-356).
  * The ready builds wait for the answer out of sight, in their place (`data-folded`), so the decks it brings take it
- * rather than push them down, and the page under the builder does not move twice. Null where the press is no width
- * the step asks for.
+ * rather than push them down, and the page under the builder does not move twice. The step's lead, the guided
+ * start and a smart swap's notice go at the press too, as the answer takes them (F30, D-405). Null where the press is
+ * no width the step asks for.
  *
  * @param view   The view shown.
  * @param button The button pressed.
@@ -953,7 +1005,10 @@ function folding(
 	button: HTMLElement | null | undefined
 ): ( () => void ) | null {
 	const known = view as {
+		guide?: { shown?: boolean; asked?: boolean };
+		swapped?: { shown?: boolean };
 		step: {
+			hasLead?: boolean;
 			more?: { count?: string };
 			shelf?: {
 				width?: {
@@ -987,6 +1042,12 @@ function folding(
 		const was = width.options.map( ( option ) => option.pressed );
 		const more = known.step.more;
 		const counted = more?.count ?? '';
+		const step = known.step;
+		const led = true === step.hasLead;
+		const guide = known.guide;
+		const guided = true === guide?.shown;
+		const notice = known.swapped;
+		const noticed = true === notice?.shown;
 		// A press the rate limit or the store's limit stops asks the question again, with the width it pressed (D-364).
 		unfold = () => {
 			pressFolded = false;
@@ -998,6 +1059,13 @@ function folding(
 			if ( more ) {
 				more.count = counted;
 			}
+			step.hasLead = led;
+			if ( guide ) {
+				guide.shown = guided;
+			}
+			if ( notice ) {
+				notice.shown = noticed;
+			}
 			window.requestAnimationFrame( () => button.focus() );
 		};
 		width.asking = false;
@@ -1007,6 +1075,17 @@ function folding(
 		}
 		root?.setAttribute( 'data-folded', '' );
 		pressFolded = true;
+		// The step's lead and the guided start go with a width, as the answer will take them (D-360, D-404): gone at
+		// the press, within the 500 ms CLS leaves out, they leave the late answer nothing to move up (F30, D-405).
+		// Builds the guide was asked for stay, as the answer keeps them.
+		step.hasLead = false;
+		if ( guide && true !== guide.asked ) {
+			guide.shown = false;
+		}
+		// A smart swap's notice lasts until the next move, which this is, so the answer takes it too (#135, D-397).
+		if ( notice ) {
+			notice.shown = false;
+		}
 		// "Showing 0 of 0" until the answer lists the decks: a line the cards would push down.
 		if ( more ) {
 			more.count = '';
@@ -1068,9 +1147,10 @@ function swap( view: Shown, value: string ): void {
 				source.sizes = preload.sizes;
 			}
 			root?.setAttribute( 'data-swapped', '' );
-			window.requestAnimationFrame( () =>
-				build( board( false ), before, layers, calm( root ) )
-			);
+			window.requestAnimationFrame( () => {
+				build( board( false ), before, layers, calm( root ) );
+				outline( board( false ), before, layers, calm( root ) );
+			} );
 		},
 		// Not decoded: the old board stays whole until the answer.
 		() => undefined
@@ -1484,6 +1564,15 @@ const { state } = store(
 			get idle(): boolean {
 				return 0 === state.shut.length;
 			},
+			laid: '',
+			get laying(): boolean {
+				const { group } = getContext< Chipped >();
+				return (
+					true === group?.more?.shown &&
+					! opened() &&
+					marked( group ) !== state.laid
+				);
+			},
 			get open(): boolean {
 				return opened();
 			},
@@ -1507,11 +1596,7 @@ const { state } = store(
 					return;
 				}
 				// Read here, so a view that changes the chips runs this again.
-				const marks = ( group.inputs ?? [] )
-					.map( ( chip ) =>
-						[ chip.value, chip.count, chip.checked ].join( ':' )
-					)
-					.join( ' ' );
+				const marks = marked( group );
 				if ( 'function' === typeof window.ResizeObserver ) {
 					let watcher = rowWatchers.get( options );
 					if ( ! watcher ) {
@@ -1860,6 +1945,16 @@ const { state } = store(
 				}
 				event.preventDefault();
 				narrowing = false;
+				// A smart swap or its Undo, for where focus goes after it (#135, D-397).
+				swapPress.pressed =
+					link.classList.contains( 'cbuild-swap' ) ||
+					link.classList.contains( 'cbuild-swapped__undo' );
+				swapPress.undo = link.classList.contains(
+					'cbuild-swapped__undo'
+				);
+				if ( link.classList.contains( 'cbuild-swap' ) ) {
+					swapPress.from = link.id;
+				}
 				nav( state ).go( {
 					fields: [ ...url.searchParams ],
 					history: 'push',

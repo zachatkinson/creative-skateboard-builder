@@ -78,12 +78,25 @@ final class ContainerTest extends TestCase {
 				array( \CreativeBranding\SkateboardBuilder\Port\Kits::class, 'meta', \CreativeBranding\SkateboardBuilder\Port\ProductMeta::class ),
 				array( \CreativeBranding\SkateboardBuilder\Front\MyBuildsView::class, 'meta', \CreativeBranding\SkateboardBuilder\Port\ProductMeta::class ),
 				array( \CreativeBranding\SkateboardBuilder\Service\ComposedPictures::class, 'layers', \CreativeBranding\SkateboardBuilder\Port\ComposedLayers::class ),
+				array( \CreativeBranding\SkateboardBuilder\Front\Builder::class, 'guided', \CreativeBranding\SkateboardBuilder\Front\GuidedStart::class ),
+				array( \CreativeBranding\SkateboardBuilder\Front\StateAnswer::class, 'swaps', \CreativeBranding\SkateboardBuilder\Service\BuildSwaps::class ),
+				array( \CreativeBranding\SkateboardBuilder\Front\SavedBuildHooks::class, 'compare', \Closure::class ),
 			) as [ $id, $property, $type ]
 		) {
 			$service = $container->get( $id );
 			self::assertInstanceOf( $type, ( new \ReflectionProperty( $service, $property ) )->getValue( $service ), $id );
 		}
 		self::assertNull( ( new \ReflectionProperty( \CreativeBranding\SkateboardBuilder\Front\StateAnswer::class, 'artwork' ) )->getValue( ( new \ReflectionClass( \CreativeBranding\SkateboardBuilder\Front\StateAnswer::class ) )->newInstanceWithoutConstructor() ), 'none without the container' );
+	}
+
+	// D-425: an earlier release's container builds each class of src/ it can, the build's link among them, and resolves
+	// a parameter typed with a class by building that class, its default aside. So the link's guide answers must be
+	// buildable that way too: no enum in their constructor.
+	public function test_the_build_link_and_its_guide_answers_build_as_an_earlier_release_built_them(): void {
+		$container = new Container();
+		$link      = $container->get( \CreativeBranding\SkateboardBuilder\Front\BuildLink::class );
+		self::assertTrue( $link->guide->isEmpty(), 'the link built with no guide answers' );
+		self::assertTrue( $container->get( \CreativeBranding\SkateboardBuilder\Front\GuideAnswers::class )->isEmpty(), 'the answers built empty' );
 	}
 
 	// D-208: what 1.2.0 adds is given to a copy, so the object it was called on is still what an earlier release's
@@ -98,6 +111,10 @@ final class ContainerTest extends TestCase {
 				array( \CreativeBranding\SkateboardBuilder\Front\StartButton::class, 'address', static fn( object $earlier ): object => $earlier->withAddress( $address ) ),
 				array( \CreativeBranding\SkateboardBuilder\Front\MyBuildsView::class, 'address', static fn( object $earlier ): object => $earlier->withAddress( $address ) ),
 				array( \CreativeBranding\SkateboardBuilder\Front\MyBuildsView::class, 'meta', static fn( object $earlier ): object => $earlier->withMeta( $meta ) ),
+				// 1.3.0's: the guided start's builds, the smart swaps and My builds' compare.
+				array( \CreativeBranding\SkateboardBuilder\Front\Builder::class, 'guided', static fn( object $earlier ): object => $earlier->withGuide( $container->get( \CreativeBranding\SkateboardBuilder\Front\GuidedStart::class ) ) ),
+				array( \CreativeBranding\SkateboardBuilder\Front\StateAnswer::class, 'swaps', static fn( object $earlier ): object => $earlier->withSwaps( $container->get( \CreativeBranding\SkateboardBuilder\Service\BuildSwaps::class ) ) ),
+				array( \CreativeBranding\SkateboardBuilder\Front\SavedBuildHooks::class, 'compare', static fn( object $earlier ): object => $earlier->withCompare( static fn(): object => $container->get( \CreativeBranding\SkateboardBuilder\Front\CompareView::class ) ) ),
 			) as [ $class, $property, $with ]
 		) {
 			$earlier = ( new \ReflectionClass( $class ) )->newInstanceWithoutConstructor();

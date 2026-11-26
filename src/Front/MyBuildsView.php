@@ -197,12 +197,14 @@ final class MyBuildsView {
 	}
 
 	/**
-	 * The name, given the build's state.
+	 * The name, given the build's state: My builds' compare names its columns as the list names its rows (#136).
+	 *
+	 * @since 1.3.0
 	 *
 	 * @param SavedBuild $build The build.
 	 * @param State|null $state Its state, or null where it could not be priced.
 	 */
-	private function named( SavedBuild $build, ?State $state ): string {
+	public function named( SavedBuild $build, ?State $state ): string {
 		if ( '' !== $build->name ) {
 			return $build->name;
 		}

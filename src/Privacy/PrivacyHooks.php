@@ -11,6 +11,7 @@ namespace CreativeBranding\SkateboardBuilder\Privacy;
 
 use Closure;
 use CreativeBranding\SkateboardBuilder\Hookable;
+use CreativeBranding\SkateboardBuilder\Front\Words;
 use CreativeBranding\SkateboardBuilder\Install\NetworkFile;
 use CreativeBranding\SkateboardBuilder\Install\Sites;
 use CreativeBranding\SkateboardBuilder\Service\SavedBuilds;
@@ -137,7 +138,7 @@ final class PrivacyHooks implements Hookable {
 					),
 					array(
 						'name'  => __( 'Parts', 'creative-skateboard-builder' ),
-						'value' => wp_sprintf( '%l', $parts ),
+						'value' => Words::joined( $parts ),
 					),
 					array(
 						'name'  => __( 'Assembly', 'creative-skateboard-builder' ),

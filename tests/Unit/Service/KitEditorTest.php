@@ -542,6 +542,43 @@ final class KitEditorTest extends TestCase {
 		self::assertSame( array( 'schema_version' => 1, 'start_button' => false ), $draft->documents[ KitEditor::SETTINGS ] );
 	}
 
+	// #135: Offer smart swaps sends 0 unticked, so it is stored where sent and kept where not (D-397).
+	public function test_smart_swaps_are_stored_as_sent_and_kept_as_the_kit_has_them_where_not(): void {
+		$sent             = self::sent();
+		$sent['settings'] = array( 'start_button' => '1' );
+		$draft            = $this->editor->draft( $sent, self::stored() );
+		self::assertSame( array( 'schema_version' => 1, 'start_button' => true ), $draft->documents[ KitEditor::SETTINGS ], 'none stored and none sent: left out, on' );
+		foreach ( array( '0' => false, '1' => true, '' => false, 'yes' => true ) as $box => $on ) {
+			$sent['settings']['swaps'] = (string) $box;
+			self::assertSame( $on, $this->editor->draft( $sent, self::stored() )->documents[ KitEditor::SETTINGS ]['swaps'] ?? null, var_export( $box, true ) );
+		}
+		unset( $sent['settings']['swaps'] );
+		$stored                       = self::stored();
+		$stored[ KitEditor::SETTINGS ] = array( 'schema_version' => 1, 'swaps' => false );
+		self::assertFalse( $this->editor->draft( $sent, $stored )->documents[ KitEditor::SETTINGS ]['swaps'] ?? null, 'not sent: the kit\'s kept' );
+	}
+
+	// D-409: Help me choose, the cards' ready-build picks and their ratings each send 0 unticked, so each is stored where
+	// sent and kept as the kit has it where not; one never stored and never sent is left out, on.
+	public function test_the_three_switches_are_stored_as_sent_and_kept_as_the_kit_has_them_where_not(): void {
+		$sent             = self::sent();
+		$sent['settings'] = array( 'start_button' => '1' );
+		$draft            = $this->editor->draft( $sent, self::stored() );
+		self::assertSame( array( 'schema_version' => 1, 'start_button' => true ), $draft->documents[ KitEditor::SETTINGS ], 'none stored and none sent: left out, on' );
+		foreach ( array( 'guide', 'picks', 'ratings' ) as $key ) {
+			foreach ( array( '0' => false, '1' => true, '' => false, 'yes' => true ) as $box => $on ) {
+				$with                    = $sent;
+				$with['settings'][ $key ] = (string) $box;
+				$document                = $this->editor->draft( $with, self::stored() )->documents[ KitEditor::SETTINGS ] ?? array();
+				self::assertSame( $on, $document[ $key ] ?? null, $key . ' sent as ' . var_export( $box, true ) );
+				self::assertSame( array( 'schema_version', 'start_button', $key ), array_keys( $document ), $key . ': the others left out' );
+			}
+			$stored                       = self::stored();
+			$stored[ KitEditor::SETTINGS ] = array( 'schema_version' => 1, $key => false );
+			self::assertFalse( $this->editor->draft( $sent, $stored )->documents[ KitEditor::SETTINGS ][ $key ] ?? null, $key . ' not sent: the kit\'s kept' );
+		}
+	}
+
 	// #113: the Builder page is a page's ID, or nothing for the kit's own page. Where the tab says which pages may be
 	// chosen, any other is refused; a select not sent at all keeps the page the kit has.
 	public function test_the_builder_page_is_kept_as_an_id_and_one_not_offered_is_refused(): void {
@@ -658,6 +695,79 @@ final class KitEditorTest extends TestCase {
 			$draft          = $this->editor->draft( $sent, self::stored() );
 			self::assertSame( array( $expected ), self::problems( $draft ), $case );
 			self::assertSame( array( 'schema_version' => 1, 'start_button' => false ), $draft->documents[ KitEditor::SETTINGS ] ?? null, $case . ': the rest saved, with no guide, as the kit has (D-385)' );
+		}
+	}
+
+	// #134: the wheel guide, a row of sizes a riding style, sent by style. A style left empty has the plugin's sizes and
+	// is stored as no row, so a later release's change of them reaches the kit. One size alone is that size.
+	public function test_the_wheel_guide_keeps_the_sizes_the_shop_types_for_each_style_and_none_for_the_rest(): void {
+		$sent             = self::sent();
+		$sent['settings'] = array(
+			'wheel_guide' => array(
+				'street'   => array( 'from' => ' 52 ', 'to' => '54,5' ),
+				'park'     => array( 'from' => '', 'to' => '' ),
+				'bowl'     => array( 'from' => '56 mm', 'to' => '' ),
+				'cruising' => array( 'from' => '', 'to' => ' ' ),
+			),
+		);
+		$draft            = $this->editor->draft( $sent, self::stored(), ',' );
+		self::assertSame( array(), $draft->problems );
+		self::assertSame(
+			array(
+				'rows' => array(
+					array( 'style' => 'street', 'from' => '52', 'to' => '54.5' ),
+					array( 'style' => 'bowl', 'from' => '56' ),
+				),
+			),
+			$draft->documents[ KitEditor::SETTINGS ]['wheel_guide'] ?? null
+		);
+
+		// Nothing typed is the plugin's sizes for every style.
+		$sent['settings']['wheel_guide'] = array( 'street' => array( 'from' => '', 'to' => '' ) );
+		self::assertSame( array(), $this->editor->draft( $sent, self::stored() )->documents[ KitEditor::SETTINGS ]['wheel_guide'] ?? null );
+
+		// A style the question does not ask is not read, and settings that send no guide store none.
+		$sent['settings']['wheel_guide'] = array( 'vert' => array( 'from' => '60' ) );
+		self::assertSame( array(), $this->editor->draft( $sent, self::stored() )->documents[ KitEditor::SETTINGS ]['wheel_guide'] ?? null );
+		$sent['settings'] = array( 'start_button' => '1' );
+		self::assertArrayNotHasKey( 'wheel_guide', $this->editor->draft( $sent, self::stored() )->documents[ KitEditor::SETTINGS ] );
+	}
+
+	// #134: what is wrong with a style's sizes is named at that style's field, whatever row it is stored in, and the
+	// guide alone is refused (D-385): it keeps what the kit has, and the rest is saved.
+	public function test_a_wheel_guide_size_that_is_wrong_is_named_at_its_style_and_refused_alone(): void {
+		$stored                        = self::stored();
+		$stored[ KitEditor::SETTINGS ] = array(
+			'schema_version' => 1,
+			'wheel_guide'    => array( 'rows' => array( array( 'style' => 'park', 'from' => '54' ) ) ),
+		);
+		foreach ( array(
+			'a size no wheel has'          => array( array( 'from' => '52', 'to' => '95' ), 'settings ' . KitEditor::WHEEL_SIZE . ' wheel_guide.cruising.to' ),
+			'a size under 40 mm'           => array( array( 'from' => '39' ), 'settings ' . KitEditor::WHEEL_SIZE . ' wheel_guide.cruising.from' ),
+			'a size that is no number'     => array( array( 'from' => 'big' ), 'settings document_bad_measure wheel_guide.cruising.from' ),
+			'a largest with no smallest'   => array( array( 'to' => '60' ), 'settings document_field_missing wheel_guide.cruising.from' ),
+			'a largest under the smallest' => array( array( 'from' => '60', 'to' => '58' ), 'settings rules_out_of_order wheel_guide.cruising.to' ),
+		) as $case => [ $sizes, $expected ] ) {
+			$sent             = self::sent();
+			$sent['settings'] = array(
+				'start_button' => '1',
+				'wheel_guide'  => array(
+					'street'   => array( 'from' => '51' ),
+					'cruising' => $sizes,
+				),
+			);
+			$draft            = $this->editor->draft( $sent, $stored );
+			self::assertSame( array( $expected ), self::problems( $draft ), $case );
+			self::assertSame(
+				array(
+					'schema_version' => 1,
+					'start_button'   => true,
+					'wheel_guide'    => array( 'rows' => array( array( 'style' => 'park', 'from' => '54' ) ) ),
+				),
+				$draft->documents[ KitEditor::SETTINGS ] ?? null,
+				$case . ': the rest saved, with the guide the kit has'
+			);
+			self::assertSame( 'cruising', $draft->refused[ KitEditor::SETTINGS ]['wheel_guide']['rows'][1]['style'] ?? null, $case . ': shown as typed' );
 		}
 	}
 

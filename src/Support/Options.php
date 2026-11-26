@@ -212,6 +212,36 @@ final class Options {
 	public const CLASS_STEP = 'cbuild-step';
 
 	/**
+	 * A part's thumbnail on its line in the review, where `cbuild_part_classes` lands too (#132, D-403).
+	 *
+	 * @since 1.3.0
+	 */
+	public const CLASS_REVIEW_PHOTO = 'cbuild-review__photo';
+
+	/**
+	 * A review thumbnail drawn from the deck's layer image, as its card's is (D-398).
+	 *
+	 * @since 1.3.0
+	 */
+	public const CLASS_REVIEW_DRAWN = 'cbuild-review__photo--drawn';
+
+	/**
+	 * The place just above a step's card list, which the builder renders empty for another plugin's own element
+	 * (#151, D-407).
+	 *
+	 * @since 1.3.0
+	 */
+	public const CLASS_ABOVE_CARDS = 'cbuild-step__above-cards';
+
+	/**
+	 * A ready build's tile picture when it is the deck's layer image rather than its photo, as a build Help me choose
+	 * recommends shows its deck's card picture (D-408).
+	 *
+	 * @since 1.3.0
+	 */
+	public const CLASS_PRESET_DRAWN = 'cbuild-preset__photo--drawn';
+
+	/**
 	 * Order item meta (spec: Data model, Order items). Hidden from customers by their underscore, and kept with the
 	 * shop's order records for good: a key is never renamed.
 	 */
@@ -256,6 +286,14 @@ final class Options {
 	 * @since 1.2.0
 	 */
 	public const META_NOT_OFFERED = '_cbuild_not_offered';
+
+	/**
+	 * Product meta: the shop's rank for a part in its slot, a whole number, higher being better, from its Part specs
+	 * (#135, D-395). A part with none is unranked.
+	 *
+	 * @since 1.3.0
+	 */
+	public const META_RANK = '_cbuild_rank';
 
 	/**
 	 * The kit's product type.
@@ -425,7 +463,7 @@ final class Options {
 	 * @return string[]
 	 */
 	public static function metaKeys(): array {
-		return array( self::META_SPECS, self::META_SPEC_TABLE, self::META_LAYER, self::META_NOT_OFFERED, self::META_TABLE_ROWS, self::META_TABLE_SEED, ...self::kitDocuments() );
+		return array( self::META_SPECS, self::META_SPEC_TABLE, self::META_LAYER, self::META_NOT_OFFERED, self::META_RANK, self::META_TABLE_ROWS, self::META_TABLE_SEED, ...self::kitDocuments() );
 	}
 
 	/**
@@ -491,6 +529,10 @@ final class Options {
 			self::CLASS_PICTURE,
 			self::CLASS_STAGE,
 			self::CLASS_STEP,
+			self::CLASS_REVIEW_PHOTO,
+			self::CLASS_REVIEW_DRAWN,
+			self::CLASS_ABOVE_CARDS,
+			self::CLASS_PRESET_DRAWN,
 		);
 	}
 

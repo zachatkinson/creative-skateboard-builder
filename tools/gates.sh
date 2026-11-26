@@ -49,8 +49,9 @@ if [ -n "$hits" ]; then
 fi
 
 # 2. Banned functions. Flushing the whole object cache, or its run-time copy, empties every other plugin's entries with
-# the builder's: the builder changes a key, or flushes its own group where the cache can (D-066).
-hits="$(grep -rnE '(^|[^a-zA-Z_>$])(eval|extract|unserialize|maybe_unserialize|query_posts|create_function|base64_decode|exec|shell_exec|system|passthru|popen|proc_open|var_dump|print_r|var_export|error_log|wp_cache_flush|wp_cache_flush_runtime)\s*\(' "${php_files[@]}" --include='*.php' | grep -vE '^[^:]+:[0-9]+:\s*(\*|//|#)' || true)"
+# the builder's: the builder changes a key, or flushes its own group where the cache can (D-066). A list is joined by
+# Front\Words::joined() in the plugin's own words; wp_sprintf()'s %l takes WordPress's translation of them (D-460).
+hits="$(grep -rnE '(^|[^a-zA-Z_>$])(eval|extract|unserialize|maybe_unserialize|query_posts|create_function|base64_decode|exec|shell_exec|system|passthru|popen|proc_open|var_dump|print_r|var_export|error_log|wp_cache_flush|wp_cache_flush_runtime|wp_sprintf|wp_sprintf_l)\s*\(' "${php_files[@]}" --include='*.php' | grep -vE '^[^:]+:[0-9]+:\s*(\*|//|#)' || true)"
 if [ -n "$hits" ]; then
 	echo "Gate 2: banned function:"; echo "$hits"; status=1
 fi

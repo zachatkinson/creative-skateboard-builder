@@ -454,6 +454,46 @@
 				}
 			}
 		},
+		"swaps": {
+			"description": "From 1.3.0: the swaps the build is offered (#135, D-394, D-396). On the review, the same board for less first, where there is one, then each picked slot's in step order, for less before better; on a step, the step's own pick's; otherwise none. Each fits the whole build, is in stock in the quantity the build takes, and leaves the build no problem it did not have. The deck is never swapped. An answer an earlier container makes has none.",
+			"type": "array",
+			"items": {
+				"description": "A swap: one press that puts these parts in place of the build's.",
+				"type": "object",
+				"required": [ "kind", "parts", "change" ],
+				"properties": {
+					"kind": {
+						"description": "`less`: one slot's part, the cheapest that fits. `better`: one slot's part, the next up by the shop's rank, or by price where no part of the slot has a rank. `board`: the same board for less, every picked slot but the deck that has a part for less.",
+						"type": "string",
+						"enum": [ "less", "better", "board" ]
+					},
+					"parts": {
+						"description": "What it swaps, one entry a slot, in step order.",
+						"type": "array",
+						"minItems": 1,
+						"items": {
+							"type": "object",
+							"required": [ "slot", "was", "part", "name" ],
+							"properties": {
+								"slot": { "description": "The slot's key.", "type": "string", "pattern": "^[a-z][a-z0-9_]{0,31}(?!\\n)$" },
+								"was": { "description": "The ID of the part the build has now.", "type": "integer", "minimum": 1 },
+								"part": { "description": "The ID of the part it takes in its place.", "type": "integer", "minimum": 1 },
+								"name": { "description": "That part's name, or an empty string when its product has gone.", "type": "string" }
+							}
+						}
+					},
+					"change": {
+						"description": "What the swap does to the total, as the total is worked out: `amount` in minor units, below 0 where it takes off, and `text`, how much without a sign, as the shop writes prices. The total after the swap is the total now plus `amount`.",
+						"type": "object",
+						"required": [ "amount", "text" ],
+						"properties": {
+							"amount": { "type": "integer" },
+							"text": { "type": "string" }
+						}
+					}
+				}
+			}
+		},
 		"total": {
 			"description": "What the build costs so far.",
 			"type": "object",
@@ -688,13 +728,22 @@
 		"view": {
 			"description": "Only in an answer to a build link (the cbuild argument): what the builder's template draws for it, as the page's first render has it. The builder's own, and no part of the public API: it may change in any release. The fields the store's script reads are described, so its types are generated from here; the rest are the templates'.",
 			"type": "object",
-			"required": ["url", "kit", "title", "status", "isChanges", "errors", "step", "review"],
+			"required": ["url", "kit", "title", "status", "isChanges", "errors", "step", "review", "swapped"],
 			"properties": {
 				"url": { "description": "The view's own address, which the store puts in the page's.", "type": "string" },
 				"kit": { "description": "The kit product's ID.", "type": "integer" },
 				"title": { "description": "The step's heading, which the store puts in the page's title.", "type": "string" },
 				"status": { "description": "What the status region says of the view.", "type": "string" },
 				"isChanges": { "description": "Whether the change panel is shown.", "type": "boolean" },
+				"swapped": {
+					"description": "After a smart swap, from 1.3.0 (#135): whether its notice, with Undo, is shown. The store puts focus on it after a swap.",
+					"type": "object",
+					"required": ["shown"],
+					"properties": {
+						"shown": { "description": "Whether the notice is shown.", "type": "boolean" }
+					},
+					"additionalProperties": true
+				},
 				"errors": {
 					"type": "object",
 					"required": ["shown"],
@@ -961,7 +1010,8 @@
 				"stock",
 				"stock_class",
 				"image",
-				"photo"
+				"photo",
+				"rating"
 			],
 			"properties": {
 				"name": {
@@ -998,6 +1048,35 @@
 				"photo": {
 					"description": "Whether `image` is the part's photo, not its layer image (1.0.0).",
 					"type": "boolean"
+				},
+				"rating": {
+					"description": "From 1.3.0: the part's star rating and review count as WooCommerce keeps them from its reviews, a variation's being its product's (#137). Null where it has no reviews, or the shop shows no ratings (WooCommerce's Enable star rating on reviews).",
+					"oneOf": [
+						{
+							"type": "object",
+							"required": [ "average", "count", "text" ],
+							"properties": {
+								"average": {
+									"description": "The average rating, 0 to 5, as WooCommerce keeps it.",
+									"type": "number",
+									"minimum": 0,
+									"maximum": 5
+								},
+								"count": {
+									"description": "How many reviews it is the average of.",
+									"type": "integer",
+									"minimum": 1
+								},
+								"text": {
+									"description": "The rating as words, the text its stars stand for: `4.5 out of 5, 12 reviews`, in the site's language and its decimal separator.",
+									"type": "string"
+								}
+							}
+						},
+						{
+							"type": "null"
+						}
+					]
 				}
 			}
 		},
@@ -1017,7 +1096,8 @@
 				"recommended",
 				"messages",
 				"card",
-				"board"
+				"board",
+				"presets"
 			],
 			"properties": {
 				"id": {
@@ -1151,6 +1231,14 @@
 							"type": "null"
 						}
 					]
+				},
+				"presets": {
+					"description": "From 1.3.0: the ready builds offered to the shopper that pick this part, by their places among the kit's, as `presets[].at`, in the kit's order (#137). Empty where none does, and where the kit shows no ready builds.",
+					"type": "array",
+					"items": {
+						"type": "integer",
+						"minimum": 0
+					}
 				}
 			}
 		},

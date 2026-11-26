@@ -26,7 +26,11 @@ export default {
 		'tests/Benchmark',
 		'tests/Fixtures',
 		'tests/Support',
-		'tests/e2e',
+		// The browser tests but their lock, which tests/js/e2e-lock.test.ts imports and runs (D-422, D-426).
+		'tests/e2e/*',
+		'!tests/e2e/support',
+		'tests/e2e/support/*',
+		'!tests/e2e/support/lock.ts',
 	],
 	thresholds: { high: 98, low: 95, break: 95 },
 	coverageAnalysis: 'perTest',

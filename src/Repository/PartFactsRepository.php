@@ -13,6 +13,7 @@ use CreativeBranding\SkateboardBuilder\Port\Clock;
 use CreativeBranding\SkateboardBuilder\Port\PartFact;
 use CreativeBranding\SkateboardBuilder\Port\PartFacts;
 use CreativeBranding\SkateboardBuilder\Support\Cast;
+use CreativeBranding\SkateboardBuilder\Support\PartRank;
 use CreativeBranding\SkateboardBuilder\Support\Tables;
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -44,6 +45,12 @@ final class PartFactsRepository implements PartFacts {
 	 * no save tells of, a term renamed, shows within the hour (D-289).
 	 */
 	private const int KEPT_FOR = HOUR_IN_SECONDS;
+
+	/**
+	 * The key a part's rank is kept under beside its specs (D-434): no spec key starts with an underscore, so the
+	 * specs read back leave it out. A row kept before 1.3.0 has none, and is read from the shop again.
+	 */
+	private const string RANK = '_rank';
 
 	/**
 	 * Constructor.
@@ -129,7 +136,7 @@ final class PartFactsRepository implements PartFacts {
 				if ( null !== $fact->stock ) {
 					$args[] = $fact->stock;
 				}
-				array_push( $args, (string) wp_json_encode( (object) $fact->attributes ), (string) wp_json_encode( (object) $fact->specs ), $fact->readAt );
+				array_push( $args, (string) wp_json_encode( (object) $fact->attributes ), (string) wp_json_encode( (object) ( array( self::RANK => null === $fact->rank ? '' : (string) $fact->rank ) + $fact->specs ) ), $fact->readAt );
 				foreach ( array( $look, $card ) as $kept ) {
 					if ( null !== $kept ) {
 						$args[] = $kept;
@@ -287,8 +294,11 @@ final class PartFactsRepository implements PartFacts {
 			if ( ! is_object( $row ) ) {
 				continue;
 			}
-			$row          = get_object_vars( $row );
-			$id           = Cast::int( $row['part_id'] ?? null );
+			$row   = get_object_vars( $row );
+			$id    = Cast::int( $row['part_id'] ?? null );
+			$specs = self::texts( $row['specs'] ?? null );
+			$rank  = $specs[ self::RANK ] ?? null;
+			unset( $specs[ self::RANK ] );
 			$facts[ $id ] = new PartFact(
 				$id,
 				Cast::int( $row['parent_id'] ?? null ),
@@ -298,8 +308,10 @@ final class PartFactsRepository implements PartFacts {
 				1 === Cast::int( $row['in_stock'] ?? null ),
 				null === ( $row['stock'] ?? null ) ? null : Cast::int( $row['stock'] ),
 				self::texts( $row['attributes'] ?? null ),
-				self::texts( $row['specs'] ?? null ),
-				Cast::int( $row['read_at'] ?? null )
+				$specs,
+				// A row kept before 1.3.0 holds no rank: read again from the shop, as a row an hour old is.
+				null === $rank ? 0 : Cast::int( $row['read_at'] ?? null ),
+				null === $rank || 1 !== preg_match( PartRank::PATTERN, $rank ) ? null : (int) $rank
 			);
 		}
 		return $facts;

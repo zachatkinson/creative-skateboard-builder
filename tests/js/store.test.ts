@@ -687,7 +687,11 @@ describe( 'the store', () => {
 				expect( animated, 'on the next frame' ).toEqual( [] );
 				vi.advanceTimersToNextFrame();
 				await settle();
-				expect( animated ).toEqual( [ 'cbuild-swapped' ] );
+				// The deck settles, and its area is outlined for the eye (#138, D-413).
+				expect( animated ).toEqual( [
+					'cbuild-swapped',
+					'cbuild-outline',
+				] );
 				expect( state.view.url, 'the answer still awaited' ).toBe(
 					START.url
 				);
@@ -3846,6 +3850,133 @@ describe( 'what a press foretells', () => {
 		expect( root.hasAttribute( 'data-folded' ) ).toBe( false );
 	} );
 
+	// Cowork's review of 1.2.0, F30: the step's lead and the guided start went at the width's answer, 0.9 to 1.3 s after
+	// the press on the demo, and moved the step up then (D-405).
+	it( 'takes the step’s lead and the guided start away at a width’s press, keeping builds the guide was asked for', () => {
+		for ( const [ asked, shown ] of [
+			[ false, false ],
+			[ true, true ],
+		] as const ) {
+			const { width: button } = builder();
+			state.view = {
+				...structuredClone( ASKING ),
+				guide: { shown: true, asked },
+			} as unknown as typeof state.view;
+			reply = () => new Promise< Response >( () => undefined );
+			actions.submit(
+				new SubmitEvent( 'submit', {
+					submitter: button,
+					cancelable: true,
+				} )
+			);
+			expect( ( state.view.step as { hasLead: boolean } ).hasLead ).toBe(
+				false
+			);
+			expect(
+				( state.view as { guide: { shown: boolean } } ).guide.shown
+			).toBe( shown );
+		}
+		// A builder an earlier release's container drew has no guide in its view.
+		const { width: button } = builder();
+		state.view = structuredClone( ASKING );
+		actions.submit(
+			new SubmitEvent( 'submit', { submitter: button, cancelable: true } )
+		);
+		expect( ( state.view.step as { hasLead: boolean } ).hasLead ).toBe(
+			false
+		);
+		expect( 'guide' in state.view ).toBe( false );
+	} );
+
+	it( 'puts the lead and the guided start back when a width’s press hits a limit', async () => {
+		for ( const [ led, guided ] of [
+			[ true, true ],
+			[ false, false ],
+		] as const ) {
+			const { width: button } = builder();
+			const view = {
+				...structuredClone( ASKING ),
+				guide: { shown: guided, asked: false },
+			};
+			view.step.hasLead = led;
+			state.view = view as unknown as typeof state.view;
+			reply = () =>
+				new Response( JSON.stringify( { message: 'Later.' } ), {
+					status: 429,
+					headers: { 'Content-Type': 'application/json' },
+				} );
+			actions.submit(
+				new SubmitEvent( 'submit', {
+					submitter: button,
+					cancelable: true,
+				} )
+			);
+			await settle();
+			await vi.advanceTimersByTimeAsync( 50 );
+			expect( width().asking ).toBe( true );
+			expect( ( state.view.step as { hasLead: boolean } ).hasLead ).toBe(
+				led
+			);
+			expect(
+				( state.view as { guide: { shown: boolean } } ).guide.shown
+			).toBe( guided );
+		}
+		// No guide: none is made.
+		const { width: button } = builder();
+		state.view = structuredClone( ASKING );
+		reply = () =>
+			new Response( JSON.stringify( { message: 'Later.' } ), {
+				status: 429,
+				headers: { 'Content-Type': 'application/json' },
+			} );
+		actions.submit(
+			new SubmitEvent( 'submit', { submitter: button, cancelable: true } )
+		);
+		await settle();
+		await vi.advanceTimersByTimeAsync( 50 );
+		expect( 'guide' in state.view ).toBe( false );
+	} );
+
+	// The smart swap's notice sits above the step (#135, D-397) and lasts until the next move, which a width's press is: its
+	// answer takes the notice away, so the press does, as it does the lead and the guided start (F30, D-405).
+	it( 'takes a swap’s notice away at a width’s press, and puts it back when the press hits a limit', async () => {
+		const { width: button } = builder();
+		state.view = {
+			...structuredClone( ASKING ),
+			swapped: {
+				shown: true,
+				text: 'Swapped: deck.',
+				undo: { url: '/kit/?_undo[deck]=7', text: 'Undo swap' },
+			},
+		} as unknown as typeof state.view;
+		reply = () =>
+			new Response( JSON.stringify( { message: 'Later.' } ), {
+				status: 429,
+				headers: { 'Content-Type': 'application/json' },
+			} );
+		actions.submit(
+			new SubmitEvent( 'submit', { submitter: button, cancelable: true } )
+		);
+		const swapped = () =>
+			( state.view as { swapped: { shown: boolean; text: string } } )
+				.swapped;
+		expect( swapped().shown, 'gone at the press' ).toBe( false );
+		await settle();
+		await vi.advanceTimersByTimeAsync( 50 );
+		expect( width().asking ).toBe( true );
+		expect( swapped().shown, 'back at the limit' ).toBe( true );
+		expect( swapped().text ).toBe( 'Swapped: deck.' );
+		// No notice in the view: none is made.
+		const { width: again } = builder();
+		state.view = structuredClone( ASKING );
+		actions.submit(
+			new SubmitEvent( 'submit', { submitter: again, cancelable: true } )
+		);
+		await settle();
+		await vi.advanceTimersByTimeAsync( 50 );
+		expect( 'swapped' in state.view ).toBe( false );
+	} );
+
 	// The auditor's second pass on M12, should-fix 3: a width press the rate limit or the store's limit stopped kept its
 	// fold, the widths folded away and no decks under them, and only Change asked again (D-364).
 	it( 'asks the width question again, its options open and the pressed one focused, when the press hits a limit', async () => {
@@ -4562,14 +4693,21 @@ describe( 'what the stage plays as a view comes in', () => {
 		await settle();
 		expect( seen(), 'not before the frame that draws it' ).toEqual( [] );
 		vi.advanceTimersToNextFrame();
-		expect( seen() ).toEqual( [ 'cbuild-trucks underside trucks-1' ] );
+		// Each part's moment, then its area outlined on the same side (#138, D-413).
+		expect( seen() ).toEqual( [
+			'cbuild-trucks underside trucks-1',
+			'cbuild-outline underside trucks-1',
+		] );
 
 		played = [];
 		state.view = pictured( true, [ 'deck-1' ], [ 'deck-1' ] );
 		await shown(
 			pictured( true, [ 'deck-1', 'trucks-1' ], [ 'deck-1', 'grip-1' ] )
 		);
-		expect( seen() ).toEqual( [ 'cbuild-grip top grip-1' ] );
+		expect( seen() ).toEqual( [
+			'cbuild-grip top grip-1',
+			'cbuild-outline top grip-1',
+		] );
 	} );
 
 	it( 'turns the board to the side a new view shows, and plays nothing new on the side as it turns to it', async () => {

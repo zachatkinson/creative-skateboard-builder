@@ -11,6 +11,9 @@ namespace CreativeBranding\SkateboardBuilder\Front;
 
 use CreativeBranding\SkateboardBuilder\Admin\Labels;
 use CreativeBranding\SkateboardBuilder\Domain\Fit\Problem;
+use CreativeBranding\SkateboardBuilder\Domain\Guide\RidingStyle;
+use CreativeBranding\SkateboardBuilder\Domain\Guide\Span;
+use CreativeBranding\SkateboardBuilder\Domain\Guide\Tier;
 use CreativeBranding\SkateboardBuilder\Domain\Measure\Measure;
 use CreativeBranding\SkateboardBuilder\Domain\Measure\Unit;
 use CreativeBranding\SkateboardBuilder\Domain\Rule\Finding;
@@ -421,7 +424,9 @@ final class Words {
 	}
 
 	/**
-	 * The other sizes a look comes in, on its card, as "Also in 8″, 8.5″ and 8.75″" (D-240).
+	 * The other sizes a look comes in, on its card, in a line: named where there are one or two, as "Also in 8″ and
+	 * 8.5″" (D-240), and counted past two, as "Also in 6 other widths", so a deck sold in seven widths does not list six
+	 * over three lines (F31, D-399).
 	 *
 	 * @since 1.0.0
 	 *
@@ -431,8 +436,13 @@ final class Words {
 		if ( array() === $sizes ) {
 			return '';
 		}
-		/* translators: %s: sizes joined as the site's language joins a list, such as 8″, 8.5″ and 8.75″. */
-		return sprintf( __( 'Also in %s', 'creative-skateboard-builder' ), wp_sprintf( '%l', $sizes ) );
+		$count = count( $sizes );
+		if ( $count > 2 ) {
+			/* translators: %s: how many other widths a deck is made in, such as 6. */
+			return sprintf( _n( 'Also in %s other width', 'Also in %s other widths', $count, 'creative-skateboard-builder' ), number_format_i18n( $count ) );
+		}
+		/* translators: %s: one size, or two joined as the site's language joins a list, such as 8″ and 8.5″. */
+		return sprintf( __( 'Also in %s', 'creative-skateboard-builder' ), self::joined( $sizes ) );
 	}
 
 	/**
@@ -448,6 +458,69 @@ final class Words {
 		}
 		/* translators: %s: the one size a deck is made in, such as 8.25″. */
 		return sprintf( __( 'Only in %s', 'creative-skateboard-builder' ), $size );
+	}
+
+	/**
+	 * The ready builds that pick a part, on its card, as "Picked for Street and Cruiser" (#137, D-392); empty where
+	 * none does.
+	 *
+	 * @since 1.3.0
+	 *
+	 * @param list<string> $names The ready builds' names, as the shopper reads them on their tiles, in the kit's order.
+	 */
+	public static function pickedFor( array $names ): string {
+		if ( array() === $names ) {
+			return '';
+		}
+		/* translators: %s: ready builds' names joined as the site's language joins a list, such as Street and Cruiser. */
+		return sprintf( __( 'Picked for %s', 'creative-skateboard-builder' ), self::joined( $names ) );
+	}
+
+	/**
+	 * A part's star rating as words, the text the stars stand for, as "4.5 out of 5, 12 reviews" (#137, D-392): the
+	 * average to one decimal, a whole one without it, and the count, both in the language's separators.
+	 *
+	 * @since 1.3.0
+	 *
+	 * @param float $average The average rating, 0 to 5, as WooCommerce keeps it.
+	 * @param int   $count   How many reviews it is the average of.
+	 */
+	public static function rating( float $average, int $count ): string {
+		return sprintf(
+			/* translators: 1: an average star rating, such as 4.5. 2: how many reviews it is the average of. */
+			_n( '%1$s out of 5, %2$s review', '%1$s out of 5, %2$s reviews', $count, 'creative-skateboard-builder' ),
+			self::average( $average ),
+			number_format_i18n( $count )
+		);
+	}
+
+	/**
+	 * A part's star rating shown short beside its stars, as "4.5 (12)" (#137, D-393), so it shares a line with the
+	 * ready builds' pick on a card as narrow as a desktop's. The sentence from rating() is what a screen reader says.
+	 *
+	 * @since 1.3.0
+	 *
+	 * @param float $average The average rating, 0 to 5, as WooCommerce keeps it.
+	 * @param int   $count   How many reviews it is the average of.
+	 */
+	public static function score( float $average, int $count ): string {
+		return sprintf(
+			/* translators: 1: an average star rating, such as 4.5. 2: how many reviews it is the average of. Shown beside the stars. */
+			_x( '%1$s (%2$s)', 'a rating and its count of reviews', 'creative-skateboard-builder' ),
+			self::average( $average ),
+			number_format_i18n( $count )
+		);
+	}
+
+	/**
+	 * An average rating to one decimal, a whole one without it, in the language's decimal separator, as its count is: a
+	 * rating is no price.
+	 *
+	 * @param float $average The average rating, 0 to 5.
+	 */
+	private static function average( float $average ): string {
+		$tenths = round( $average * 10 );
+		return number_format_i18n( $tenths / 10, 0 === $tenths % 10 ? 0 : 1 );
 	}
 
 	/**
@@ -496,6 +569,33 @@ final class Words {
 	 * @param list<string> $values The values, in order.
 	 */
 	public static function either( array $values ): string {
+		/* translators: 1: values joined by commas, such as 7.75″, 8.125″. 2: the last value, such as 9″. */
+		return self::series( $values, __( '%1$s or %2$s', 'creative-skateboard-builder' ) );
+	}
+
+	/**
+	 * Items said as a list in the page's language, as "wheels, bearings and hardware" (D-460): the last two joined by
+	 * "and", the rest by commas, each through the plugin's own patterns. Never `wp_sprintf( '%l' )`, whose words are
+	 * WordPress's own translation's: core's French for Canada joins two as "%1$s et %2$s.", which said "wheels et
+	 * .hardware".
+	 *
+	 * @since 1.3.0
+	 *
+	 * @param list<string> $items The items, in order.
+	 */
+	public static function joined( array $items ): string {
+		/* translators: 1: items joined by commas, or the first of two, such as wheels, bearings. 2: the last item, such as hardware. */
+		return self::series( $items, _x( '%1$s and %2$s', 'the last two items in a list', 'creative-skateboard-builder' ) );
+	}
+
+	/**
+	 * Values in a line: one alone, two in the pattern given, more by the list's separator and the last two in the
+	 * pattern.
+	 *
+	 * @param list<string> $values   The values, in order.
+	 * @param string       $last_two The pattern that joins the last two, translated, such as "%1$s and %2$s".
+	 */
+	private static function series( array $values, string $last_two ): string {
 		$last = array_pop( $values );
 		if ( null === $last ) {
 			return '';
@@ -503,8 +603,7 @@ final class Words {
 		if ( array() === $values ) {
 			return $last;
 		}
-		/* translators: 1: values joined by commas, such as 7.75″, 8.125″. 2: the last value, such as 9″. */
-		return sprintf( __( '%1$s or %2$s', 'creative-skateboard-builder' ), implode( _x( ', ', 'between values in a list', 'creative-skateboard-builder' ), $values ), $last );
+		return sprintf( $last_two, implode( _x( ', ', 'between values in a list', 'creative-skateboard-builder' ), $values ), $last );
 	}
 
 	/**
@@ -517,7 +616,7 @@ final class Words {
 	 * @param list<string> $parts The parts a complete is known by, each as branded() names it.
 	 */
 	public static function complete( string $width, array $parts ): string {
-		$list = wp_sprintf( '%l', $parts );
+		$list = self::joined( $parts );
 		if ( '' === $width ) {
 			if ( '' === $list ) {
 				return __( 'A complete', 'creative-skateboard-builder' );
@@ -557,6 +656,50 @@ final class Words {
 	}
 
 	/**
+	 * A smart swap's control (#135, D-397): what it swaps in and what it does to the total. The board's says its saving
+	 * alone; a slot's names the part.
+	 *
+	 * @since 1.3.0
+	 *
+	 * @param string $kind   `board`, `less` or `better`.
+	 * @param string $name   The part it swaps in, for a slot's.
+	 * @param int    $change The total's change in minor units: below 0 for less.
+	 * @param string $amount The change with no sign, as the shop writes prices.
+	 */
+	public static function swap( string $kind, string $name, int $change, string $amount ): string {
+		if ( 'board' === $kind ) {
+			/* translators: %s: an amount of money, such as $3.00. */
+			return sprintf( __( 'Same board for %s less', 'creative-skateboard-builder' ), $amount );
+		}
+		if ( 'less' === $kind ) {
+			/* translators: 1: a part's name. 2: an amount of money, such as $2.00. */
+			return sprintf( __( 'For less: %1$s, %2$s less', 'creative-skateboard-builder' ), $name, $amount );
+		}
+		if ( $change > 0 ) {
+			/* translators: 1: a part's name. 2: an amount of money, such as $2.00. */
+			return sprintf( __( 'Step up: %1$s, %2$s more', 'creative-skateboard-builder' ), $name, $amount );
+		}
+		return $change < 0
+			/* translators: 1: a part's name. 2: an amount of money, such as $2.00. */
+			? sprintf( __( 'Step up: %1$s, %2$s less', 'creative-skateboard-builder' ), $name, $amount )
+			/* translators: %s: a part's name. */
+			: sprintf( __( 'Step up: %s, same price', 'creative-skateboard-builder' ), $name );
+	}
+
+	/**
+	 * What a smart swap changed, said after it (#135, D-397): the slots by their labels, as the site's language joins a
+	 * list.
+	 *
+	 * @since 1.3.0
+	 *
+	 * @param list<string> $labels The slots' labels.
+	 */
+	public static function swapped( array $labels ): string {
+		/* translators: %s: slots' labels joined as the site's language joins a list, such as wheels and hardware. */
+		return sprintf( __( 'Swapped: %s.', 'creative-skateboard-builder' ), self::joined( array_map( self::inSentence( ... ), $labels ) ) );
+	}
+
+	/**
 	 * A slot's label inside a sentence, as "Change deck": its first letter small, unless the label is written in
 	 * capitals, as a brand's may be, or the language keeps a noun's capital (Cowork's review, minors 5 and 14).
 	 *
@@ -578,5 +721,94 @@ final class Words {
 		}
 		$first = mb_substr( $label, 0, 1 );
 		return ( function_exists( 'mb_strtolower' ) ? mb_strtolower( $first, 'UTF-8' ) : strtolower( $first ) ) . mb_substr( $label, 1 );
+	}
+
+	/**
+	 * A riding style as the guided start's question offers it, and as the kit's Wheel guide names its row (#134).
+	 *
+	 * @since 1.3.0
+	 *
+	 * @param RidingStyle $style The style.
+	 */
+	public static function style( RidingStyle $style ): string {
+		return match ( $style ) {
+			RidingStyle::Street   => _x( 'Street', 'where a shopper skates', 'creative-skateboard-builder' ),
+			RidingStyle::Park     => _x( 'Skatepark', 'where a shopper skates', 'creative-skateboard-builder' ),
+			RidingStyle::Bowl     => _x( 'Bowl and transition', 'where a shopper skates', 'creative-skateboard-builder' ),
+			RidingStyle::Cruising => _x( 'Cruising', 'where a shopper skates', 'creative-skateboard-builder' ),
+		};
+	}
+
+	/**
+	 * Sizes from one to another, one alone, or one and larger: "50 mm to 54 mm", "59 mm and larger" (#134).
+	 *
+	 * @since 1.3.0
+	 *
+	 * @param Span $span The sizes.
+	 */
+	public static function span( Span $span ): string {
+		if ( null === $span->to ) {
+			/* translators: %s: a size, such as 59 mm. */
+			return sprintf( __( '%s and larger', 'creative-skateboard-builder' ), self::measure( $span->from ) );
+		}
+		return $span->from->equals( $span->to )
+			? self::measure( $span->from )
+			/* translators: 1: the smaller of a range, such as a deck width of 7″ or a US shoe size of 7. 2: the larger, such as 7.75″ or 8.5. */
+			: sprintf( __( '%1$s to %2$s', 'creative-skateboard-builder' ), self::measure( $span->from ), self::measure( $span->to ) );
+	}
+
+	/**
+	 * Why the guided start's wheels are the sizes they are: where the shopper skates, and the sizes (#134). One
+	 * sentence a style, so each language says it whole.
+	 *
+	 * @since 1.3.0
+	 *
+	 * @param RidingStyle $style The style.
+	 * @param Span        $span  The sizes.
+	 */
+	public static function wheelsFor( RidingStyle $style, Span $span ): string {
+		$sizes = self::span( $span );
+		return match ( $style ) {
+			/* translators: %s: wheel sizes, such as 50 mm to 54 mm. */
+			RidingStyle::Street   => sprintf( __( 'Wheels of %s suit street skating.', 'creative-skateboard-builder' ), $sizes ),
+			/* translators: %s: wheel sizes, such as 53 mm to 56 mm. */
+			RidingStyle::Park     => sprintf( __( 'Wheels of %s suit a skatepark.', 'creative-skateboard-builder' ), $sizes ),
+			/* translators: %s: wheel sizes, such as 55 mm to 58 mm. */
+			RidingStyle::Bowl     => sprintf( __( 'Wheels of %s suit bowls and transition.', 'creative-skateboard-builder' ), $sizes ),
+			/* translators: %s: wheel sizes, such as 59 mm to 65 mm. */
+			RidingStyle::Cruising => sprintf( __( 'Wheels of %s suit cruising.', 'creative-skateboard-builder' ), $sizes ),
+		};
+	}
+
+	/**
+	 * A ready build's name, by its tier (#134).
+	 *
+	 * @since 1.3.0
+	 *
+	 * @param Tier $tier The tier.
+	 */
+	public static function tier( Tier $tier ): string {
+		return match ( $tier ) {
+			Tier::Budget  => _x( 'Budget build', 'a ready build from the guided start', 'creative-skateboard-builder' ),
+			Tier::Mid     => _x( 'Mid-range build', 'a ready build from the guided start', 'creative-skateboard-builder' ),
+			Tier::Premium => _x( 'High-end build', 'a ready build from the guided start', 'creative-skateboard-builder' ),
+			Tier::Only    => _x( 'Ready build', 'a ready build from the guided start', 'creative-skateboard-builder' ),
+		};
+	}
+
+	/**
+	 * What a ready build is, by its tier: the line under its name (#134).
+	 *
+	 * @since 1.3.0
+	 *
+	 * @param Tier $tier The tier.
+	 */
+	public static function tierLine( Tier $tier ): string {
+		return match ( $tier ) {
+			Tier::Budget  => __( 'The lowest-priced part that fits in each slot.', 'creative-skateboard-builder' ),
+			Tier::Mid     => __( 'A part from the middle of the prices in each slot.', 'creative-skateboard-builder' ),
+			Tier::Premium => __( 'The highest-priced part that fits in each slot.', 'creative-skateboard-builder' ),
+			Tier::Only    => __( 'The one build the shop can make from these answers.', 'creative-skateboard-builder' ),
+		};
 	}
 }

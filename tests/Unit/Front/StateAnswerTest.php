@@ -24,6 +24,8 @@ use CreativeBranding\SkateboardBuilder\Front\Delivery;
 use CreativeBranding\SkateboardBuilder\Front\ShippingWords;
 use CreativeBranding\SkateboardBuilder\Front\StateAnswer;
 use CreativeBranding\SkateboardBuilder\Port\LookFact;
+use CreativeBranding\SkateboardBuilder\Port\PartRanks;
+use CreativeBranding\SkateboardBuilder\Service\BuildSwaps;
 use CreativeBranding\SkateboardBuilder\Port\TextFolding;
 use CreativeBranding\SkateboardBuilder\Service\Phases;
 use CreativeBranding\SkateboardBuilder\Service\ShelfQuery;
@@ -31,6 +33,7 @@ use CreativeBranding\SkateboardBuilder\Service\StepShelf;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\FakeRanking;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\InMemoryPartLooks;
 use CreativeBranding\SkateboardBuilder\Service\BuildState;
+use CreativeBranding\SkateboardBuilder\Service\State;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Domain\Builds;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Domain\KitDocuments;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Domain\Parts;
@@ -210,7 +213,7 @@ final class StateAnswerTest extends TestCase {
 	public function test_with_nothing_picked_the_first_step_lists_its_parts_each_with_its_card(): void {
 		$answer = $this->answer();
 
-		self::assertSame( array( 'kit', 'step', 'ready', 'texts', 'presets', 'steps', 'options', 'hidden', 'filters', 'matching', 'more', 'refused', 'problems', 'changes', 'total', 'picture', 'delivery', 'notes', 'shelf', 'bearings_included', 'currency' ), array_keys( $answer ) );
+		self::assertSame( array( 'kit', 'step', 'ready', 'texts', 'presets', 'steps', 'options', 'hidden', 'filters', 'matching', 'more', 'refused', 'problems', 'changes', 'swaps', 'total', 'picture', 'delivery', 'notes', 'shelf', 'bearings_included', 'currency' ), array_keys( $answer ) );
 		// How the shop writes a price, for a page that formats a total itself (milestone 11, sent from 1.0.0).
 		self::assertSame(
 			array(
@@ -252,6 +255,8 @@ final class StateAnswerTest extends TestCase {
 				'messages'    => array(),
 				'card'        => InMemoryPartCards::listed( 101 ),
 				'board'       => null,
+				// From 1.3.0 (#137): no ready build picks it.
+				'presets'     => array(),
 			),
 			$answer['options'][0]
 		);
@@ -368,6 +373,62 @@ final class StateAnswerTest extends TestCase {
 		self::assertSame( 'Sold in pairs.', self::step( $answer, SlotKey::TRUCKS )['help'] );
 	}
 
+	// #137 (D-392): each option names the ready builds shown that pick it, by their places among the kit's, and its card
+	// has the rating the shop shows, said in words, or none.
+	public function test_an_option_names_the_ready_builds_that_pick_it_and_its_card_has_its_rating(): void {
+		$this->worded();
+		$this->cards->rated[301] = array(
+			'average' => 4.5,
+			'count'   => 12,
+		);
+		$wheels                  = array();
+		foreach ( $this->answer( array( SlotKey::DECK => 101, SlotKey::TRUCKS => 139 ), SlotKey::WHEELS )['options'] as $option ) {
+			$wheels[ $option['id'] ] = $option;
+		}
+		self::assertSame( array( 0 ), $wheels[301]['presets'], 'Street picks it' );
+		self::assertSame( array( 1 ), $wheels[302]['presets'], 'Park picks it' );
+		self::assertSame(
+			array(
+				'average' => 4.5,
+				'count'   => 12,
+				'text'    => '4.5 out of 5, 12 reviews',
+			),
+			$wheels[301]['card']['rating']
+		);
+		self::assertNull( $wheels[302]['card']['rating'], 'no reviews, or the shop shows no ratings' );
+
+		$bearings = $this->answer( self::STREET, SlotKey::BEARINGS )['options'];
+		self::assertSame( array( array( 0, 1 ) ), array_values( array_column( array_filter( $bearings, static fn( array $option ): bool => 501 === $option['id'] ), 'presets' ) ), 'both pick it, in the kit\'s order' );
+
+		// No ready build shown, none named: the kit's Show ready builds off (#104).
+		$this->kits->add(
+			self::KIT,
+			Kit::fromDocuments(
+				KitDocuments::slots(),
+				KitDocuments::rules(),
+				array(
+					'schema_version' => 1,
+					'presets'        => array(
+						array(
+							'name'  => 'Street',
+							'picks' => self::STREET,
+						),
+					),
+				),
+				KitDocuments::assembly(),
+				null,
+				array(
+					'schema_version' => 1,
+					'show_presets'   => false,
+				)
+			),
+			Shop::parts()
+		);
+		$decks = $this->answer( array(), SlotKey::DECK )['options'];
+		self::assertContains( 101, array_column( $decks, 'id' ) );
+		self::assertSame( array( array() ), array_values( array_column( array_filter( $decks, static fn( array $option ): bool => 101 === $option['id'] ), 'presets' ) ) );
+	}
+
 	// Spec, Presets: each tile shows its total, and one holding a sold-out part says so.
 	// D-252: "Without one, the tile shows the build's composed picture (milestone 7), not the first part's photo."
 	public function test_a_presets_tile_shows_its_rider_photo_else_the_builds_picture_once_made(): void {
@@ -407,7 +468,7 @@ final class StateAnswerTest extends TestCase {
 
 		unset( $this->cards->photos[81] );
 		$asked = array();
-		self::assertSame( InMemoryPartCards::card( 101 )['image'], $answer->of( $state )['presets'][0]['image'], 'a photo gone, the picture not made: the deck\'s photo' );
+		self::assertSame( InMemoryPartCards::card( 101 )['large'], $answer->of( $state )['presets'][0]['image'], 'a photo gone, the picture not made: the deck\'s photo' );
 		self::assertSame( array( self::STREET, self::PARK ), $asked );
 
 		$asked = array();
@@ -431,7 +492,7 @@ final class StateAnswerTest extends TestCase {
 		self::assertSame( $this->answer( self::STREET )['total']['total'], $street['total'], "the total of the build it starts, at the kit's own assembly setting" );
 		self::assertTrue( $street['ready'] );
 		self::assertSame( array(), $street['problems'] );
-		self::assertSame( InMemoryPartCards::card( 101 )['image'], $street['image'], "its picture, for now its deck's photo" );
+		self::assertSame( InMemoryPartCards::card( 101 )['large'], $street['image'], "its picture, for now its deck's photo" );
 		self::assertCount( 2, $answer['presets'], 'Park is listed, at its place' );
 		self::assertSame( array( true, false ), array_column( $answer['presets'], 'shown' ), 'and not shown' );
 		self::assertFalse( $answer['presets'][1]['ready'] );
@@ -1475,7 +1536,7 @@ final class StateAnswerTest extends TestCase {
 		$card = $cards['30:5:0'];
 		self::assertSame( 30, $card['product'] );
 		self::assertContains( $card['part']['id'], array( 301, 302 ) );
-		self::assertSame( array( 'id', 'brand', 'size', 'delta', 'fit', 'in_stock', 'available', 'quantity', 'picked', 'recommended', 'messages', 'card', 'board' ), array_keys( $card['part'] ), 'the part as an option carries it' );
+		self::assertSame( array( 'id', 'brand', 'size', 'delta', 'fit', 'in_stock', 'available', 'quantity', 'picked', 'recommended', 'messages', 'card', 'board', 'presets' ), array_keys( $card['part'] ), 'the part as an option carries it' );
 		self::assertSame(
 			array(
 				array(
@@ -1580,5 +1641,120 @@ final class StateAnswerTest extends TestCase {
 		$page = $this->shelf( array( SlotKey::DECK => 103, SlotKey::TRUCKS => 149 ), SlotKey::WHEELS, null, $looks, new ShelfQuery( from: 1, shown: 1 ) );
 		self::assertCount( 1, $page['looks'] ?? array() );
 		self::assertSame( 2, $page['more'] ?? null );
+	}
+
+	/**
+	 * The answer for a build of the usual kit, with smart swaps (#135).
+	 *
+	 * @param array<mixed>    $picks The picks.
+	 * @param array<int, int> $ranks The shop's ranks, by part.
+	 * @return array<string, mixed>
+	 */
+	private function swapping( array $picks, string $step, array $ranks = array() ): array {
+		$state = ( new BuildState( $this->kits, $this->settings, $this->logger ) )->of( self::KIT, $picks, null, $step, null );
+		self::assertNotNull( $state );
+		$ranked = new class( $ranks ) implements PartRanks {
+			/**
+			 * The parts asked about, each call's.
+			 *
+			 * @var list<list<int>>
+			 */
+			public array $asked = array();
+
+			/**
+			 * @param array<int, int> $ranks The ranks.
+			 */
+			public function __construct( private array $ranks ) {}
+
+			public function ranks( int ...$parts ): array {
+				$this->asked[] = $parts;
+				return array_intersect_key( $this->ranks, array_flip( $parts ) );
+			}
+
+			public function of( Part ...$parts ): array {
+				return $this->ranks( ...array_map( static fn( Part $part ): int => $part->id, $parts ) );
+			}
+		};
+		$answer = ( new StateAnswer( $this->cards, new FakeMoney(), $this->kits, new Delivery( $this->kits, new FakeShippingZones(), new ShippingWords( new FakeMoney() ) ), new PageRenderer() ) )->withSwaps( new BuildSwaps( $ranked ) );
+		$of     = $answer->of( $state, null );
+		$of['asked'] = $ranked->asked;
+		return $of;
+	}
+
+	public function test_the_review_offers_the_board_for_less_then_each_slots_swaps_each_with_the_totals_change(): void {
+		$this->settings->terms = BuildTerms::read( array( BuildTerms::DISCOUNT => '10' ) );
+		$review                = $this->swapping( self::COMPLETE, State::REVIEW );
+		$kinds                 = array_map( static fn( array $swap ): string => $swap['kind'] . ' ' . implode( ',', array_column( $swap['parts'], 'part', 'slot' ) ), $review['swaps'] );
+		self::assertSame( array( 'board 301', 'less 301', 'better 602' ), $kinds, 'the board for less, then each slot in step order: the trucks and wheels for 8.5 have nothing better that fits' );
+		self::assertSame( array( SlotKey::WHEELS ), array_column( $review['swaps'][0]['parts'], 'slot' ) );
+		self::assertSame( 302, $review['swaps'][1]['parts'][0]['was'] );
+		self::assertSame( 'Part 301', $review['swaps'][1]['parts'][0]['name'], 'named by its card' );
+		foreach ( $review['swaps'] as $swap ) {
+			$after = self::COMPLETE;
+			foreach ( $swap['parts'] as $part ) {
+				$after[ $part['slot'] ] = $part['part'];
+			}
+			$total = $this->swapping( $after, State::REVIEW )['total']['total']['amount'];
+			self::assertSame( $total - $review['total']['total']['amount'], $swap['change']['amount'], $swap['kind'] . ', with the build discount' );
+		}
+		self::assertSame( array( -180, '$1.80' ), array( $review['swaps'][1]['change']['amount'], $review['swaps'][1]['change']['text'] ), 'the 2.00 less is 1.80 with 10 % off; the text has no sign' );
+		self::assertSame( array( 45, '$0.45' ), array( $review['swaps'][2]['change']['amount'], $review['swaps'][2]['change']['text'] ) );
+	}
+
+	public function test_a_step_asks_for_the_ranks_of_its_own_slots_parts_alone_and_a_step_with_no_pick_asks_nothing(): void {
+		$wheels = $this->swapping( self::COMPLETE, SlotKey::WHEELS, array( 302 => 1, 303 => 5, 301 => 2 ) );
+		self::assertSame( array( 'better 301' ), array_map( static fn( array $swap ): string => $swap['kind'] . ' ' . $swap['parts'][0]['part'], $wheels['swaps'] ), 'ranked above the pick and fitting: the 58s need risers' );
+		self::assertCount( 1, $wheels['asked'] );
+		sort( $wheels['asked'][0] );
+		self::assertSame( array( 301, 302, 303 ), $wheels['asked'][0] );
+
+		$open = self::COMPLETE;
+		unset( $open[ SlotKey::WHEELS ] );
+		foreach ( array( $this->swapping( $open, SlotKey::WHEELS ), $this->swapping( self::COMPLETE, SlotKey::DECK ) ) as $none ) {
+			self::assertSame( array(), $none['swaps'] );
+			self::assertSame( array(), $none['asked'], 'nothing looked up' );
+		}
+		self::assertSame( array(), $this->answer( self::COMPLETE, State::REVIEW )['swaps'], 'none without the swaps' );
+	}
+
+	// #135: the board for less takes, in a later slot, a part the build's own picks hid. The 58 mm wheels need the 1/4"
+	// risers, which hide the 1" bolts; once the board drops to the 52s and the 1/8" risers, the 1" bolts fit and cost less.
+	public function test_the_board_for_less_takes_a_part_the_picks_it_changes_had_hidden(): void {
+		$picks  = array(
+			SlotKey::WHEELS   => 303,
+			SlotKey::RISERS   => 402,
+			SlotKey::HARDWARE => 602,
+		) + self::COMPLETE;
+		$review = $this->swapping( $picks, State::REVIEW );
+		self::assertSame( 'board', $review['swaps'][0]['kind'] );
+		self::assertSame(
+			array(
+				SlotKey::WHEELS   => 301,
+				SlotKey::RISERS   => 401,
+				SlotKey::HARDWARE => 601,
+			),
+			array_column( $review['swaps'][0]['parts'], 'part', 'slot' )
+		);
+	}
+
+	// #135: a part for less whose saving the build discount rounds away is no saving to offer, alone or on the board.
+	// A better one is offered whatever it costs.
+	public function test_a_part_for_less_whose_saving_rounds_to_nothing_is_not_offered(): void {
+		$parts                      = Shop::parts();
+		$parts[ SlotKey::WHEELS ][] = Shop::priced( Builds::wheel( '52', 305 ), 2999 );
+		$this->kits->add( self::KIT, Shop::kit(), $parts );
+		$picks = array( SlotKey::WHEELS => 301 ) + self::COMPLETE;
+		$kinds = static fn( array $answer ): array => array_map( static fn( array $swap ): string => $swap['kind'] . ' ' . implode( ',', array_column( $swap['parts'], 'part', 'slot' ) ) . ' ' . $swap['change']['amount'], $answer['swaps'] );
+
+		self::assertSame( array( 'board 305 -1', 'less 305 -1', 'better 302 200', 'better 602 50' ), $kinds( $this->swapping( $picks, State::REVIEW ) ), 'a cent less is a saving' );
+		$this->settings->terms = BuildTerms::read( array( BuildTerms::DISCOUNT => '50' ) );
+		self::assertSame( array( 'better 302 100', 'better 602 25' ), $kinds( $this->swapping( $picks, State::REVIEW ) ), 'half a cent less rounds to the same total' );
+	}
+
+	// #135: the kit's Offer smart swaps, and a plugin's answer to cbuild_swaps, turn the swaps off on a build that has some.
+	public function test_a_plugin_that_turns_the_swaps_off_leaves_a_build_none(): void {
+		self::assertNotSame( array(), $this->swapping( self::COMPLETE, State::REVIEW )['swaps'] );
+		$GLOBALS['cbuild_test_filters']['cbuild_swaps'] = static fn( bool $offers, int $kit ): bool => ! ( $offers && self::KIT === $kit );
+		self::assertSame( array(), $this->swapping( self::COMPLETE, State::REVIEW )['swaps'] );
 	}
 }

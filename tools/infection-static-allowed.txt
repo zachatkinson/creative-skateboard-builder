@@ -20,3 +20,6 @@ LogicalAnd src/Domain/Look/Shelf.php 1
 # A deck the build holds on the deck step is one the engine offered, and the engine hides a deck with no width, so the
 # held deck's width is never null where a width is asked (#81).
 NullSafeMethodCall src/Domain/Look/Shelf.php 1
+# An offered part always has a quantity: one that gives no set size where its slot takes more is blocked (R7), so
+# the cast on a ready build's cost does nothing at run time; it narrows Option's ?int for PHPStan (#134).
+CastInt src/Domain/Guide/ReadyBuilds.php 1

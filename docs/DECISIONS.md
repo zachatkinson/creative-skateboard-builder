@@ -34,7 +34,7 @@ Zach accepted D-002 to D-011 as proposed on 9 November 2026, before milestone 1.
 
 ## Index by area
 
-Each decision is listed once, under the area it is mostly about, in number order. The entries themselves follow in [The decisions](#the-decisions). D-316 to D-318, D-327, D-358, D-362, D-366, D-370 and D-381 are unused.
+Each decision is listed once, under the area it is mostly about, in number order. The entries themselves follow in [The decisions](#the-decisions). D-316 to D-318, D-327, D-358, D-362, D-366, D-370, D-381, D-390 and D-429 are unused. D-427 and D-428 were held for other lanes' work in milestone 13 and are written there or left unused; a number is never given twice.
 
 ### Project, scope and reviews
 
@@ -136,6 +136,7 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-354 · A kit's settings from 1.2.0 on are a document of their own, which the release before never reads](#d-354--a-kits-settings-from-120-on-are-a-document-of-their-own-which-the-release-before-never-reads--2026-11-24)
 - [D-385 · A wrong field of the kit's settings is refused alone, and the rest is saved](#d-385--a-wrong-field-of-the-kits-settings-is-refused-alone-and-the-rest-is-saved--2026-11-24)
 - [D-389 · No word joins the assembly time's range, in any language](#d-389--no-word-joins-the-assembly-times-range-in-any-language--2026-11-25)
+- [D-409 · Three switches in the Build tab: Help me choose, the cards' ready-build picks and their ratings](#d-409--three-switches-in-the-build-tab-help-me-choose-the-cards-ready-build-picks-and-their-ratings--2026-11-25)
 
 ### The state route and the public API
 
@@ -155,6 +156,7 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-290 · The state route's currency format is plain text, as its symbol is](#d-290--the-state-routes-currency-format-is-plain-text-as-its-symbol-is--2026-11-19)
 - [D-336 · The state route lists every ready build again, each saying whether it is shown](#d-336--the-state-route-lists-every-ready-build-again-each-saying-whether-it-is-shown--2026-11-23)
 - [D-376 · A rendered event and five builder classes for other plugins](#d-376--a-rendered-event-and-five-builder-classes-for-other-plugins--2026-11-24)
+- [D-407 · A place just above the step's cards for another plugin's element](#d-407--a-place-just-above-the-steps-cards-for-another-plugins-element--2026-11-25)
 
 ### The builder page
 
@@ -231,6 +233,24 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-382 · The bar follows the panel, not inside it, so its sticky foot can rise to the builder's top](#d-382--the-bar-follows-the-panel-not-inside-it-so-its-sticky-foot-can-rise-to-the-builders-top--2026-11-24)
 - [D-383 · The limit's line is drawn over the bar, in the panel's column](#d-383--the-limits-line-is-drawn-over-the-bar-in-the-panels-column--2026-11-24)
 - [D-384 · At full width the builder spans the theme's full width, and stacked its contents keep the page's gutter](#d-384--at-full-width-the-builder-spans-the-themes-full-width-and-stacked-its-contents-keep-the-pages-gutter--2026-11-24)
+- [D-391 · Every step's card puts its picture beside its words, in a 5rem square](#d-391--every-steps-card-puts-its-picture-beside-its-words-in-a-5rem-square--2026-11-25)
+- [D-392 · A card says the ready builds that pick it, and its rating from WooCommerce's own numbers](#d-392--a-card-says-the-ready-builds-that-pick-it-and-its-rating-from-woocommerces-own-numbers--2026-11-25)
+- [D-393 · A card's rating sits beside its price, and a ready build's pick costs a card one line](#d-393--a-cards-rating-sits-beside-its-price-and-a-ready-builds-pick-costs-a-card-one-line--2026-11-25)
+- [D-394 · A swap is the cheapest or the next better part that fits the whole build, and the same board for less swaps every slot but the deck](#d-394--a-swap-is-the-cheapest-or-the-next-better-part-that-fits-the-whole-build-and-the-same-board-for-less-swaps-every-slot-but-the-deck--2026-11-25)
+- [D-395 · A part's rank is a whole number on its Part specs, higher being better, and a filter answers last](#d-395--a-parts-rank-is-a-whole-number-on-its-part-specs-higher-being-better-and-a-filter-answers-last--2026-11-25)
+- [D-396 · Swaps are worked out on the review and on a step with a pick, and priced as the total is](#d-396--swaps-are-worked-out-on-the-review-and-on-a-step-with-a-pick-and-priced-as-the-total-is--2026-11-25)
+- [D-397 · A swap is a link that carries the picks before it, its Undo lives in a notice until the next move, and a kit can switch swaps off](#d-397--a-swap-is-a-link-that-carries-the-picks-before-it-its-undo-lives-in-a-notice-until-the-next-move-and-a-kit-can-switch-swaps-off--2026-11-25)
+- [D-398 · The review's thumbnail of a deck's layer image is marked drawn, as its card is](#d-398--the-reviews-thumbnail-of-a-decks-layer-image-is-marked-drawn-as-its-card-is--2026-11-25)
+- [D-399 · A deck's card counts its other widths past two, keeps its stock beside the price and its picture in its 7rem box](#d-399--a-decks-card-counts-its-other-widths-past-two-keeps-its-stock-beside-the-price-and-its-picture-in-its-7rem-box--2026-11-25)
+- [D-403 · Each row of the review shows its card's picture in a 3rem square, its place kept](#d-403--each-row-of-the-review-shows-its-cards-picture-in-a-3rem-square-its-place-kept--2026-11-25)
+- [D-408 · Follow-ups to #134 and #147 on lane 2: WebKit's Option-Tab, a flagged deck in the guide's builds, and Next with its answer held](#d-408--follow-ups-to-134-and-147-on-lane-2-webkits-option-tab-a-flagged-deck-in-the-guides-builds-and-next-with-its-answer-held--2026-11-25)
+- [D-416 · The start button is Add to cart's twin by its fill alone, its words read on its fill, and a hostile theme fixture tests the builder against a theme's rules](#d-416--the-start-button-is-add-to-carts-twin-by-its-fill-alone-its-words-read-on-its-fill-and-a-hostile-theme-fixture-tests-the-builder-against-a-themes-rules--2026-11-25)
+- [D-417 · The bar's Back and Next, and its delivery lines, hold their size and margins at two classes' weight](#d-417--the-bars-back-and-next-and-its-delivery-lines-hold-their-size-and-margins-at-two-classes-weight--2026-11-25)
+- [D-418 · The hostile theme sweep, and a ready build's lines at two classes' weight](#d-418--the-hostile-theme-sweep-and-a-ready-builds-lines-at-two-classes-weight--2026-11-25)
+- [D-419 · The block margins of the builder's paragraphs, headings and lists hold at two classes' weight, measured by a sweep of every text block](#d-419--the-block-margins-of-the-builders-paragraphs-headings-and-lists-hold-at-two-classes-weight-measured-by-a-sweep-of-every-text-block--2026-11-25)
+- [D-433 · Help me choose reads a budget as shoppers type one, and says so when it can't](#d-433--help-me-choose-reads-a-budget-as-shoppers-type-one-and-says-so-when-it-cant--2026-11-26)
+- [D-435 · A rating's average takes the language's decimal separator, not the shop's for prices](#d-435--a-ratings-average-takes-the-languages-decimal-separator-not-the-shops-for-prices--2026-11-26)
+- [D-436 · A deck card's height limit sets a long name's lines past two apart, so it holds in every engine's fonts](#d-436--a-deck-cards-height-limit-sets-a-long-names-lines-past-two-apart-so-it-holds-in-every-engines-fonts--2026-11-26)
 
 ### Accessibility
 
@@ -251,6 +271,12 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-380 · Muted words keep 4.5:1 on a theme whose text is near the limit](#d-380--muted-words-keep-451-on-a-theme-whose-text-is-near-the-limit--2026-11-24)
 - [D-386 · A Build tab field not saved is marked where it is](#d-386--a-build-tab-field-not-saved-is-marked-where-it-is--2026-11-24)
 - [D-387 · The Build tab's lists are as wide as their longest option, up to the field](#d-387--the-build-tabs-lists-are-as-wide-as-their-longest-option-up-to-the-field--2026-11-24)
+- [D-400 · The wheel guide: a row a riding style in `_cbuild_settings`, with defaults from published wheel guides](#d-400--the-wheel-guide-a-row-a-riding-style-in-_cbuild_settings-with-defaults-from-published-wheel-guides--2026-11-25)
+- [D-401 · The guided start's ready builds: the cheapest, the middle and the dearest part a slot, through the fit engine](#d-401--the-guided-starts-ready-builds-the-cheapest-the-middle-and-the-dearest-part-a-slot-through-the-fit-engine--2026-11-25)
+- [D-402 · Help me choose: a disclosure at the builder's start, one GET form, answers in the link alone](#d-402--help-me-choose-a-disclosure-at-the-builders-start-one-get-form-answers-in-the-link-alone--2026-11-25)
+- [D-404 · Help me choose steps aside once a width is pressed, and the guide's tiles have their own list](#d-404--help-me-choose-steps-aside-once-a-width-is-pressed-and-the-guides-tiles-have-their-own-list--2026-11-25)
+- [D-461 · A ready build's tile shows its picture whole, in a size WordPress never crops](#d-461--a-ready-builds-tile-shows-its-picture-whole-in-a-size-wordpress-never-crops--2026-11-26)
+- [D-432 · After a swap the notice says the swap and the status the build alone, so a screen reader hears it once](#d-432--after-a-swap-the-notice-says-the-swap-and-the-status-the-build-alone-so-a-screen-reader-hears-it-once--2026-11-25)
 
 ### Motion
 
@@ -261,6 +287,7 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-305 · The motion: one module, the board's moments by the Web Animations API, a step by a view transition](#d-305--the-motion-one-module-the-boards-moments-by-the-web-animations-api-a-step-by-a-view-transition--2026-11-23)
 - [D-306 · The motion's speed gates: INP, no shift, the compositor, a trace of each moment](#d-306--the-motions-speed-gates-inp-no-shift-the-compositor-a-trace-of-each-moment--2026-11-23)
 - [D-329 · M11's motion durations stand over the older 150 to 250 ms range](#d-329--m11s-motion-durations-stand-over-the-older-150-to-250-ms-range--2026-11-23)
+- [D-413 · A part picked is outlined on the board for 600 ms, on its layer's ::after](#d-413--a-part-picked-is-outlined-on-the-board-for-600-ms-on-its-layers-after--2026-11-25)
 
 ### The picture
 
@@ -333,6 +360,9 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-254 · A saved build keeps its prices, and reopening a changed one shows the change](#d-254--a-saved-build-keeps-its-prices-and-reopening-a-changed-one-shows-the-change--2026-11-18)
 - [D-275 · Undo is offered for 15 minutes, and says what it undoes](#d-275--undo-is-offered-for-15-minutes-and-says-what-it-undoes--2026-11-19)
 - [D-278 · A saved build's prices go in its picks document under `_prices`; My builds' Open carries `_saved`](#d-278--a-saved-builds-prices-go-in-its-picks-document-under-_prices-my-builds-open-carries-_saved--2026-11-19)
+- [D-411 · My builds compares up to three saved builds in one table, a column a build, by a query string on its own page](#d-411--my-builds-compares-up-to-three-saved-builds-in-one-table-a-column-a-build-by-a-query-string-on-its-own-page--2026-11-25)
+- [D-412 · My builds names each build on a phone too](#d-412--my-builds-names-each-build-on-a-phone-too--2026-11-25)
+- [D-450 · My builds' and an order page's rules print on a style handle of the plugin's own](#d-450--my-builds-and-an-order-pages-rules-print-on-a-style-handle-of-the-plugins-own--2026-11-26)
 
 ### SEO and sharing
 
@@ -342,6 +372,7 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-200 · The share card, through Yoast's filters or the plugin's own tags, and none beside another SEO plugin](#d-200--the-share-card-through-yoasts-filters-or-the-plugins-own-tags-and-none-beside-another-seo-plugin--2026-11-15)
 - [D-212 · The share card names what it shows, and stays out of page caches while it falls back](#d-212--the-share-card-names-what-it-shows-and-stays-out-of-page-caches-while-it-falls-back--2026-11-16)
 - [D-215 · Yoast's `og:url` is handed the build link in the form its urldecode() gives back](#d-215--yoasts-ogurl-is-handed-the-build-link-in-the-form-its-urldecode-gives-back--2026-11-17)
+- [D-410 · A kit's page and the Builder page print no Product markup, with WooCommerce's or Yoast's, and need no new filter](#d-410--a-kits-page-and-the-builder-page-print-no-product-markup-with-woocommerces-or-yoasts-and-need-no-new-filter--2026-11-25)
 
 ### Languages
 
@@ -350,6 +381,7 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-233 · French ships, complete, and the checks require it](#d-233--french-ships-complete-and-the-checks-require-it--2026-11-18)
 - [D-234 · The fr-ca project keeps the plugin in English, and one spec walks it in French](#d-234--the-fr-ca-project-keeps-the-plugin-in-english-and-one-spec-walks-it-in-french--2026-11-18)
 - [D-260 · French isn't read by a person before 1.0.0](#d-260--french-isnt-read-by-a-person-before-100--2026-11-18)
+- [D-460 · A list is joined in the plugin's own words, never WordPress's translation of them](#d-460--a-list-is-joined-in-the-plugins-own-words-never-wordpresss-translation-of-them--2026-11-26)
 
 ### Performance
 
@@ -376,6 +408,8 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-356 · What a press foretells is made at the press, and the lines the answer brings keep their place; the phone's stage still sticks at the answer](#d-356--what-a-press-foretells-is-made-at-the-press-and-the-lines-the-answer-brings-keep-their-place-the-phones-stage-still-sticks-at-the-answer--2026-11-24)
 - [D-357 · The pressed deck's board is drawn at the press, once decoded, and the answer confirms it or puts it back](#d-357--the-pressed-decks-board-is-drawn-at-the-press-once-decoded-and-the-answer-confirms-it-or-puts-it-back--2026-11-24)
 - [D-365 · The state route's Server-Timing names the shelf, the cards and the decks' boards](#d-365--the-state-routes-server-timing-names-the-shelf-the-cards-and-the-decks-boards--2026-11-24)
+- [D-405 · A width's press takes the lead and the guided start away, and the brand row keeps its line until it is laid out again](#d-405--a-widths-press-takes-the-lead-and-the-guided-start-away-and-the-brand-row-keeps-its-line-until-it-is-laid-out-again--2026-11-25)
+- [D-434 · A part's rank is kept beside its facts and carried by the part, so smart swaps load no product](#d-434--a-parts-rank-is-kept-beside-its-facts-and-carried-by-the-part-so-smart-swaps-load-no-product--2026-11-26)
 
 ### Compatibility, upgrades and uninstall
 
@@ -397,6 +431,10 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-216 · The upgrade notice asks for no manual step](#d-216--the-upgrade-notice-asks-for-no-manual-step--2026-11-17)
 - [D-232 · The update is tested from every published release, with that release's own data on it](#d-232--the-update-is-tested-from-every-published-release-with-that-releases-own-data-on-it--2026-11-18)
 - [D-332 · The newest leg moves to WooCommerce 11.3.1, with its one PHP 8.5 deprecation let through in one test](#d-332--the-newest-leg-moves-to-woocommerce-1131-with-its-one-php-85-deprecation-let-through-in-one-test--2026-11-23)
+- [D-414 · CI updates from every release from 1.0.0 on, and from 0.1.0 and 0.9.0](#d-414--ci-updates-from-every-release-from-100-on-and-from-010-and-090--2026-11-25)
+- [D-425 · The guide's answers take the riding style as its value, so an earlier release's container builds the build's link](#d-425--the-guides-answers-take-the-riding-style-as-its-value-so-an-earlier-releases-container-builds-the-builds-link--2026-11-25)
+- [D-427 · The update check runs every waiting job, once no queue runner holds a batch](#d-427--the-update-check-runs-every-waiting-job-once-no-queue-runner-holds-a-batch--2026-11-25)
+- [D-451 · The admin screens' rules print on style handles of the plugin's own too](#d-451--the-admin-screens-rules-print-on-style-handles-of-the-plugins-own-too--2026-11-26)
 
 ### Tooling, CI and tests
 
@@ -453,6 +491,17 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-345 · Markdown is linted with markdownlint-cli2, on its default rules but five](#d-345--markdown-is-linted-with-markdownlint-cli2-on-its-default-rules-but-five--2026-11-24)
 - [D-347 · Gate 20 fails a merge's conflict marker left in a file](#d-347--gate-20-fails-a-merges-conflict-marker-left-in-a-file--2026-11-24)
 - [D-379 · StrykerJS's floor is 95 %, once the store reached 98.99 %](#d-379--strykerjss-floor-is-95--once-the-store-reached-9899---2026-11-24)
+- [D-406 · The layout-shift tests hold the state route's answer a second, as the demo's host takes](#d-406--the-layout-shift-tests-hold-the-state-routes-answer-a-second-as-the-demos-host-takes--2026-11-25)
+- [D-415 · The review shot waits until the page is still, the pick's outline gone](#d-415--the-review-shot-waits-until-the-page-is-still-the-picks-outline-gone--2026-11-25)
+- [D-420 · The toolchain's patch and minor releases, and TypeScript kept at 6 while typescript-eslint is](#d-420--the-toolchains-patch-and-minor-releases-and-typescript-kept-at-6-while-typescript-eslint-is--2026-11-25)
+- [D-421 · axe on Firefox reads aria-labelledby from the attribute, past a crash in Playwright's Firefox](#d-421--axe-on-firefox-reads-aria-labelledby-from-the-attribute-past-a-crash-in-playwrights-firefox--2026-11-25)
+- [D-422 · The browser tests reach wp-env one command at a time, under a lock](#d-422--the-browser-tests-reach-wp-env-one-command-at-a-time-under-a-lock--2026-11-25)
+- [D-423 · The i18n check fails a translation compiled before its strings were translated](#d-423--the-i18n-check-fails-a-translation-compiled-before-its-strings-were-translated--2026-11-25)
+- [D-424 · The thumbnails test counts the shifts from the gate on, once the fonts are in](#d-424--the-thumbnails-test-counts-the-shifts-from-the-gate-on-once-the-fonts-are-in--2026-11-25)
+- [D-426 · StrykerJS copies the browser tests' lock into its sandbox](#d-426--strykerjs-copies-the-browser-tests-lock-into-its-sandbox--2026-11-25)
+- [D-428 · The integration variants' plugins pinned to the hashes of the releases D-420 named](#d-428--the-integration-variants-plugins-pinned-to-the-hashes-of-the-releases-d-420-named--2026-11-25)
+- [D-430 · The swaps-off test measures its own plain card, so it holds when it runs alone](#d-430--the-swaps-off-test-measures-its-own-plain-card-so-it-holds-when-it-runs-alone--2026-11-25)
+- [D-431 · Every browser test passes when it runs alone](#d-431--every-browser-test-passes-when-it-runs-alone--2026-11-25)
 
 ### Releases and the repository
 
@@ -2180,7 +2229,11 @@ Milestone 5's first step: the keys' shapes, and where each route's request is ju
 - **The kit's line is priced by `set_price()` on the line's product object,** on `woocommerce_add_cart_item` and `woocommerce_get_cart_item_from_session`, at the assembly fee or nothing. The kit product's own price is not changed, and a kit read anywhere else still shows its fee.
 - **Mutation testing.** `Cart\CartHooks`, `Adapter\WooCart` and `Adapter\WpUuids` cannot run without WooCommerce and WordPress, and the integration suite proves them (`CartAddTest`). The pattern `Hooks` in `infection.json5` had matched `Cart/CartHooks.php` by its name; it is now `Hooks/`, the folder it was written for. Whether the three are named in the list is Zach's (D-038), and is asked at the review. Infection makes no mutant in a file no unit test loads, so the floor is the same either way.
 
-**Red run.** "CartAddTest::test_a_part_woocommerce_will_not_add_takes_the_whole_build_out_and_fails_the_add: Failed asserting that 500 is identical to 400." at `tests/Integration/CartAddTest.php:337`: the refusal was a plain exception wherever `WC()->is_store_api_request()` was false. **Deliberate breaks** are in the commit's message.
+**Red run.** "CartAddTest::test_a_part_woocommerce_will_not_add_takes_the_whole_build_out_and_fails_the_add: Failed asserting that 500 is identical to 400." at `tests/Integration/CartAddTest.php:337`: the refusal was a plain exception wherever `WC()->is_store_api_request()` was false. **Deliberate breaks**, each red, then put back and green:
+
+- the store's call to `outline()` after a view taken out: `store.test.ts`, "plays a part new to the board on the side shown alone", expected `[ 'cbuild-trucks underside trucks-1' ]` to equal the two with the outline (`:4570`);
+- a calm outline moved as a full one does: "where it is calm, shows the outline at once…", "nothing moves: expected [ Array(1) ] to deeply equal []" (`motion.test.ts:509`), and two more;
+- the calm outline held 600 ms before its fade, 750 ms in all: the same test, "expected true to be false" (`motion.test.ts:516`), and the second-pick test (`:548`).
 
 **Status:** Accepted.
 
@@ -3567,6 +3620,8 @@ Releases before 0.6.0 are updated deactivated, as their readme said, and the che
 After the update, the plugin's jobs run and none may fail, no PHP error may name the plugin, the order reads back with its lines and products and its Build box runs, 1.0.0 reads every kit the old release read (0.8.0's fixture stores three kits and reads two: its Build tab kit holds a slots document alone, there for that tab's tests), every preset is priced, and the saved build is listed. A deliberate break, 1.0.0 refusing to read the cart test kit, fails the run at that line. The seed's products, orders and customers are deleted after the run, so a browser run after it meets the site as before. CI runs `npm run upgrade` from the newest release on every full run, and `upgrade:all` on the newest leg where every browser project runs.
 
 What it does not make: an order holding a build, written by an old release's own cart and checkout. That needs each release's Store API add and a checkout in a request, which WP-CLI is not. The order shapes are held by the tests that start from each stored snapshot (`OrderEmailTest`, `WorkshopTest`, from 0.8.0's), and it stays an open item in `AUDIT-1.0.0.md` (0.8.0's review, auditor 20).
+
+**Status:** Replaced in part by D-414: CI's run updates from every release from 1.0.0 on, and from 0.1.0 and 0.9.0. `npm run upgrade:all` alone still runs every release.
 
 ### D-233 · French ships, complete, and the checks require it · 2026-11-18
 
@@ -5595,5 +5650,1099 @@ The auditor's third pass on milestone 12, a minor: `LeadDays` read "2 to 4" in a
 **Deliberate break.** The word put back in the form, `(?:-|\x{2013}|to)` with `/i`: the same three failed at the same lines. Put back, all passed, and Infection kills all 75 of the class's mutants.
 
 **Why:** a form the domain reads should mean the same in every language the shop is run in; a hyphen does, and a word never does.
+
+**Status:** Accepted.
+
+### D-391 · Every step's card puts its picture beside its words, in a 5rem square · 2026-11-25
+
+Issue #131, from Zach on 24 November, in milestone 13's plan (`docs/research/plan-after-1-2.md`, "Cards side by side on every step"). The deck step's compact cards (D-322) put the deck beside its words; every other step put a square photo the card's width on top, so a desktop's screen held two trucks or two wheels.
+
+- **Every step's card is side by side.** The picture sits at the card's start in a square 5rem box, then the brand, the name, the look, the price and what it changes, the stock, the fit and the recommendation, each on its line as before. The deck step's compact cards keep their 3.5rem by 7rem upright box, their two columns and their price and change on one line.
+- **The thumbnail's size per part.** One size, 5rem (80 px), for trucks, wheels, bearings, risers, hardware and grip: their photos are square product shots, and 5rem is the size the issue named for telling a wheel's colour or a truck's finish. Phones showed a 5.5rem photo beside the words before, so on a phone the card is the same shape, 8 px narrower in its picture.
+- **Square by its shape.** The box is `inline-size: 5rem` with `aspect-ratio: 1`, not a height: Kadence and Storefront set `img { height: auto }`, which outranks the builder's `:where()` rules, and a grip's 9 by 300 layer image made a card 2,683 px tall with a fixed height. The image is fitted into the box, so nothing moves as it loads.
+- **The words keep their width.** The picture and the words are the theme's smallest step apart (`--cbuild-gap-small`), as the phone's cards were, and the chosen card's tick sits on the picture's corner, in its column, so the words need no room kept for it. With the deck's 16 px gap (D-377) and its room for the tick, the words were 40 px narrower on a phone, wrapped a line more, and a phone's screen held one truck card where it held two.
+- **Columns.** The cards wrap at `--cbuild-card-width` (13.5rem) as before, so a desktop's panel holds two or three to a row and a phone's one. Capped at two, as the deck's are, Storefront's wider panel lost its third column, and its bearings step held 6 cards where it held 9.
+- **No setting, and no filter.** The layout follows the part. Nothing measured shows a shop needs the photo on top, so `cbuild_card_layout` is not added (the issue's condition).
+- **A wheel's colour at 80 px.** Looked at on the wheel step on Twenty Twenty-Five at 1440 by 900: the fixture's red, cream and yellow wheels are told apart at a glance, the picked card's tick on the picture's corner leaves the wheel itself clear.
+
+**Whole cards in a screen, before and after.** Measured on the three themes with the browser test's fixture: the step's first card at the window's top, the list filled to 24 with copies of it, the cards counted whole above the bar. The deck step (the shelf kit's, after a width) is unchanged: 10 at 1440 by 900 and 5 at 390 by 844 on each theme.
+
+| Step | Kadence 1440 | Twenty Twenty-Five 1440 | Storefront 1440 | Kadence 390 | Twenty Twenty-Five 390 | Storefront 390 |
+| --- | --- | --- | --- | --- | --- | --- |
+| Trucks | 2 to 6 | 2 to 6 | 3 to 6 | 2 to 2 | 2 to 2 | 2 to 2 |
+| Wheels | 2 to 6 | 2 to 6 | 3 to 6 | 2 to 2 | 2 to 2 | 2 to 2 |
+| Bearings | 8 to 8 | 8 to 8 | 9 to 9 | 3 to 3 | 3 to 3 | 2 to 2 |
+| Hardware | 8 to 12 | 8 to 10 | 6 to 12 | 3 to 3 | 3 to 3 | 3 to 3 |
+| Grip | 2 to 8 | 2 to 6 | 3 to 9 | 3 to 3 | 2 to 2 | 2 to 2 |
+
+The fixture's bearings have no picture, so their card is the same before and after. The first view with the builder at the window's top, as D-360 counts it, with the fixture's own parts (three trucks, three wheels in stock): at 1440 by 900 trucks 1 to 1, wheels 2 to 3, bearings 1 to 1, hardware 2 to 2 and grip 1 to 1 on Kadence and Twenty Twenty-Five, and none before or after on Storefront, whose header fills the first view; at 390 by 844 none before or after on any theme, the stage and the bar filling a phone's.
+
+**Kept.** Each card's reading order and names: the radio named by its part, the rest describing it, in the same source order. The deck step's compact cards, their gap and their tick (D-322, D-377). The class `cbuild-cards--compact` stays the deck step's.
+
+**Tests.** `builder.spec.ts`, "Cards side by side on every step (#131)": on the trucks, wheels, hardware and grip steps, the picture 5rem square, no word over its column, the words beside it, the radio's description as before and axe clean, on every project; the counts above held per theme on chromium-desktop and chromium-phone; and "moves nothing as the pictures load", the step's layout shift 0 with every image held until the cards are in view, on Chromium at both widths.
+
+**Red run.** Before the change, on chromium-desktop: "the picture 5rem wide / Expected: 80 / Received: 198.5" (builder.spec.ts:10157) on each of the four steps, and "whole trucks cards in a screen / Expected: >= 6 / Received: 2" on Kadence and Twenty Twenty-Five, "Received: 3" on Storefront (builder.spec.ts:10279); on chromium-phone the picture was 88 px, 5.5rem.
+
+**Deliberate break.** The picture put back on a row of its own above the words, with no shape and no `width` or `height` on the image: "the step's layout shift as the pictures load / Expected: 0 / Received: 0.026720423685179816" on chromium-desktop. Put back, all passed.
+
+**Visual baselines that move** (not remade here): every one that shows a step's cards other than the deck's: `kadence-{light,dark}-phone-bar-estimate` and the moments `twentytwentyfive-light-desktop-moment-{step,trucks,wheels,grip,removed,swapped}`.
+
+**Why:** a list with the picture beside the words is how a shopper compares parts chosen by spec and by look (Baymard's list and grid views), and it shows two to four times as many trucks, wheels and grip on a desktop's screen, with a phone's as it was.
+
+**Status:** Accepted.
+
+### D-392 · A card says the ready builds that pick it, and its rating from WooCommerce's own numbers · 2026-11-25
+
+Issue #137, in milestone 13's plan ("Rider picks and ratings in each step"). A shopper choosing among parts they don't know leans on what others chose and how they rated it.
+
+- **Ratings come from WooCommerce's product API, not Creative Reviews' meta.** The card reads `WC_Product::get_average_rating()` and `get_review_count()` (includes/abstracts/abstract-wc-product.php:768, :778, WooCommerce 11.3.1 on lane 1). Creative Reviews keeps those numbers right for its reviews (its SPEC, "Product meta") and publishes no read API of its own, so reading its private meta would tie this plugin to another's internals. With these, a rating shows wherever the shop's own reviews give one, with Creative Reviews or without it.
+- **Shown only where the shop shows ratings.** `wc_review_ratings_enabled()` (includes/wc-conditional-functions.php:531) is asked on every request, after a kept card is read, so turning the shop's ratings or reviews off hides them at once without forgetting a card. A part with no reviews shows nothing.
+- **A variation has its product's rating.** WooCommerce keeps reviews on the product, not its variations (a variation has no rating props). So the cards read every missed variation's parent, in the one query that already read the parents of variations with no photo.
+- **No query per card.** The rating is read from the product objects the cards already load, kept in the card with its stamp, and a card kept before 1.3.0, without `rating`, is read again. A new review saves the product (`WC_Comments::clear_transients()`, includes/class-wc-comments.php:295-298), which moves its stamp and forgets its card. The state route's query-count test now reviews every deck it adds and still asks the same number of queries for 8, 30 and 60 decks.
+- **Said in words, the stars standing for them.** One pattern through `_n()`, "%1$s out of 5, %2$s review(s)": the average to one decimal, a whole one without it, in the shop's decimal separator (`wc_get_price_decimal_separator()`, as its prices), and the count through `number_format_i18n()`. (Replaced by D-435: the average too takes the language's, through `number_format_i18n()`.) The five stars are drawn by CSS, filled to the nearest half, `aria-hidden`, and the words beside them are what a screen reader says, in the card's description after its fit. In a right-to-left page the stars fill from the right.
+- **"Picked for Street", not "Picked by".** The kit's ready builds have names ("Street", "Cruiser") and no rider field, and "Picked by Street" reads as a person. "Picked for %s" follows the house's "Start from %s", with the builds joined as the site's language joins a list (`wp_sprintf( '%l' )`). A rider's name would need a field on the preset, which is the owner's call (For Zach).
+- **Which ready builds count.** Only those the shopper is offered (`shownPresets()`): none where the kit's Show ready builds is off, and none whose own parts keep it from the cart, so a card never names a build the page doesn't show. A part counts where it is the ready build's pick in that slot, by its ID.
+- **The answer, additions only.** Each option gains `presets`, the places of the ready builds that pick it as `presets[].at` gives them, and each card `rating`, null or `average`, `count` and `text`. Both are in `schema/state.json`, HOOKS.md and the changelog; nothing is renamed.
+
+**Tests.** Unit: `WordsTest` for the pattern (one review, a half, WooCommerce's two places rounded, a whole, the shop's decimal comma) and the list of builds; `StateAnswerTest` for `presets` and `rating` on the options, both builds in the kit's order, and none with Show ready builds off. Integration: `StateRouteTest` with ratings on and off, reviews off, a part with no reviews, a new review moving a kept card, a variation's product's rating, a ready build's pick in the view, and Show ready builds off; `WooPartCardsTest` for a card kept before 1.3.0 and a broken kept rating. Browser: `builder.spec.ts`, "Ready builds' picks and ratings on the cards (#137)", on the trucks, wheels and bearings steps, with axe, on every project, and in French on fr-ca.
+
+**Red runs.** `WordsTest`: "Call to undefined method …Words::pickedFor()" (WordsTest.php:230) and "::rating()" (:251). `StateAnswerTest::test_an_option_names_the_ready_builds_that_pick_it_and_its_card_has_its_rating`: "Undefined array key \"presets\"" (StateAnswerTest.php:383). `StateRouteTest`: "Undefined array key \"rating\"" (StateRouteTest.php:1487) and "Undefined array key 25" (:1564). Browser: "Expected: \"Picked for Street\" … element(s) not found" (builder.spec.ts:10403).
+
+**Found on the way.** The parts table keeps a card as JSON, and PHP writes 4.0 as `4`, so a kept whole average came back an integer, the kept card was refused, and every reviewed card was read again on a cold request: the query-count test failed, "eight decks or thirty", cold queries 51 to 65 (StateRouteTest.php:1095). A kept average is now read as an integer or a float.
+
+**Deliberate breaks.** A whole average written with its decimal ("5.0"): `test_a_rating_is_said_out_of_five_with_its_count` failed on "one review" and "rounded to a whole", `-'5 out of 5, 1 review' +'5.0 out of 5, 1 review'`. The ratings gate taken out of the adapter: `test_a_card_has_the_rating_the_shop_shows_and_none_where_it_shows_none` failed, "ratings off" (StateRouteTest.php:1507). Each put back, they pass.
+
+**Why:** the plan's #137, with the shop's own numbers so a rating means the same here as on the part's page.
+
+**Status:** Accepted.
+
+### D-393 · A card's rating sits beside its price, and a ready build's pick costs a card one line · 2026-11-25
+
+Issue #137 against #131's whole-card counts (D-391). As D-392 built it, the pick and the rating were two lines under the fit, and the rating sentence wrapped to two on a desktop's 138 to 165 px words column. A card with both grew by about 60 px, and the screen held fewer whole cards on every step: trucks on a desktop 4, 4 and 3 on Kadence, Twenty Twenty-Five and Storefront where #131 holds 6. Measured on lane 1, every count came back to #131's with the two lines hidden, and any line more, in one row or two, cost a row of cards: #131's counts sit at the screen's edge.
+
+- **The rating beside the price, as one star and a short score.** "★ 4.5 (2)": one star and the score (`Words::score()`, one translatable pattern with its context) share the price's row, as Airbnb's, Google Maps' and the app stores' cards show a rating. D-392's five stars in a row needed about 187 px beside a price, and a desktop's words column has 138 to 165; one star and the score take about 60. Seen, they are `aria-hidden`, and the star takes no press, so a press on it is the card's; the sentence "4.5 out of 5, 2 reviews" stays in the card's description as screen-reader text, as the bar's total does, so what is said is unchanged and nothing is said twice. Stars with a count beside a price are how a shop's product cards show a rating, and the sentence is what WCAG 1.1.1 asks for the stars.
+- **The pick keeps its line,** under the fit, where it reads as the fit and the recommendation do. The rating fits beside the price on all three themes at both widths, so a card a ready build picks and the shop rates is one line taller.
+- **The counts, split (Zach, 25 November).** #131's floors hold for a plain card, with no pick and no rating, unchanged on every step, theme and width. A new test holds a card with both to a line more at most, on each theme at both widths, with its rating beside its price. The worst case, every card on the screen a ready build's pick, costs a phone a card: Storefront's trucks 2 to 1, and Kadence's and Twenty Twenty-Five's bearings 3 to 2. Accepted, since only the three ready builds' parts a step carry the line.
+- **Read in the description,** the rating now comes after the price and the pick after the fit and the recommendation, the order they are seen in.
+
+**Tests.** Unit: `WordsTest::test_a_rating_is_shown_short_beside_its_stars` (one review, a half, two places, a whole with a thousands separator, the shop's decimal comma). Browser: "holds as many whole cards in a screen on every step" now on a plain card; "a card with a ready build's pick and a rating is a line taller at most" on each theme; #137's test checks the star and the short score, seen and not said, and the new order. Found on the way: #131's square-picture test and #137's axe check ran a script in the no-js project, which cannot, and timed out there; both now skip that project for that, as the file's other measures do.
+
+**Red runs.** `WordsTest`: "Call to undefined method …Words::score()" (WordsTest.php:274). Browser, before the change: "whole trucks cards in a screen, Expected: >= 6, Received: 4" (builder.spec.ts, Kadence and Twenty Twenty-Five; 3 on Storefront), and on a phone "whole bearings cards, Expected: >= 3, Received: 2". With five stars beside the price, the new test failed on a desktop, "the pick and the rating add a line at most, Expected: <= 26.05, Received: 48.09" on Kadence.
+
+**Deliberate break.** The price's row stacked (`flex-direction: column`): "the pick and the rating add a line at most, Expected: <= 23.47, Received: 42.94" (builder.spec.ts:10367, Kadence, chromium-phone). Put back, it passes.
+
+**Why:** #137's words without undoing #131's screenful, where a shop's parts have them and nowhere else.
+
+**Status:** Accepted.
+
+### D-400 · The wheel guide: a row a riding style in `_cbuild_settings`, with defaults from published wheel guides · 2026-11-25
+
+Issue #134 and Zach's answer 2 (`docs/research/plan-after-1-2.md`): the guided start's wheel size comes from a small table of riding style to wheel size on the kit's Build tab, with defaults from published wheel guides, that the shop can change. The choices the answer leaves:
+
+- **Where it is kept.** `wheel_guide` in `_cbuild_settings`, the document a new kit setting goes in (D-354), so 1.2.0 still reads a kit saved on 1.3.0. Its object is closed (`additionalProperties` false), as the width guide's is; a later change of its shape goes in a new key.
+- **The rows' shape.** `rows`, up to four, each `style` (`street`, `park`, `bowl` or `cruising`, the guided start's answers, each once), `from` and optionally `to`, wheel sizes in millimetres from 40 to 90, as decimals; `to` left out is `from` alone, and is never under it. `Domain\Guide\WheelGuide` reads it, and `Domain\Guide\RidingStyle` names the four styles.
+- **The styles are fixed.** The question asks the four the plan names, so the shop sets sizes for each and adds none. A style with no row has the plugin's sizes, and a kit with no `wheel_guide`, as every kit saved before 1.3.0, has them all.
+- **The defaults,** from shops' published wheel guides, read on 25 Nov 2026:
+
+  | Style | Sizes | Sources |
+  | --- | --- | --- |
+  | Street | 50 to 54 mm | Tactics, "How to choose skate wheels": street wheels 50 to 54 mm. Sector 9, "Skateboard wheel sizes explained": street 50 to 54 mm. Skate Warehouse, "How to choose the best skateboard wheel size": 54 mm and under for street. |
+  | Park | 53 to 56 mm | skatedeluxe, "Skateboard wiki: wheels": 53 to 56 mm for small ramps and mini ramps. |
+  | Bowl | 55 to 58 mm | Skate Warehouse, the same guide: 55 to 58 mm for transition and rough ground. |
+  | Cruising | 59 to 65 mm | Skate Warehouse: 59 mm and larger for cruising. Sector 9: 60 to 65 mm for cruising. |
+
+  The ranges overlap where the guides do. A cruising wheel over a truck's limit asks for a riser, as any pick does; the guided start's builds go through the fit engine (D-401), so a kit that cannot take one recommends no such build.
+- **Restore defaults.** No checkbox: a style with both fields empty is stored as no row, so the plugin's sizes keep reaching the kit, and each row's note names them ("Leave both empty for the builder's 50 mm to 54 mm").
+- **The tab's fields are named by style,** `cbuild_kit[settings][wheel_guide][street][from]`, and the editor stores only the styles given sizes, so a stored row's place is no field's. A problem's path is rewritten from `wheel_guide.rows[1].to` to `wheel_guide.cruising.to` (`KitEditor::styled()`), so the notice leads to the field and `aria-invalid` marks it. A wrong size is `wheel_guide_size_range` ("type a size from 40 to 90 mm"), and the guide alone is refused, as every settings field is (D-385).
+
+**Tests.** `WheelGuideTest` (every boundary: 40 and 90 mm kept, 39.9999 and 90.0001 refused, `to` under `from`, a style twice, a style not asked, five rows), `SpanTest`, `KitEditorTest` (kept by style, emptied, named at its style), `BuildTabTest` (the section, the shop's separator, refused alone with its notice) and `KitSchemasTest` (the schema and the domain agree). Infection: 46 mutants of `Domain\Guide`, all killed.
+
+**Red runs.** `WheelGuideTest` with the class missing: "Undefined property: KitSettings::$wheels" (WheelGuideTest.php:58) and 18 more errors. `KitEditorTest::test_the_wheel_guide_keeps_the_sizes_the_shop_types_for_each_style_and_none_for_the_rest`, "Failed asserting that null is identical to Array" (KitEditorTest.php:678), and `test_a_wheel_guide_size_that_is_wrong_is_named_at_its_style_and_refused_alone`, "Undefined constant KitEditor::WHEEL_SIZE" (:708). With the tab's change held back, `BuildTabTest::test_the_wheel_guide_section_keeps_the_shops_sizes_a_style_and_the_builders_for_the_rest` failed at BuildTabTest.php:1197, the section absent, and `test_a_wheel_guide_size_that_is_wrong_is_not_saved_and_the_notice_names_its_field` at :1247, "Failed asserting that two arrays are identical."
+
+**Deliberate breaks.** `to` allowed one ten-thousandth under `from`: "to under from" failed at WheelGuideTest.php:172. The style left out of a problem's path: `KitEditorTest` failed at :723, "Failed asserting that two arrays are identical." Put back, both passed.
+
+**Why:** the shop knows its customers' riding better than any guide, and a guide is a better start than an empty table; storing only what the shop changed keeps the plugin's sizes current for everything else.
+
+**Status:** Accepted.
+
+### D-401 · The guided start's ready builds: the cheapest, the middle and the dearest part a slot, through the fit engine · 2026-11-25
+
+Issue #134: three ready builds, budget, mid and premium, from in-stock parts that pass the fit engine at the guided width and wheel size, as many as the shop can make and never one that fails fit, the rules in `src/Domain`. `Domain\Guide\ReadyBuilds` makes them; the choices the issue leaves:
+
+- **A tier is a price position in each slot,** not a price band: budget takes each slot's cheapest part, premium its dearest, mid the middle, the cheaper of two in the middle. A price band would need numbers the shop has to set and keep up to date for every currency; a position needs none, and holds whatever the shop stocks. A part's price is what the build pays for it, its price times the sets it takes (R7), so four wheels sold singly are four prices. Two parts at one price go by ID, so the same catalogue always makes the same builds.
+- **The slots are walked in the kit's order, each against the picks before it,** as the shopper's steps are (`FitEngine::options()`). A slot takes only parts in stock in what the build takes (`Option::available()`), and a part that fits before one that only fits with a warning: the wheels over a truck's limit warn until a riser is picked, so they are taken when nothing else in the sizes asked fits.
+- **The deck is the width asked, the wheels the sizes asked;** the trucks, risers, bolts and grip take the size the build takes (`SizePicker::pick()`, the size each step's chips choose), and the tier chooses among the parts of that size. So a premium build is not 9 in trucks under an 8.25 in deck because they cost more.
+- **A slot the kit does not require is filled only where the build asks for it** (`Asking::findings()`), as wheels over the trucks' limit ask for a riser; Bearings is skipped where the wheels come with theirs (D-246). A required slot nothing fills makes no build of that tier.
+- **The whole build is checked last,** each part against every other (`FitEngine::build()`, as the cart is), and is offered only where every part is `Fits`. A build with a warning is not one that "passes the fit engine": the shopper did not choose it and was not told.
+- **Two alike are one,** named for what it is: the budget build where it is the cheapest, the premium where it is the dearest. A shop with one build has `Tier::Only`. The tier is a code; the words are the edge's.
+- **The width,** from a row of the width guide (D-350): of the in-stock decks in the row, the width nearest its middle, the narrower of two as near (the guide's rows overlap at their ends, and a shopper between sizes is usually told to go narrower for street); a row with no end is measured from its first width. `ReadyBuilds::width()`.
+- **The budget** keeps the builds whose total is at or under it, a total at the budget included. Where it covers none, the cheapest is kept alone, so an answer never empties the page, and the edge says it is over (`ReadyBuilds::affordable()`).
+
+**Tests.** `ReadyBuildsTest`, 15 tests: three builds from three prices a slot, each validated with `BuildValidator` and every part `Fits`; the middle of an even number; a set against singles; a sheet with no set size; one part a slot (one build, `only`); two alike (budget and premium); sold-out parts and too few of a single part; no deck in the width or wheel in the sizes (none); no width or size asked (any); wheels over the limit bringing the kit's riser and bolts through it, the riser sold out (none); a slot not required left empty, or filled when asked for and empty when the shop cannot; wheels with their bearings; a required slot with nothing (none); a build that only fits with a warning (none); a tier whose whole build warns left out and the others kept; the width at each tie and end, a deck with one left and one with none; the budget at, under and over. Domain coverage 100 % of lines and branches; Infection on `Domain\Guide` 176 mutants, 175 killed by tests, and one cast PHPStan needs, added to `tools/infection-static-allowed.txt` with its reason (an offered part always has a quantity: R7 blocks one with no set size where the slot takes more).
+
+**Red run.** `ReadyBuildsTest` with the classes missing: "Class "CreativeBranding\SkateboardBuilder\Domain\Guide\ReadyBuilds" not found" (ReadyBuildsTest.php:90), in all 13 tests then written.
+
+**Deliberate break.** The premium tier set to the cheapest: four tests failed, the first at ReadyBuildsTest.php:132, "Failed asserting that two arrays are identical." Put back, all passed.
+
+**Why:** a position in each slot's prices needs no setting and works for any catalogue, and checking the whole build with the same engine the cart uses is the only way to promise a build that fits.
+
+**Status:** Accepted.
+
+### D-402 · Help me choose: a disclosure at the builder's start, one GET form, answers in the link alone · 2026-11-25
+
+Issue #134 and Zach's answers (`docs/research/plan-after-1-2.md`, "Guided start"): optional questions before the first step, skippable at every point, recommendations explained, a form that works without JavaScript, the answers kept only in the build's link. The choices they leave:
+
+- **Where it sits.** A closed disclosure, "Help me choose", at the builder's start, under the first step's question and before its cards (`templates/builder/guide.php`, `BuilderView::guide()`), shown where the shop's presets are: the first step with nothing picked and no preset (`BuilderView::atStart()`). Baymard's guided-selling finding is that a finder helps shoppers new to a category and must never stand between the others and the products, so it is offered, not asked first: a shopper who knows their width never sees a question. It is not a step of the rail, so the steps' count and the footer's Next stay as they are.
+- **One form, three questions.** The shoe size (the kit's width guide's rows, with "Not sure"), where they skate (four, with "Not sure") and a budget, in one GET form with "Show builds", so leaving any blank is an answer and every answer left blank still shows builds. Three short questions read as one screen on a phone; a page a question would be three round trips without JavaScript for answers that are each optional. With the kit's width guide hidden there is no shoe question, and a shoe answer in a link is no answer.
+- **Skip.** "Skip to the builder" is a link to the builder's start with nothing in its address, beside "Show builds" and again under the builds, a plain link with or without JavaScript, so a keyboard or screen reader reaches it from the questions and from the builds. Closing the disclosure is a skip too.
+- **The budget is a whole amount** in the shop's currency, labelled with its symbol: a text field with `inputmode="numeric"`, not `type="number"`, after the GOV.UK Design System ("Text input: Asking for whole numbers", and "Why the GOV.UK Design System team changed the input type for numbers", 2020), which found `type="number"` rounds and scrolls values and fails some assistive technology. 1 to 999999; anything else is no answer.
+- **The answers travel in the link alone** as `cbuild[_guide][shoe|style|budget|asked]` (`Front\GuideAnswers`, carried by `BuildLink::guided()`), only in the address of the start: a pick, a step, a tile's form, a shared link and Copy link carry none, so a build begun is the shopper's own. `asked=1` tells a sent form from a link that names no answer. Nothing is stored or logged (PRIVACY.md).
+- **The shoe sizes come from the kit's rows as widths** (`WidthGuide::structured()`), not from `cbuild_width_guide`, whose answer is words; `cbuild_guided_start` is the hook for a plugin to recommend another width or wheel size. It gets the settings' recommendation first, as sizes the build link already writes (`8.25in`, `54mm`), with the answers and the kit, and answers last.
+- **The results.** "Builds for you": the reasons first, each one translatable sentence ("Deck width %1$s, for shoe size %2$s.", one sentence a riding style for the wheels, the budget, and `_n()` for the count), then the builds as the presets' tiles (`templates/builder/tile.php`, now shared, from `BuilderView::tile()`), each starting its build at the review as a preset's does, with "Build your own at %s", the recommended width as `_width`, and Skip. A budget no build is within keeps the closest, its tile saying by how much it is over. Where the shop can make none, it says so and offers Skip; it never shows a build that fails fit (D-401). The shop's presets stay under them.
+- **The names.** "Budget build", "Mid-range build" and "High-end build", or "Ready build" for a shop's only one, each with a line on what it is ("The lowest-priced part that fits in each slot."). The issue's "premium" is on the copy's banned list (`tools/copy-words.txt`), so the shopper reads "High-end"; the tier's code stays `premium`.
+- **D-208.** A builder an earlier release's container built mid-update has no `GuidedStart` (`Builder::withGuide()`): it asks the questions and shows no builds.
+
+**Tests.** `BuildLinkTest` (the answers read, written in one order, every bad answer left out, the largest kept, dropped by every link made from another but the start's), `GuidedStartTest` (11, a catalogue with a sold-out deck and a sold-out set of wheels: three builds at the guide's width and street's wheels and never a sold-out part; each opens at the review valid, ready and at its tile's total; every answer blank; cruising's wheels bring the kit's half-inch riser and longer bolts; a budget at, over and under; a shoe size with no deck in stock; bearings sold out, no build; the filter's arguments and answer, and an answer that does not read; the answers in the start's address only; the questions from the kit's guide and none where it is hidden; an earlier release's builder), `BuilderPageTest` (the form and its answers as served without JavaScript, and its region).
+
+**Tests checked by breaks** (25 Nov, at Zach's ask, since `GuidedStartTest` was written after its code). Each of its 12 tests run alone against one deliberate break of the line that delivers its claim, the code put back after each. Three stayed green under a break of their own claim and were strengthened, red first, then green:
+
+- *three builds at the guide's width and wheel sizes*: sold-out parts kept (`ReadyBuilds::usable()`) failed at :208, `'deck 8.25'` became `'deck 8.25 sold out'`; the deck's width ignored failed at :208 with `'deck 8.0'`; the wheel guide ignored (`GuidedStart`, `$wheels = null`) failed at :217, the wheels' reason gone. **Strengthened:** with the builds' wheel sizes ignored (`ReadyBuilds::wanted()`) it stayed green, since 52, 53 and 54 mm are also the cheapest, middle and dearest wheels that fit at all. The fixture gains `wheels 48`, in stock, the cheapest, and under every style's sizes; the break then fails at :208, `'wheels 52'` became `'wheels 48'`.
+- *each build opens at the review, whole, fitting, at its tile's total*: the tile's link not at the review failed at :258, `'review'` became `'bearings'`; the grip left out of the tile's picks failed at :258 with `'grip'`. **Strengthened:** with the tile's total quoted without assembly it stayed green, since the fixture's fee was 0 and there was no build discount. The test now sets a 20 fee and a 10 % build discount; assembly left out fails at :261, `'$154.80'` against the review's `'$174.80'`, and the discount left out at :261, `'$192.00'` against `'$174.80'`.
+- *every answer blank*: the tiers' ends swapped failed at :269, `'deck 8.0'` became `'deck 8.25 dear'`.
+- *wheels over the trucks' limit bring the riser*: a slot the kit does not require never filled failed at :276, no builds.
+- *a budget*: the budget filter dropped failed at :292 with the mid-range and high-end builds; the budget left in whole units failed at :293, "Every build here is within your budget." missing. **Strengthened:** with a total at the budget counted as over (`<=` to `<` in `ReadyBuilds::affordable()`) it stayed green, since at a budget of the cheapest build's total "the closest alone" is the same build. The budget is now the mid-range build's $182, which keeps two builds; the break fails at :292, `'Mid-range build'` missing. An over note on builds within it fails at :294.
+- *a shoe size with no deck in stock*: `noDeck` never set failed at :304, the reason became "3 builds fit and are in stock."
+- *answers the shop cannot build*: a required slot with nothing to take skipped failed at :320, a "Budget build" tile with no bearings.
+- *a plugin answers after the settings*: the filter's width ignored failed at :364, `'deck 8.5'` became `'deck 8.25'`; the wheel guide ignored failed at :343, `from` `'50mm'` became `''`.
+- *the answers live in the start's link alone*: the answers kept after a pick (`Builder::show()`) failed at :391, the address held `cbuild[_guide][style]=bowl`.
+- *a width pressed*: the width ignored failed at :400, "Failed asserting that true is false."; builds asked for hidden at a width failed at :410, "Failed asserting that false is true."
+- *the questions from the kit's width guide*: the shoe question always shown failed at :433, "Failed asserting that true is false."; the checked choice off by one failed at :421.
+- *an earlier release's builder*: the `null !== $this->guided` guard dropped failed at :439 (through :151), "Error: Call to a member function of() on null".
+
+One break no test in the file fails: the whole build's last check (`ReadyBuilds::key()`) accepting a warning, since walking the slots against the picks before them already leaves no warning in this catalogue. Three of `ReadyBuildsTest`'s fail it (ReadyBuildsTest.php:240, :290 and :313: the riser's, a build that only fits with a warning, and a tier whose whole build does not fit), so the check is tested there.
+
+**Why:** a finder a shopper can ignore costs the shoppers who know what they want nothing, and one form with every answer optional is the shortest path for those who don't; keeping the answers in the link keeps the visit shareable and stores nothing.
+
+**Status:** Accepted.
+
+### D-403 · Each row of the review shows its card's picture in a 3rem square, its place kept · 2026-11-25
+
+Issue #132, from Zach on 24 November, in milestone 13's plan: "Each row of the review gets its part's thumbnail, the same picture and rendition as its card. A row without a picture keeps the space." Colourways of one wheel or grip have names that differ by a word, and Baymard's checkout research has shoppers checking the thumbnails at the last step.
+
+- **The card's picture, read from what the review has.** A row's thumbnail is its part's card image as the answer's picture already holds it (`picture.items[].image`, the card's `image`), so the view asks for nothing and makes no query per row. That is the shop's thumbnail, or the part's layer image where it has no photo (D-282), with the card's `srcset` and `sizes`, so the browser chooses the file the card had. Not the stage's large photo, which a deck with no layer image shows in the board's place (#82).
+- **A deck the card draws.** A deck with a layer image has its card draw that image small and upright from the picture's WebP renditions (#99). Its row does the same, from the picture's own deck layer, with the card's `sizes` (the 7rem card's), so it is the same file. In a 3rem square that is the board's outline upright, a narrow shape, but it is the picture the shopper chose by, and the stage beside the review shows the whole board.
+- **3rem, not the card's 5rem.** The review is a list to check, not to choose from: a 48 px square sits within the row's two lines of name and fit, so the rows are no taller than before, and the seven rows of a build still fit a desktop's screen with the total and Add to cart. The picture is fitted whole into the square (`object-fit: contain`). Square by `inline-size` and `aspect-ratio`, as the cards are (D-391), since a theme's `img { height: auto }` outranks `:where()`.
+- **Its place kept.** The square is a box of its own (`cbuild-review__thumb`) on every row; the image in it is hidden where the part has no picture, nothing is chosen, or the bearings come with the wheels. So rows line up and nothing moves as the pictures load. On a narrow builder the square stays at the row's start and the slot, name and fit stack beside it.
+- **Decorative.** `alt=""`: the part's name is beside it. Lazy, as the cards' pictures are.
+- **Flagged parts blur there too.** The image takes the same `cbuild_part_classes` answer as its row, as the bar's photo does, under a class of its own, `cbuild-review__photo`, added to HOOKS.md's Builder classes and `Options::cssClasses()` at 1.3.0. Mature Content can blur it by either the row's class or its own. The filter is asked once per row, as before: the row and its image share the answer.
+- **No change to the state route's API.** The rows are part of `view`, which `schema/state.json` describes as the builder's own; no new string, so no translation.
+
+**Tests.** `BuilderTest`: each row's thumbnail is its card's (a deck by its photo and by its drawn layer image, the trucks), a part with no photo, a slot with nothing and bearings that come with the wheels keep an empty place, and a flagged deck's thumbnail takes the flag. `BuilderPageTest` (integration): every row has its square with a decorative image, the trucks' image has the chosen card's `src`, `srcset`, `sizes`, `width` and `height`, and a row with none is hidden in its place. `builder.spec.ts`, "Thumbnails in the review (#132)": the deck's and trucks' rows show the `currentSrc` their chosen cards showed, every row's square is 3rem, axe is clean, nothing shifts as the pictures load, and a deck flagged by `tests/e2e/mu-plugins/cbuild-e2e-flag.php` is blurred while the trucks are not. The integration and browser tests were written with the change and not run (every lane was busy); they run at the batch's `/verify`.
+
+**Red run.** `BuilderTest::test_each_row_of_the_review_shows_its_cards_picture_and_a_row_without_one_keeps_its_place`, "a deck with no layer image: its card's thumbnail, not the stage's large photo (#82)", Expected `true, 'https://shop.test/101.jpg', …` Received `null, null, …` (BuilderTest.php:2004).
+
+**Visual baselines that move** (not remade here): every `{theme}-{scheme}-{size}-review` shot, and the moment `twentytwentyfive-light-desktop-moment-cart`.
+
+**Why:** the review is where a shopper confirms the build before paying, and a picture tells two colourways apart where their names hardly do. The card's own file costs nothing more to show.
+
+**Status:** Accepted.
+
+### D-394 · A swap is the cheapest or the next better part that fits the whole build, and the same board for less swaps every slot but the deck · 2026-11-25
+
+Issue #135, in milestone 13's plan ("Smart swaps"), with Zach's answers of 24 November: "For less" is the cheapest part in stock that fits; "better" follows the shop's ranking per slot, and falls back to price where a slot has none. The plan leaves open what "Same board for less" swaps, how a tie is broken and what counts as fitting. The choice is the domain's, `Domain\Fit\Swapper`, beside the recommender and the closest part, and like them it asks the engine and decides nothing about fit itself.
+
+- **What fits.** A swap is the build with the part in its place, checked by the validator as the cart checks a build (`BuildValidator`): the part fits the whole build with no warning, before and after its slot, not only the picks before it as a step's cards are checked; the shop holds what the build takes of it (`Option::available()`); and the build has no problem it did not have before, by kind and slot. So wheels that come with their bearings are swapped only for wheels that do too, unless the build has bearings picked, and a build still being made (an empty grip slot) can be offered a swap that leaves that slot as it was. A part that fails is passed over for the next, so a swap is offered only where one exists, never an empty button.
+- **For less.** The cheapest by what the build is charged for it, its price times the quantity the build takes (R7), since a set of eight bolts and a single sheet of grip are compared as the total counts them. Only a part that costs less than the pick; one that costs the same is no saving. A tie goes to the lower ID, so the same build is always offered the same part.
+- **Better.** Where any part of the slot has a rank (D-395), the next rank up: the lowest rank above the pick's, a part the shop ranks being better than one it does not, then the cheaper, then the lower ID. Not the top rank: one step up is the upgrade a shopper weighs, and a tier at a time is how a shop's "good, better, best" is read. Where no part of the slot has one, the next dearer part, as Zach set. A part that is both the cheapest and the next better is offered once, as better, its price difference saying it costs less.
+- **The deck is never swapped.** It is the board's look, the one choice a shopper makes by eye, and the builder never picks one for them (D-213). A cheaper deck that fits is not "the same board". Every other slot with a pick can be.
+- **"Same board for less" swaps every slot but the deck at once (for Zach).** One press, the board's saving in one figure, as "Same board for $23.00 less" reads. In step order, each picked slot takes the cheapest part that fits the board as it stands with the slots before it already swapped, so the board they make together fits as a whole: bolts that reach through the risers picked are passed over once cheaper, thicker risers are swapped in before them. A slot with nothing cheaper that fits keeps its part. The per-slot "for less" stays for a shopper who wants to save on one part only. The other reading, a cheaper part for one slot alone, is what each slot's own swap already offers, so the board's would add nothing.
+- **Only what the shopper picked.** A recommendation is not a pick (D-213) and is not swapped; a slot with none is offered nothing.
+
+**Tests.** `SwapperTest`, 17 cases at every boundary: sold out, too big, short, the same price, the same rank, unranked beside ranked, a part with no set size picked or offered, bearings that come with the wheels, problems kept and problems new by kind and by slot, the deck, an empty slot, a slot the kit lacks, and the board held against the slots swapped before it. 100 % of lines and branches, and 100 % MSI on `Swapper` (92 mutants).
+
+**Red run.** `SwapperTest`, before `Swapper` was written: every case, `Class "CreativeBranding\SkateboardBuilder\Domain\Fit\Swapper" not found` (SwapperTest.php:85).
+
+**Why:** Zach's answers, with the smallest choice that leaves a shopper the say: a swap that fits as the cart will check it, one step at a time, and the look left alone.
+
+**Confirmed by Zach** on 25 November: the deck is never swapped, as built.
+
+**Status:** Accepted.
+
+### D-395 · A part's rank is a whole number on its Part specs, higher being better, and a filter answers last · 2026-11-25
+
+Issue #135: "better" follows the shop's rank, "a number on the part's Part specs (not a list on the kit)", and falls back to price where no part in the slot has one. The issue leaves the number's form, where a variation's comes from and how another plugin answers.
+
+- **A whole number from 0 to 999999999, higher being better,** kept as digits in `_cbuild_rank` product meta (`Support\PartRank`). Higher is better because "rank 5" reads as above "rank 1" on a scale the shop sets, and a shop can leave gaps (10, 20, 30) to slot a part in later. A leading zero, a sign, a decimal or anything over nine digits is not saved, and what was there is kept, as the panel keeps a spec typed wrong; an empty field takes it off.
+- **A group of its own on the panel, "Rank", closed and its field disabled where the part has none,** as every group is, so a page of fifteen variations adds nothing to the product's form (issue #23's `max_input_vars`). It is drawn wherever the panel has fields, and on a part no kit takes where it has a rank, so it can be cleared.
+- **A variation with none takes its product's,** as its specs and layer image do, so a shop ranks a variable product once.
+- **`cbuild_part_rank` answers last,** with the stored rank (or the product's) as its first value, as `cbuild_part_available` does for "Not offered". Anything but a whole number is none. A filter adds a part's rank to the choice but never a swap: every swap is still the fit engine's, so no answer can offer a part that does not fit or is not in stock. The plan's `cbuild_swaps` filter is not added, since it could put an unchecked swap in front of a shopper. (The name was then reused for D-397's switch filter, `bool $offers`, `int $kit`, which turns swaps on or off for a kit and cannot add one; the filter of swaps this point rules out is still not added.)
+- **Read through WooCommerce's CRUD after one priming query** (`ProductMeta::primeWithParents()`, D-202), and only for the slots whose swaps are worked out (D-396), on each request. Nothing is kept: a part's rank changes only with a product save, and the parts are loaded in the same request anyway. (Replaced by D-434: the products were not loaded in the same request, and the rank is now kept with the part's facts.)
+
+**Tests.** `PartRankTest`: the field, open and enabled with a rank, closed and disabled without; saved, refused (`-1`, `2.5`, `top`, `07`, `1000000000`, `1e3`), kept when not sent, cleared when empty, and not saved by a customer; a variation's own and its product's; the filter last. `PartSpecsPanelTest`'s counts of groups gain the Rank group. `StateRouteTest`: the next rank up, not the top or the next price; a plugin's rank; no rank, the next dearer.
+
+**Red run.** `PartRankTest`, with the panel's field and save turned off: `test_the_panel_has_a_labelled_whole_number_field_with_the_parts_own_rank` failed at PartRankTest.php:104, the panel with no Rank group, and the save and variation tests at lines 112 and 145.
+
+**Why:** the issue's own words, with WooCommerce's ways for the rest: meta on the part, a variation taking its parent's, and a filter that answers last.
+
+**Status:** Accepted.
+
+### D-396 · Swaps are worked out on the review and on a step with a pick, and priced as the total is · 2026-11-25
+
+Issue #135 offers the swaps "on the review and on a picked card". Working them out validates the build once for each part tried, so where they are worked out is a cost on every answer.
+
+- **On the review,** every picked slot's but the deck's: the same board for less first, then each slot in step order, for less then better. **On a step,** only that step's pick, which is the picked card's. None on the deck's step, a step with no pick, or a request whose state has neither (`BuildSwaps::slots()` says so before anything is read, so such an answer asks no rank and runs no check).
+- **The candidates are the slot's parts as the step has them, offered and hidden,** the same parts the server checked for the cards, each with its stock; the swapper keeps only the ones that fit the whole build.
+- **The difference is the total's change, worked out as the total is:** the swapped build quoted by `Pricer::quote()` with the build's assembly, the build discount and the shop's decimals, less the total shown. So tax, the fee and the discount are in it, and the difference shown always equals what the total does. The answer gives the amount with its sign and the text without, for the words to say "less" or "more".
+- **A phase of its own in `Server-Timing`,** `cbuild-swaps`, so a manager sees its cost.
+
+**Tests.** `StateRouteTest` with a 13 % tax shown in prices and the shop in euros with a comma: the board, then each slot, in order; each swapped build ready, with no problem, its total's change the change shown; written as the shop writes prices, with no sign; the deck never swapped. `StateAnswerTest` with a 10 % build discount: the change equals the total's, and a step asks for its own slot's ranks alone, a step with no pick or the deck's none.
+
+**Red run.** `StateRouteTest::test_the_review_offers_each_swap_at_the_change_it_makes_to_the_total_with_tax_and_the_shops_currency` and `test_better_follows_the_shops_ranks_or_a_plugins_and_a_step_offers_its_own_picks_swaps_alone`, before the answer was given its swaps: `Failed asserting that two arrays are identical`, the answer's `swaps` empty (StateRouteTest.php:1660 and 1714). `StateAnswerTest`'s two cases with `BuildSwaps::of()` answering nothing: StateAnswerTest.php:1684 and 1702.
+
+**Why:** the issue's two places and no more, and a difference no one has to trust the browser for.
+
+**Status:** Accepted.
+
+### D-397 · A swap is a link that carries the picks before it, its Undo lives in a notice until the next move, and a kit can switch swaps off · 2026-11-25
+
+Issue #135: "one press swaps in a part … one Undo puts the build back", and every swap must work without the script. The issue leaves where Undo lives and for how long. Zach added on 25 November that each optional feature has a switch.
+
+- **A swap is a link** (`rel="nofollow"`), not a form: the build with the swap's parts in place, at the same step, with `_undo`, the picks before it, an underscore key that is the builder's own and may change in any release (D-142). Without the script it loads the page; with it, the store follows it through the state route as any link (`actions.follow`), pushing a history entry. Its text says what it does to the total: "Same board for $3.00 less", "For less: Retna 52 mm, $2.00 less", "Step up: Bones 54 mm, $1.50 more" ("Step up" for better, ranked or by price, since the shop's rank is its claim, not ours).
+- **Where Undo lives, and for how long (for Zach).** In a notice above the step's cards and the review, "Swapped: wheels and hardware." with an Undo link, a link back to the picks before. It stays while the link carries `_undo`: through a reload and a shared address of that moment, and until the next move, which any other link or form makes without it (`BuildLink::at()` and every other link drops it; `Builder::show` keeps it only on the swap's own answer and never beside the change panel). Back undoes too, the swap being a step of the history. Not a toast that times out: a notice that vanishes on its own fails a keyboard or screen reader user who is slower than its timer (WCAG 2.2.1), and Undo that lasts until the next move is the pattern Gmail's and Material's snackbars aim at, without their timer.
+- **Focus.** After a swap the store focuses the notice (`tabindex="-1"`), which says the swap and holds Undo, and the status region says the build with its total (from D-432; it said the swap too, which a screen reader heard twice). After Undo it focuses the control that made the swap (`cbuild-swap-<slot>-<kind>`, `cbuild-swap-board`), which the build has again, or the heading. Nothing moves focus for a swap without the script; the page loads with the notice at the top.
+- **The same board for less** is one button at the top of the review; each slot's swaps sit under its review row; on a step, under the picked card alone. The review's are drawn only on the review, so no control is drawn twice in the page.
+- **A plain card is no taller.** Only the picked card has swaps; a list whose picked card shows them lets each card keep its own height (`align-self: start`), so the line they take does not stretch the plain cards in its row. #131's count of whole cards is on steps with nothing picked, which have no swaps.
+- **A swap for less that saves nothing once the total is rounded is not offered.** A better one is, with its difference, "same price" where there is none.
+- **"Step up" names no reason.** It never says whether the part is better by the shop's rank or dearer by price alone. A rank is the shop's own claim, set on Part specs and answerable by a filter, and the plugin can't stand behind it as a fact about the part, while "more expensive" would sell the price rather than the part. "Step up" with the part's name and what it adds to the total gives a shopper what they need to judge it, and the same words work for a kit with ranks and one without.
+- **The switch.** "Offer smart swaps" in the Build tab, `swaps` in `_cbuild_settings` (D-354), on by default and for a kit saved before 1.3.0. Off, the answer has no swaps, so the review and the picked card draw none, and their places are `hidden`: nothing is left behind, with or without the script. Unlike `start_button`, the box sends `0` unticked (a hidden field before it), so a form that sends neither, as another plugin's save may, keeps the kit's setting instead of turning swaps off. `cbuild_swaps` (`bool $offers`, `int $kit`) answers after it, as the 1.2.0 settings' filters do; it turns swaps on or off and cannot add one (D-395's reason for having no filter of swaps).
+- **No picture.** A swap control is text alone, so it needs no flagged class for Mature Content.
+
+**Tests.** `BuildLinkTest`: `_undo` written in slot order after the rest, read back as IDs alone, and left behind by every other link. `BuilderTest`: each control's address and words, the board's, the notice and its Undo, the status, the next move leaving it, the picked card alone with swaps, the hidden review with none. `KitSettingsTest`, `KitEditorTest`, `BuildTabTest`: the switch, on for a kit saved before, stored as sent and kept where not sent. `StateRouteTest`: off offers none, a kit saved without the key offers them, and the filter answers last. `builder.spec.ts`, "Smart swaps (#135)", on every project, no-js, fr-ca and rtl among them: the board pressed, the total down by what it said, Undo, Back, focus after each with the script, axe; the picked card's swap and Undo, a plain card no taller than on the kit with swaps off; and the kit with the switch off showing no control.
+
+**Red runs.** `BuildLinkTest::test_a_swaps_link_carries_the_picks_its_undo_puts_back_and_no_link_made_from_it_does` before `undoing()`: `Call to undefined method BuildLink::undoing()` (BuildLinkTest.php:416). `StateRouteTest::test_a_kit_with_smart_swaps_off_offers_none_and_one_saved_without_the_setting_offers_them` before the switch: "switched off" (StateRouteTest.php:1740). `BuildTabTest::test_offer_smart_swaps_is_ticked_for_a_kit_saved_before_and_unticked_turns_them_off` before the field: "ticked, its unticked value before it" (BuildTabTest.php:873). `KitSettingsTest::test_smart_swaps_are_offered_unless_the_kit_turns_them_off` at KitSettingsTest.php:55.
+
+**Breaks.** `Builder::show` not keeping `_undo`: `BuilderTest` fails at :2105 ("false is true", no notice). Swaps on every card, not the picked one alone: :2121. The store not noting a swap's press: the browser test fails "focus on what the swap did, beside its Undo".
+
+**Why:** a link works everywhere the builder does, and an Undo that waits for the shopper, not a timer, is the one every shopper can reach.
+
+**Confirmed by Zach** on 25 November: Undo lasts until the next move, with no timer, as built.
+
+**Status:** Accepted.
+
+### D-398 · The review's thumbnail of a deck's layer image is marked drawn, as its card is · 2026-11-25
+
+Cowork, for Mature Content: it flags a deck as a whole (`mcw-mature`) or in its layer image alone (`mcw-mature-layer`), and for the second it blurs the layer image and leaves the photo, already censored, sharp. It knows which picture it is looking at by a mark, `cbuild-card__photo--drawn` on a card (#99). #132's review thumbnail showed the deck's layer image where its card draws it, but `BuilderView::thumbnails()` dropped the mark, so a layer-flagged deck's thumbnail was left sharp.
+
+- **The fix.** The thumbnail of a deck's layer image is also `cbuild-review__photo--drawn` (`Options::CLASS_REVIEW_DRAWN`, in HOOKS.md's builder classes, `@since 1.3.0`); a photo is not.
+- **Smart swaps show no picture.** A swap control is text, so it needs no mark and no part's classes (D-397).
+- **A ready build's tile needs no mark.** Its picture is the preset's own image, a picture composed of the build, which draws each layer through `cbuild_composed_layer` and so is already blurred or left out by Mature Content's answer, or the first part's card photo (`StateAnswer::tile()`, `presets[].image`). None is a deck's layer image as it is, so `cbuild-preset__photo` is never one to mark.
+- **The test fixture flags either way.** `tests/e2e/mu-plugins/cbuild-e2e-flag.php` reads `cbuild_e2e_flag` (as a whole: every picture of the part blurs) and `cbuild_e2e_flag_layer` (the layer image alone: the pictures marked `…__photo--drawn` and the board's layers blur). "Thumbnails in the review (#132)" runs its blur test with each flag, on the 8.0 in deck (its layer image) and the 8.25 in deck (its photo): the drawn thumbnail blurs under either flag, and the photo blurs as a whole and stays sharp under the layer flag.
+
+**Red run.** `BuilderTest::test_each_row_of_the_review_shows_its_cards_picture_and_a_row_without_one_keeps_its_place`: "Failed asserting that two strings are identical", expected `'cbuild-review__photo cbuild-review__photo--drawn'`, got `'cbuild-review__photo'` (BuilderTest.php:2031).
+
+**Break.** The row's marks put back to `cbuild-review__photo` alone: the same test fails at :2031, and the browser test fails under both flags with "its layer image, marked as its card is" (builder.spec.ts:11104).
+
+**Why:** a plugin that tells a layer image from a photo by its mark must find the mark wherever the layer image is shown.
+
+**Status:** Accepted.
+
+### D-399 · A deck's card counts its other widths past two, keeps its stock beside the price and its picture in its 7rem box · 2026-11-25
+
+**Context:** Cowork's 1.2.0 review, F31 (#148, nit, design), after F24 (D-360). On the demo at 1440 by 900, a theme header puts the builder's rail at 129 px, and once a width was pressed the first view held no whole deck: the first card started at 674 px, the bar at 808, and each card was 316 by 237 px against 169 in 1.1.0. D-360's test put the builder at the window's top, so it never saw the header.
+
+**Measured on lane 1** with a fixture of the demo's shape: the widths kit, six decks each a variable product in seven widths (7.75″ to 8.75″), sharing a photo and the 8.5″ deck's layer image, stock counted, with names as long as the demo's ("Elmwood Skate Deck, Beaver Wizard"). At 1440 by 900, Balanced, 8.5″ pressed, a 129 px header, three things made the card tall:
+
+- **The other widths,** "Also in 7.75″, 8″, 8.125″, 8.25″, 8.38″, and 8.75″", over two or three lines of a 179 to 252 px column (D-377's 16 px gap narrowed it in 1.2.0).
+- **The stock,** "12 in stock", on a line of its own.
+- **The picture, on Kadence and Storefront,** which Cowork's note did not name. D-322 gives the deck a 3.5rem by 7rem box under `:where()`, which a theme's `img { height: auto }` outranks (D-391 met it on the other steps). An upright layer image was drawn at the column's 56 px and its own shape, 211 px tall, and the card with it: 227 px. Without the script it was worse: core marks a lazy image's `sizes` with `auto`, the browser gives it size containment, and core's `contain-intrinsic-size: 3000px 1500px` made the picture 1,500 px tall and the card 1,516.
+
+**Decision:**
+
+- **One line for the other widths.** One or two are named as before ("Also in 8″ and 8.5″"); past two they are counted, "Also in 6 other widths", through `_n()` with the count in `number_format_i18n()`. Two widths fit the line a count takes, and name the very widths; six do not. Kept everywhere the card shows, not only after a width, since the deck step lists decks only after one (D-241). Cowork's other choice, no list once a width is chosen, would hide that a look comes in other widths at all; the count still tells a shopper who compares widths that the deck comes in more, and the width line's Change lists every width with its decks. Each card says it the same way, so a column of cards scans as one.
+- **The stock beside the price.** In the card's markup the stock now comes before the other widths, and on a deck's compact card it takes the price's line where it has room, beside the price and its change, wrapping under them where it hasn't. The other widths are on the deck step alone, so every other step's card reads as before.
+- **The picture holds its box.** `.cbuild .cbuild-cards--compact .cbuild-card__photo { block-size: 7rem }`, at `.cbuild` weight as D-321's rules are, so a theme's `img { height: auto }` and core's placeholder height no longer reach it. The image is still fitted into the box.
+
+**Before and after** (the first card's height; whole decks above the bar under the 129 px header):
+
+| Theme | before | after |
+| --- | --- | --- |
+| Twenty Twenty-Five | 229 px, ≥ 1 | 188 px, ≥ 1 |
+| Kadence | 227 px, ≥ 1 | 152 px, ≥ 1 |
+| Storefront | 227 px, 0 | 149 px, ≥ 1 |
+
+Twenty Twenty-Five sets a card's name at 22 px, and the demo's names take three lines there: its limit is a name's line more, 190 px. The others' is 170, 1.1.0's card. On a phone the column is wider and the card shorter.
+
+**Tests.** Unit: `WordsTest::test_a_decks_other_widths_are_named_up_to_two_and_counted_past_two`. Browser: `shelf.spec.ts`, "Deck cards after a width, under a theme header (F31)", on the three themes and every project: the widths kit, a width pressed, Balanced, the builder 129 px down (the page scrolled, or a block put above it, with a small local helper), each card at most 190 px on Twenty Twenty-Five and 170 elsewhere, a whole deck above the bar on a desktop, and "Also in 6 other widths"; `french.spec.ts`, "counts a deck's other widths in French", "Aussi en 6 autres largeurs".
+
+**Red runs.** `WordsTest`: `-'Also in 3 other widths' +'Also in 8″, 8.5″ and 8.75″'` (WordsTest.php:231). Browser, before the change, chromium-desktop: "a deck card, 190 px at most, Received: 229" (Twenty Twenty-Five), "a deck card, 170 px at most, Received: 227" (Kadence), "whole decks in the first view under the header, Expected: >= 1, Received: 0" (Storefront); no-js: 229 on Twenty Twenty-Five, and 0 whole decks on Kadence and Storefront (the 1,516 px card).
+
+**Deliberate breaks,** each put back after:
+
+- The count from seven widths, not three (`$count > 6`): `WordsTest` at :231, `+'Also in 8″, 8.5″ and 8.75″'`; in the browser 207 px on Twenty Twenty-Five, 175 on Kadence, 171 on Storefront, on chromium-desktop and no-js.
+- `_n()`'s two forms swapped: `+'Also in 3 other width'` (:231). The count one short: `+'Also in 2 other widths'` (:231).
+- The picture's `.cbuild` rule taken out: "Received: 227" on Kadence, and no whole deck on Storefront, nor on either without the script.
+- The stock back on a line of its own: 209, 176 and 172 px, on both projects.
+
+**Visual baselines that move** (not remade here): any shot of the deck step's cards on a theme that sets `img { height: auto }` with a deck whose picture is a layer image (Kadence, Storefront), and any deck card with a stock line. The suite's own decks have no counted stock and one width each, so the "Also in" line does not move there.
+
+**Why:** a deck's card has to hold its picture, its name, its price and its widths in the screen a header leaves; a list of six widths is read once, and the count says the same thing in a line.
+
+**Status:** Accepted.
+
+### D-404 · Help me choose steps aside once a width is pressed, and the guide's tiles have their own list · 2026-11-25
+
+Found by /verify on lane 2 after D-402, on chromium at both widths.
+
+- **Once a width is pressed, the questions go.** D-402 showed "Help me choose" wherever the builder was at its start: no picks, no ready build, on the first step. A width pressed left all three true, so the closed disclosure stayed over the decks, and the deck step's first view at 1440 by 900 held 0 whole decks on Twenty Twenty-Five and 2 on Kadence where F14 holds 2 and 4 (`shelf.spec.ts`, "Compact deck cards (F14)"). A pressed width is the shopper's own answer to the question the guide's shoe size would answer, so the guide steps aside, as the plan has it ("before the first step"). Builds already asked for stay, with the width they bring, so "Change your answers" is still there beside them. The ready builds' tiles keep D-336's rule.
+- **The guide's tiles are their own list.** The guide's builds sat in a second `ul.cbuild-presets__tiles`, so the page had two lists of that class and the presets' test, which reads it, found two ("strict mode violation", builder.spec.ts:3293). The guide's list is `cbuild-guide__tiles`, styled with the presets' list through one rule; neither class is public.
+
+**Tests.** `GuidedStartTest::test_a_width_pressed_puts_the_questions_away_and_builds_asked_for_stay`. The browser tests that found it, unchanged: F14's whole decks, the classic themes' accent test and "what an answer 800 ms late moves is no layout shift".
+
+**Red run.** `test_a_width_pressed_puts_the_questions_away_and_builds_asked_for_stay`: "a width pressed, Failed asserting that true is false" (GuidedStartTest.php:386).
+
+**Why:** the guide is a way in, and a shopper who has answered the deck step's question has taken another.
+
+**Status:** Accepted.
+
+### D-405 · A width's press takes the lead and the guided start away, and the brand row keeps its line until it is laid out again · 2026-11-25
+
+Cowork's review of 1.2.0, F30 (#147). On the demo a width's answer comes 0.9 to 1.3 s after the press, past the 500 ms after an input that CLS leaves out. A width press counted 0.130 on an iPhone 13 and 0.099 at 1440 by 900, against M12's gate of under 0.1 (D-356), with no other plugin's script.
+
+- **The lead and the guide at the press.** The answer hid the deck step's lead (D-360), and since #134 "Help me choose" (D-404), both above the step, so the step moved up as the answer came: 97 px on the phone, where the lead takes two lines. D-356 already folds the width question at the press; `folding()` now also sets `hasLead` false and, where no builds were asked for, the guide's `shown` false, as the answer will. A guide with builds asked for stays, as the server keeps it. A press the rate limit or the store's limit stops puts both back with the widths (D-364).
+- **The brand row after an answer.** D-314 keeps the row to its first line until the store first folds it, through `.cbuild:not([data-ready])`. After an answer that brings brands the row has not measured, nothing held it: the row drew them on two lines for a frame or two until `lay()` had measured (it runs from a watch, after the paint, and measures a frame later), and the cards under it moved up 51 px. The store now keeps `laid`, the chips the row was last laid out for once its measuring settled, and `state.laying` is true while the group's chips differ from them. The row then has `cbuild-chips__options--laying`, set in the same render as the chips, and under `scripting: enabled` from 48rem it does not wrap: its chips sit side by side at their own widths (`flex-shrink: 0`, so the store measures them as they are) and what runs past the row is clipped, so the row is one chip high on any theme. D-314's clip, `calc(var(--cbuild-target) + 2px)`, was tried first: on Kadence a chip is 44 px with its border counted in, and the 46 px let 2 px of the second line through. A custom property holding the measured line was tried next and dropped, since every `--cbuild-` property is public API. Not while the shopper has opened the rest, where every chip shows. Back to wrapping after 4 s, as D-314's rule is lifted. The class is not public.
+
+**Measured** (`shelf.spec.ts`, "A width pressed, its answer a second late (F30)", the answer held 1 s and a 129 px header above the builder, D-406; the desktop's brands 12rem wide and a fifth brand in the answer, since the shelf kit's four are in stock at both widths): before, a phone (390 by 664) 0.160 on Twenty Twenty-Five and 0.881 on Kadence, and the desktop 0.043 and 0.046 with the row drawn at 100 and 95 px for two frames; after, 0.000 on the phone and 0.001 on the desktop ("N more" coming into the row). On Kadence's phone the theme's footer still moves as the decks fill the page, 0.021, outside the builder and not counted (D-406): the fold at the press leaves the page short enough to show it.
+
+**Tests.** The browser test above, on chromium-desktop and chromium-phone: the lead and the guide hidden at the press, read once while the answer is held; the builder's shift under 0.1; and on the desktop the brand row no taller in any frame than once folded. `store.test.ts`, "takes the step's lead and the guided start away at a width's press, keeping builds the guide was asked for" and "puts the lead and the guided start back when a width's press hits a limit"; `chips.test.ts`, "keeps the row to its line from a view that changes its chips until it is laid out again".
+
+**Landed beside #135 and #151 (25 Nov, M13's combined tree).** Two new elements sit in the same step. **The smart swap's notice** (`.cbuild-swapped`, D-397) is above the step and lasts until the next move; a width's press is one, so its answer takes the notice away and the step moved up as it came, as the lead did. `folding()` now takes `swapped.shown` away at the press too, and a press a limit stops puts it back with the rest. `store.test.ts`, "takes a swap's notice away at a width's press, and puts it back when the press hits a limit". Red run: "gone at the press: expected true to be false" (store.test.ts:3963). Deliberate break, the limit not putting it back: "back at the limit: expected false to be true" (store.test.ts:3967). **The place above the cards** (`.cbuild-step__above-cards`, D-407) is inside the part of the form the width question hides, and is not taken away by the answer, so the press leaves it as it is: a plugin's element in it shows with the cards, under the fold. Neither is a region of its own: the notice is one of BuilderPageTest's regions, between the guide and the step, and the place has no directive. With Help me choose off (D-409) the hidden notice is the lead's next sibling and the step the one after: `BuilderPageTest::test_help_me_choose_off_draws_no_guide_and_the_step_follows_the_lead` failed on the combined tree, "at the start: the step next", expected `'form'`, got `'p'` (BuilderPageTest.php:318), and now reads the notice, hidden, and then the step.
+
+**Why:** the store knows at the press what the answer will take away, so it takes it then, within the 500 ms the shopper expects a change in, as D-356 does for the rest; and a row that cannot be measured until it is drawn is drawn at the line it will fold to.
+
+**Status:** Accepted.
+
+### D-406 · The layout-shift tests hold the state route's answer a second, as the demo's host takes · 2026-11-25
+
+F30 (#147, D-405) slipped through because the layout-shift tests answered almost at once, while the demo answers 0.9 to 1.3 s after a press. Zach asked, on 25 November, for the held answer as a shared helper rather than a one-off.
+
+- **`tests/e2e/support/held.ts`.** `holdAnswers()` holds each answer of the state route for 1 s by default, the middle of the demo's range, and may change an answer's JSON before the page has it; it returns a function that lets answers through again. `themeHeader()` puts a block of a set height just above the builder and scrolls to it, as a theme's header does: on the demo Kadence's puts the rail at 129 px (F31). `watchShifts()` and `shiftsSince()` read the shifts CLS counts, those with no recent input, as the existing tests did.
+- **The builder's own shifts.** A shift counts where one of the nodes it moved is the builder or inside it. A shift of the page's own, a theme's footer moved as the decks fill the page, is reported beside the count, not in it: the builder's gate is what the builder moves, and on the test site's short pages the footer is in view where on a shop's it is not. A shift that moves the builder and the footer together counts whole.
+
+- **`drained()`.** `holdAnswers()` returns `release()` and `drained()`, which waits until no answer is held: Next's answer asked ahead (D-355) is awaited without the builder saying it is busy, so `aria-busy` alone does not say the answer has come.
+
+**The tests moved onto it** (25 Nov, its own commit). `builder.spec.ts`, "what an answer a second late moves is no layout shift: a width, a deck, Next and a truck", D-356's test, held 800 ms before: now held 1 s under a 129 px header, the builder's own shifts. A width, a deck, Next and a truck all 0.000 on chromium-desktop and chromium-phone (a width was 0.019 and 0.055 before D-405). "The outline moves nothing on the page" (D-413), a truck's pick, with and without reduced motion: the answer held, 0 shift on Chromium, the board laid out the same in each frame on every engine. The limit line's test (D-383) already holds its answer until the store gives up, and keeps its own count.
+
+**Not moved: "each moment answers within 200 ms on a CPU slowed four times, shifts nothing, ...".** With the answers held a second, and the CPU slowed four times, two moments shift: **the step** (Next pressed at once, its answer asked ahead and still held), 0.021 on chromium-desktop (`cbuild-step__fieldset` 358→244, `cbuild-step__more` 522→0) and 0.040 on chromium-phone (`cbuild-step__fieldset` 645→535, the bar's actions 766→783); and **the grip**, 0.001 on chromium-phone (the bar's actions 778→760). Neither is a change to the step's template or styles alone: the step's is the new step laid out when an answer asked ahead comes after Next was pressed, which D-355's ask-ahead removes only where the answer came first. So the test keeps its own observer and quick answers, and the two shifts are left as findings (reported with this work), not tuned away. The same Next a second after the deck's answer, as D-356's test presses it, shifts nothing.
+
+**Why:** a test that answers within the 500 ms CLS leaves out can never see what a late answer moves; holding the answer is the only way the local site shows the demo's case.
+
+**Status:** Accepted.
+
+### D-407 · A place just above the step's cards for another plugin's element · 2026-11-25
+
+Issue #151, Mature Content's ask in Cowork's review of 1.2.0. Mature Content puts its notice first in the step's form (#143, D-376), above the width question, and adds it at the width's answer: on the demo it added 0.155 of layout shift to a width press on a phone. Put just above the card list in Cowork's experiment, it added 0.067, since it comes in with the decks the width brings.
+
+- **The place is an element of the builder's own.** `templates/builder/step.php` renders `<div class="cbuild-step__above-cards"></div>` in the step's fieldset, after the help, the empty step's words and the search's "found" line, and just before `ul.cbuild-cards`. #143's places are the builder's own elements, named by a class in HOOKS.md, which another plugin adds to; this one is the same, except that it holds nothing of the builder's. It has no directive, so the store neither binds nor draws into it, and a plugin's element in it is a child the store did not render, which D-376 found Preact leaves alone. Not chosen: promising "the element just before `.cbuild-cards`" as a sibling, which would leave the plugin's element among the builder's own children, where D-376 promised nothing because a list there may grow next to it.
+- **Where it shows.** It is in the part of the form the deck step hides while it asks its width, so a notice there shows with the cards and not over the question. Empty, it is `display: none` (`:where(.cbuild-step__above-cards:empty)`), so a shop without such a plugin sees no gap. It is rendered on every step, with or without the script.
+- **API.** `Options::CLASS_ABOVE_CARDS` (`@since 1.3.0`), in `Options::cssClasses()` and the API snapshot; HOOKS.md lists the class and adds it to the places another plugin may use, with what Cowork measured.
+
+**Tests.** `BuilderPageTest::test_the_step_has_an_empty_place_for_another_plugin_just_above_its_cards`: on the deck step asking, after a width, and on the trucks step, one empty `div` with its class alone, in the form and its cards' fieldset, the cards' list its next sibling. `builder.spec.ts`, "What another plugin may rely on (#143)", puts a third element in the place and checks that it is still the place's child, the same element, and that nothing of the builder's, element or text, is in the place, after a width, a pick that opens the change panel, Use these, a fold opened, Next twice, a held pick and a turn of the board, on every engine, phone and desktop, fr-ca and rtl.
+
+**Red run.** Before the template change: `test_the_step_has_an_empty_place_for_another_plugin_just_above_its_cards`, "one place a page, Failed asserting that 0 is identical to 1" (BuilderPageTest.php:711); the browser test, "TypeError: Cannot read properties of null (reading 'prepend')" (builder.spec.ts:10583). **Deliberate break:** the place given a directive, `data-wp-text="state.view.heading"`: the browser test failed at Next with the step's heading in the place, `+ "Choose your wheels"` (builder.spec.ts:10730), and the integration test with "its class alone, Failed asserting that 2 is identical to 1" (BuilderPageTest.php:717). The plugin's element itself stayed: Preact leaves a child it did not render even under a text directive, so the test reads the place's text too.
+
+**Why:** a notice about the cards belongs with the cards; a place the builder renders and never touches is the surest promise to make.
+
+**Status:** Accepted.
+
+### D-408 · Follow-ups to #134 and #147 on lane 2: WebKit's Option-Tab, a flagged deck in the guide's builds, and Next with its answer held · 2026-11-25
+
+**WebKit's Tab in "Help me choose" (#134).** `guide.spec.ts`, "skips to the builder from the questions, from the builds, and by keyboard", failed on webkit-phone every time, and on webkit-desktop too: "Show builds" was not focused after Tab from the budget (guide.spec.ts:276). Not a focus-order bug: a probe of the same page found Chromium's Tab going budget, "Show builds", "Skip to the builder", the first width, while WebKit's went budget, "Not sure of your width?" (the next `summary`), the bar's total, the page. Safari's Tab reaches text fields and a few controls, and buttons and links only with Option-Tab, unless "Press Tab to highlight each item" is on in Safari's settings; Playwright's WebKit keeps that default. With Option-Tab WebKit goes budget, "Show builds", "Skip to the builder", as Chromium does with Tab. The test now presses Alt+Tab on WebKit, as `builder.spec.ts`'s keyboard tests already do (the skip link's and the outline's), so it checks the order a Safari keyboard user gets. WebKit is not skipped.
+
+- **Red run:** the test as it was, `expect(locator).toBeFocused() failed`, "Received: inactive" (guide.spec.ts:276) on webkit-phone and webkit-desktop.
+- **Deliberate break:** "Skip to the builder" in the form given `tabindex="-1"`: the corrected test failed on both, "Received: inactive" at `expect( skip ).toBeFocused()` (guide.spec.ts:286). Put back, both pass.
+
+**A flagged deck in the guide's builds (Cowork, for Mature Content).** A browser test that a flagged deck's tile picture in "Builds for you" carries the flag's class and is blurred, run with both flags `tests/e2e/mu-plugins/cbuild-e2e-flag.php` offers: as a whole (`mcw-mature`) and in its layer image alone (`mcw-mature-layer`, D-398). The fixture is lane 1's, from `m13-cards` at 984d735, copied whole, since this branch had none (lane 1 made it in e02dbb5 and extended it in 984d735); the two lanes add the same file, so it merges as one.
+
+- **What the test found.** The brief expected the tile to stay sharp under the layer-only flag, since a ready build's tile is never a deck's layer image (`StateAnswer::tile()`, D-398). That holds for the shop's ready builds, not for the guide's: `GuidedStart` gives each build its deck's card picture, and a card's picture is the deck's layer image where the deck has no photo (D-282). With every answer blank the guide recommends the 8 in deck, whose tile showed `builder-test-deck-8-0-layer-…png`, unmarked, so the layer-only flag left a flagged layer image sharp on the tile.
+- **The fix.** As D-398 did for the review's thumbnail: the guide's build carries `drawn` where its picture is the layer image, and the tile's picture is then also `cbuild-preset__photo--drawn` (`Options::CLASS_PRESET_DRAWN`, `@since 1.3.0`, in HOOKS.md's builder classes and the API snapshot). A photo is not marked. Not chosen: showing the guide's builds by photo alone, which would leave a deck with no photo a tile with no picture; nor a composed picture, which is made by a background job per build and so is not there when the answers are.
+- **What the test asserts.** With every answer blank, three builds (the 8 in deck's layer image, the 8.25 in deck's photo, the 8.5 in deck's layer image). Each flag on the 8 in deck: its tile flagged, marked drawn and blurred under either flag. Each flag on the 8.25 in deck: flagged, not marked, blurred as a whole and sharp under the layer flag, as the brief asked. The other builds' tiles sharp each time. On every project, no-js included.
+
+- **Red runs:** `BuilderViewTest::test_a_guide_tile_showing_a_decks_layer_image_is_marked_drawn_and_a_photo_is_not`, expected `'cbuild-preset__photo cbuild-preset__photo--drawn is-flagged'`, got `'cbuild-preset__photo is-flagged'` (BuilderViewTest.php:303); the browser test, "its layer image, marked as its card is", received `"cbuild-preset__photo cbuild-e2e-flagged"` and `"… cbuild-e2e-flagged-layer"` (guide.spec.ts:546), chromium-desktop and no-js.
+- **Deliberate break:** `GuidedStart` giving every build `drawn` false: the browser test failed under both flags at guide.spec.ts:546. Put back, all pass.
+
+**Next with its answer a second late (D-406's finding): found, not fixed, left to the owner.** The cause: Next pressed on the deck step leaves the step as it is until the answer comes, and the answer, a step with no width question, takes the deck step's width line ("Width 8″ Change", 84 px and its gap) and its "Showing" line away; the cards move up under the heading a second after the press. It happens whether the press asks for the answer or takes the answer asked ahead (D-355) still on its way; on a page opened on a step nothing is asked ahead, since `foresee()` runs only once an answer is shown. Measured under a 129 px header, answers held 1 s: at the press, 0.021 on chromium-desktop (`cbuild-step__fieldset` 121→7, `cbuild-step__more` 285→0) and 0.021 on chromium-phone; Next pressed as soon as the deck's answer has asked ahead, 0.020 and 0.046.
+
+- **Tried:** the store taking the width line and the count away at Next's press (`step.shelf.width.shown`, `step.more.count`, put back at a limit), as a width's fold does (D-356, D-405). The step's shift went to 0 in both ways on both, with a browser test on `held.ts` and two store tests. It is not committed, for two reasons beyond the step's template, styles and press handling. **The bar's Back:** the second step's bar has Back beside Next, which the deck step's view has no words for, so it still comes with the answer and moves the bar: 0.001 on a desktop and 0.004 on a phone, the grip's 0.001 the same kind. Showing it at the press needs the server to give the first step's view the next step's Back, or the bar to keep Back's place on the first step. **The counting total:** on webkit-phone, Next pressed while the deck's total still counts (M11) shortened the builder at the press, and the bar, stuck at the builder's end, moved on the screen mid-count: "the deck settles onto the stage in 280 ms, the total counts to the server's, and the step crosses over" failed every time (builder.spec.ts:4877, the bar at 458 then 293 px with the scroll at 703), with or without `steady()`; Chromium has scroll anchoring and passed. Both are the bar's, so the owner decides between them.
+- **"Each moment answers within 200 ms…" not moved onto `held.ts`:** held, its step moment shifts as above, so it keeps its own observer and quick answers.
+
+**Why:** a test written for one engine's Tab says nothing of the other's; Option-Tab is what Safari's keyboard user presses for a button or link. A plugin that tells a layer image from a photo by its mark must find the mark wherever the layer image is shown (D-398), the guide's tiles too. A fix that trades one moving bar for another is not made without the owner.
+
+**Status:** Accepted.
+
+### D-409 · Three switches in the Build tab: Help me choose, the cards' ready-build picks and their ratings · 2026-11-25
+
+Zach, 25 November: "allowing clients control over these things could be useful." Three checkboxes in a kit's Build tab, each kept in `_cbuild_settings` beside the 1.2.0 settings, as `width_guide.shown`, `start_button` and lane 1's `swaps` (D-397) are. The choices the ask leaves:
+
+- **Where they sit.** A third group of the Layout section, **Shown in the builder**, after "Where shoppers find it": they say what the builder's own page shows, which is the Layout section's business, and a group of their own keeps a settings document's three new keys out of lane 1's lines beside `start_button`. Labels are the features' own names, read under the group's legend: "Help me choose", "Ready-build picks on cards", "Ratings on cards", each with a note on what off does.
+- **Keys and defaults.** `guide`, `picks` and `ratings`, booleans, read by `KitSettings` as `guided`, `cardPicks` and `cardRatings`. A missing key is on, so a kit saved before 1.3.0, and one whose settings were saved on 1.2.0, shows all three. A key of another type is refused with `document_wrong_type`, as `start_button` is.
+- **An unticked box sends 0,** as lane 1's (D-397): a hidden `0` before the box, which the ticked box's `1` takes the place of. So the editor tells "unticked" from "not sent": a form that leaves the field out, as another plugin's save may, keeps what the kit has, and a kit that never had the key keeps none, on. The template's `unticked` is lane 1's to the letter, so the two lanes' lines merge as one.
+- **Filters answer last,** as `cbuild_width_guide` and `cbuild_start_button` do after their settings: `cbuild_help_me_choose`, `cbuild_card_picks` and `cbuild_card_ratings`, each `(bool, int $kit)`, read through `Front\Shown`; anything but `true` is off. A switch turns its feature on or off and never changes what it shows. Ratings stay off while WooCommerce's star ratings are, which the card asks itself, as it did before.
+- **Help me choose off draws nothing.** The server leaves `guide.php` out of the page (`view.guide.offered` false), rather than drawing it hidden: no disclosure, form, label or builds, no region, and no gap, since the builder's pieces are spaced by its grid's gap and the step takes the guide's place at the same gap. The kit's switch does not change in a visit, so the store never needs the markup. Answers in a link recommend nothing (`Builder::show()` does not ask `GuidedStart`), and the Wheel guide's sizes are kept.
+- **The picks and ratings on this branch.** The cards' "Picked for …" line and rating are #137's (D-392, D-393), on lane 1's `m13-cards`, not on `m13-cowork-start`. Here the two switches are stored, sanitised, read (`KitSettings::$cardPicks`, `$cardRatings`), filtered (`Shown::picks()`, `Shown::ratings()`) and documented; the cards' code reads them where the lanes land: a card says its picks only while `Shown::picks()` is true, and shows its rating only while `Shown::ratings()` and `wc_review_ratings_enabled()` are. The browser tests for both, and #131's whole-card counts with both off, go with that wiring.
+
+**Tests.** `KitSettingsTest` (each on with no settings, with 1.2.0's and when said; each off alone, the others and `start_button` unchanged; each of another type refused), `KitEditorTest` (each sent as 0, 1, empty and any other value, alone; one not sent keeps the kit's; none stored and none sent left out), `ShownTest` (each filter asked with the kit's setting and its ID, answers last, anything but `true` off), `BuildTabTest` (the group in the Layout section, each box ticked on a kit saved before, its `0` before it, labelled and described; each unticked in turn turns its own off and leaves the rest; a form without the fields keeps them; ticked is stored as true), `GuidedStartTest` (saved before 1.3.0: offered with its builds; off: not offered, not shown, no builds, at the start and with answers sent, on the first step; the filter answers last, with the kit's ID; `'yes'` is off), `BuilderPageTest` (off, with and without answers: nothing of the guide in the page, no label, and the step the lead's next sibling). Browser, `guide.spec.ts`, "Help me choose turned off": with the guide on, the guide follows the lead; off, at the start and with answers in the link, nothing of the guide, no "Help me choose", "Builds for you" or "Change your answers", no label, the step next after the lead at the same gap the guide had, and the whole decks in view once a width is chosen the same count as with it on, on every project.
+
+**Red runs.** `KitSettingsTest::test_help_me_choose_the_cards_picks_and_their_ratings_show_unless_the_kit_turns_each_off`, "Undefined property: KitSettings::$guided" (KitSettingsTest.php:62), and the three new rows of `test_settings_that_break_their_shape_are_refused`, "refused" (:230). `KitEditorTest::test_the_three_switches_are_stored_as_sent_and_kept_as_the_kit_has_them_where_not`, "guide sent as 0, Failed asserting that null is identical to false." (KitEditorTest.php:557). With the tab's change held back, `BuildTabTest::test_the_three_switches_are_ticked_for_a_kit_saved_before_and_each_unticked_turns_its_feature_off` failed at BuildTabTest.php:873, the group absent. `GuidedStartTest::test_help_me_choose_off_offers_nothing_and_a_kit_saved_without_the_key_offers_it`, "Undefined array key "offered"" (GuidedStartTest.php:459). With the template's change held back, `BuilderPageTest::test_help_me_choose_off_draws_no_guide_and_the_step_follows_the_lead`, "at the start: nothing of the guide" (BuilderPageTest.php:312), and the browser test, "nothing of the guide", Expected 0, Received 30 (guide.spec.ts:459, chromium-desktop).
+
+**Deliberate breaks.** `Builder::show()` asking `GuidedStart` whatever the switch: `GuidedStartTest` failed at :473, "with answers sent", the tiles not empty. The boxes' `unticked` taken out: `BuildTabTest` failed at :882, "guide: ticked, its unticked value before it". Put back, both pass.
+
+**The picks and ratings wired to #137's cards** (25 Nov, M13's combined tree, where lane 1's cards and lane 2's switches meet). `BuilderView::step()` asks `Shown::picks()` and `Shown::ratings()` once a step, before the cards, and a card's `pickedFor` is worked out from no ready builds where picks are off, its `rated` and `score` from no rating where ratings are off, so `hasPickedFor` and `hasRating` are false and the template's lines are `hidden`, which takes them out of the card's flow: no room is kept. WooCommerce's star ratings off still empties the rating where it is read (`WooPartCards`, D-392), whatever the switch. The view is the one place: the page's markup, the state route's `view` and the store's redraw all come from it. Not chosen: taking `presets` and `card.rating` out of the state route's answer too; they are the answer's data, documented with it, and another plugin reading them asked for neither change, while the switch is about what the builder shows.
+
+- **Tests.** `StateRouteTest::test_the_kits_switches_take_the_cards_picks_and_ratings_away_and_a_kit_without_them_shows_both`: a kit saved before 1.2.0, one with 1.2.0's settings and none of the keys, and one with both said on show "Picked for Street" and "4.5 (2)"; picks off, no line and the rating stays; ratings off, no score and the pick stays; WooCommerce's star ratings off, no rating with the kit's on. `builder.spec.ts`, "with the kit's switches off (D-409)", on every project: no "Picked for" on the trucks or wheels step, the rating there, and the 139s' card as tall as with its line hidden by hand, then the same after the store draws the cards again; and the same for ratings, no star or score and the pick there. "holds as many whole cards with the kit's picks and ratings off" on each theme, chromium at both widths: no pick or rating shown on any step's list, and #131's whole-card counts held by the server's plain cards (the count's code shared with #131's test as `countWhole()`).
+- **Red runs.** The integration test, "picks off: no line, and the rating stays", got `'Picked for Street'` and true (StateRouteTest.php:1650). The browser tests on chromium-desktop: "no pick or rating on the trucks step", Expected 0, Received 2 (builder.spec.ts:10729), and the picks test, Expected 0, Received 1 (builder.spec.ts:11215).
+- **Deliberate breaks.** The rating read whatever the switch: "ratings off: no star or score, and the picks stay" (StateRouteTest.php:1663). `hasPickedFor` always true, the line kept empty: "no room kept for the line", 253.375 against 251.375 (builder.spec.ts:11233). Put back, all pass.
+
+**Why:** a shop knows which of these suit its customers; a switch kept beside the others, on unless turned off, changes nothing for a shop that never looks, and a feature turned off leaves no trace of itself on the page.
+
+**Status:** Accepted.
+
+### D-410 · A kit's page and the Builder page print no Product markup, with WooCommerce's or Yoast's, and need no new filter · 2026-11-25
+
+Issue #141, from the roadmap's companion review of 24 November: in place of a Creative Schema release, a test that a kit's page and the Builder block's page print no Product JSON-LD, with WooCommerce's structured data and with Yoast SEO's. Where one did, the builder was to remove it through that plugin's filter, for the kit only.
+
+**The test found none to remove.** So no code changes, and the tests hold what is already true:
+
+- **WooCommerce.** It makes a product's markup at `woocommerce_single_product_summary` (WooCommerce 11.3.1, `includes/class-wc-structured-data.php:42`), passes it through `woocommerce_structured_data_product` (:552), and prints it at `wp_footer` (:48). `KitHooks::markup()` has answered an empty array for a kit there since 0.4.0 (D-100), and WooCommerce prints nothing for markup with no type. On Twenty Twenty-Five a kit takes its own block template (`PageHooks`), where WooCommerce makes no product markup at all.
+- **Yoast SEO 28.8.** Its graph's pieces are those in `src/generators/schema/` (article, author, breadcrumb, FAQ, how-to, main image, organization, person, web page, website), and none is a Product. Had one been, the filters to remove it are `wpseo_schema_needs_<identifier>` (`src/generators/schema-generator.php:103`) and `wpseo_schema_graph` (:161). Yoast's schema aggregator, off unless the shop turns on its endpoint, asks WooCommerce for a product's markup through the same `woocommerce_structured_data_product` (`src/schema-aggregator/infrastructure/schema-pieces/woo-schema-piece-repository.php:78`), so the kit's is empty there too.
+- **A part's page keeps its Product.** The filter answers by the product's type, so only a kit's is emptied.
+- **Yoast WooCommerce SEO,** the paid add-on that makes a richer Product from WooCommerce's, enriches the markup that filter has already emptied. It is not installed or tested.
+
+**Tests.**
+
+- **Browser:** "No Product markup for a kit (#141)" in `tests/e2e/builder.spec.ts`, on Kadence, Storefront and Twenty Twenty-Five: every `@type` in the page's JSON-LD, on the kit's page, the Builder page and a deck's page.
+- **Yoast:** `BuilderYoastTest::test_with_yoast_a_kits_page_and_the_builder_page_print_no_product_and_a_parts_page_keeps_it`, in `composer test:integration:yoast`. The head with Yoast's graph, the Builder block's content, and WooCommerce's footer markup made as the summary action makes it.
+
+**Red run.** Both tests passed on arrival, since the removal is 0.4.0's. The red run is the deliberate break.
+
+**Deliberate break.** With `woocommerce_structured_data_product` unhooked in `KitHooks::register()`:
+
+- the Yoast test failed with "the kit's page. Failed asserting that an array does not contain 'Product'." (`BuilderYoastTest.php:194`);
+- the browser test failed on Kadence and Storefront with "the kit's page", its types `BreadcrumbList, ListItem ×3, Product, Offer, UnitPriceSpecification, Organization`.
+
+Twenty Twenty-Five passed with the break, as its kit template makes no markup. Put back, all passed.
+
+**Why:** a kit's own price is only its assembly fee, so a Product would offer the kit alone at that price, which the cart refuses (SPEC.md, SEO and sharing). A filter that removes nothing would be code no test could fail.
+
+**Status:** Accepted.
+
+### D-411 · My builds compares up to three saved builds in one table, a column a build, by a query string on its own page · 2026-11-25
+
+Issue #136, from Cowork's competitor review and Zach's answers of 24 November (`docs/research/plan-after-1-2.md`, "Compare saved builds (item 6)"): up to three saved builds side by side, the parts that differ and the price gap marked in words as well as colour, at today's prices with D-254's note, one build a column with a scroll on a phone, and a real table by keyboard. The plan fixed the rest: a query string on My builds' own endpoint, no new endpoint or table, nothing stored (`docs/reviews/M13.md`).
+
+**Decision:**
+
+- **How builds are chosen.** Each row of My builds gets a Compare box, and one button under the table, "Compare the ticked builds", sends a form by GET to My builds itself, so it works without JavaScript. The boxes join the form through their `form` attribute, since the rows already hold Rename's and Delete's forms and forms cannot nest. The form keeps My builds' own query as hidden fields, because a GET form drops its action's query and a site without pretty permalinks has one. The boxes show only when there are two builds or more.
+- **The address.** `cbuild_compare[]`, a UUID each, in the order chosen, which is the list's: the last saved first. It is public API (`docs/HOOKS.md`, 1.3.0), since a link may carry it.
+- **Whose builds.** `CompareView::table()` reads the signed-in customer's own list once, `SavedBuilds::of()`, and keeps the UUIDs asked that are in it. Another customer's UUID is never looked up, and a visitor has no list. A UUID asked twice or not a UUID is dropped, and more than three are cut to the first three, with a sentence that says so.
+- **Fewer than two.** My builds' list shows, with "Choose two or three of your saved builds to compare." above it. The sentence is the page's own, since WooCommerce has printed its notices before the endpoint's content.
+- **The table.** A column a build, headed by its name and its Open link (`th scope="col"`), and a row a slot of the kit, headed by the slot's label (`th scope="row"`), then Assembly, "Total today" and "Price difference". A caption names it, "Your builds side by side, at today's prices".
+- **Today's prices, and what changed.** A build is checked and priced today, as My builds' list does. One that changed since it was saved is shown as it would reopen, its closest parts in place, with D-254's own sentences in the slot's cell: the reason ("Wheels: … is no longer in the shop."), "Closest fit: …", a new price then and now, and the total then and now. The sentences come from one place, `BuilderView::changedWords()`, which "Your build has changed" now uses too, and the changes from `SavedBuilds::changed()`, which `reopened()` now calls, so neither is made twice.
+- **What differs, in words.** A row whose parts are not the same in every build says "Differs" in its header, beside a tint on its cells. The price difference row says "Lowest total" for the cheapest build and "$16.00 more than the lowest" for each other, "Same total" when all are equal, and "No total to compare" for a build with no total. The lowest is tinted too. Each tint is a colour mixed with transparency, so the theme's text keeps its contrast on a light or a dark page, and the words are there under forced colours, where tints go.
+- **On a phone.** Each build's column is at least 14rem, so a 390 px phone shows about one build and the table scrolls sideways inside its own region, never the page. The region is `role="region"`, named by the caption, with `tabindex="0"`, so a keyboard reaches it with Tab and scrolls it with the arrow keys. WCAG 2.1.1 asks it, and axe's `scrollable-region-focusable` checks it.
+- **The Compare box sits with the row's actions,** not in the build's header cell. WooCommerce's small-screen styles hide a responsive table's row headers (`woocommerce-smallscreen.css`, `.shop_table_responsive tbody th{display:none}`).
+- **Queries.** The builds' parts are primed in one query, as My builds does (D-351), and the slots are read once through `Kits::together()`. Three builds ask no more than two queries more than two builds.
+- **Upgrades.** `SavedBuildHooks` gets the compare through `withCompare()`, which only 1.3.0's container calls (D-208). `CompareView` is new, and `MyBuildsView::named()` is now public.
+- **The version moves to 1.3.0** with this, milestone 13's first public item (D-062).
+
+**Not chosen:**
+
+- **A row a build, a column a slot.** It is the list's own shape, but a phone would scroll through seven slot columns to compare one part, and the issue asks for a build a column.
+- **Marking each differing cell against the first build.** With three builds there is no one build to differ from. The row says it differs, and each cell says what it holds.
+- **Limiting the boxes to three with a script.** The server takes the first three and says so, which works without JavaScript and needs no markup made in the browser.
+
+**Tests.**
+
+- **Integration:** `CompareBuildsTest`. It holds two builds side by side with the differing row and the price gap in words; today's prices, a price changed since the save and a part gone, with its closest fit; another customer's builds never compared, alone or beside their own, nor to a visitor; four asked and three shown with the sentence, and a UUID twice or not a UUID dropped; the form by GET with a named box a build, and none with one build; and three builds asking no more than two queries over two. `SavedBuildsPageTest`'s named controls now include each row's Compare box.
+- **Browser:** "Compare saved builds (#136)" on every project but visual. Three builds are chosen by keyboard, then the table is read by its roles: the column headers in the order chosen, "Wheels Differs" as a row header, Bearings unmarked, the price difference row in words, and Open named for its build. Tab reaches the region; the page never scrolls sideways; each column is at least 14rem. On a phone, a column is over half the region, which scrolls, and ArrowRight scrolls it in Chromium and Firefox; Playwright's WebKit scrolled nothing for the arrow keys there, so it holds the focus and the overflow. axe runs with JavaScript, and fr-ca runs in the plugin's French.
+
+**Red run.** Before `CompareView` existed, all six `CompareBuildsTest` tests failed with `Error: Class "CreativeBranding\SkateboardBuilder\Front\CompareView" not found` (`CompareBuildsTest.php:89`).
+
+**Deliberate breaks:**
+
+- **The owner read from the first UUID asked,** by SQL, in place of the signed-in customer: `test_another_customers_builds_are_never_compared` failed with "nothing of another customer's".
+- **`differs` always false:** the side-by-side test failed with "said in words in its header".
+- **`changed()` skipped:** the today's prices test failed with "Failed asserting that two arrays are identical".
+- **The region without `tabindex`:** the browser test failed at `expect( region ).toBeFocused()` on chromium-phone and webkit-phone.
+
+Put back, all passed.
+
+**Sources:**
+
+- W3C WAI, [Tables tutorial](https://www.w3.org/WAI/tutorials/tables/two-headers/): a table with header cells in both its first row and its first column takes `scope="col"` and `scope="row"`.
+- WCAG 2.2: 1.3.1 Info and Relationships, 1.4.1 Use of Color, 1.4.10 Reflow (a data table may scroll in two dimensions), 2.1.1 Keyboard.
+- Deque, axe rule [scrollable-region-focusable](https://dequeuniversity.com/rules/axe/4.10/scrollable-region-focusable): a scrollable region must be reachable by keyboard.
+- Adrian Roselli, ["Under-Engineered Responsive Tables"](https://adrianroselli.com/2020/11/under-engineered-responsive-tables.html) (2020): a table kept a table in a focusable, named region that scrolls.
+
+**Status:** Accepted.
+
+### D-412 · My builds names each build on a phone too · 2026-11-25
+
+Found building #136 (D-411). My builds is a WooCommerce responsive table (`shop_table_responsive`), and WooCommerce's small-screen styles hide such a table's row headers below 768 px (`woocommerce-smallscreen.css`, `.woocommerce table.shop_table_responsive tbody th{display:none}`). Each build's row header holds its picture and its name, so since 0.8.0 a phone showed each build's total, date and buttons with nothing to say which build they were for. A screen reader heard the names, since each control is named for its build (audit 5), but a sighted shopper did not see them. A Compare box beside no name would have made the compare unusable on a phone.
+
+**Decision:** My builds' own inline styles show the row header as a block on every width: `table.cbuild-my-builds.shop_table_responsive tbody tr th[scope=row]{display:block;text-align:start}`, more specific than WooCommerce's rule, so the stylesheets' order does not matter. The picture and the name head each build's group of cells, as they do on a desktop.
+
+**Red run.** "Compare saved builds (#136)" with a check that each row's `.cbuild-my-builds__name` is visible: on chromium-phone, "the row says which build it is. expect(locator).toBeVisible() failed. Received: hidden" (`builder.spec.ts:8621`). Chromium at desktop width passed.
+
+**Deliberate break.** With `display:block` taken out of the rule, the same check failed on webkit-phone at the same line. Put back, it passed on all three phone projects.
+
+**Why:** the controls in a row must say which build they act on to the eye as well as to a screen reader (WCAG 2.2, 1.3.1 and 2.4.6).
+
+**Status:** Accepted.
+
+### D-413 · A part picked is outlined on the board for 600 ms, on its layer's ::after · 2026-11-25
+
+Issue #138, from Cowork's competitor review and Zach's answers (24 Nov): after a pick, the part's area of the board is outlined for about 600 ms, and under reduced motion the outline shows and fades without movement.
+
+**Decision:**
+
+- **What is outlined.** Each layer the pick brought onto the board or changed, the same set the motion module's `cues()` already finds for the part's own moment: one outline per truck, four per wheel set, the deck when it is swapped. A part removed has no layer left to outline; the photos closing over it say it (D-305). A pick that draws nothing on the side shown (bearings, a turn of the board) outlines nothing.
+- **How.** Each layer's `::after`, which the stylesheet draws over the layer's own box and hides: a 2 px ring in the builder's accent with 4 px corners, Highlight under forced colours. On the board's top, the deck and grip are painted through their own outline as a mask, which would cut a ring away, so there the part's shape is tinted instead (`color-mix()` of the accent at 35 %). Nothing is built in JavaScript: the pseudo-element is the stylesheet's.
+- **Moves.** `outline()` in `motion.ts` plays the moment `outline`, 600 ms (`TIMES.outline`), through `play()`, which now takes a pseudo-element: opacity 0 to 1 by a quarter of the way, held to 70 %, then 0; transform from `scale(0.94)` to none, so it is drawn in from just inside the part's box and never reaches past it, and nothing scrolls. `transform` and `opacity` alone, on the compositor (D-306). It starts with the part's own moment, with no delay, so the eye goes to the part as it lands.
+- **Calm.** Under reduced motion or the kit's subtle Motion (D-256), the outline shows at once (the layer's `data-outlined`, which the Interactivity API's class binding does not touch), and after 450 ms fades out in 150 ms, opacity alone: 600 ms in all, no movement, and every animation still 150 ms or less with no delay, as D-256 holds every calm moment. A second pick on the same layer holds it 600 ms from then; `cut()` takes it away at once, with every other moment.
+- **Words.** The outline is for the eye alone; the build's sentence still says what changed, and the browser test reads it.
+
+**Red run.** The unit tests: `outline is not a function` (five tests), `TIMES` without `outline` and `play()` passing no `pseudoElement`. The browser tests on chromium-desktop: "one outline a truck. Expected length: 2. Received length: 0" (`builder.spec.ts:5031`); both calm tests, `toHaveCount(2)` received 0 (`:5076`); both no-shift tests, "the outline was seen. Expected: > 0. Received: 0" (`:5186`).
+
+**Deliberate breaks** are in the commit's message.
+
+**Why:** the eye finds a change to a picture faster with a cue at its place than from the sentence alone; 600 ms is the issue's figure, long enough to be seen past the part's own 200 to 300 ms moment and short of a wait. A ring inside the part's box, moved by transform and opacity, keeps D-306's gates: no shift, the compositor alone.
+
+**Sources:** WCAG 2.2 2.3.3 (Animation from Interactions) and 1.4.1 (Use of Color: the sentence says it in words); MDN, `Element.animate()`'s `pseudoElement` option (Chrome 84, Firefox 75, Safari 14); web.dev, "Optimize Cumulative Layout Shift" (transform animations shift nothing).
+
+**Status:** Accepted.
+
+### D-414 · CI updates from every release from 1.0.0 on, and from 0.1.0 and 0.9.0 · 2026-11-25
+
+Issue #144, folded into milestone 13 by Zach (25 November): once CI's update job takes more than 15 minutes, it updates from every release from 1.0.0 on and from 0.1.0 and 0.9.0 alone, and until then from every release. This replaces D-232's "every release" for CI.
+
+**Measured.** The job is `Browser (updates)` in `ci.yml`, run on a pull request's full run; a push to `main` skips it. From `gh run view <id> --json jobs`:
+
+| Run | Tree | Releases below it | Job | `upgrade:all` step |
+| --- | --- | --- | --- | --- |
+| 45364836012, 24 Nov | m11-motion, 1.1.0 | 10 | 13 min 51 s | 10 min 53 s |
+| 45590634639, 25 Nov | m12-settings, 1.2.0 | 11 | 14 min 20 s | 11 min 22 s |
+| 45603524938, 25 Nov | m12-settings, 1.2.0 | 11 | 15 min 40 s | 12 min 20 s |
+| 45610406221, 25 Nov | Dependabot, on 1.2.0 | 11 | 16 min 27 s | 13 min 13 s |
+
+Each release costs about 65 to 72 s, and the job's setup (wp-env, Playwright) about 3 min. The job passed 15 minutes on 1.2.0's tree, and 1.3.0 adds a twelfth release, so the switch is on from this milestone.
+
+**Decision:**
+
+- **The choice is a script's.** `tools/upgrade-releases.sh` reads the published versions and prints those below this build's version, in version order; with `--sample`, only those from 1.0.0 on, and 0.1.0 and 0.9.0. A sample without 0.1.0 or 0.9.0 fails, so a release taken down can't shrink the run unseen. Its cases are `tools/upgrade-releases-selftest.sh`, in `composer gates`.
+- **`npm run upgrade:all -- --sample`** runs the sample; `npm run upgrade:all` alone runs every release, as before. The release list is read with `--limit 1000`: `creative-releases` holds every plugin's releases, 72 today, and at the old 100 the oldest of this plugin's would have been the first cut.
+- **CI's `updates` part passes `--sample`,** written in the matrix. Locally, each milestone's combined tree still runs every release (the plan's step 4), so the 0.2.0 to 0.8.0 paths are still run before each tag.
+- **0.1.0 and 0.9.0:** the first release, with the oldest stored shapes and the deactivated update of D-208, and the last before 1.0.0, whose saved builds and kits 1.0.0 had to read.
+
+- **The fixture is read from the tag file by file.** The first run of the sample on lane 3 stopped at 1.2.0: "Error: '…/tmp/upgrade/fixture/tests/e2e/fixtures/shop.php' does not exist." and "upgrade: 1.2.0's own fixture did not run". From 1.2.0, `.gitattributes` export-ignores `tests/` (D-346), and `tools/upgrade.sh` took the release's fixture with `git archive`, which honours it and gave nothing. It now lists the tag's `tests/e2e/fixtures` with `git ls-tree` and writes each file with `git show`. This failed every update from 1.2.0, sampled or not; CI had not met it, since no tree in CI is above 1.2.0 yet. Fixed, the sample passes on lane 3 in 5 min 23 s. The deliberate break, `git archive` put back, failed the update from 1.2.0 at the same line.
+
+**Why a fixed flag, not a measured trigger:** the job only grows, one release a milestone and never fewer, so once past 15 minutes a trigger would stay on. A trigger on the last run's time would need another run's timings from the API in the job, and the same tree took 14 min 20 s and 15 min 40 s within two hours, so it would flip between runs. A count of releases is a fixed flag by another name. The sample grows by one release a milestone too: at about 70 s each it reaches 15 minutes near ten releases, five more than today's, which is when to choose again.
+
+**Red run.** The self-test against the selection moved out unchanged, with no `--sample`: "upgrade-releases, the sample: every 1.x, 0.1.0 and 0.9.0: got '0.1.0 0.2.0 0.3.0 0.3.1 0.4.0 0.6.0 0.7.0 0.8.0 0.9.0 1.0.0 1.1.0 1.2.0', want '0.1.0 0.9.0 1.0.0 1.1.0 1.2.0'", and "upgrade-releases accepted a sample without 0.1.0".
+
+**Deliberate breaks.** With 0.9.0 not kept, "the sample: every 1.x, 0.1.0 and 0.9.0: got ''" (the sample has no 0.9.0). With 0.x not dropped, the same case got every release.
+
+**Status:** Accepted.
+
+### D-415 · The review shot waits until the page is still, the pick's outline gone · 2026-11-25
+
+Found while probing #110 on lane 3. The review shots in `tests/e2e/visual.spec.ts` press Start from Street, and since #138 (D-413) a pick outlines each part new to the board. Where motion is calm, as it is in the shots, the outline is held 450 ms by the layer's `data-outlined`, a mark no animation shows, and then faded. The test waited for the bar's hover and its animations alone, and for no answer pending, so the shot began while the outline was still drawn.
+
+**Measured.** With a line that logged the mark just before each review shot, 52 of 54 shots (the 18 review tests, three times each, on three workers) began with the board outlined. `toHaveScreenshot` takes pictures until two in a row agree, which mostly outlasted the hold, but 2 of the 54 failed: "On storefront, light › the builder at its start and at the review, tablet", "468 pixels (ratio 0.01 of all image pixels) are different", and the same on the phone, 477 pixels, each the outline around the board's parts. A probe of Twenty Twenty-Five light tablet that compared against a picture taken with the outline failed 8 of 200 the other way (1,876 pixels).
+
+**Decision:** before `still()`, the review shot waits until the page is still: no `cbuild-crossing` on the root, no `[data-outlined]` in the builder, and no finite animation running, as the moments' shots already wait (D-343). Nothing is masked and no threshold moves; the baselines, made before #138, are the board without the outline, and the shot now always takes that picture.
+
+**After.** The same 18 review tests, five times each on three workers: 90 passed, and the log showed the outline at none of the 90 shots. The probe with the same wait: 200 of 200.
+
+**Why in the test, not the page:** the outline is the design (D-413): 600 ms of it after a pick. A picture of the builder's settled look is taken once it has settled.
+
+**#110 is not this.** Its failures are the bar's "Show the parts" a pixel lower, not the board, and the link stays masked. In 560 probe runs of Twenty Twenty-Five light tablet unmasked (360 without the wait, 200 with it), the link was never drawn lower, so this neither shows nor rules out a link with the wait. Prior traces had the step's crossing still on when `still()` began, which the wait now rules out before every review shot.
+
+**Status:** Accepted.
+
+### D-416 · The start button is Add to cart's twin by its fill alone, its words read on its fill, and a hostile theme fixture tests the builder against a theme's rules · 2026-11-25
+
+Cowork's review of 1.2.0, F32 (#149, should-fix, WCAG 1.4.3). On the demo's deck page, with Kadence and Kadence Blocks, a row's rule for its links, `.kb-row-layout-id…_pdp-b a`, gave "Build a complete with this deck", a link, cream words (rgb 244, 241, 234) on the theme's button fill, Add to cart's yellow (rgb 232, 228, 0): 1.20:1. Add to cart beside it read 13.85:1. D-377's script took the button for Add to cart's twin, and gave it the outline, only where both its fill and its words were Add to cart's. Here only the fill was, so the button stayed the theme's own, unreadable and in Add to cart's colour.
+
+**The hostile theme fixture (approved by Zach on 25 November).** F32 and F33 are one failure: a theme's rule outranking the builder's own. `tests/e2e/mu-plugins/cbuild-e2e-hostile.php`, on only for a browser that sends the cookie `cbuild_e2e_hostile`, as the other e2e fixtures are switched, prints after every stylesheet, as a page builder's per-block styles print:
+
+- a dark row round a product's add-to-cart form and what prints after it, whose links are cream, as Kadence Blocks' row on the demo, and a blue link colour for the content's other links, at a class and an element;
+- `.cbuild-e2e-hostile p{margin:0 0 32px}`, Kadence's `.single-content p` (a class and an element, 32 px at the block's end) on every page, through a body class;
+- the headings' margins, `1.5em 0 .75em`, at the same weight;
+- every `button`, `.button`, `a.button` and `.wp-element-button` in Add to cart's yellow with dark words, its own radius, padding and weight.
+
+`tests/e2e/mu-plugins/cbuild-e2e-delivery.php`, on the cookie `cbuild_e2e_delivery`, answers `cbuild_delivery_line` and `cbuild_arrival_estimate`, as another plugin does on the demo, so a test sees the bar's two lines. With the fixture, the three themes the test site runs each drew the start button cream on yellow, 1.20:1.
+
+**Decision:** the script reads the button's colours against its own fill, then against Add to cart's.
+
+- **Its words.** Where the button's words read below 4.5:1 on its own fill (or, where it has none, on the first background behind it that is not transparent), it takes Add to cart's words where they read at 4.5:1 on that fill, else black or white, whichever reads more. They are set as `--cbuild-start-words` under `cbuild-start__link--words`, at three classes' weight, over a row's rule for its links (a class and an element) and the fixture's (two classes and an element).
+- **Its outline.** A button in Add to cart's fill is its twin whatever its words, and takes D-377's outline. So does one whose words read on its fill in neither its own colour nor Add to cart's. The outline's colour is chosen as D-377 chose it: Add to cart's fill where it reads on the background behind the button, else Add to cart's words, else none.
+- **Focused,** the outline gives way to the theme's own button and focus mark, as D-377 has it, and the words set above still read on its fill. Where black or white is set, the outline, if a colour reads for it, covers them at rest.
+- **Unchanged.** A theme whose words read on its own fill and whose fill is not Add to cart's keeps its button as it was: Storefront's grey. The script is still ES5 inside the PHP constant, with no angle bracket, and 282 bytes longer.
+
+**Measured with the fixture, at 1280 px.** Twenty Twenty-Five: before, cream on yellow, 1.20:1; after, the outline in Add to cart's yellow on the row's #121212, 13.85:1, and focused, Add to cart's dark words on yellow, 13.85:1. Kadence and Storefront, whose Add to cart is their own blue and dark grey with white words: before, 1.20:1; after, a white outline on the row, 18.73:1, and focused, black on yellow, 15.53:1. Without the fixture every theme draws the button as before.
+
+**Tests.** "The start button under a row's link colour (#149)", on each of the three themes: the words against the fill they sit on at 4.5:1 or more, at rest and focused, colours that are not Add to cart's, and axe on the button. D-377's tests are unchanged and pass. Without JavaScript the button is the theme's own as it stands, as D-377 says, so the test is skipped there.
+
+**Why:** a shopper must be able to read the page's second action whatever colours a theme's container gives its links; Add to cart's fill alone is what makes the two buttons look alike.
+
+**Status:** Accepted.
+
+### D-417 · The bar's Back and Next, and its delivery lines, hold their size and margins at two classes' weight · 2026-11-25
+
+Found with the hostile theme fixture (D-416), on the way to Cowork's F33 (#150).
+
+**Back and Next.** The bar sets its buttons at the reader's own base size and an inline padding of 0.875rem, so Back and Next fit beside the total on a phone. The rule was at no weight, `:where(.cbuild-bar__next, .cbuild-bar__back)`, and a theme's rule for every `button` outranks it: Next is a `button`, and the plain button's two-class reset (D-321) leaves out the primary button, whose fill is the theme's. On a phone at the review on Twenty Twenty-Five, the fixture's `button{padding:.6em 1.4em}` made Next's inline padding 22.4 px, Back and Next took a row under the total, and the bar grew from 143 to 261 px with the delivery lines shown (iPhone 13's 390 by 664). Storefront's own `button` padding already did the same with no fixture: its bar was 259 px.
+
+**Decision:** the rule is `.cbuild.cbuild :where(.cbuild-bar__next, .cbuild-bar__back)`, two classes, the plain button's reset's weight. Only the inline padding, the font size and `flex: none` are set there; the fill, the words, the border and the radius stay the theme's for the primary button, as D-321 has it.
+
+**Measured** on a phone at the review with the delivery lines: Twenty Twenty-Five with the fixture 261 to 207 px (the 64 px left are the delivery lines' margins, F33); Storefront without it 259 to 206 px, Back and Next beside the total. Next on Kadence is 112 px wide, not 129, and on Storefront 103, not 120: the bar's own padding, not the theme's, at every width.
+
+**The delivery lines (Cowork's F33, #150, a nit).** At the review on a phone the bar holds "This build ships free to …" and the arrival line, each a `p`, and the notes' `ul`, in a grid whose gap spaces them. Cowork measured the demo's bar at 198 px on an iPhone 13, 64 of it margins, and read the computed `margin` as "0px 32px". That reading is `margin-block`: 0 above and 32 px below. Checked on the test site's Kadence, each line's own block margins carry the space (`margin-block-end` 32 px from `.single-content p`, `margin-top:0;margin-bottom:var(--global-md-spacing)` in assets/css/content.min.css), and neither the lines' box (`cbuild-bar__more-lines`) nor the bar has a margin. In a grid the two margins do not collapse into the gap. The reset that should have held them, `:where(.cbuild) :where(… p …)`, has no weight. Storefront's `ul` margin gave the notes 19.8 px below and 3em at the start, and its `p` the same 19.8 px.
+
+**Decision:** `.cbuild-bar .cbuild-bar__more-lines > *` sets each line's margin and padding to 0, two classes, over a theme's class and element. The gap of 0.25rem stays their only spacing.
+
+**Measured** at the review on an iPhone 13's width with the delivery lines: Kadence without the fixture 203 to 139 px; Storefront 206 to 147; Twenty Twenty-Five with the fixture 207 to 143, its height without it.
+
+**Tests.**
+
+- "A hostile theme › keeps Back and Next at the bar's own size under a theme's button padding": on a phone at the review, Back's and Next's inline padding and font size are the same with the fixture as without it.
+- "A hostile theme › keeps the bar no taller at the review on a phone under a theme's paragraph margin (#150)": the lines' block margins the same with the fixture as without, and the bar no taller.
+
+**Why:** the bar's buttons are sized to fit beside the total, and its lines are spaced by its gap; a theme's padding for every button and margin for every paragraph are not aimed at them.
+
+**Status:** Accepted.
+
+### D-418 · The hostile theme sweep, and a ready build's lines at two classes' weight · 2026-11-25
+
+Asked for with the hostile theme fixture (D-416): one test that runs the builder with the fixture on and reports what it breaks.
+
+**The sweep.** "A hostile theme › keeps …'s bar and cards, and its contrast, under the hostile theme", for the builder's start, a deck step after a width, and the review, and "keeps a deck page's start button readable under the hostile theme". Each page is opened with the fixture off and then on, with the delivery lines said. The bar's height and the first card's (or, at the start, the first ready build's) may differ by no more than 2 px, a rounding's worth at any zoom, and axe's A and AA rules, colour contrast among them, pass on `.cbuild` with the fixture on. Heights are read from the layout alone, so they run without JavaScript too; axe runs in the page, so not there, and the deck page's button is the script's, so that test is skipped there (D-377).
+
+**What it found, beyond F32 and F33:**
+
+- **A ready build's tile** (and the guided start's builds, in the same tile): its name, description and total are each a `p`, under the reset at no weight, so the fixture's paragraph margin put 32 px under each. A tile was 566.5 px, not 470.5, at 1280 px, on every project. Fixed: `.cbuild-preset .cbuild-preset__form > p { margin: 0 }`, two classes and an element, over a theme's class and element. The tile's notes, a list of words, keep the theme's list style, as D-321 leaves them.
+- **Back and Next in the bar** (D-417) and **the bar's lines** (F33, D-417), fixed before.
+- **Nothing else.** Axe found no colour contrast or other failure on the three builder pages or the deck page's button. The step heading and the stage's heading already hold at two classes (D-321). The fixture's blue link colour reaches the bar's Back, a link, which reads on the bar's ground.
+
+**Not covered.** The sweep measures the bar and one card or tile; other paragraphs in the builder (the review's lead and total, the guide's questions, a step's help) still take a theme's paragraph margin over the reset, by the reset's design, which leaves a theme's spacing to its words. A page whose spacing a theme makes worse than this is a finding for a later pass, not this one.
+
+**Why:** a theme's rules are aimed at its content's words, not at the builder's tiles and bar, whose sizes the builder sets so they fit.
+
+**Status:** Accepted.
+
+### D-419 · The block margins of the builder's paragraphs, headings and lists hold at two classes' weight, measured by a sweep of every text block · 2026-11-25
+
+D-418 left a gap: the sweep measured the bar and one card, and the builder's other words still took a theme's margins over the reset at no weight.
+
+**The wider sweep.** "A hostile theme › keeps every text block of … where the builder puts it under the hostile theme", for the start with Help me choose open, the start with the guide's answers sent, a deck step after a width, a hardware step, the review, the review with an error (the error summary), the change panel, and My builds' compare. Each screen is opened with the fixture off and then on, at the project's width and, on a desktop project, at 390 by 844 too. Every `p`, heading, list, list item, `dt`, `dd`, `legend`, `summary`, `figcaption`, `caption`, table and cell shown is measured: its top within its parent, its height, and the space below it in its parent. Any of the three that moves by more than 2 px is a finding, listed with the block's margins with and without the fixture. A screen reader's text is left out, since a margin moves nothing off the screen. A primary button keeps the theme's fill and padding (D-321), so it is held at one size in both runs; the bar's buttons have their own test (D-417). The compare is measured on its own table. The link back to My builds above it is a paragraph of the account page, and the theme spaces it as it spaces WooCommerce's own words there. That is not a finding.
+
+**What it found,** at 1280 px with the fixture, each block's margins against its own without it. The same held at 390 px and without JavaScript:
+
+- **The stage:** the heading took 32.6 px above and 16.3 below, where the builder sets none on a desktop, so it sat 32.5 px lower. Under it the side line took 32 px. The outline drawn before a part is picked lost its own 30 px margins to the theme's 0 and 32, and was 402 px tall, not 483.
+- **A step:** the lead lost its −20 px pull up to its heading and took 32 px under it, 20 px lower. The step's "more" line took 32 px under it.
+- **Help me choose:** the intro, the budget question and the actions line each took 32 px. The actions sat 64 px lower with the questions open. The heading over the builds, and the ready builds' heading, took the theme's 1.5em and 0.75em over the browser's 1em.
+- **The review:** the lead, the arrival line, the total, the notice and the sign-in line each took 32 px. The sign-in line sat 144 px lower, at 1348.5 px rather than 1204.5.
+- **The error summary:** its heading took the theme's heading margins, and the list under it moved 5.5 px.
+- **The change panel:** its heading and its three subheadings took the theme's heading margins. Each line that no longer fits, and each closest fit, took 32 px.
+- **My builds' compare:** its table, caption and cells held. Only the link above it moved, as said.
+
+**Decision: one rule at the root, not one per finding.** The reset that should have held them is `:where(.cbuild) :where(… p …)`, which has no weight, so a theme's class and element (Kadence's `.single-content p`, the fixture's) wins, and so does any rule of no weight printed after the builder's stylesheet. Fixing each finding at its own class, as D-417 and D-418 did, would take about twenty rules and leave the next paragraph open. Instead:
+
+- `.cbuild.cbuild :where(p, ul, ol, dl, dd, figure, h1, h2) { margin-block: 0 }`. Two classes, the least weight over a theme's class and element, the weight D-321 gave a plain button's reset.
+- `.cbuild.cbuild :where(h3) { margin-block: 1em }` and `:where(h4) { margin-block: 1.33em }`. A section's heading keeps the browser's own margins, which the builder was drawn with on Twenty Twenty-Five, rather than none, so its look there does not change.
+- **Only the block margins.** A list's marker and its indent, a heading's size, and every colour stay the theme's at no weight. That keeps D-321's choice that a list of words keeps the theme's list style, and Storefront's indent, which is a margin at the inline start.
+- **The builder's own margins** for these elements are now set after the rule, at its weight: the step's lead, the error list, the line under the widths when none is in stock, the hidden parts' lists, the stage's heading, the empty outline and the hero picture's items. Only their margins moved up. Their colours and the rest of each rule stay at no weight.
+
+**What it costs a theme.** A theme that wants to space the builder's words in its own way now needs two classes and an element, such as `.cbuild .cbuild-review__lead`, printed after the builder's stylesheet, or `body .cbuild .cbuild-review__lead`. One class no longer does it. That is the price D-321 already paid for a fieldset and a button. A theme that styles its content's words, which is nearly every theme, no longer changes the builder's layout by accident. Colour, type and list style, which a theme most often wants to set, stay at no weight. Cascade layers stay turned down, for D-321's reason.
+
+**What else moves, with no fixture** (measured on each theme at 1280 and 390 px, with and without JavaScript, before and after):
+
+- **Twenty Twenty-Five:** on a phone, at the start and on the deck step before a pick, the stage is 18 px shorter, and everything under it rises 18 px. WordPress's `:where(figure) { margin: 0 0 1em 0 }` ("Reset user agent styles for figure element margins", wp-includes/css/dist/block-library/common.css:339, printed as `wp-block-library-inline-css` after the builder's stylesheet) gave the stage's `figure` 18.3 px under it, over the builder's reset of the same weight. Nothing else moved on Twenty Twenty-Five at 1280 or 390 px.
+- **Kadence:** its heading and paragraph margins no longer reach the builder. The stage's words sit 12 px higher, and on a desktop the outline and the board are about 44 px taller. The guide is 64 to 84 px shorter. Each step's form is 32 px shorter.
+- **Storefront:** its `p` and heading margins no longer reach the builder. The rail and everything under it at the start rise 24 px. A step's form is 22 to 23 px shorter, and the stage's words 14 px higher.
+
+**Tests.** The sweep, eight tests, each over every text block of its screen. Red, on the styles before this change (64d0353), at builder.spec.ts:11391: 14 of 16 failed on chromium-desktop and no-js, every screen but the compare. The review's ran "the review: the blocks a theme moved", with `p[18].cbuild-review__lead: top 833.5 … margin 0px 32px; 817.5 … 0px 0px without`, and 18 more. Deliberate break: the three new rules wrapped back in `:where()` failed 7 of 8 on chromium-desktop the same way, every screen but the compare; the stage's heading held there, by its own rule.
+
+**Why:** a theme's margins are aimed at its content's words, not at the builder's, which are spaced by the builder's own grids' gaps. A rule at the root holds every one of them, the ones drawn later too, where a rule per class holds only the ones found.
+
+**Status:** Accepted.
+
+### D-420 · The toolchain's patch and minor releases, and TypeScript kept at 6 while typescript-eslint is · 2026-11-25
+
+Zach asked on 25 November for the toolchains to be reviewed and brought up to date where it applies. `composer outdated --direct` and `npm outdated` on milestone 13's landed tree:
+
+- **Moved, each a patch or minor release:**
+  - Composer: PHPStan 2.3.5 to 2.3.7, its strict 2.1.2 and deprecation 2.0.6 rules, disallowed-calls 4.15.1, PHPUnit 13.4.8, Infection 0.35.12, and the WooCommerce stubs 11.2.2 to 11.3.1, the WooCommerce the sites run.
+  - npm: Playwright 1.65.1, axe 4.14.1, Lighthouse CI 0.16.1, `@wordpress/env` 12.2.0, `@wordpress/scripts` 37.2.0, jsdom 31.0.1, markdownlint-cli2 0.24.2 and Vitest 5.1.2.
+  - The integration variants' plugins: Yoast SEO 28.9 (`tools/yoast.sh`) and Redis Object Cache 3.0.1 (`tools/object-cache.sh`). CLAUDE.md names them.
+- **Kept:**
+  - WordPress 7.1.5, WooCommerce 11.3.1, PHP 8.5 and Node 24 are the newest.
+  - PHPUnit 9.6 under `tools/integration/` stays: WordPress's test suite needs it.
+  - `@types/node` stays at 24, the Node the plugin runs on, not 26.
+  - The workflows' actions are pinned to full SHAs and moved by Dependabot.
+- **TypeScript stays at 6.0.3.** TypeScript 7, the native compiler, is out, but typescript-eslint 8.74, the newest, declares `typescript >=4.8.4 <6.1.0`, and `@wordpress/scripts` lints through it. So `npm run check` would lint with an unsupported compiler. It moves once typescript-eslint supports 7, tried first on a spare lane.
+
+**Tests.** The whole of milestone 13's combined-tree run, on the moved tools. Playwright's patch release means new browser builds, so the visual baselines are made again in that run, on purpose, as milestone 13's screens need anyway.
+
+**Why:** current tools, without a major release that the linter under it doesn't support yet.
+
+**Status:** Accepted.
+
+### D-421 · axe on Firefox reads aria-labelledby from the attribute, past a crash in Playwright's Firefox · 2026-11-25
+
+"passes axe on the 10 s limit after a width press and the rate limit after a pick (D-364)", builder.spec.ts:1413, failed on firefox-desktop and firefox-phone on every run with "frame.evaluate: Page crashed", in `builder.analyze()` (support/axe.ts:44). It predates milestone 13's last work.
+
+**The cause is Firefox's, not the builder's.** Found on lane 3, step by step:
+
+- The content process dies on signal 11 (`WARNING: process … exited on signal 11`, with `DEBUG=pw:browser`). The page is small, 643 elements, and answers a plain `page.evaluate` up to the crash, so it is not memory, a huge DOM or a loop in the page. Releasing the held route first changes nothing.
+- axe's rules run one at a time die at the first that names a role, `aria-allowed-attr`. Its elements one at a time die at `section.cbuild-guide`, which has `aria-labelledby`, and axe's steps on it die in `arialabelledbyText()`. That reads the element's `ariaLabelledByElements` (axe-core 4.14, `getIdrefsValue()`), and a plain `page.evaluate` of that property on any element with `aria-labelledby` crashes at the same point.
+- It needs Playwright to have read the same property in its utility world first. Playwright 1.65 does when it names roles (`getAriaLabelledByElements()` in its injected script), as an assertion that retries does. A page made with `setContent`, none of the builder's in it, crashes the same way: a `toBeVisible()` that retries, then the read in the page. With a `waitForSelector` or a plain wait in its place, it passes. `getByRole( 'region', { name } )` and then the read in the page crash in either order. Chromium and WebKit pass every one.
+- This is [microsoft/playwright#43967](https://github.com/microsoft/playwright/issues/43967), a regression in 1.65.0. Playwright's bot reproduced it in Firefox 159 and laid it on Firefox: [Mozilla's bug 2090055](https://bugzilla.mozilla.org/show_bug.cgi?id=2090055), which stock Firefox 159.0.1 hits too, with an extension's content script. It was closed on 9 November as fixed in the next Firefox roll, which is only in 1.66's alphas. 1.65.1, the newest release, still has Firefox build 1572.
+
+**Decision: on Firefox, axe reads `aria-labelledby` from the attribute alone.** `support/axe.ts` gives AxeBuilder, on Firefox only, the axe-core source it injects anyway, from its own copy, with one line after it: `axe.configure( { standards: { ariaAttrs: { 'aria-labelledby': { prop: '' } } } } )`. Every read axe makes of the property goes through that standard's `prop`, so with it empty axe resolves the attribute's IDs itself, as it does where the property is missing. The elements are the same: the builder sets every `aria-labelledby` in its markup and none from script (`assets/src` has no `ariaLabelledByElements`). Chromium and WebKit still read the property. Every axe check on Firefox stays, on every rule.
+
+The test stays as it was. On Firefox, its axe checks run on the 10 s limit and on the rate limit as on the other engines. A page with a button named by `aria-labelledby` and one whose `aria-labelledby` names no element gave the same finding on Firefox, with this change, as on Chromium: `button-name` on the second button.
+
+**Considered:**
+
+- Moving Playwright to a 1.66 alpha, a prerelease that brings new browser builds and the visual baselines with them. It is the fix, but not one to take on a prerelease.
+- Hiding the property from the page by redefining `Element.prototype.ariaLabelledByElements`, which changes the page under test for the rest of the test.
+- Leaving axe out on Firefox for this test, which drops the check the test is for.
+
+**Tests.** Red, before: the test failed on firefox-desktop and firefox-phone with `Error: frame.evaluate: Page crashed` at `support/axe.ts:44`. Deliberate break, with the source passed on no engine: firefox-phone failed the same way at `support/axe.ts:67`.
+
+**Why:** the defect is in Playwright's Firefox build and is fixed upstream, and the check on the builder is wanted on every engine. The line goes once Playwright's stable release carries the fixed Firefox: drop it and run the test on both Firefox projects.
+
+**Status:** Accepted.
+
+### D-422 · The browser tests reach wp-env one command at a time, under a lock · 2026-11-25
+
+A full browser run on lane 1 on 25 November, every project at three workers, failed 62 tests, 43 of them from one cause. The browser site's `wp-env-cache.json` had lost its `runtime` and `config_checksum` keys, leaving `{"latestWordPressVersion":"7.1.5"}`, and every `npx wp-env run cli …` after it failed with "Environment not initialized. Run `wp-env start` first."
+
+**The cause** is in `@wordpress/env` 12.2.0. Every command, `run` too, records the newest WordPress version with `setCache()` (`lib/wordpress.js:100`). `setCache()` (`lib/cache.js:39`) reads the file, sets one key and writes the whole file back with `fs.writeFile`, which is not atomic. `getCacheFile()` (`lib/cache.js:78`) returns `{}` when its read meets a file mid-write. Two `wp-env run` at once can therefore write back a cache with only the version in it, and `getSavedRuntime()` (`lib/runtime/index.js`) then finds no runtime. The specs call `wp-env run` from every worker: `wp()` and `runPhp()` in builder.spec.ts, `wp()` in check.spec.ts and the import's job in import.spec.ts.
+
+**Reproduced on lane 3.** Twenty `npx wp-env run cli -- wp option get siteurl` at once on the browser site, three times. They failed 7, 9 and 9 of 20 with "Environment not initialized", and left the cache as `{"latestWordPressVersion":"7.1.5"}` twice and, once, as `{"latestWordPressVersion":"7.1.5"}"config_checksum":"d2f06a99c3a05be90f03c6efe33ba67c","runtime":"docker"}`: two writes over each other, not JSON at all. The cache was put back by hand after each. The same twenty at once through the new helper, three times: none failed, each printed the site's address, and the cache kept its three keys.
+
+**Upstream.** [WordPress/gutenberg#86905](https://github.com/WordPress/gutenberg/issues/86905), open since 16 November, reports the same race with `wp-env status`, and [#86909](https://github.com/WordPress/gutenberg/pull/86909), open, writes the file atomically. Nothing filed from here.
+
+**Decision: one helper, behind a lock.**
+
+- `tests/e2e/support/cli.ts` is the one way the browser tests reach the site's command line: `wp()`, `cli()`, and `locked()` for a host command that calls wp-env itself. The global setup runs `tools/e2e-site.sh` through `locked()`, and builder.spec.ts, check.spec.ts and import.spec.ts use `wp()`. No spec calls `execSync` any more.
+- `tests/e2e/support/lock.ts` serialises them across Playwright's worker processes: an atomic `mkdir` of `tmp/wp-env-run.lock`, in the checkout and so in its lane, with the holder's process ID and a token written into it. A lock whose holder has died, or one older than five minutes, is set aside with an atomic rename, checked to be the one judged abandoned, and taken. It waits with `Atomics.wait`, since the callers are synchronous.
+- The helper keeps the command's stderr and stdout and throws with them, where the old helpers threw stderr away (`stdio: ignore`): a failure now says why.
+- `runPhp()` writes its PHP to a file per worker, `tmp/e2e-eval-<pid>.php`, where two workers shared `tmp/e2e-eval.php`.
+- No script in `tools/` runs `wp-env run` in parallel: each runs its commands one after another, and none of them runs beside a browser run. They are left as they are.
+
+**Tests.** `tests/js/e2e-lock.test.ts`, five, in Vitest: ten processes that each read, change and write one file under the lock, with a pause between, keep all ten keys; a dead holder's lock is taken at once; an old one is taken from a live holder; a held one is waited for; and the lock is let go when what it runs throws. Red, with `withLock()` running its function without the lock: "keeps every key when ten processes rewrite one file at once" failed with `expected [ 'key9' ] to deeply equal [ Array(10) ]`, and "waits while a holder still running has it" with `expected 0 to be greater than or equal to 300`.
+
+**Why:** the race is wp-env's, but the specs start it, and one command at a time costs a second or two a call against a run that fails 43 tests when the race is lost. The lock goes once wp-env writes its cache atomically and the pin moves to that release.
+
+**Status:** Accepted.
+
+### D-423 · The i18n check fails a translation compiled before its strings were translated · 2026-11-25
+
+Found by the fr-ca run for D-421 and D-422 on lane 3. "Compare saved builds (#136) › three builds compared by keyboard in a table that says what differs in words" failed on fr-ca, with `locator.focus: Test timeout of 60000ms exceeded` waiting for `getByRole('checkbox', { name: 'Comparer Street setup' })` (builder.spec.ts:8820). It failed the same way on milestone 13's landed tree with this branch's changes stashed. My builds showed the box as "Compare Street setup" in a page otherwise in French.
+
+**The cause.** `languages/creative-skateboard-builder-fr_CA.po` translates "Compare %s" as "Comparer %s", but the committed `.l10n.php` and `.mo` were compiled before it and 63 other strings were translated, among them #136's and #134's. WordPress reads the compiled file, so those strings showed in English. `composer i18n:check` read only the POT and the `.po`, so it passed.
+
+**Decision.**
+
+- `tools/i18n-check.php` also reads each translation's `.l10n.php` and fails every entry of the `.po` that it does not hold as the `.po` translates it, plural forms joined as WordPress joins them, and a translation with no compiled file. Its message says to run `composer i18n:compile`.
+- `composer i18n:compile` was run on lane 3: the `.l10n.php` and `.mo` changed, and the script translations' JSON did not.
+
+**Tests.** Red: the check on the committed files found 64 problems, among them `languages/creative-skateboard-builder-fr_CA.l10n.php: "Compare %s" is not compiled as languages/creative-skateboard-builder-fr_CA.po translates it`. After the compile it passes, and the browser test passes on fr-ca and chromium-desktop. Deliberate break: "Comparer %s" put back to "Compare %s" in the compiled file failed the check with that one line.
+
+**Why:** the check that the translation is complete has to check what WordPress loads, not only what the translator wrote.
+
+**Status:** Accepted.
+
+### D-430 · The swaps-off test measures its own plain card, so it holds when it runs alone · 2026-11-25
+
+`tests/e2e/builder.spec.ts`, "Smart swaps (#135) › a kit with Offer smart swaps off shows no swap control and leaves no room for one", failed on firefox-phone, no-js and fr-ca: "a plain card no taller beside a swap than with none, Expected: 0, Received: 339.75".
+
+**Cause: the test, not the builder.** It compared the 58s' card with a height the test before it stored in a variable of the group (`plainBeside`). The group is serial, so a whole run of the file measures first, and every project passes that way: the three projects' full suites (firefox-phone, no-js, fr-ca, 27.6 min) and all of `builder.spec.ts` on no-js pass the group. A run that selects the test alone never measures, and the variable stays 0: by its line, by its title with `-g` (as `tools/focused.sh` selects a changed test) or by `--last-failed`. Run by its line, it fails the same way on chromium-desktop too, at the same 339.75. The helper also read any `li` in a `.cbuild-cards` list, the sold-out cards' closed list among them, and a card that isn't drawn measures 0, so a missing card read as a height.
+
+**Not a picture out of its box.** The 58s' card is 339.75 px on chromium-desktop with the script as well as without it: its words are long (the risers it needs). With the swap on offer on the 54s' card, every step's card picture is in its box: on Twenty Twenty-Five, Kadence and Storefront, with and without the script, at 412 and 1280 px, in Chromium, Firefox and WebKit. That's 80 by 80 px (5rem, D-391) on the trucks, wheels, hardware and grip cards, and 56 by 112 px (D-399) on the deck's compact card. A square card's `aspect-ratio: 1` fixes its height from its 5rem width, so a theme's `img { height: auto }` and core's placeholder size for a lazy image, which F31 met on the deck's `block-size: 7rem`, don't reach it.
+
+**Decision:** the test measures the plain card itself: the kit with swaps on, the 54s' swap shown, then the kit with swaps off. The helper takes only the step's own list, and expects one card and that it's visible before it measures. Test 2 keeps its own check that no plain card shows a swap's paragraph. Nothing is loosened: the same card, the same comparison to the nearest pixel.
+
+**Red run.** Run alone, `builder.spec.ts:11775` on chromium-desktop and no-js: "a plain card no taller beside a swap than with none, Expected: 0, Received: 339.75".
+
+**Deliberate break.** Every card on the step shows the swaps' paragraph when the step offers a swap (`'hasSwaps' => array() !== ( $swaps[ $slot ] ?? array() )` in `BuilderView`). Run alone, the test failed on chromium-desktop and no-js: "Expected: 349.75, Received: 339.75", a 10 px empty paragraph on a plain card.
+
+**Status:** Accepted.
+
+### D-431 · Every browser test passes when it runs alone · 2026-11-25
+
+D-430 found a browser test that compared against a variable only the test before it set. A whole run passed; a run that picked the test alone compared against 0. `tools/focused.sh`, `--last-failed` and a rerun by line all pick tests alone, so each of them would have reported a pass or a failure that wasn't the test's.
+
+**Decision:** every test in `tests/e2e` passes when it is the only one selected, by its line or by its title.
+
+- A test sets up what it reads itself, or a `beforeAll` or `beforeEach` of its group does, since those run when one test of the group is picked. No test reads a value another test stored in a variable of its group or module.
+- `test.describe.configure( { mode: 'serial' } )` only stops the group after a failure. It is never what makes a later test's setup.
+- A test that changes the shop through WP-CLI (`wp`, `runPhp`, `setSpecs`, `tempPart`) puts it back in a `finally` or in its group's `afterAll`, so a later test or file sees the fixture as `tools/e2e-site.sh` made it.
+
+**How it was checked, on 25 November, on `m13-early`.**
+
+- Statically, across `tests/e2e/*.spec.ts`: every `let` at a group's or module's level, every mutable value there, every serial group, every `beforeAll` and `afterAll`, and every call that changes the shop through WP-CLI or saves it through wp-admin.
+  - One `let` is at a group's level: `deck` in `check.spec.ts`, set by its `beforeAll`.
+  - One group is serial: "Smart swaps (#135)" in `builder.spec.ts`, its swaps-off test fixed by D-430. Its first two tests rely only on the kit's swaps being on, which is the fixture's default and what the group's `afterAll` puts back.
+  - Every change made through WP-CLI is put back by its test's `finally` or its group's `afterAll`, at the fixture's own values.
+- By running each candidate alone, one test of a group to a command, on chromium-desktop and no-js. That covered the three Smart swaps tests, each in a command of its own, and the Catalogue check. In `builder.spec.ts` it covered a kit's own width guide, the grip sheet, Saved builds, Compare saved builds, the steps that appear only when needed, a saved build that has changed and the deck page, the start button on a light accent, a kit's Show on its parts' pages, a kit's Builder page, and a picked deck in a new width. It also covered the second tests of the Settings tab, the Build tab and the Part specs panel. Each one passed alone: none hid a dependency beyond the one D-430 fixed.
+
+**Left as found, and noted.**
+
+- The grip sheet test deletes its attachments but leaves the options `cbuild_e2e_grip_sheet_printed` and `cbuild_e2e_grip_sheet_plain` behind. No test reads them, and the next run writes them again.
+- The Settings tab's terms test and the Build tab's tests save through wp-admin and put the shop back at their own end, not in an `afterAll`. A failure part way leaves its values behind. The Settings tests start by setting what a new shop has, so their next run is not misled. The Build tab's tests work on a kit of their own, which no other file reads.
+
+**Status:** Accepted.
+
+### D-424 · The thumbnails test counts the shifts from the gate on, once the fonts are in · 2026-11-25
+
+`tests/e2e/builder.spec.ts`, "Thumbnails in the review (#132) › moves nothing as the thumbnails load", failed in the final run on the combined tree, on chromium-desktop (in /verify) and fr-ca: "the review's layout shift, Expected: 0, Received: 0.000994065284729004". Run alone on lane 1 it failed 1 of 5, then 2 of 20, each time at the same 0.000994.
+
+**Cause: the theme's font, not a thumbnail.** With each shift's sources logged, both failures were one shift at 212 and 217 ms, before the test lets a picture through: Twenty Twenty-Five's header group moved from x 221.3 to 227, and the review's `$60.00` grew from 65.95 to 71.06 px wide, at the same height. That is a web font arriving and the text set again in it. The test already left the header out as the theme's, but the price is inside `.cbuild-review`, so it counted. Whether it comes in the window depends on when the font arrives, so it fails now and then.
+
+**Decision:** the test counts only the review's shifts that start at or after the moment it lets the pictures through, and before that moment it waits for every font that is loading. It does not use `document.fonts.ready`: WebKit holds that promise until the page's load event, which waits on the test's gate, so the test timed out on webkit-desktop (6 of 20 before the change). What it measures is the same: what the thumbnails move, to 0, and the list as tall as before.
+
+**Tests.**
+
+- **Red run.** Alone, chromium-desktop, 2 of 20: "the review's layout shift, Expected: 0, Received: 0.000994065284729004".
+- **After.** Alone, 20 times each on chromium-desktop, chromium-phone, fr-ca, webkit-desktop, webkit-phone and firefox-desktop: every run passed.
+- **Deliberate break.** The thumbnail's square taken away (`aspect-ratio: 1` off `.cbuild-review__thumb` and `.cbuild-review__photo`, and the `width` and `height` binds off the image in `templates/builder/review.php`): it failed on chromium-desktop and webkit-desktop with "the list as tall as before, Expected: 865.53125, Received: 2462.703125". With that check made soft for the run, the shift check failed too: "Expected: 0, Received: 0.013692148407300314".
+
+**Status:** Accepted.
+
+### D-425 · The guide's answers take the riding style as its value, so an earlier release's container builds the build's link · 2026-11-25
+
+`npm run upgrade:all` on the combined tree failed from 0.6.0, and from 0.9.0 run alone: "`Front\BuildLink` is not built: Service `Domain\Guide\RidingStyle` is not instantiable and has no binding", in an admin request.
+
+**Cause.** The update check asks the previous release's container for every class of its `src/` that it could build (D-208). `BuildLink` is one: every parameter of its constructor has a default. Every release's container builds a parameter typed with a class by building that class and ignores its default (`Container::resolve()`, src/Container.php:722-728, and v0.6.0's at 515-528). #134 added `GuideAnswers $guide = new GuideAnswers()` to the link, and `GuideAnswers` took `?RidingStyle $style`, an enum, which no container can build. The CI sample (D-414) holds 0.9.0, so CI's update check would have failed too.
+
+**Decision:** `GuideAnswers`' constructor takes the style as its value, a string or null, and sets its `style` property, still a `RidingStyle` or null, with `RidingStyle::tryFrom()`. `read()` passes the string it was sent. A value that isn't a style is no answer, as before. Nothing else built one with an enum, and the class is not in the public API.
+
+**Tests.**
+
+- **Red run.** `ContainerTest::test_the_build_link_and_its_guide_answers_build_as_an_earlier_release_built_them`: "PluginException: Service CreativeBranding\SkateboardBuilder\Domain\Guide\RidingStyle is not instantiable and has no binding."
+- **After.** It passes, with the unit suite. `tools/upgrade.sh` from 0.6.0 and from 0.9.0 passes: "its container fits 1.3.0's files". Then the full `npm run upgrade:all` passes.
+- **Deliberate break.** The constructor's `?string $style` put back as `?RidingStyle $style`: the test fails with the red run's message.
+
+**Status:** Accepted.
+
+### D-426 · StrykerJS copies the browser tests' lock into its sandbox · 2026-11-25
+
+`npm run mutate:js` on the combined tree stopped in its first run: "tests/js/e2e-lock.test.ts: Cannot find module '../e2e/support/lock'". D-422 added that Vitest test of `tests/e2e/support/lock.ts`, and `stryker.config.mjs` leaves all of `tests/e2e` out of the sandbox, so StrykerJS ran no mutant. Vitest alone passed, since it reads the tree.
+
+**Decision:** the sandbox leaves out `tests/e2e` but for `tests/e2e/support/lock.ts`, in `.gitignore`'s terms: `tests/e2e/*`, `!tests/e2e/support`, `tests/e2e/support/*`, `!tests/e2e/support/lock.ts`. The rest of the browser tests stay out, as issue #31 wanted.
+
+**Tests.**
+
+- **Red run.** `npm run mutate:js`: "An error occurred outside of a test run: …/tests/js/e2e-lock.test.ts: Cannot find module '../e2e/support/lock'", then "Something went wrong in the initial test run".
+- **After.** 97.41 % of all mutants (98.01 % of those covered), the admin's script 99.33 % and the builder's store 96.93 %, above the 95 % floor (D-379).
+- **Deliberate break.** Without `!tests/e2e/support/lock.ts` the run stops with the red run's message.
+
+**Status:** Accepted.
+
+### D-427 · The update check runs every waiting job, once no queue runner holds a batch · 2026-11-25
+
+`npm run upgrade:all` failed at 0.7.0 in three full runs out of three, each while other suites loaded the machine: "after the update, a part has no resized copies of its layer image: … layer copies 0, parts missing copies 1". 0.7.0 run alone passed five times out of five, and so did the shorter sequences before it.
+
+- **What a full run leaves.** Nothing that reaches the next release's run: each one starts by uninstalling the plugin, which deletes its actions, and ends by putting the site back. Two full runs and a run of 0.1.0 to 0.7.0 passed on a quiet lane 2, with a must-use probe logging each of the plugin's actions as it was stored and run, with the process, the release loaded and the request. In each failed run, the plugin's log shows the 1.2.0 step finding the grip and queuing its job ("Queued the index job of each part whose layer image has no resized copies", at 02:44:07, 02:55:36 and 03:39:00 UTC), and no index job throwing. The job was queued and not run.
+- **The cause, measured.** The probe then made 0.7.0's runner as slow as a loaded host: 0.4 s an action, in a runner a page request started. 0.7.0 alone failed with the same line. After the update the queue held 14 of 0.7.0's index jobs still in that runner's batch (claim 3149), their retries, the migration's and the reindex's jobs, and this release's job for the grip, due five minutes on (D-378). `tools/upgrade.sh` read the queue before that batch ended, in two ways:
+  - `wp action-scheduler run` does not start while another batch holds a claim, of any group, one being the limit (WooCommerce 11.3.1, `packages/action-scheduler/classes/WP_CLI/ActionScheduler_WPCLI_QueueRunner.php:87` to `:91`, and the filter `action_scheduler_queue_runner_concurrent_batches` at `classes/abstracts/ActionScheduler_Abstract_QueueRunner.php:298`). It stops with an error, which the script sent nowhere. A page request's runner claims 25 actions at a time (`classes/ActionScheduler_QueueRunner.php:183`), and they stay pending until it reaches each.
+  - `wp action-scheduler action list` gives five actions unless asked for more, the earliest first (`functions.php:433`, `classes/data-stores/ActionScheduler_DBStore.php:518`). The five were the runner's own, so the grip's job, due last, was not run.
+- **Not the plugin.** The 1.2.0 step queued the grip's job, due after the runner's time was up, as D-378 means it to, and a shop's next runner would have run it. The check did not wait for it. The old release's runner also ran 0.7.0's index jobs with this release's files in place. Those threw ("Undefined constant CreativeBranding\SkateboardBuilder\Support\Options::META_KIT_LAYOUT") and queued their retries a minute on, as `IndexJobs::indexPart()` does. This release's runner ran the retries, and no job failed: that is the update D-208 describes.
+- **The fix, in `tools/upgrade.sh`.**
+  - `settle()` waits until no batch holds a claim, `ActionScheduler::store()->get_claim_count()` being 0, for up to three minutes, and fails past that with the count.
+  - `jobs due` and `jobs all` run the plugin's waiting jobs. Each round waits for `settle()`, lists every job (`--per_page=-1`) due now or, with `all`, due at any time, runs them, and goes again until none waits. A job that queues the next, as the reindex does, is followed. Past 20 rounds it fails.
+  - After the update, `jobs all` replaces the run of the due jobs and the run of the five listed. A release before 0.6.0, activated after the update, gets `jobs due`. The failed jobs are counted with `--per_page=-1` too, where up to five were counted.
+  - Each release's run starts with `settle()`, so a runner the run before it started has ended first.
+  - The old release's jobs before the update are run as before, not waited for: a runner a page request started may still be at work when the update comes, as on a shop, and the update must hold against it (D-378).
+- **The check is as strict.** It still fails on a part missing copies, on the old release's grip with none, and on any failed job. It now reads once the jobs it waits for have run.
+
+**Red run.** 0.7.0 alone, with the runner slowed: "upgrade: after the update, a part has no resized copies of its layer image: read: order 3453, 6 lines, 6 products, total 135.00; kits 2 of 5, presets 2 of 2 priced; saved builds 0, 0 reopened with no prices then, 0 with the prices kept; layer copies 0, parts missing copies 1".
+
+**After.** The same run passed with "layer copies 2, parts missing copies 0". The probe showed 0.7.0's runner run 31 of its jobs after the update, and the grip's job run by WP-CLI once that batch was done. Two whole `npm run upgrade:all` runs then passed with no probe, with lane 2's WordPress container held to 0.4 of a CPU (`docker update --cpus 0.4`): "Upgrade: every one of the 12 releases below 1.3.0 updates to it with its data."
+
+**Deliberate break.** With `settle()` returning at once and `jobs` making one round of the five listed, as the script did before, the slowed run failed with the red run's line ("order 3534, … layer copies 0, parts missing copies 1"). Either half alone passed that run: waiting for the batch, or listing every job. Both stay, so the check neither runs a job beside the runner that holds it nor stops at five.
+
+**Status:** Accepted.
+
+### D-428 · The integration variants' plugins pinned to the hashes of the releases D-420 named · 2026-11-25
+
+`composer test:integration:object-cache` and `:yoast` stopped at the zip's check: "Redis Object Cache 3.0.1 could not be installed, or its zip is not the one pinned", and the same for Yoast SEO 28.9.
+
+**Cause.** D-420 (3b7c04d) moved `plugin_version` in `tools/object-cache.sh` and `tools/yoast.sh` but kept the hashes, which are those of the releases before. wordpress.org did not change a zip under a version:
+
+- `redis-cache.3.0.0.zip` is still `7a03342d…f54a` (Last-Modified 18 Sep), the hash pinned on 10 November (fc6edb4).
+- `wordpress-seo.28.8.zip` is still `27cc01cb…5105` (Last-Modified 27 Oct), pinned on 10 November (066b7c5).
+
+**What the new releases are.** Each read in plugins.svn.wordpress.org's log and diffed file by file against the release before, both zips unpacked in an empty directory and nothing in them run:
+
+- **Redis Object Cache 3.0.1.** `tags/3.0.1` was made once, in r3806147 ("Tagging 3.0.1", 16 Nov, tillkruess), copied from trunk at r3806146 ("Sync with GitHub", tillkruess). Every commit to the plugin since 3.0.0 (r3702555 to r3702558, 18 Sep) is his. Zip `8de85553394c4462dd43d38a403b805e8fb404d7dc34e02ecd313ea37002196b`, 18 files changed. The diff is what its changelog says: `INFO` fetched on first use, not on connect; a running count of bytes read and written in place of serializing the cache to measure it; flushing a group on `WP_REDIS_SHARDS` runs the script on each shard; database `0` left out of Predis's parameters; the `WP_REDIS_DISABLE_DROPIN_MODS_CHECK` constant; the admin bar's script and styles moved, unchanged, into `assets/` and printed through `wp_get_inline_script_tag()` for a CSP nonce. The rest is phpcs formatting and docblocks. No new host, request, `eval` or encoded string.
+- **Yoast SEO 28.9.** `tags/28.9` was made once, in r3808626 ("Tagging 28.9", 18 Nov), from trunk at r3808625 ("Committing 28.9 to trunk"), after RC1 to RC6 (r3768787 to r3807259); every commit is the `Yoast` account's, as every release's is. Zip `1f1af9d3dff70288b37e6edc04e27cff4979b258f62960c0b91c092614bf2301`. The diff is its changelog's: the alt-text assessments and bulk-editor filters, new abilities for terms, archives and author Schema, and a security fix: the head REST endpoints answer 404 for a private post, page, static front page or posts page the visitor can't read (`Meta_Surface::is_post_readable()`). The sitemap's XSL stylesheet becomes a CSS one whose processing instruction is not printed for now; our test reads the sitemap's entries, not its styling. The MyYoast software statement is re-signed with `software_version` 28.9. The CSS bundles are renamed for 28.9 with identical bytes. No host is new in the PHP or the built JavaScript, and neither has `eval`, `new Function` or `atob`.
+
+Files of each zip, the drop-in among them, match the svn tag byte for byte.
+
+**Decision:** pin each script to its new release's hash. The releases are the ones D-420 chose; this finishes it.
+
+**Tests.** `bash tools/lane.sh 3 composer test:integration:object-cache` and `bash tools/lane.sh 3 composer test:integration:yoast`, both on the new pins.
+
+**Why:** both releases are their usual committers' bug and security fixes and features, plain in the diff, so the pins follow the versions, as a pin must name the bytes of the version it says.
+
+**Status:** Accepted.
+
+### D-432 · After a swap the notice says the swap and the status the build alone, so a screen reader hears it once · 2026-11-25
+
+The auditor's 1.3.0 should-fix 3. After a swap the store focuses the notice (`.cbuild-swapped`, D-397), which a screen reader reads as it takes focus, and the polite status began with the same words, "Swapped: wheels and hardware.", before the build and its total (`BuilderView`, the swap's words put before the status). A screen reader heard the swap twice.
+
+**Decision:** focus stays on the notice, which says the swap and holds Undo, and the status says the build and its total alone, as after a pick. D-397's "Focus" is changed so. Without the script the page loads with the notice at the top and the status is not read, as before.
+
+**Tests.**
+
+- **Red run.** `BuilderTest::test_each_swap_is_a_link_to_the_build_swapped_and_its_notice_undoes_it_until_the_next_move`: "the status does not say the swap the focused notice says", `'Swapped: wheels. The build so far: …'` contains "Swapped" (BuilderTest.php:2114).
+- **After.** It passes. `builder.spec.ts`, "Smart swaps (#135) › the same board for less swaps the build…", on chromium-desktop and no-js: the notice focused, the status says the total and not the notice's words.
+- **Deliberate break.** The swap's words put back before the status: the unit case fails as in the red run, and the browser test fails with `expect(locator).not.toContainText` "Swapped: wheels and hardware." (builder.spec.ts:11989).
+
+**Status:** Accepted.
+
+### D-433 · Help me choose reads a budget as shoppers type one, and says so when it can't · 2026-11-26
+
+The auditor's 1.3.0 should-fix 4. The budget field took digits alone (`GuideAnswers::whole()`), so "150.50", "$150" or "1,000" were dropped with no word, and the builds shown looked like builds within a budget nobody had read.
+
+**Decision: be forgiving, then say what is wrong.** Postel's principle for input, and GOV.UK's and the Baymard Institute's advice for form fields: accept what people type for an amount rather than make them retype it in the system's format, and where it still can't be read, say what is wrong and how to fix it, beside it, in plain words.
+
+- **Taken out:** any currency sign (`\p{Sc}`) and any space, a no-break or thin space among them, as a shop may write thousands.
+- **Thousands and decimals by their shape, not the shop's locale,** since a shopper may type in their own: a comma or a point before each group of three digits is a thousands separator; a comma or a point before one or two digits at the end is the decimals, the other one of the two where thousands are separated. So "1,000", "1.000" and "1 000" are a thousand, "150,50" and "150.50" are 150.50, "1,234.56" and "1 234,56 $" are 1,234.56. A budget with three decimals is not a thing shoppers type, so "1.000" is never one.
+- **A decimal amount is rounded to a whole one, half up,** as the field asks for a whole amount: 150.50 is 151, 150.49 is 150. At most six digits after rounding, as before.
+- **What is still no amount** ("about 150", "-5", "100-200", "1.2.3", more than six digits) is left out, as before, and `GuideAnswers::$budgetLeftOut` says so. The builds' reasons then start their budget line with "Your budget was left out: type an amount, such as 150." The field is left empty. Nothing of what was typed travels in the link. Empty, spaces alone or 0 are no budget, and say nothing.
+- The field's `maxlength` goes from 6 to 20, room for a sign, separators, decimals and spaces around six digits; `GuideAnswers` reads 20 characters at most. Its hint still asks for a whole amount.
+
+**Tests.**
+
+- **Red run.** `BuildLinkTest::test_a_budget_typed_with_a_sign_separators_or_decimals_is_read` "a decimal amount, rounded up": "Failed asserting that null is identical to 151" (BuildLinkTest.php:492). `GuidedStartTest::test_a_budget_typed_with_a_sign_separators_or_cents_is_read_and_one_that_is_no_amount_says_so`: "$150 reads as 150", the reasons differ (GuidedStartTest.php:312).
+- **After.** Both pass, with `test_a_budget_that_is_no_amount_is_left_out_and_said_so` and `test_an_empty_budget_is_any_and_is_not_said_to_be_left_out`. BuildLinkTest's "a budget in cents" left the cases of no answer: it is one now.
+- **Deliberate break.** The reason line taken out: "about 150: said, with the fix", "Failed asserting that an array contains 'Your budget was left out: type an amount, such as 150.'" (GuidedStartTest.php:323).
+
+**Status:** Accepted.
+
+### D-434 · A part's rank is kept beside its facts and carried by the part, so smart swaps load no product · 2026-11-26
+
+The auditor's 1.3.0 should-fix 2. `BuildSwaps::of()` asked `PartRanks::ranks()` for every part each slot tries, and `WooPartRanks` primed their meta and loaded every one of them through WooCommerce on every answer, the facts kept or not (D-395: "Nothing is kept"). On the review with six slots picked that was 1,750 products at 2,000 parts. `StateRouteBenchmarkTest`, extended with that review and with the trucks step with a truck picked, among 500 trucks: the review's p95 was 620 ms cold and 306 ms warm, the trucks step's 262 ms and 141 ms, against the 80 ms budget.
+
+**Decision:**
+
+- **The rank is read with the part's other facts** (`WooKits::shopSays()`, which has the part and its product loaded already): its own `_cbuild_rank`, or its product's for a variation with none, as D-395 has it. `PartFact` and the domain's `Part` carry it, each as a new last constructor argument that defaults to none.
+- **It is kept in the parts table without a new column:** in the row's `specs` JSON under `_rank`, a key no spec has (no `SpecKey` starts with an underscore), so `Specs::fromIndex()` reads past it and the repository takes it out on the way. No table changes. A row kept by 1.2.0 has no `_rank`, so it is read as stale and read again from the shop on its next use, as a row an hour old is: the update needs no step.
+- **`PartRanks::of( Part ...$parts )`**, a new method beside `ranks()`, answers from the rank each part carries and asks `cbuild_part_rank` for each, as `ranks()` does: the filter is still last, and still on every request. `BuildSwaps` asks it. `ranks()` stays, for a caller with IDs alone.
+- **The validator is not changed.** `Swapper::first()` checks the build once a part tried, but stops at the first that passes; measured, the products were the cost, not the checks.
+
+**Numbers** (lane 1, 2,000 parts, 500 trucks, p95 of 40 requests): the review with every slot picked, cold 620.1 ms and 49 queries before, 66.4 ms and 44 after; warm 305.9 ms and 20 queries before, 54.0 ms and 21 after. The trucks step with a truck picked, cold 261.7 ms before and 75.6 ms after; warm 140.5 ms and 60.3 ms. In `docs/BENCHMARK.md`, v1.3.0.
+
+**Tests.**
+
+- **Red run.** `StateRouteBenchmarkTest`, the review shape: "Failed asserting that 49 is equal to 45 or is less than 45" (StateRouteBenchmarkTest.php:341), at p95 928.6 ms cold. `PartRankTest::test_a_kits_parts_carry_their_ranks_and_the_ranks_of_them_load_no_product`: "Undefined property: Part::$rank" (PartRankTest.php:214).
+- **After.** Both pass. `PartRankTest`'s case: a part's own rank, a variation's own and its product's, none; `of()` loads no product (`woocommerce_product_class` never asked) and the filter answers last; a row with no `_rank` is read again and kept with it. `StateRouteTest::test_the_route_asks_the_same_number_of_queries_however_many_parts_a_step_has` adds the review with every slot picked at 4, 16 and 46 wheels, some ranked: the same count warm and cold at each. It passed before the fix too (the products were loaded in two queries); it holds the count.
+- **Deliberate break.** `BuildSwaps` asking `ranks()` by ID again: the benchmark fails at the review, cold, p95 581.3 ms, "Failed asserting that 49 is equal to 46 or is less than 46" (StateRouteBenchmarkTest.php:347).
+
+**Status:** Accepted. Replaces in part D-395's last point: the rank is kept with the part's facts, and read with them.
+
+### D-435 · A rating's average takes the language's decimal separator, not the shop's for prices · 2026-11-26
+
+The auditor's 1.3.0 minor. D-392 wrote a card's average rating in the shop's decimal separator for prices (`wc_get_price_decimal_separator()`), "as its prices", and its count in the language's (`number_format_i18n()`). A rating is no price: a page in French on a shop that writes its prices with a point said "4.5 sur 5, 2 avis", one sentence with two ways of writing numbers.
+
+**Decision:** `Words::average()` writes the average with `number_format_i18n()`, as the count and every other number the builder says that is not money. D-392's point on the separator is replaced; the rest stands.
+
+**Tests.**
+
+- **Red run.** `WordsTest::test_a_rating_takes_the_languages_decimal_separator_not_the_shops_for_prices`, the language's separator a comma and the shop's for prices a point (the unit shims now keep the two apart): "Failed asserting that two strings are identical" (WordsTest.php:296).
+- **After.** It passes, with the rest of `WordsTest`. `builder.spec.ts`, "says them in French, its decimal separator the language's", on fr-ca: "4,5 sur 5, 2 avis" and "4,5 (2)".
+
+**Status:** Accepted. Replaces D-392's separator.
+
+### D-436 · A deck card's height limit sets a long name's lines past two apart, so it holds in every engine's fonts · 2026-11-26
+
+The first CI run of 1.3.0's pull request. F31's test (D-399) holds a deck card under a 129 px header to 170 px on Kadence and Storefront, and 190 on Twenty Twenty-Five, limits measured on the Mac. On CI's Linux runners, WebKit and Firefox draw Kadence's text in a wider fallback font. There, "Elmwood Skate Deck, Dragon Wizard" takes three lines, and its card and the card beside it in the row are 179 px. Chromium on the same runner, and every engine on the Mac, keep the name to two lines. The card's own parts were as D-399 left them: the stock beside the price, the other widths as a count on one line, and the picture in its 7rem box.
+
+**Decision:** the test measures each card less the lines its row's longest name takes past two, at the name's line height, and holds that to the same limit. The limit is not moved: a card on the Mac, where no name takes three lines, is held to 170 px as before. The names are not cut to two lines, since a shopper on Linux reads the whole name.
+
+**Tests.**
+
+- **Red run.** CI run 45802308781: `shelf.spec.ts:629`, "a deck card, 170 px at most", 179 on webkit-desktop, webkit-tablet, firefox-desktop and firefox-tablet.
+- **Deliberate break.** The card's "Also in" line given a 30 px top margin: "a deck card, 170 px at most, any name's lines past two apart (0 px)", 183 against 170 (firefox-desktop, lane 3). A 12 px margin stays under the limit on the Mac, whose cards are well inside it.
+
+**Status:** Accepted. Refines D-399's test.
+
+### D-450 · My builds' and an order page's rules print on a style handle of the plugin's own · 2026-11-26
+
+Found in milestone 13's walkthrough. `SavedBuildHooks::styles()` added My builds' rules to WooCommerce's `woocommerce-general` with `wp_add_inline_style()`, and `EmailHooks::pageStyles()` added the indent of a part's row on an order's page there too. Kadence and Storefront dequeue `woocommerce-general` and load their own WooCommerce styles, and WordPress prints a handle's inline rules only with the handle (`WP_Styles::do_item()`), so on either theme every rule was lost. On a phone the compare had no scroll region: its table was 404 px wide in a 326 px box, and the third build was cut off where no one could reach it. The 14rem columns, the Differs mark, the row tints and D-412's rule that names each row on a phone went too. Twenty Twenty-Five keeps WooCommerce's handle, so the suites, run on it, passed.
+
+**Decision:** each adds its rules to a handle of the plugin's own with no file, `cbuild-my-builds` on My builds alone, where its list and its compare render, and `cbuild-order-page` on an account page or the order-received page, registered and enqueued there, as the carts' `cbuild-cart` is (D-132). The rules are unchanged. No built stylesheet is added, so `npm run budget` is untouched.
+
+**Red runs.**
+
+- `SavedBuildsPageTest::test_my_builds_rules_print_when_the_theme_dequeues_woocommerce_general`, with `woocommerce-general` dequeued at `wp_enqueue_scripts` 100: "the compare's scroll region. Failed asserting that `<style id="wp-emoji-styles-inline-css">…` contains ".cbuild-compare{overflow-x:auto"" (`SavedBuildsPageTest.php:498`).
+- `OrderEmailTest::test_the_order_pages_indent_prints_when_the_theme_dequeues_woocommerce_general`: "a part's row indented under its kit. Failed asserting that `<style id="wp-emoji-styles-inline-css">…` contains ".cbuild-order-part td:first-child"".
+- "Compare saved builds (#136) › every build's column is reached in the compare's region on a phone, on kadence" and "on storefront", at 390 by 844, on chromium-phone: "the region scrolls sideways. Expected: "auto". Received: "visible"" (`builder.spec.ts:8950`). With that check set aside, the reach check failed alone on Kadence: "build 3's column reached in the region", `right: false`.
+
+**Deliberate breaks.** With `wp_enqueue_style()` taken out of each, both integration tests failed with their red runs' lines. With `overflow-x:auto` taken out of `.cbuild-compare`'s rule, the browser test failed on both themes with its red run's line. Put back, all passed.
+
+**Why:** a theme may dequeue WooCommerce's styles, and Kadence and Storefront, two of the themes the plugin is tested on, do. A rule the plugin needs is the plugin's to print.
+
+**Status:** Accepted.
+
+### D-451 · The admin screens' rules print on style handles of the plugin's own too · 2026-11-26
+
+Found with D-450, by a search of `src/` for `wp_add_inline_style()` on a handle the plugin does not own. Five admin screens added their rules to another's handle: the Catalogue check, the import and the spec tables to core's `common`, and the Build tab and Part specs to WooCommerce's `woocommerce_admin_styles`. Neither is dequeued on the screens today: wp-admin prints `common` on every screen, and WooCommerce registers its admin styles and enqueues them on its own screens, the product screen among them (WooCommerce 11.3.1, `includes/admin/class-wc-admin-assets.php:102` and `:149`). But each prints only while another enqueues it, and the Part specs test had to register WooCommerce's handle itself before its rules could be added. A plugin that trims WooCommerce's admin styles, or a WooCommerce that moves them, would take the rules with it, as Kadence and Storefront took My builds'.
+
+**Decision:** each screen adds its rules to a handle of its own with no file, `cbuild-check`, `cbuild-import`, `cbuild-spec-tables`, `cbuild-build-tab` and `cbuild-part-specs`, registered and enqueued where it was adding them, as D-450 does on the shop's side. The rules are unchanged. `ShowHooks`, `StartButton`, `TicketPage`, `BuildBox` and `PageHooks` already added theirs to the plugin's own handles. No `wp_add_inline_style()` in `src/` now names another's handle.
+
+**Red run.** `AdminStylesTest::test_a_screens_rules_print_on_its_own_handle`, a fresh `WP_Styles` with no handle enqueued, the screen's `styles()` called and the queue printed: each of the five failed, the Catalogue check with "Failed asserting that '' contains ".cbuild-scroll{overflow-x:auto"", the Build tab with the queue holding only the media modal's styles, and no `.cbuild-kit .cbuild-kit-group` rule.
+
+**Deliberate break.** With `wp_enqueue_style()` taken out of the five, all five failed again. Put back, they passed, with `SpecTablesScreenTest` and `PartSpecsPanelTest` reading the rules from the new handles.
+
+**Why:** as D-450: a rule the plugin needs is the plugin's to print.
+
+**Status:** Accepted.
+
+### D-460 · A list is joined in the plugin's own words, never WordPress's translation of them · 2026-11-26
+
+Milestone 13's walkthrough, a should-fix. After a smart swap of two parts the notice read "Échangé : wheels et .hardware." in French (`docs/reviews/M13/walkthrough/desktop-swap-notice-light-fr.avif`). The builder joined its lists with `wp_sprintf( '%l', … )`, and `wp_sprintf_l()` (wp-includes/formatting.php:5407) takes its three separators from core's own strings: "%1$s, %2$s" (line 5433), "%1$s, and %2$s" (5435) and "%1$s and %2$s" (5437). Core's French for Canada, as wp-env installs it (wp-content/languages/fr_CA.po, revised 20 July 2026, and its fr_CA.l10n.php), translates the last as "%1$s et %2$s." with a full stop (fr_CA.po:20322 and 20323), so two items were "a et .b", and the second as "%1$s, et %2$s" (10753 and 10754), so three were "a, b, et c", with a comma before "et" that French doesn't write. The plugin can't correct core's translation, and a shop's may differ again.
+
+**Decision:** one helper, `Front\Words::joined()`, joins every list the plugin says, through its own text domain: one item alone; two in the pattern "%1$s and %2$s" (context "the last two items in a list", with a translator comment); more by the list separator `Words::either()` already uses (", ", context "between values in a list") and the last two in that pattern. `either()` and `joined()` share one private `series()`. The French is "%1$s et %2$s": "roues et quincaillerie", "roues, roulements et quincaillerie". Every `wp_sprintf( '%l' )` and `wp_sprintf_l()` in `src/` is switched: the swap notice, "Also in", "Picked for", the share card's name (`complete()`), "Fits your" and "Recommended for your" (BuilderView), the Catalogue check's IDs (Admin\Sentences), Site Health's part names and the privacy export's parts. Gate 2 now bans `wp_sprintf()` and `wp_sprintf_l()`, with its fixture, so no list goes back to core's words.
+
+English lists of three or more lose core's comma before "and": "Deck, Trucks and Wheels", as `either()`'s "7.75″, 8.125″ or 9″" and the docblocks' examples already wrote. A share card's `og:title` for a build of three or more named parts changes so in English.
+
+**Tests.**
+
+- **Red run.** `ListWordsTest::test_two_and_three_items_are_joined_in_the_plugins_french_not_cores`, core's French separators given as fr_CA.po has them and the plugin's own French loaded: "no full stop inside the list", expected "Échangé : roues et quincaillerie." and got "Échangé : roues et .quincaillerie." (ListWordsTest.php:58). `ListWordsTest::test_two_and_three_items_are_joined_in_english_with_no_comma_before_and`: "Swapped: wheels, bearings, and hardware." (ListWordsTest.php:37). In the browser, french.spec.ts "says what a swap changed as French joins a list" on fr-ca: received "Échangé : wheels et .hardware." (french.spec.ts:83).
+- **After.** All three pass, with `WordsTest::test_a_list_is_one_item_alone_two_joined_by_and_and_more_by_commas_and_the_last_and` for none to four items. `ShareCardTest`'s and `PrivacyTest`'s English lists of three or more expect no comma before "and"; the unit shims lose `wp_sprintf()`.
+- **Deliberate break.** `joined()` handed back to `wp_sprintf( '%l' )`: both `ListWordsTest` cases fail again, "Échangé : roues et .quincaillerie." (ListWordsTest.php:59) and "Swapped: wheels, bearings, and hardware." (ListWordsTest.php:37).
+
+**Status:** Accepted.
+
+### D-461 · A ready build's tile shows its picture whole, in a size WordPress never crops · 2026-11-26
+
+Milestone 13's walkthrough, a should-fix. Help me choose's Mid-range tile showed a navy and yellow square with no board's outline (`docs/reviews/M13/walkthrough/*-guide-builds-*`), where Budget and High-end showed the whole deck. The tile's CSS was not the cause: `.cbuild-preset__photo` is `object-fit: contain` in a 4:3 box on Twenty Twenty-Five and Kadence alike. Nor was D-408's mark: the 8.25 in deck's tile is its photo, rightly not `--drawn`. The cause was the rendition. A guide build took its deck's card picture, which for a deck with a photo is the shop's `woocommerce_thumbnail`, and WooCommerce crops that square by default: the fixture's 407 by 1,600 photo came as `-324x324.png`, the middle of the deck, and every size in its `srcset` was a square crop too. The decks with no photo show their layer image, which a card already takes in WordPress's `medium`, never cropped (D-282), so they were whole.
+
+The ready builds' tiles share `templates/builder/tile.php` and the same risk: a preset's own picture came through `PartCards::photo()` in the thumbnail size, and a tile on a build begun took its first part's card picture, the thumbnail again. Their usual picture, the composed board, is whole.
+
+**Decision:** a tile's picture is never the shop's thumbnail. A guide build's is its deck card's `large`, the shop's single-product size, which WooCommerce never crops (#82), else its layer image as the card has it; still marked drawn where it is the layer image (D-408). `PartCards::photo()`, whose one caller is a preset's tile, gives the single-product size, and a preset's tile that falls back to its first part's picture takes that part's `large` first. The state route's `presets[].image` keeps its shape; only the file it names changes. The single-product rendition's `sizes` is WordPress's, so a browser may fetch a larger file than the tile draws; the tile is lazy, and the deck cards keep the thumbnail.
+
+**Tests.**
+
+- **Red run.** guide.spec.ts "A build's tile shows its whole picture" on twentytwentyfive and on kadence, chromium-desktop: "builder-test-deck-8-25-photo-324x324.png keeps its file's shape", the shape against the file's 2.93 apart, where 0.03 is allowed (guide.spec.ts:639). `WooPartCardsTest::test_a_card_is_the_parts_name_page_price_stock_and_photo_as_the_shop_shows_them`: "a tile's picture whole, not the shop's square thumbnail", `canola-88-300x300.jpg` where `canola-88-600x450.jpg` was expected (WooPartCardsTest.php:102).
+- **After.** Both pass. Five unit assertions on a preset tile's fallback picture (`StateAnswerTest`, `StateAnswerDetailTest`) expect the first part's `large`.
+- **Deliberate break.** The guide build's image back to its card's `image`: the browser test fails again on `-324x324.png`, 2.93 (guide.spec.ts:639).
 
 **Status:** Accepted.

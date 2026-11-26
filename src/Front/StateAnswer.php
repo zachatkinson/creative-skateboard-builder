@@ -27,6 +27,7 @@ use CreativeBranding\SkateboardBuilder\Port\PartCards;
 use CreativeBranding\SkateboardBuilder\Domain\Look\Shelf;
 use CreativeBranding\SkateboardBuilder\Domain\Look\ShelfLook;
 use CreativeBranding\SkateboardBuilder\Domain\Look\Width;
+use CreativeBranding\SkateboardBuilder\Service\BuildSwaps;
 use CreativeBranding\SkateboardBuilder\Service\ComposedPictures;
 use CreativeBranding\SkateboardBuilder\Service\LayerArtwork;
 use CreativeBranding\SkateboardBuilder\Service\Phases;
@@ -134,6 +135,27 @@ final class StateAnswer {
 	 * @var (Closure(int, array<string, int>): ?string)|null
 	 */
 	private ?Closure $pictures = null;
+
+	/**
+	 * The swaps a build is offered, since 1.3.0, given by the container through `withSwaps()`. An answer an earlier
+	 * release's container builds has none, and offers no swap (#135, D-208).
+	 *
+	 * @var BuildSwaps|null
+	 */
+	private ?BuildSwaps $swaps = null;
+
+	/**
+	 * The same answer, with the swaps a build is offered (#135).
+	 *
+	 * @since 1.3.0
+	 *
+	 * @param BuildSwaps $swaps The swaps a build is offered.
+	 */
+	public function withSwaps( BuildSwaps $swaps ): self {
+		$answer        = clone $this;
+		$answer->swaps = $swaps;
+		return $answer;
+	}
 
 	/**
 	 * Times the answer's phases for a shop manager's Server-Timing header, since 1.2.0, given by the container through
@@ -292,6 +314,15 @@ final class StateAnswer {
 				$ids[] = $change->closest->part->id;
 			}
 		}
+		// The swaps offered (#135): on the review every picked part's, on a step its own pick's. Their parts are named.
+		$decimals = $this->kits->decimals();
+		$swapper  = $this->swaps;
+		$swaps    = null === $swapper || array() === BuildSwaps::slots( $state ) || ! self::swapping( $state ) ? array() : $this->timed( 'swaps', fn(): array => $swapper->of( $state, $decimals ) );
+		foreach ( $swaps as $priced ) {
+			foreach ( $priced['swap']->to as $swapped ) {
+				$ids[] = $swapped->part->id;
+			}
+		}
 		$cards = $this->timed( 'cards', fn(): array => $this->cards->cards( array_values( array_unique( $ids ) ) ) );
 		// The names of the parts that keep a ready build from the cart, shown or not, for a link that brings one.
 		$held = array();
@@ -302,12 +333,11 @@ final class StateAnswer {
 				}
 			}
 		}
-		$decimals = $this->kits->decimals();
-		$money    = fn( int $amount ): array => array(
+		$money  = fn( int $amount ): array => array(
 			'amount' => $amount,
 			'text'   => $this->money->text( $amount, $decimals ),
 		);
-		$delta    = function ( Option $option, ?StateStep $step ) use ( $state, $decimals ): array {
+		$delta  = function ( Option $option, ?StateStep $step ) use ( $state, $decimals ): array {
 			$change = Pricer::change( $option, $step?->counted(), $state->discount );
 			$amount = $change ?? 0;
 			$kind   = 'none';
@@ -326,8 +356,15 @@ final class StateAnswer {
 				'change' => null === $step?->counted() ? '' : Words::change( $kind, $text ),
 			);
 		};
-		$boards   = SlotKey::DECK === $state->step ? $this->timed( 'boards', fn(): array => $this->boards( $state, array_merge( $offered, array_map( static fn( ShelfLook $look ): Option => $look->option, null === $view ? array() : array_merge( $view->listing->looks, $view->listing->soldOut ) ) ) ) ) : array();
-		$option   = static fn( Option $option, string $slot, ?StateStep $step ): array => array(
+		$boards = SlotKey::DECK === $state->step ? $this->timed( 'boards', fn(): array => $this->boards( $state, array_merge( $offered, array_map( static fn( ShelfLook $look ): Option => $look->option, null === $view ? array() : array_merge( $view->listing->looks, $view->listing->soldOut ) ) ) ) ) : array();
+		// The ready builds a shopper is offered that pick each part, by slot, in the kit's order (#137, D-392).
+		$chosen = array();
+		foreach ( $state->shownPresets() as $at ) {
+			foreach ( $state->kit->presets[ $at ]->picks ?? array() as $slot => $part ) {
+				$chosen[ $slot ][ $part ][] = $at;
+			}
+		}
+		$option  = static fn( Option $option, string $slot, ?StateStep $step ): array => array(
 			'id'          => $option->part->id,
 			'brand'       => $option->part->brand,
 			'size'        => self::size( $slot, $option->part ),
@@ -340,13 +377,15 @@ final class StateAnswer {
 			'recommended' => $option->part->id === $step?->recommended?->part->id,
 			'messages'    => self::messages( $option->findings ),
 			// A card as it is listed: the large photo is the picture's alone (#82), and would add to every card.
-			'card'        => isset( $cards[ $option->part->id ] ) ? array_diff_key( $cards[ $option->part->id ], array_flip( array( 'large' ) ) ) : null,
+			'card'        => isset( $cards[ $option->part->id ] ) ? self::listed( $cards[ $option->part->id ] ) : null,
 			// From 1.1.0, on the deck step: the board the deck would draw alone, so its image can be fetched as the
 			// shopper points at the card (D-308), and its card draws the deck small (F14, #99), sold out or not. Null
 			// elsewhere, and for a deck with no layer image.
 			'board'       => $boards[ $option->part->id ] ?? null,
+			// From 1.3.0: the places among the kit's of the ready builds shown that pick it, as `presets[].at` (#137).
+			'presets'     => $chosen[ $slot ][ $option->part->id ] ?? array(),
 		);
-		$problem  = static fn( BuildProblem $problem ): array => array(
+		$problem = static fn( BuildProblem $problem ): array => array(
 			'code'     => $problem->code->value,
 			'slot'     => $problem->slot,
 			'part'     => $problem->part,
@@ -449,8 +488,9 @@ final class StateAnswer {
 				'name'        => self::preset( $preset->name, $at, $state->id ),
 				'description' => self::text( $preset->description, 'preset_description', $state->id, (string) $at ),
 				'picks'       => $picks,
-				// A tile not shown asks for no picture to be made: its first part's photo will do.
-				'image'       => $this->tile( $state->id, $preset->picks, $preset->image, $begun || ! $shown ) ?? ( null === $first ? null : ( $cards[ $first ]['image'] ?? null ) ),
+				// A tile not shown asks for no picture to be made: its first part's photo will do, whole, as a tile shows
+				// every picture (D-461).
+				'image'       => $this->tile( $state->id, $preset->picks, $preset->image, $begun || ! $shown ) ?? ( null === $first ? null : ( $cards[ $first ]['large'] ?? $cards[ $first ]['image'] ?? null ) ),
 				'total'       => $money( $built->quote->total ?? 0 ),
 				'ready'       => array() === $kept,
 				// What keeps it from the cart, each part named for its tile (spec: Presets).
@@ -478,6 +518,30 @@ final class StateAnswer {
 			'refused'           => array_map( static fn( BuildProblem $kept ): array => array_replace( $problem( $kept ), array( 'message' => Words::named( $kept->code, $labels[ $kept->slot ] ?? $kept->slot, null === $kept->part ? '' : $held[ $kept->part ] ?? '' ) ) ), $state->refused ),
 			'problems'          => array_map( $problem, $state->validation->problems ),
 			'changes'           => $changes,
+			// From 1.3.0: the swaps offered for the build, the same board for less first (#135, D-394, D-396).
+			'swaps'             => array_map(
+				function ( array $priced ) use ( $cards, $decimals ): array {
+					$parts = array();
+					foreach ( $priced['swap']->to as $slot => $swapped ) {
+						$parts[] = array(
+							'slot' => $slot,
+							'was'  => $priced['swap']->was[ $slot ]->id,
+							'part' => $swapped->part->id,
+							'name' => $cards[ $swapped->part->id ]['name'] ?? '',
+						);
+					}
+					return array(
+						'kind'   => $priced['swap']->kind->value,
+						'parts'  => $parts,
+						// What it does to the total, below nothing where it takes off, and how much as the shop writes it.
+						'change' => array(
+							'amount' => $priced['change'],
+							'text'   => $this->money->text( abs( $priced['change'] ), $decimals ),
+						),
+					);
+				},
+				$swaps
+			),
 			'total'             => array(
 				'lines'    => $lines,
 				'parts'    => $money( $state->quote->parts ),
@@ -822,6 +886,20 @@ final class StateAnswer {
 	}
 
 	/**
+	 * A card as an option lists it: without the large photo, which is the picture's alone (#82), and with its rating,
+	 * from 1.3.0, in words beside its numbers, or null (#137, D-392).
+	 *
+	 * @param array{name: string, url: string, price: string, stock: string, stock_class: string, image: array{src: string, width: int, height: int, srcset: string, sizes: string}|null, photo: bool, large?: array{src: string, width: int, height: int, srcset: string, sizes: string}|null, rating?: array{average: float, count: int}|null} $card The part's card.
+	 * @return array<string, mixed>
+	 */
+	private static function listed( array $card ): array {
+		$rating = $card['rating'] ?? null;
+		unset( $card['large'] );
+		$card['rating'] = null === $rating ? null : $rating + array( 'text' => Words::rating( $rating['average'], $rating['count'] ) );
+		return $card;
+	}
+
+	/**
 	 * A part's size, as the answer carries it, and as a share card names it (D-200).
 	 *
 	 * @since 0.7.0
@@ -890,11 +968,11 @@ final class StateAnswer {
 	 * picture settings, drawn for the page from the parts with a layer image, each of which the box then leaves out
 	 * (spec: The picture; D-195). From 0.8.0 the board's top too, from the same layout (#46).
 	 *
-	 * @param State                                                                                                                                                                                                                                                                                         $state   The build's state.
-	 * @param array<string, Part>                                                                                                                                                                                                                                                                           $counted The part each slot counts, by slot.
-	 * @param array<string, string>                                                                                                                                                                                                                                                                         $labels  The slots' labels.
-	 * @param array<string, string>                                                                                                                                                                                                                                                                         $brands  Brands' names, by slug.
-	 * @param array<int, array{name: string, url: string, price: string, stock: string, stock_class: string, image: array{src: string, width: int, height: int, srcset: string, sizes: string}|null, photo: bool, large?: array{src: string, width: int, height: int, srcset: string, sizes: string}|null}> $cards The cards.
+	 * @param State                                                                                                                                                                                                                                                                                                                                          $state   The build's state.
+	 * @param array<string, Part>                                                                                                                                                                                                                                                                                                                            $counted The part each slot counts, by slot.
+	 * @param array<string, string>                                                                                                                                                                                                                                                                                                                          $labels  The slots' labels.
+	 * @param array<string, string>                                                                                                                                                                                                                                                                                                                          $brands  Brands' names, by slug.
+	 * @param array<int, array{name: string, url: string, price: string, stock: string, stock_class: string, image: array{src: string, width: int, height: int, srcset: string, sizes: string}|null, photo: bool, large?: array{src: string, width: int, height: int, srcset: string, sizes: string}|null, rating?: array{average: float, count: int}|null}> $cards The cards.
 	 * @return array{items: list<array<string, mixed>>, description: string, width: int, height: int, layers: list<array<string, mixed>>, top: list<array<string, mixed>>}
 	 */
 	private function picture( State $state, array $counted, array $labels, array $brands, array $cards ): array {
@@ -1097,5 +1175,23 @@ final class StateAnswer {
 			);
 		}
 		return $messages;
+	}
+
+	/**
+	 * Whether the kit offers smart swaps: its Build tab's switch, then a plugin's answer (#135, D-397).
+	 *
+	 * @param State $state The build's state.
+	 */
+	private static function swapping( State $state ): bool {
+		/**
+		 * Filters whether the builder offers smart swaps for a kit. The swaps offered are still the fit engine's: a
+		 * plugin turns them on or off, and never adds one.
+		 *
+		 * @since 1.3.0
+		 *
+		 * @param bool $offers Whether the kit's "Offer smart swaps" is on: true for a kit saved before 1.3.0.
+		 * @param int  $kit    The kit product's ID.
+		 */
+		return true === apply_filters( 'cbuild_swaps', $state->kit->settings->swaps, $state->id );
 	}
 }

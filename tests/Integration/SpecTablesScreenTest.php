@@ -494,6 +494,6 @@ final class SpecTablesScreenTest extends IntegrationTestCase {
 
 	public function test_the_rows_fields_are_styled_on_the_page(): void {
 		$this->screen()->styles();
-		self::assertStringContainsString( '.cbuild-field{display:inline-block;', implode( '', (array) wp_styles()->get_data( 'common', 'after' ) ) );
+		self::assertStringContainsString( '.cbuild-field{display:inline-block;', implode( '', (array) wp_styles()->get_data( 'cbuild-spec-tables', 'after' ) ) );
 	}
 }

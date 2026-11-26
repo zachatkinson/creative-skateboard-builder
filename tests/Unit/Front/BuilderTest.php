@@ -22,9 +22,12 @@ use CreativeBranding\SkateboardBuilder\Front\Builder;
 use CreativeBranding\SkateboardBuilder\Front\BuilderView;
 use CreativeBranding\SkateboardBuilder\Front\BuildLink;
 use CreativeBranding\SkateboardBuilder\Front\Delivery;
+use CreativeBranding\SkateboardBuilder\Front\GuidedStart;
 use CreativeBranding\SkateboardBuilder\Front\ShippingWords;
 use CreativeBranding\SkateboardBuilder\Front\StateAnswer;
 use CreativeBranding\SkateboardBuilder\Service\BuildState;
+use CreativeBranding\SkateboardBuilder\Service\BuildSwaps;
+use CreativeBranding\SkateboardBuilder\Port\PartRanks;
 use CreativeBranding\SkateboardBuilder\Service\State;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Domain\KitDocuments;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Domain\Parts;
@@ -178,7 +181,7 @@ final class BuilderTest extends TestCase {
 		);
 		self::assertSame( 'Start from Street', $street['button'], 'each button has a name of its own (P11)' );
 		self::assertTrue( $street['hasImage'] );
-		self::assertSame( 'https://shop.test/101.jpg', $street['src'] );
+		self::assertSame( 'https://shop.test/101-large.jpg', $street['src'], 'its deck\'s photo whole, not the square thumbnail (D-461)' );
 		self::assertTrue( $street['hasTotal'] );
 
 		self::assertFalse( $this->show( new BuildLink( array( SlotKey::DECK => 101 ) ) )['view']['presets']['shown'], 'a build begun has no tiles' );
@@ -1472,6 +1475,9 @@ final class BuilderTest extends TestCase {
 		self::assertSame( array( 'Bearings', 'Included with your wheels', '' ), array( $items[ SlotKey::BEARINGS ]['label'], $items[ SlotKey::BEARINGS ]['name'], $items[ SlotKey::BEARINGS ]['amount'] ) );
 		self::assertSame( 'Change wheels', $items[ SlotKey::BEARINGS ]['change'], 'they change with the wheels' );
 		self::assertTrue( $items[ SlotKey::BEARINGS ]['fits'], 'and they fit' );
+		self::assertSame( array( false, '' ), array( $items[ SlotKey::BEARINGS ]['hasImage'], $items[ SlotKey::BEARINGS ]['src'] ), 'no thumbnail of their own, the place kept (#132)' );
+		self::assertSame( 'cbuild-review__photo', $items[ SlotKey::BEARINGS ]['photoClasses'] );
+		self::assertSame( array( array(), false ), array( $items[ SlotKey::BEARINGS ]['swaps'], $items[ SlotKey::BEARINGS ]['hasSwaps'] ), 'nothing to swap: they change with the wheels' );
 	}
 
 	// Spec (configurator): Risers, "It opens on the riser that clears them, with the reason ("Your 56 mm wheels need ½″
@@ -1643,18 +1649,29 @@ final class BuilderTest extends TestCase {
 		self::assertSame( array( 'deck', 'trucks', 'wheels', 'bearings', 'hardware', 'grip' ), array_column( $review['items'], 'key' ) );
 		self::assertSame(
 			array(
-				'key'     => 'trucks',
-				'classes' => 'cbuild-review__item',
-				'label'   => 'Trucks',
-				'name'    => 'Part 139',
-				'fits'    => true,
-				'fit'     => 'Fits',
+				'key'          => 'trucks',
+				'classes'      => 'cbuild-review__item',
+				'photoClasses' => 'cbuild-review__photo',
+				'label'        => 'Trucks',
+				'name'         => 'Part 139',
+				'fits'         => true,
+				'fit'          => 'Fits',
 				// Each row carries its price, as the prototype's review has it.
-				'amount'  => '$50.00',
-				'url'     => 'https://shop.test/?page_id=5&lang=fr&' . http_build_query( array( 'cbuild' => array_map( 'strval', self::STREET ) + array( 'step' => 'trucks' ) ) ),
+				'amount'       => '$50.00',
+				'url'          => 'https://shop.test/?page_id=5&lang=fr&' . http_build_query( array( 'cbuild' => array_map( 'strval', self::STREET ) + array( 'step' => 'trucks' ) ) ),
 				// "Change" to the eye, read with what it changes.
-				'text'    => 'Change',
-				'change'  => 'Change trucks',
+				'text'         => 'Change',
+				'change'       => 'Change trucks',
+				// No smart swaps where the answer offers none (#135).
+				'swaps'        => array(),
+				'hasSwaps'     => false,
+				// Its card's thumbnail (#132).
+				'hasImage'     => true,
+				'src'          => 'https://shop.test/139.jpg',
+				'srcset'       => '',
+				'sizes'        => '',
+				'width'        => 300,
+				'height'       => 300,
 			),
 			$review['items'][1]
 		);
@@ -1955,6 +1972,10 @@ final class BuilderTest extends TestCase {
 		$review = array_column( $view['review']['items'], 'classes', 'key' );
 		self::assertSame( 'cbuild-review__item is-flagged badclass', $review[ SlotKey::DECK ] );
 		self::assertSame( 'cbuild-review__item', $review[ SlotKey::TRUCKS ] );
+		// Issue #132: Mature Content blurs a flagged part's thumbnail in the review, as the bar's photo, by the same answer.
+		$photos = array_column( $view['review']['items'], 'photoClasses', 'key' );
+		self::assertSame( 'cbuild-review__photo is-flagged badclass', $photos[ SlotKey::DECK ] );
+		self::assertSame( 'cbuild-review__photo', $photos[ SlotKey::TRUCKS ] );
 	}
 
 	// Cowork's review of 1.0.0, F19 (#105; D-309): a ready build's tile shows the build, so it takes the classes another
@@ -1976,5 +1997,206 @@ final class BuilderTest extends TestCase {
 
 		unset( $GLOBALS['cbuild_test_filters']['cbuild_part_classes'] );
 		self::assertSame( 'cbuild-preset__photo', $this->show( new BuildLink() )['view']['presets']['tiles'][0]['photoClasses'] );
+	}
+
+	/**
+	 * A row's thumbnail as the template binds it, in a fixed order.
+	 *
+	 * @param array<string, mixed> $item A review row, or a card.
+	 * @return list<mixed>
+	 */
+	private static function thumb( array $item ): array {
+		return array_map( static fn( string $key ): mixed => $item[ $key ] ?? null, array( 'hasImage', 'src', 'srcset', 'sizes', 'width', 'height' ) );
+	}
+
+	// Issue #132: each row of the review shows its part's thumbnail, "the same picture and rendition as its card", so a
+	// part already seen loads nothing new, and "a row without a picture keeps the space". Read from the answer's
+	// picture, which the review already has: the view asks for nothing.
+	public function test_each_row_of_the_review_shows_its_cards_picture_and_a_row_without_one_keeps_its_place(): void {
+		$review = array_column( $this->show( new BuildLink( self::STREET, null, State::REVIEW ) )['view']['review']['items'], null, 'key' );
+		$decks  = array_column( $this->show( new BuildLink( self::STREET, null, SlotKey::DECK ) )['view']['step']['options'], null, 'id' );
+		$trucks = array_column( $this->show( new BuildLink( self::STREET, null, SlotKey::TRUCKS ) )['view']['step']['options'], null, 'id' );
+		self::assertSame( array( true, 'https://shop.test/101.jpg', '', '', 300, 300 ), self::thumb( $review[ SlotKey::DECK ] ), 'a deck with no layer image: its card\'s thumbnail, not the stage\'s large photo (#82)' );
+		self::assertSame( self::thumb( $decks[101] ), self::thumb( $review[ SlotKey::DECK ] ), 'the deck\'s card' );
+		self::assertSame( self::thumb( $trucks[139] ), self::thumb( $review[ SlotKey::TRUCKS ] ), 'the trucks\' card' );
+		self::assertSame( 'cbuild-review__photo', $review[ SlotKey::TRUCKS ]['photoClasses'] );
+		self::assertSame( 'cbuild-review__photo', $review[ SlotKey::DECK ]['photoClasses'], 'a deck\'s photo is not marked drawn' );
+
+		// A deck with a layer image: its card draws the layer image small and upright, from the picture's renditions
+		// (#99), and so does its row, with the same `sizes`, so the browser chooses the file the card had.
+		$this->topArt();
+		$review = array_column( $this->show( new BuildLink( self::STREET, null, State::REVIEW ) )['view']['review']['items'], null, 'key' );
+		$decks  = array_column( $this->show( new BuildLink( self::STREET, null, SlotKey::DECK ) )['view']['step']['options'], null, 'id' );
+		self::assertTrue( $decks[101]['drawn'] );
+		self::assertSame( '29px', $review[ SlotKey::DECK ]['sizes'] );
+		// Marked as its card is, so Mature Content's layer flag blurs the layer image and not a photo (#132, D-398).
+		self::assertSame( 'cbuild-review__photo cbuild-review__photo--drawn', $review[ SlotKey::DECK ]['photoClasses'], 'the deck\'s layer image, marked drawn' );
+		self::assertArrayNotHasKey( 'drawn', $review[ SlotKey::DECK ] );
+		self::assertSame( 'cbuild-review__photo', $review[ SlotKey::TRUCKS ]['photoClasses'] );
+		self::assertSame( self::thumb( $decks[101] ), self::thumb( $review[ SlotKey::DECK ] ), 'the deck\'s card, drawn' );
+		self::assertSame( 'https://shop.test/701.jpg', $review[ SlotKey::GRIP ]['src'], 'a grip the top draws keeps its card\'s photo' );
+
+		// No picture: a part with no photo, and a slot with nothing in it. The place is kept, empty.
+		$none = array( false, '', '', '', 0, 0 );
+		$bare = array( SlotKey::DECK => 102 ) + self::STREET;
+		unset( $bare[ SlotKey::GRIP ] );
+		$this->layers->attachments = array();
+		$review                    = array_column( $this->show( new BuildLink( $bare, null, State::REVIEW ) )['view']['review']['items'], null, 'key' );
+		self::assertSame( $none, self::thumb( $review[ SlotKey::DECK ] ), 'Part 102 has no photo' );
+		self::assertSame( $none, self::thumb( $review[ SlotKey::GRIP ] ), 'nothing chosen' );
+		self::assertSame( 'cbuild-review__photo', $review[ SlotKey::GRIP ]['photoClasses'] );
+	}
+
+	/**
+	 * The builder with smart swaps, and no part ranked.
+	 */
+	private function swapping(): Builder {
+		$ranks = new class() implements PartRanks {
+			public function ranks( int ...$parts ): array {
+				return array();
+			}
+
+			public function of( Part ...$parts ): array {
+				return array();
+			}
+		};
+		return new Builder(
+			new BuildState( $this->kits, new InMemoryShopSettings(), new FakeLogger() ),
+			( new StateAnswer( new InMemoryPartCards(), new FakeMoney(), $this->kits, new Delivery( $this->kits, new FakeShippingZones(), new ShippingWords( new FakeMoney() ) ), new PageRenderer() ) )->withSwaps( new BuildSwaps( $ranks ) ),
+			new BuilderView()
+		);
+	}
+
+	/**
+	 * A link as the page reads it from an address.
+	 *
+	 * @param string $url The address.
+	 */
+	private static function followed( string $url ): BuildLink {
+		parse_str( (string) parse_url( $url, PHP_URL_QUERY ), $query );
+		return BuildLink::read( $query['cbuild'] ?? null );
+	}
+
+	/**
+	 * A complete of the shop's parts that fits: an 8.5 deck on 149s with 54 mm wheels.
+	 */
+	private const array COMPLETE = array(
+		SlotKey::DECK     => 103,
+		SlotKey::TRUCKS   => 149,
+		SlotKey::WHEELS   => 302,
+		SlotKey::BEARINGS => 501,
+		SlotKey::HARDWARE => 601,
+		SlotKey::GRIP     => 701,
+	);
+
+	// Issue #135 (D-397): each swap is a link, so it works without the script, to the build with the swap in place at
+	// the same step, carrying the picks before it; the swap's notice says what it swapped and holds Undo, a link back.
+	public function test_each_swap_is_a_link_to_the_build_swapped_and_its_notice_undoes_it_until_the_next_move(): void {
+		$view = $this->swapping()->show( self::KIT, new BuildLink( self::COMPLETE, null, State::REVIEW ), self::BASE )['view'] ?? array();
+		$undo = array_map( 'strval', self::COMPLETE );
+		self::assertSame(
+			array(
+				'shown' => true,
+				'id'    => 'cbuild-swap-board',
+				'url'   => self::url( array_replace( $undo, array( SlotKey::WHEELS => '301' ) ) + array( 'step' => 'review', '_undo' => $undo ) ),
+				'text'  => 'Same board for $2.00 less',
+			),
+			$view['board']
+		);
+		$rows = array_column( $view['review']['items'], null, 'key' );
+		self::assertSame( array( 'For less: Part 301, $2.00 less' ), array_column( $rows[ SlotKey::WHEELS ]['swaps'], 'text' ) );
+		self::assertSame( array( 'cbuild-swap-wheels-less' ), array_column( $rows[ SlotKey::WHEELS ]['swaps'], 'id' ) );
+		self::assertSame( array( 'Step up: Part 602, $0.50 more' ), array_column( $rows[ SlotKey::HARDWARE ]['swaps'], 'text' ) );
+		self::assertSame( array( true, false ), array( $rows[ SlotKey::WHEELS ]['hasSwaps'], $rows[ SlotKey::DECK ]['hasSwaps'] ), 'the deck is never swapped' );
+		self::assertFalse( $view['swapped']['shown'] );
+
+		// The board pressed: the build with the wheels for less, said, with Undo back to the build before.
+		$swapped = $this->swapping()->show( self::KIT, self::followed( $view['board']['url'] ), self::BASE )['view'] ?? array();
+		self::assertSame( 'Part 301', array_column( $swapped['review']['items'], 'name', 'key' )[ SlotKey::WHEELS ] );
+		self::assertTrue( $swapped['swapped']['shown'] );
+		self::assertSame( 'Swapped: wheels.', $swapped['swapped']['text'] );
+		// Focus goes to the notice, which a screen reader reads: the polite status says the build and its total alone, so
+		// the swap is not heard twice (the auditor's 1.3.0 should-fix 3).
+		self::assertStringNotContainsString( 'Swapped', $swapped['status'], 'the status does not say the swap the focused notice says' );
+		self::assertStringContainsString( 'Part 301', $swapped['status'], 'the status says the build' );
+		self::assertSame( self::url( array_map( 'strval', self::COMPLETE ) + array( 'step' => 'review' ) ), $swapped['swapped']['undo']['url'], 'Undo: the picks before, and nothing to undo after it' );
+		self::assertSame( 'Undo swap', $swapped['swapped']['undo']['text'] );
+		self::assertFalse( $swapped['board']['shown'], 'nothing left for less on the board' );
+
+		// The next move leaves the Undo behind.
+		$moved = $this->swapping()->show( self::KIT, self::followed( $swapped['url'] )->at( SlotKey::TRUCKS ), self::BASE )['view'] ?? array();
+		self::assertFalse( $moved['swapped']['shown'] );
+
+		// On a step: the picked card alone has the pick's swaps, the plain cards none.
+		$step  = $this->swapping()->show( self::KIT, new BuildLink( self::COMPLETE, null, SlotKey::WHEELS ), self::BASE )['view'] ?? array();
+		$cards = array_column( $step['step']['options'], null, 'id' );
+		self::assertSame( array( 'For less: Part 301, $2.00 less' ), array_column( $cards[302]['swaps'], 'text' ) );
+		self::assertSame( self::url( array_replace( $undo, array( SlotKey::WHEELS => '301' ) ) + array( 'step' => SlotKey::WHEELS, '_undo' => $undo ) ), $cards[302]['swaps'][0]['url'], 'at the same step' );
+		self::assertSame( array( false, false ), array( $cards[301]['hasSwaps'], $cards[303]['hasSwaps'] ) );
+		self::assertSame( array(), $cards[301]['swaps'] );
+		self::assertSame( array(), array_column( $step['review']['items'], null, 'key' )[ SlotKey::WHEELS ]['swaps'], 'the hidden review draws none, so no control is drawn twice' );
+	}
+
+	/**
+	 * The builder with the guided start (#134).
+	 */
+	private function guided(): Builder {
+		return $this->builder()->withGuide( new GuidedStart( $this->kits, new InMemoryPartCards(), new FakeMoney() ) );
+	}
+
+	/**
+	 * A link with the guided start's answers, sent or not.
+	 *
+	 * @param array<string, string> $answers The answers.
+	 * @param array<string, string> $more    The rest of the query.
+	 */
+	private static function answered( array $answers, array $more = array() ): BuildLink {
+		return BuildLink::read( $more + array( '_guide' => $answers ) );
+	}
+
+	// #134: the answers sent at the start bring the builds they recommend, each a tile; answers not yet sent keep the
+	// questions, checked as given, with no builds. A builder an earlier release's container made asks and shows none.
+	public function test_answers_sent_at_the_start_bring_the_builds_they_recommend(): void {
+		$sent = $this->guided()->show( self::KIT, self::answered( array( 'style' => 'street', 'asked' => '1' ) ), self::BASE )['view']['guide'] ?? array();
+		self::assertTrue( $sent['shown'] );
+		self::assertTrue( $sent['asked'] );
+		self::assertNotSame( array(), $sent['tiles'] );
+		self::assertContains( array( 'text' => "Wheels of 50\u{00A0}mm to 54\u{00A0}mm suit street skating." ), $sent['reasons'] );
+
+		$unsent = $this->guided()->show( self::KIT, self::answered( array( 'style' => 'street' ) ), self::BASE )['view']['guide'] ?? array();
+		self::assertTrue( $unsent['shown'] );
+		self::assertFalse( $unsent['asked'] );
+		self::assertSame( array(), $unsent['tiles'] );
+		self::assertSame( array( 'street' ), array_column( array_filter( $unsent['style']['choices'], static fn( array $choice ): bool => $choice['checked'] ), 'value' ), 'the answer stays in the start\'s address' );
+
+		$earlier = $this->builder()->show( self::KIT, self::answered( array( 'style' => 'street', 'asked' => '1' ) ), self::BASE )['view']['guide'] ?? array();
+		self::assertFalse( $earlier['asked'] );
+		self::assertSame( array(), $earlier['tiles'] );
+	}
+
+	// #134: the answers stay in the address of the start they were given at, and in no other; a kit with Help me choose
+	// off draws no builds though the answers were sent.
+	public function test_the_answers_stay_at_the_start_and_a_kit_with_help_me_choose_off_draws_no_builds(): void {
+		$begun = $this->guided()->show( self::KIT, self::answered( array( 'style' => 'street', 'asked' => '1' ), array( 'deck' => '101', 'step' => 'trucks' ) ), self::BASE )['view'] ?? array();
+		self::assertStringNotContainsString( '_guide', urldecode( $begun['url'] ) );
+		self::assertFalse( $begun['guide']['shown'] );
+		self::assertFalse( $begun['guide']['asked'], 'no builds for a build begun' );
+		self::assertSame( array( true, false, false, false, false ), array_column( $begun['guide']['style']['choices'], 'checked' ) );
+
+		$GLOBALS['cbuild_test_filters']['cbuild_help_me_choose'] = static fn(): bool => false;
+		$off = $this->guided()->show( self::KIT, self::answered( array( 'style' => 'street', 'asked' => '1' ) ), self::BASE )['view']['guide'] ?? array();
+		self::assertSame( array( false, false, false, array() ), array( $off['offered'], $off['shown'], $off['asked'], $off['tiles'] ) );
+	}
+
+	// D-397: a smart swap's Undo stays with the build it made until the next move, and a change that breaks a later
+	// pick is a move: its panel's address holds no Undo.
+	public function test_a_change_that_breaks_a_later_pick_leaves_a_swaps_undo_behind(): void {
+		$was  = array( SlotKey::DECK => 101, SlotKey::TRUCKS => 139, SlotKey::WHEELS => 301 );
+		$now  = array( SlotKey::DECK => 103 ) + $was;
+		$undo = array( SlotKey::WHEELS => 302 );
+		$view = $this->show( new BuildLink( $now, $was, SlotKey::TRUCKS, undo: $undo ) )['view'];
+		self::assertTrue( $view['isChanges'] );
+		self::assertStringNotContainsString( '_undo', urldecode( $view['url'] ) );
+		self::assertStringContainsString( '_undo', urldecode( $this->show( new BuildLink( $was, null, SlotKey::TRUCKS, undo: $undo ) )['view']['url'] ), 'with no change it stays' );
 	}
 }

@@ -10,7 +10,10 @@ shopt -s nullglob
 for png in "$dir"/*.png; do
 	avif="${png%.png}.avif"
 	width="$(sips -g pixelWidth "$png" | awk '/pixelWidth/ {print $2}')"
-	if [[ "$png" == *-phone-* ]] && [ "$width" -gt 780 ]; then
+	# A phone's shot by its file's name alone, which may start with it (walkthrough/phone-…): the folder's path is not
+	# read, so a folder named for a phone does not shrink a desktop's shot.
+	name="$(basename "$png")"
+	if [[ "$name" == phone-* || "$name" == *-phone-* ]] && [ "$width" -gt 780 ]; then
 		sips --resampleWidth 780 -s format avif -s formatOptions 50 "$png" --out "$avif" >/dev/null
 	else
 		sips -s format avif -s formatOptions 50 "$png" --out "$avif" >/dev/null

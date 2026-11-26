@@ -45,6 +45,11 @@ if ( ! defined( 'ABSPATH' ) ) {
 final class EmailHooks implements Hookable {
 
 	/**
+	 * The order page's style handle, the plugin's own, so a theme that dequeues WooCommerce's styles keeps it (D-450).
+	 */
+	private const string STYLE = 'cbuild-order-page';
+
+	/**
 	 * A part's row, under its kit.
 	 */
 	private const string INDENT = '.cbuild-order-part td:first-child, .cbuild-order-part th:first-child { padding-inline-start: 24px; }';
@@ -76,14 +81,17 @@ final class EmailHooks implements Hookable {
 	}
 
 	/**
-	 * On an order's own page, in My account and after checkout: a part's row indented under its kit, beside
-	 * WooCommerce's own styles.
+	 * On an order's own page, in My account and after checkout: a part's row indented under its kit. On the plugin's
+	 * own handle, not WooCommerce's: Kadence and Storefront dequeue `woocommerce-general` (D-450).
 	 *
 	 * @since 0.8.0
 	 */
 	public function pageStyles(): void {
 		if ( function_exists( 'is_account_page' ) && ( is_account_page() || is_order_received_page() ) ) {
-			wp_add_inline_style( 'woocommerce-general', self::INDENT );
+			// A handle with no file: WordPress prints what is added to it and asks for nothing (as the carts' styles).
+			wp_register_style( self::STYLE, false, array(), CBUILD_VERSION );
+			wp_add_inline_style( self::STYLE, self::INDENT );
+			wp_enqueue_style( self::STYLE );
 		}
 	}
 

@@ -183,7 +183,7 @@ final class StateAnswerDetailTest extends TestCase {
 		$pictured = $bare->withPictures( static fn(): string => 'https://example.com/pictures/tile.webp' );
 		self::assertNotSame( $bare, $pictured );
 		self::assertSame( 'https://example.com/pictures/tile.webp', $pictured->of( $state )['presets'][0]['image']['src'] ?? null );
-		self::assertSame( InMemoryPartCards::card( 101 )['image'], $bare->of( $state )['presets'][0]['image'], 'the answer withPictures() was called on shows the first part\'s photo' );
+		self::assertSame( InMemoryPartCards::card( 101 )['large'], $bare->of( $state )['presets'][0]['image'], 'the answer withPictures() was called on shows the first part\'s photo' );
 	}
 
 	// D-252: the tiles show at the start alone; on a build begun the tile keeps its first part's photo, which the step
@@ -192,8 +192,8 @@ final class StateAnswerDetailTest extends TestCase {
 		$this->stock( Shop::parts(), true );
 		$answer = $this->bare()->of( $this->state( array(), SlotKey::GRIP ) );
 
-		self::assertSame( InMemoryPartCards::card( 101 )['image'], $answer['presets'][0]['image'], 'Street\'s deck' );
-		self::assertSame( InMemoryPartCards::card( 103 )['image'], $answer['presets'][1]['image'], 'Park\'s deck' );
+		self::assertSame( InMemoryPartCards::card( 101 )['large'], $answer['presets'][0]['image'], 'Street\'s deck' );
+		self::assertSame( InMemoryPartCards::card( 103 )['large'], $answer['presets'][1]['image'], 'Park\'s deck' );
 		self::assertSame( array( array( 701, 101, 103 ) ), $this->cards->asked, 'the grip on show, then each preset\'s deck' );
 
 		$this->cards->missing = array( 101 );
@@ -218,7 +218,7 @@ final class StateAnswerDetailTest extends TestCase {
 		$picked = $answer->of( $this->state( array( SlotKey::DECK => 101 ), SlotKey::DECK ) );
 		self::assertSame( SlotKey::DECK, $picked['step'] );
 		self::assertSame( array(), $asked, 'a deck picked, still on the deck step' );
-		self::assertSame( InMemoryPartCards::card( 101 )['image'], $picked['presets'][0]['image'] );
+		self::assertSame( InMemoryPartCards::card( 101 )['large'], $picked['presets'][0]['image'] );
 	}
 
 	// Spec, Presets: each tile shows its total. A state that carries no build for a preset shows it at nothing, and

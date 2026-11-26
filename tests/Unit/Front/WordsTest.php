@@ -10,6 +10,9 @@ declare( strict_types=1 );
 namespace CreativeBranding\SkateboardBuilder\Tests\Unit\Front;
 
 use CreativeBranding\SkateboardBuilder\Domain\Fit\Problem;
+use CreativeBranding\SkateboardBuilder\Domain\Guide\RidingStyle;
+use CreativeBranding\SkateboardBuilder\Domain\Guide\Span;
+use CreativeBranding\SkateboardBuilder\Domain\Guide\Tier;
 use CreativeBranding\SkateboardBuilder\Domain\Measure\Measure;
 use CreativeBranding\SkateboardBuilder\Domain\Rule\Finding;
 use CreativeBranding\SkateboardBuilder\Domain\Rule\MessageCode;
@@ -222,6 +225,84 @@ final class WordsTest extends TestCase {
 		self::assertSame( array( 'Only in 8.25″', '' ), array( Words::only( '8.25″' ), Words::only( '' ) ) );
 	}
 
+	// Cowork's 1.2.0 review, F31 (#148, D-399): a deck's other widths take one line of its card. One or two are named; past
+	// two they are counted, so a deck sold in seven widths says six in a few words, not three lines of them.
+	public function test_a_decks_other_widths_are_named_up_to_two_and_counted_past_two(): void {
+		self::assertSame( '', Words::also( array() ) );
+		self::assertSame( 'Also in 8″', Words::also( array( '8″' ) ) );
+		self::assertSame( 'Also in 8″ and 8.5″', Words::also( array( '8″', '8.5″' ) ) );
+		self::assertSame( 'Also in 3 other widths', Words::also( array( '8″', '8.5″', '8.75″' ) ) );
+		self::assertSame( 'Also in 6 other widths', Words::also( array( '7.75″', '8″', '8.125″', '8.25″', '8.38″', '8.75″' ) ) );
+	}
+
+	// #137 (D-392): a part a ready build picks says which, by the builds' names as the site's language lists them, and
+	// nothing where none does.
+	public function test_a_part_a_ready_build_picks_says_which(): void {
+		self::assertSame(
+			array( 'Picked for Street', 'Picked for Street and Cruiser', 'Picked for Street, Park and Cruiser', '' ),
+			array( Words::pickedFor( array( 'Street' ) ), Words::pickedFor( array( 'Street', 'Cruiser' ) ), Words::pickedFor( array( 'Street', 'Park', 'Cruiser' ) ), Words::pickedFor( array() ) )
+		);
+	}
+
+	/**
+	 * @return iterable<string, array{float, int, string, string}>
+	 */
+	public static function ratings(): iterable {
+		yield 'one review' => array( 5.0, 1, '.', '5 out of 5, 1 review' );
+		yield 'a half' => array( 4.5, 12, '.', '4.5 out of 5, 12 reviews' );
+		yield 'as WooCommerce keeps it, two places' => array( 4.33, 3, '.', '4.3 out of 5, 3 reviews' );
+		yield 'rounded to a whole' => array( 3.96, 1234, '.', '4 out of 5, 1,234 reviews' );
+		yield "the shop's decimal comma" => array( 4.5, 2, ',', '4,5 out of 5, 2 reviews' );
+	}
+
+	// #137 (D-392): a rating said as a person reads it, its one decimal in the shop's own separator, its count in the
+	// site's, and a review or reviews by the count.
+	#[DataProvider( 'ratings' )]
+	public function test_a_rating_is_said_out_of_five_with_its_count( float $average, int $count, string $decimal, string $said ): void {
+		$GLOBALS['cbuild_test_decimal'] = $decimal;
+		try {
+			self::assertSame( $said, Words::rating( $average, $count ) );
+		} finally {
+			unset( $GLOBALS['cbuild_test_decimal'] );
+		}
+	}
+
+	/**
+	 * @return iterable<string, array{float, int, string, string}>
+	 */
+	public static function scores(): iterable {
+		yield 'one review' => array( 5.0, 1, '.', '5 (1)' );
+		yield 'a half' => array( 4.5, 12, '.', '4.5 (12)' );
+		yield 'as WooCommerce keeps it, two places' => array( 4.33, 3, '.', '4.3 (3)' );
+		yield 'rounded to a whole' => array( 3.96, 1234, '.', '4 (1,234)' );
+		yield "the shop's decimal comma" => array( 4.5, 2, ',', '4,5 (2)' );
+	}
+
+	// #137 (D-393): the rating shown beside the stars, short so it shares a line with the ready builds' pick on a card
+	// as narrow as a desktop's: the average as the sentence has it, and the count. The sentence is what is said.
+	#[DataProvider( 'scores' )]
+	public function test_a_rating_is_shown_short_beside_its_stars( float $average, int $count, string $decimal, string $shown ): void {
+		$GLOBALS['cbuild_test_decimal'] = $decimal;
+		try {
+			self::assertSame( $shown, Words::score( $average, $count ) );
+		} finally {
+			unset( $GLOBALS['cbuild_test_decimal'] );
+		}
+	}
+
+	// The auditor's 1.3.0 minor: a rating is no price, so it is written in the language's decimal separator, as its
+	// count is, not the shop's for prices: a shop in dollars with a page in French says "4,5".
+	public function test_a_rating_takes_the_languages_decimal_separator_not_the_shops_for_prices(): void {
+		$GLOBALS['cbuild_test_decimal']       = ',';
+		$GLOBALS['cbuild_test_price_decimal'] = '.';
+		try {
+			self::assertSame( '4,5 (2)', Words::score( 4.5, 2 ) );
+			self::assertSame( '4,5 out of 5, 2 reviews', Words::rating( 4.5, 2 ) );
+		} finally {
+			unset( $GLOBALS['cbuild_test_decimal'], $GLOBALS['cbuild_test_price_decimal'] );
+		}
+	}
+
 	public function test_a_spec_this_version_does_not_know_is_named_as_it_came(): void {
 		self::assertSame(
 			'kingpin_angle is not filled in for this part, so its fit cannot be checked.',
@@ -381,5 +462,64 @@ final class WordsTest extends TestCase {
 		self::assertSame( '8.25″ complete', Words::complete( '8.25″', array() ) );
 		self::assertSame( 'Complete: Rascals and Retna 54 mm', Words::complete( '', array( 'Rascals', 'Retna 54 mm' ) ) );
 		self::assertSame( 'A complete', Words::complete( '', array() ) );
+	}
+
+	// #135 (D-397): what each swap does to the total, said on its control, and what one swapped, said after it.
+	public function test_a_swap_says_what_it_does_to_the_total_and_after_it_what_it_swapped(): void {
+		self::assertSame( 'Same board for $3.00 less', Words::swap( 'board', '', -300, '$3.00' ) );
+		self::assertSame( 'For less: Retna 52 mm, $2.00 less', Words::swap( 'less', 'Retna 52 mm', -200, '$2.00' ) );
+		self::assertSame( 'Step up: Bones 54 mm, $1.50 more', Words::swap( 'better', 'Bones 54 mm', 150, '$1.50' ) );
+		self::assertSame( 'Step up: Bones 54 mm, $0.50 less', Words::swap( 'better', 'Bones 54 mm', -50, '$0.50' ) );
+		self::assertSame( 'Step up: Bones 54 mm, same price', Words::swap( 'better', 'Bones 54 mm', 0, '$0.00' ) );
+		self::assertSame( 'Swapped: wheels.', Words::swapped( array( 'Wheels' ) ) );
+		// The slots as the page's language joins a list, each in its sentence's case, not run together with commas.
+		self::assertSame( 'Swapped: wheels and hardware.', Words::swapped( array( 'Wheels', 'Hardware' ) ) );
+		self::assertSame( 'Swapped: wheels, hardware and bearings.', Words::swapped( array( 'Wheels', 'Hardware', 'Bearings' ) ) );
+	}
+
+	// Milestone 13's walkthrough (D-460): a list joined in the plugin's own words, never core's. In French,
+	// tests/Integration/ListWordsTest.php.
+	public function test_a_list_is_one_item_alone_two_joined_by_and_and_more_by_commas_and_the_last_and(): void {
+		self::assertSame( '', Words::joined( array() ) );
+		self::assertSame( 'wheels', Words::joined( array( 'wheels' ) ) );
+		self::assertSame( 'wheels and hardware', Words::joined( array( 'wheels', 'hardware' ) ) );
+		self::assertSame( 'wheels, bearings and hardware', Words::joined( array( 'wheels', 'bearings', 'hardware' ) ) );
+		self::assertSame( 'deck, wheels, bearings and hardware', Words::joined( array( 'deck', 'wheels', 'bearings', 'hardware' ) ) );
+		self::assertSame( '8″, 8.5″ or 9″', Words::either( array( '8″', '8.5″', '9″' ) ), 'the choice takes the same separator' );
+	}
+
+	// #134: each build Help me choose recommends is named by its tier, with a line on how its parts were chosen.
+	public function test_each_tier_of_a_recommended_build_has_its_name_and_its_line(): void {
+		$words = array();
+		foreach ( Tier::cases() as $tier ) {
+			$words[ $tier->value ] = array( Words::tier( $tier ), Words::tierLine( $tier ) );
+		}
+		self::assertSame(
+			array(
+				'budget'  => array( 'Budget build', 'The lowest-priced part that fits in each slot.' ),
+				'mid'     => array( 'Mid-range build', 'A part from the middle of the prices in each slot.' ),
+				'premium' => array( 'High-end build', 'The highest-priced part that fits in each slot.' ),
+				'only'    => array( 'Ready build', 'The one build the shop can make from these answers.' ),
+			),
+			$words
+		);
+	}
+
+	// #134: the wheel sizes recommended are said with where they suit, for each style the guided start asks about.
+	public function test_the_wheels_recommended_are_said_with_where_they_suit(): void {
+		$span  = new Span( self::mm( '53' ), self::mm( '56' ) );
+		$words = array();
+		foreach ( RidingStyle::cases() as $style ) {
+			$words[ $style->value ] = Words::wheelsFor( $style, $span );
+		}
+		self::assertSame(
+			array(
+				'street'   => "Wheels of 53\u{00A0}mm to 56\u{00A0}mm suit street skating.",
+				'park'     => "Wheels of 53\u{00A0}mm to 56\u{00A0}mm suit a skatepark.",
+				'bowl'     => "Wheels of 53\u{00A0}mm to 56\u{00A0}mm suit bowls and transition.",
+				'cruising' => "Wheels of 53\u{00A0}mm to 56\u{00A0}mm suit cruising.",
+			),
+			$words
+		);
 	}
 }

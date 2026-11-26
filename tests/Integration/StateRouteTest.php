@@ -1036,6 +1036,8 @@ final class StateRouteTest extends IntegrationTestCase {
 			for ( $at = count( $this->parts ); $at < $upTo; $at++ ) {
 				$this->parts[ 'deck ' . $at ] = $this->part( 'Deck ' . $at, '65', array( 'deck_width' => '8.2500' ), $decks );
 				$layered( $this->parts[ 'deck ' . $at ] );
+				// Each with a review, so each card has a rating, read with the products the cards already load (#137).
+				self::review( $this->parts[ 'deck ' . $at ], 4, $at );
 			}
 			$settled();
 		};
@@ -1077,6 +1079,8 @@ final class StateRouteTest extends IntegrationTestCase {
 		self::assertSame( array( $widths['8.2500'] ), array_column( array_filter( $this->answer( $widen )['steps'], static fn( array $step ): bool => 'deck' === $step['slot'] ), 'picked' ), 'the width moves the deck' );
 		$few = array( $count( false ), $count( true ), $moved( false ), $moved( true ), $widened( false ), $widened( true ) );
 		self::assertNotNull( $this->answer()['options'][0]['board'] ?? null, 'a deck\'s card draws its board' );
+		$rated = array_filter( array_column( array_column( array_column( $this->answer( array( 'width' => '8.25in' ) )['shelf']['looks'], 'part' ), 'card' ), 'rating' ) );
+		self::assertNotSame( array(), $rated, 'the cards counted have their ratings' );
 
 		// More parts than a step lists, and then twice as many.
 		$more( 30 );
@@ -1100,6 +1104,38 @@ final class StateRouteTest extends IntegrationTestCase {
 		self::assertLessThanOrEqual( 60, $cold, 'cold' );
 		self::assertLessThanOrEqual( 15, $movedWarm, 'a move, warm' );
 		self::assertLessThanOrEqual( 60, $movedCold, 'a move, cold' );
+
+		// The review with every slot picked, where smart swaps are worked out (the auditor's 1.3.0 should-fix 2 and 7):
+		// the wheels' parts to try grow, some ranked, and the review asks as many queries at each size, warm and cold.
+		$whole     = $this->whole();
+		$this->kit = $whole['kit'];
+		$review    = array( 'cbuild' => array_map( 'strval', $whole['picks'] ) + array( 'step' => 'review' ) );
+		// Each size asked once before it is counted: the parts just saved move WooCommerce's term counts, whose transient
+		// the first cold request after writes with its timeout, two queries that are WooCommerce's and not the review's.
+		$reviewed  = function ( bool $cold ) use ( $count, $review ): int {
+			$count( $cold, $review );
+			return $count( $cold, $review );
+		};
+		$added     = 0;
+		$wheels    = function ( int $upTo ) use ( &$added, $settled ): void {
+			for ( ; $added < $upTo; $added++ ) {
+				// For less and dearer than the 10 picked, every third ranked.
+				$wheel = $this->wheels( 'Wheels ' . $added, 0 === $added % 2 ? '8' : '12' );
+				if ( 0 === $added % 3 ) {
+					$product = wc_get_product( $wheel );
+					$product->update_meta_data( Options::META_RANK, (string) ( $added + 1 ) );
+					$product->save();
+				}
+			}
+			$settled();
+		};
+		$wheels( 3 );
+		self::assertNotSame( array(), $this->answer( $review )['swaps'], 'the review offers swaps' );
+		$sizes = array( $reviewed( false ), $reviewed( true ) );
+		$wheels( 15 );
+		self::assertSame( $sizes, array( $reviewed( false ), $reviewed( true ) ), 'the review, 4 wheels or 16' );
+		$wheels( 45 );
+		self::assertSame( $sizes, array( $reviewed( false ), $reviewed( true ) ), 'the review, 4 wheels or 46' );
 	}
 
 	/**
@@ -1436,5 +1472,464 @@ final class StateRouteTest extends IntegrationTestCase {
 		self::assertSame( '$60.00', $price() );
 		$dealer = true;
 		self::assertSame( '$45.00', $price() );
+	}
+
+	/**
+	 * A review of a product, as a shopper leaves one, and WooCommerce's numbers worked out again from its reviews: the
+	 * rating's meta is added after `wp_insert_comment()` counts the post's comments (wp-includes/comment.php:2206,
+	 * :2220), so the count is asked for again, as WooCommerce's own review form has it done.
+	 */
+	private static function review( int $product, int $rating, int $shopper ): void {
+		$comment = wp_insert_comment(
+			array(
+				'comment_post_ID'      => $product,
+				'comment_type'         => 'review',
+				'comment_approved'     => 1,
+				'comment_author'       => 'Shopper ' . $shopper,
+				'comment_author_email' => 'shopper+' . $shopper . '@example.com',
+				'comment_content'      => 'Rides well.',
+				'comment_meta'         => array( 'rating' => $rating ),
+			)
+		);
+		self::assertIsInt( $comment );
+		\WC_Comments::clear_transients( $product );
+	}
+
+	/**
+	 * #137 (D-392): a part's card has its star rating and review count from WooCommerce's product API, which Creative
+	 * Reviews keeps right for its reviews, so it shows with that plugin or without it. None where the shop shows no
+	 * ratings (`wc_review_ratings_enabled()`, includes/wc-conditional-functions.php:531) or the part has no reviews. A
+	 * new review moves it, kept card and all, and a variation has its product's.
+	 */
+	public function test_a_card_has_the_rating_the_shop_shows_and_none_where_it_shows_none(): void {
+		$options = array( 'woocommerce_enable_reviews', 'woocommerce_enable_review_rating' );
+		$was     = array_map( 'get_option', array_combine( $options, $options ) );
+		update_option( 'woocommerce_enable_reviews', 'yes' );
+		update_option( 'woocommerce_enable_review_rating', 'yes' );
+		$whole     = $this->whole();
+		$this->kit = $whole['kit'];
+		self::review( $this->parts['truck 139'], 5, 1 );
+		self::review( $this->parts['truck 139'], 4, 2 );
+		$trucks = function (): array {
+			$cards  = array();
+			$answer = $this->answer(
+				array(
+					'picks' => array( 'deck' => $this->parts['deck 8.0'] ),
+					'step'  => 'trucks',
+				)
+			);
+			// The 149s do not fit the 8.0 deck, and are listed as hidden, with their cards.
+			foreach ( array_merge( $answer['options'], $answer['hidden'] ) as $option ) {
+				$cards[ $option['id'] ] = $option['card']['rating'];
+			}
+			return $cards;
+		};
+		self::assertSame(
+			array(
+				'average' => 4.5,
+				'count'   => 2,
+				'text'    => '4.5 out of 5, 2 reviews',
+			),
+			$trucks()[ $this->parts['truck 139'] ]
+		);
+		self::assertNull( $trucks()[ $this->parts['truck 149'] ], 'a part with no reviews' );
+
+		// The shop's ratings off, then its reviews: none, though the card is kept.
+		update_option( 'woocommerce_enable_review_rating', 'no' );
+		self::assertNull( $trucks()[ $this->parts['truck 139'] ], 'ratings off' );
+		update_option( 'woocommerce_enable_review_rating', 'yes' );
+		update_option( 'woocommerce_enable_reviews', 'no' );
+		self::assertNull( $trucks()[ $this->parts['truck 139'] ], 'reviews off' );
+		update_option( 'woocommerce_enable_reviews', 'yes' );
+
+		// A third review: the kept card is read again with the product it was saved with.
+		self::review( $this->parts['truck 139'], 3, 3 );
+		self::assertSame( '4 out of 5, 3 reviews', $trucks()[ $this->parts['truck 139'] ]['text'] ?? null );
+
+		// A deck sold in widths: reviewed as one product, each width has its rating.
+		$parent = new \WC_Product_Variable();
+		$parent->set_name( 'Reviewed widths' );
+		$parent->set_status( 'publish' );
+		$parent->save();
+		wp_set_object_terms( $parent->get_id(), array( $this->categories['deck'] ), 'product_cat' );
+		$variation = new \WC_Product_Variation();
+		$variation->set_parent_id( $parent->get_id() );
+		$variation->set_status( 'publish' );
+		$variation->set_regular_price( '65' );
+		$variation->set_attributes( array( 'width' => '8.0000' ) );
+		$variation->update_meta_data( Options::META_SPECS, array( 'deck_width' => '8.0000' ) );
+		$variation->save();
+		$this->service( SpecIndexer::class )->index( $variation->get_id() );
+		self::review( $parent->get_id(), 4, 4 );
+		$decks = array();
+		foreach ( $this->answer( array( 'width' => '8in' ) )['shelf']['looks'] as $look ) {
+			$decks[ $look['part']['id'] ] = $look['part']['card']['rating'];
+		}
+		self::assertSame( '4 out of 5, 1 review', $decks[ $variation->get_id() ]['text'] ?? null, 'its product\'s' );
+
+		foreach ( $was as $option => $value ) {
+			update_option( $option, $value );
+		}
+	}
+
+	/**
+	 * #137 (D-392): each option names the ready builds shown that pick it, by their places among the kit's, and the
+	 * view's card says so in words; none where the kit's ready builds are not shown (#104).
+	 */
+	public function test_an_option_names_the_ready_builds_shown_that_pick_it(): void {
+		$whole     = $this->whole(
+			null,
+			static fn( array $picks ): array => array(
+				array(
+					'name'  => 'Street',
+					'picks' => $picks,
+				),
+				array(
+					'name'  => 'Ledge',
+					'picks' => array( 'trucks' => $picks['trucks'] ) + $picks,
+				),
+			)
+		);
+		$this->kit = $whole['kit'];
+		$build     = array(
+			'deck' => (string) $whole['picks']['deck'],
+			'step' => 'trucks',
+		);
+		$answer    = $this->answer( array( 'cbuild' => $build ) );
+		$named     = array_column( array_merge( $answer['options'], $answer['hidden'] ), 'presets', 'id' );
+		self::assertSame( array( 0, 1 ), $named[ $this->parts['truck 139'] ] );
+		self::assertSame( array(), $named[ $this->parts['truck 149'] ], 'hidden, and no ready build picks it' );
+		$card = array_column( $answer['view']['step']['options'], null, 'id' )[ $this->parts['truck 139'] ];
+		self::assertSame( array( 'Picked for Street and Ledge', true ), array( $card['pickedFor'], $card['hasPickedFor'] ) );
+
+		$off       = $this->whole( array( 'schema_version' => 1, 'show_presets' => false ) );
+		$this->kit = $off['kit'];
+		$hidden    = $this->answer(
+			array(
+				'cbuild' => array(
+					'deck' => (string) $off['picks']['deck'],
+					'step' => 'trucks',
+				),
+			)
+		);
+		self::assertSame( array( array() ), array_values( array_unique( array_column( array_merge( $hidden['options'], $hidden['hidden'] ), 'presets' ), SORT_REGULAR ) ) );
+		self::assertFalse( array_column( $hidden['view']['step']['options'], null, 'id' )[ $this->parts['truck 139'] ]['hasPickedFor'] );
+	}
+
+	/**
+	 * D-409, wired to #137's cards: the kit's Ready-build picks on cards and Ratings on cards. Picks off, no card says
+	 * "Picked for"; ratings off, or WooCommerce's star ratings off, no card has a star or a score. Each is its own: one
+	 * off leaves the other. A kit saved before 1.2.0, or with 1.2.0's settings and none of the keys, shows both. The
+	 * view says so for the page and the state route alike, so the card's line is hidden, not drawn empty.
+	 */
+	public function test_the_kits_switches_take_the_cards_picks_and_ratings_away_and_a_kit_without_them_shows_both(): void {
+		$options = array( 'woocommerce_enable_reviews', 'woocommerce_enable_review_rating' );
+		$was     = array_map( 'get_option', array_combine( $options, $options ) );
+		update_option( 'woocommerce_enable_reviews', 'yes' );
+		update_option( 'woocommerce_enable_review_rating', 'yes' );
+		self::review( $this->parts['truck 139'], 5, 1 );
+		self::review( $this->parts['truck 139'], 4, 2 );
+		$card = function ( ?array $settings ): array {
+			$whole     = $this->whole(
+				null,
+				static fn( array $picks ): array => array(
+					array(
+						'name'  => 'Street',
+						'picks' => $picks,
+					),
+				),
+				$settings
+			);
+			$this->kit = $whole['kit'];
+			$answer    = $this->answer(
+				array(
+					'cbuild' => array(
+						'deck' => (string) $whole['picks']['deck'],
+						'step' => 'trucks',
+					),
+				)
+			);
+			$card = array_column( $answer['view']['step']['options'], null, 'id' )[ $this->parts['truck 139'] ];
+			return array(
+				'picks'  => array( $card['pickedFor'], $card['hasPickedFor'] ),
+				'rating' => array( $card['score'], $card['rated'], $card['hasRating'] ),
+			);
+		};
+		$picks  = array( 'Picked for Street', true );
+		$rating = array( '4.5 (2)', '4.5 out of 5, 2 reviews', true );
+		$none   = array( '', '', false );
+		foreach ( array(
+			'a kit saved before 1.2.0'               => null,
+			'1.2.0\'s settings, none of the keys'    => array(
+				'schema_version' => 1,
+				'start_button'   => true,
+			),
+			'each said on'                           => array(
+				'schema_version' => 1,
+				'picks'          => true,
+				'ratings'        => true,
+			),
+		) as $case => $settings ) {
+			self::assertSame(
+				array(
+					'picks'  => $picks,
+					'rating' => $rating,
+				),
+				$card( $settings ),
+				$case
+			);
+		}
+		self::assertSame(
+			array(
+				'picks'  => array( '', false ),
+				'rating' => $rating,
+			),
+			$card(
+				array(
+					'schema_version' => 1,
+					'picks'          => false,
+				)
+			),
+			'picks off: no line, and the rating stays'
+		);
+		self::assertSame(
+			array(
+				'picks'  => $picks,
+				'rating' => $none,
+			),
+			$card(
+				array(
+					'schema_version' => 1,
+					'ratings'        => false,
+				)
+			),
+			'ratings off: no star or score, and the picks stay'
+		);
+		update_option( 'woocommerce_enable_review_rating', 'no' );
+		self::assertSame(
+			array(
+				'picks'  => $picks,
+				'rating' => $none,
+			),
+			$card( null ),
+			'the kit\'s on, WooCommerce\'s star ratings off'
+		);
+
+		foreach ( $was as $option => $value ) {
+			update_option( $option, $value );
+		}
+	}
+
+	/**
+	 * A set of wheels in the whole kit's wheels category, indexed.
+	 *
+	 * @param string $name     Its name.
+	 * @param string $price    Its price, as the shop enters it.
+	 * @param string $diameter Its diameter in millimetres.
+	 */
+	private function wheels( string $name, string $price, string $diameter = '52.0000' ): int {
+		return $this->part(
+			$name,
+			$price,
+			array(
+				'wheel_diameter' => $diameter,
+				'set_size'       => '4',
+			),
+			$this->categories['wheels']
+		);
+	}
+
+	/**
+	 * The swaps an answer offers, each as its kind and the part each slot takes.
+	 *
+	 * @param array<string, mixed> $answer The answer.
+	 * @return list<array{string, array<string, int>}>
+	 */
+	private static function swaps( array $answer ): array {
+		$swaps = array();
+		foreach ( $answer['swaps'] as $swap ) {
+			$swaps[] = array( $swap['kind'], array_column( $swap['parts'], 'part', 'slot' ) );
+		}
+		return $swaps;
+	}
+
+	public function test_the_review_offers_each_swap_at_the_change_it_makes_to_the_total_with_tax_and_the_shops_currency(): void {
+		update_option( 'woocommerce_calc_taxes', 'yes' );
+		update_option( 'woocommerce_prices_include_tax', 'no' );
+		update_option( 'woocommerce_tax_display_shop', 'incl' );
+		update_option( 'woocommerce_currency', 'EUR' );
+		update_option( 'woocommerce_currency_pos', 'right_space' );
+		update_option( 'woocommerce_price_decimal_sep', ',' );
+		update_option( 'woocommerce_price_thousand_sep', '.' );
+		$rate = \WC_Tax::_insert_tax_rate(
+			array(
+				'tax_rate_country'  => '',
+				'tax_rate'          => '13.0000',
+				'tax_rate_name'     => 'Tax',
+				'tax_rate_priority' => 1,
+				'tax_rate_order'    => 1,
+				'tax_rate_class'    => '',
+			)
+		);
+		try {
+			$whole     = $this->whole();
+			$this->kit = $whole['kit'];
+			$cheaper   = $this->wheels( 'Wheels for less', '7.35' );
+			$better    = $this->wheels( 'Wheels, a step up', '13.10' );
+			$this->wheels( 'Wheels, a step further', '19.95' );
+			// The cheapest, but too big for the trucks without risers; and sold out.
+			$this->wheels( 'Wheels, too big', '5', '60.0000' );
+			$sold = wc_get_product( $this->wheels( 'Wheels, sold out', '6' ) );
+			$sold->set_stock_status( 'outofstock' );
+			$sold->save();
+			$bearings = $this->part(
+				'Bearings for less',
+				'8.20',
+				array(
+					'bearing_bore' => '8.0000',
+					'set_size'     => '8',
+				),
+				$this->categories['bearings']
+			);
+			$picks    = array_map( 'strval', $whole['picks'] );
+			$review   = $this->answer( array( 'cbuild' => $picks + array( 'step' => 'review' ) ) );
+			self::assertSame(
+				array(
+					array(
+						'board',
+						array(
+							'wheels'   => $cheaper,
+							'bearings' => $bearings,
+						),
+					),
+					array( 'less', array( 'wheels' => $cheaper ) ),
+					array( 'better', array( 'wheels' => $better ) ),
+					array( 'less', array( 'bearings' => $bearings ) ),
+				),
+				self::swaps( $review ),
+				'the same board for less first, then each slot in step order; the deck is never swapped, and the hardware and grip have nothing for less'
+			);
+			self::assertSame( array( 'Wheels for less', 'Bearings for less' ), array_column( $review['swaps'][0]['parts'], 'name' ) );
+			self::assertSame( array( $whole['picks']['wheels'], $whole['picks']['bearings'] ), array_column( $review['swaps'][0]['parts'], 'was' ) );
+			foreach ( $review['swaps'] as $swap ) {
+				$after = $picks;
+				foreach ( $swap['parts'] as $part ) {
+					$after[ $part['slot'] ] = (string) $part['part'];
+				}
+				$swapped = $this->answer( array( 'cbuild' => $after + array( 'step' => 'review' ) ) );
+				self::assertTrue( $swapped['ready'], $swap['kind'] . ': the build after it fits and is in stock' );
+				self::assertSame( array(), $swapped['problems'] );
+				self::assertSame( $swapped['total']['total']['amount'] - $review['total']['total']['amount'], $swap['change']['amount'], $swap['kind'] . ': the difference shown is the total\'s change' );
+				self::assertMatchesRegularExpression( '/\A[0-9]+,[0-9]{2}\x{00A0}€\z/u', $swap['change']['text'], 'written as the shop writes prices, with no sign' );
+			}
+			// With tax: 10.00 and 7.35 are 11.30 and 8.31 a set, so the wheels for less take 2.99 off.
+			self::assertSame( array( -299, '2,99' . "\u{00A0}" . '€' ), array( $review['swaps'][1]['change']['amount'], $review['swaps'][1]['change']['text'] ) );
+			self::assertSame( 350, $review['swaps'][2]['change']['amount'], '13.10 with tax is 14.80, 3.50 more' );
+		} finally {
+			\WC_Tax::_delete_tax_rate( $rate );
+		}
+	}
+
+	public function test_better_follows_the_shops_ranks_or_a_plugins_and_a_step_offers_its_own_picks_swaps_alone(): void {
+		$whole     = $this->whole();
+		$this->kit = $whole['kit'];
+		$picks     = array_map( 'strval', $whole['picks'] );
+		$dearer    = $this->wheels( 'Wheels, dearer', '12' );
+		$ranked    = $this->wheels( 'Wheels, ranked next', '25' );
+		$top       = $this->wheels( 'Wheels, ranked top', '15' );
+		$rank      = static function ( int $part, string $rank ): void {
+			$product = wc_get_product( $part );
+			$product->update_meta_data( Options::META_RANK, $rank );
+			$product->save();
+		};
+		$rank( $whole['picks']['wheels'], '1' );
+		$rank( $ranked, '2' );
+		$rank( $top, '7' );
+
+		$at = fn( string $step, array $build = array() ): array => $this->answer( array( 'cbuild' => ( array() === $build ? $picks : $build ) + array( 'step' => $step ) ) );
+		self::assertSame( array( array( 'better', array( 'wheels' => $ranked ) ) ), self::swaps( $at( 'wheels' ) ), 'the next rank up, not the top or the next price; on the wheels step, the wheels\' alone' );
+
+		add_filter( 'cbuild_part_rank', static fn( ?int $rank, int $part ): ?int => $part === $top ? 2 : $rank, 10, 2 );
+		self::assertSame( array( array( 'better', array( 'wheels' => $top ) ) ), self::swaps( $at( 'wheels' ) ), 'another plugin\'s rank, the cheaper of two at 2' );
+		remove_all_filters( 'cbuild_part_rank' );
+
+		add_filter( 'cbuild_part_rank', static fn(): ?int => null );
+		self::assertSame( array( array( 'better', array( 'wheels' => $dearer ) ) ), self::swaps( $at( 'wheels' ) ), 'no ranks: the next dearer' );
+		remove_all_filters( 'cbuild_part_rank' );
+
+		self::assertSame( array(), $at( 'trucks' )['swaps'], 'the trucks have nothing else that fits' );
+		$open = $picks;
+		unset( $open['wheels'] );
+		self::assertSame( array(), $at( 'wheels', $open )['swaps'], 'a step with no pick offers none' );
+		self::assertSame( array(), $at( 'deck' )['swaps'], 'the deck is never swapped' );
+	}
+
+	// The auditor's 1.3.0 minor: a swap followed after its part sold out, between the offer and the press. The link is
+	// no promise: the build is checked again as it arrives, keeps the picks it asks for, names the part, and is not
+	// ready, as any build link with a part sold out is.
+	public function test_a_swap_whose_part_sold_out_since_it_was_offered_keeps_its_picks_names_the_part_and_is_not_ready(): void {
+		$whole     = $this->whole();
+		$this->kit = $whole['kit'];
+		$cheaper   = $this->wheels( 'Wheels for less', '7' );
+		$picks     = array_map( 'strval', $whole['picks'] );
+		$review    = $this->answer( array( 'cbuild' => $picks + array( 'step' => 'review' ) ) );
+		self::assertContains( array( 'less', array( 'wheels' => $cheaper ) ), self::swaps( $review ), 'offered while in stock' );
+
+		$product = wc_get_product( $cheaper );
+		$product->set_stock_status( 'outofstock' );
+		$product->save();
+		$swapped = array( 'wheels' => (string) $cheaper ) + $picks;
+		$after   = $this->answer(
+			array(
+				'cbuild' => $swapped + array(
+					'_undo' => array( 'wheels' => $picks['wheels'] ),
+					'step'  => 'review',
+				),
+			)
+		);
+		$picked  = array_column( $after['steps'], 'picked', 'slot' );
+		foreach ( $swapped as $slot => $part ) {
+			self::assertSame( (int) $part, $picked[ $slot ] ?? null, $slot . ': the picks the link asks for, kept' );
+		}
+		self::assertFalse( $after['ready'], 'not ready with a part sold out' );
+		self::assertSame(
+			array(
+				array(
+					'code' => 'part_sold_out',
+					'slot' => 'wheels',
+					'part' => $cheaper,
+				),
+			),
+			array_map( static fn( array $problem ): array => array_intersect_key( $problem, array_flip( array( 'code', 'slot', 'part' ) ) ), $after['problems'] ),
+			'the part sold out named, in its slot'
+		);
+	}
+
+	public function test_a_kit_with_smart_swaps_off_offers_none_and_one_saved_without_the_setting_offers_them(): void {
+		$offered = function ( ?array $settings ): array {
+			$whole     = $this->whole( null, null, $settings );
+			$this->kit = $whole['kit'];
+			$this->wheels( 'Wheels for less', '7' );
+			return $this->answer( array( 'cbuild' => array_map( 'strval', $whole['picks'] ) + array( 'step' => 'review' ) ) )['swaps'];
+		};
+		self::assertNotSame( array(), $offered( null ), 'a kit with no settings' );
+		self::assertNotSame( array(), $offered( array( 'schema_version' => 1, 'start_button' => true ) ), 'a kit saved before 1.3.0, without the setting' );
+		self::assertSame( array(), $offered( array( 'schema_version' => 1, 'swaps' => false ) ), 'switched off' );
+
+		// The filter answers after the setting, with the kit's ID.
+		$asked = array();
+		add_filter(
+			'cbuild_swaps',
+			static function ( bool $offers, int $kit ) use ( &$asked ): bool {
+				$asked[] = array( $offers, $kit );
+				return ! $offers;
+			},
+			10,
+			2
+		);
+		self::assertNotSame( array(), $offered( array( 'schema_version' => 1, 'swaps' => false ) ), 'a plugin turns them on' );
+		self::assertSame( array( array( false, $this->kit ) ), $asked );
+		self::assertSame( array(), $offered( null ), 'and off' );
+		remove_all_filters( 'cbuild_swaps' );
 	}
 }

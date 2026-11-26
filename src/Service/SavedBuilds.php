@@ -160,8 +160,20 @@ final class SavedBuilds {
 	 */
 	public function reopened( int $user, string $uuid ): ?Reopened {
 		$build = $this->find( $user, $uuid );
-		$check = null === $build ? null : $this->builds->check( $build->kit, $build->picks );
-		if ( null === $build || null === $check ) {
+		return null === $build ? null : $this->changed( $build );
+	}
+
+	/**
+	 * What changed in a build since it was saved, as `reopened()` says it, for a build the caller has already read as
+	 * its customer's: My builds' compare reads them together (#136). Null where nothing changed or its kit does not read.
+	 *
+	 * @since 1.3.0
+	 *
+	 * @param SavedBuild $build The build, the customer's own.
+	 */
+	public function changed( SavedBuild $build ): ?Reopened {
+		$check = $this->builds->check( $build->kit, $build->picks );
+		if ( null === $check ) {
 			return null;
 		}
 		try {

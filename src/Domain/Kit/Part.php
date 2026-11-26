@@ -21,6 +21,7 @@ final readonly class Part {
 	 * Constructor.
 	 *
 	 * @since 0.2.0
+	 * @since 1.3.0 The rank.
 	 *
 	 * @param int      $id      The product's or variation's id.
 	 * @param string   $brand   The brand's key, or empty when the part has none.
@@ -28,10 +29,12 @@ final readonly class Part {
 	 * @param int      $price   The price of one, in the currency's minor units.
 	 * @param bool     $inStock Whether it can be bought now.
 	 * @param int|null $stock   How many the shop holds, when it counts them; null when it does not (issue #14).
+	 * @param int|null $rank    The shop's rank of it in its slot, higher being better, before any plugin answers; null
+	 *                          for none (#135, D-434).
 	 *
 	 * @throws InvalidPart When the id is not positive or the price is negative.
 	 */
-	public function __construct( public int $id, public string $brand, public Specs $specs, public int $price, public bool $inStock, public ?int $stock = null ) {
+	public function __construct( public int $id, public string $brand, public Specs $specs, public int $price, public bool $inStock, public ?int $stock = null, public ?int $rank = null ) {
 		if ( $id < 1 ) {
 			$refused = InvalidPart::because( PartError::IdNotPositive );
 			throw $refused;

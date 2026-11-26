@@ -10,8 +10,8 @@ cd "$(dirname "$0")/.."
 # Pinned, and the plugin's zip is checked against the hash of the release these were chosen from.
 image="redis:8.10-alpine"
 name="cbuild-redis"
-plugin_version="3.0.0"
-plugin_sha256="7a03342d3defbe94cac8d0470b42dc1a1c34331b19c47205df20ceccd3c8f54a"
+plugin_version="3.0.1"
+plugin_sha256="8de85553394c4462dd43d38a403b805e8fb404d7dc34e02ecd313ea37002196b"
 
 site() {
 	npx wp-env run cli --config=.wp-env.tests.json -- bash -c "$1"

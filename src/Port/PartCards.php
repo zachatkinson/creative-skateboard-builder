@@ -28,11 +28,13 @@ interface PartCards {
 	 * @since 0.4.0
 	 *
 	 * @param list<int> $ids Parts' IDs.
-	 * @return array<int, array{name: string, url: string, price: string, stock: string, stock_class: string, image: array{src: string, width: int, height: int, srcset: string, sizes: string}|null, photo: bool, large?: array{src: string, width: int, height: int, srcset: string, sizes: string}|null}>
+	 * @return array<int, array{name: string, url: string, price: string, stock: string, stock_class: string, image: array{src: string, width: int, height: int, srcset: string, sizes: string}|null, photo: bool, large?: array{src: string, width: int, height: int, srcset: string, sizes: string}|null, rating?: array{average: float, count: int}|null}>
 	 *         `name` is plain text; `price` is the price of one as the shop formats it, in plain text; `stock` is the shop's own words for the
 	 *         part's availability, empty where the shop says nothing of a part in stock.
 	 *         `large`, from 1.1.0, is the photo uncropped at the shop's single-product size, for the picture's deck
 	 *         where it has no layer image; null, or absent, where there is no photo.
+	 *         `rating`, from 1.3.0, is the part's average rating, 0 to 5, and its review count, a variation's being its
+	 *         product's; null, or absent, where it has no reviews or the shop shows no ratings (#137).
 	 */
 	public function cards( array $ids ): array;
 
@@ -56,7 +58,8 @@ interface PartCards {
 	public function forget( int ...$ids ): void;
 
 	/**
-	 * An image from the media library as a card's photo is, or null when it is none.
+	 * An image from the media library as a ready build's tile shows it, whole, never cropped (D-461), or null when it
+	 * is none.
 	 *
 	 * @since 1.0.0
 	 *

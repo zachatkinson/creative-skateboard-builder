@@ -4,6 +4,14 @@ import type { APIResponse, Route } from '@playwright/test';
 import { test, expect, Page, inLocale } from './support/test';
 import { axe } from './support/axe';
 import { SITE } from './support/site';
+import {
+	holdAnswers,
+	now,
+	shiftsSince,
+	themeHeader,
+	watchShifts,
+	type Answer,
+} from './support/held';
 
 /**
  * Milestone 10, a long step (spec: One card per look, Search; SPEC-CONFIGURATOR): the shelf kit's deck step has 46
@@ -573,6 +581,324 @@ test.describe( 'Compact deck cards (F14)', () => {
 			).toBeGreaterThanOrEqual( held );
 			// The step's lead has done its work once the width is chosen.
 			await expect( page.locator( '.cbuild-step__lead' ) ).toBeHidden();
+		} );
+	}
+} );
+
+// Cowork's 1.2.0 review, F31 (#148), after F24: on the demo at 1440 by 900, the theme's header puts the builder 129 px
+// down, and once a width was pressed the first view held no whole deck: each card was 316 by 237 px, against 169 in
+// 1.1.0, since a deck sold in seven widths listed its six others over three lines, and the stock took one more. The
+// widths kit's six decks each come in seven widths, counted in stock, with names that wrap as the demo's do. A card
+// stays near 1.1.0's height, and the first view under the header holds a whole one on each theme (D-399).
+test.describe( 'Deck cards after a width, under a theme header (F31)', () => {
+	const widths = (): Shelf =>
+		(
+			JSON.parse(
+				readFileSync(
+					path.join( process.cwd(), 'tmp', 'e2e-builder.json' ),
+					'utf8'
+				)
+			) as { widths: Shelf }
+		 ).widths;
+
+	/**
+	 * Puts the builder `height` px below the window's top, as a theme's header above it does: the page scrolled to it, or
+	 * a block that tall put before it where the page above is shorter.
+	 *
+	 * @param page   The page.
+	 * @param height The header's height.
+	 */
+	const underHeader = ( page: Page, height: number ) =>
+		page.locator( '.cbuild' ).evaluate( ( builder, above ) => {
+			const top = builder.getBoundingClientRect().top + scrollY;
+			if ( top < above ) {
+				const header = document.createElement( 'div' );
+				header.style.blockSize = `${ above - top }px`;
+				builder.before( header );
+			}
+			scrollTo( 0, Math.max( 0, top - above ) );
+		}, height );
+
+	// 170 px, 1.1.0's card, where the names are set at the demo's size; Twenty Twenty-Five sets them at 22 px, and its
+	// card is a name's line taller.
+	for ( const [ theme, tallest ] of [
+		[ 'twentytwentyfive', 190 ],
+		[ 'kadence', 170 ],
+		[ 'storefront', 170 ],
+	] as const ) {
+		test( `shows a whole deck under a 129 px header after a width is pressed, each card ${ tallest } px at most, on ${ theme }`, async ( {
+			page,
+			context,
+			baseURL,
+		}, info ) => {
+			const phone = info.project.name.includes( 'phone' );
+			await context.addCookies( [
+				{
+					name: 'cbuild_e2e_theme',
+					value: theme,
+					url: baseURL || SITE,
+				},
+			] );
+			if ( ! phone ) {
+				await page.setViewportSize( { width: 1440, height: 900 } );
+			}
+			const url = new URL( widths().page );
+			url.searchParams.set( 'cbuild[step]', 'deck' );
+			await page.goto( url.toString() );
+			// The shopper's press, as served without the script and through the store with it.
+			const button = page.locator( '.cbuild-width__option', {
+				has: page.locator( '.cbuild-chip__text', {
+					hasText: /^8[.,]5″$/,
+				} ),
+			} );
+			await button.click();
+			await expect( cards( page ) ).toHaveCount( 6 );
+			await expect( page.locator( '.cbuild[data-folded]' ) ).toHaveCount(
+				0
+			);
+			await expect( page.locator( '.cbuild' ) ).not.toHaveAttribute(
+				'aria-busy',
+				'true'
+			);
+			// Board size Balanced, the demo's, as D-360's test sets it.
+			await page
+				.locator( '.cbuild' )
+				.evaluate( ( root ) =>
+					root.classList.add( 'cbuild--balanced' )
+				);
+			await underHeader( page, 129 );
+			// Balanced lays the panel out again in the frames after the class; the cards are measured once they keep still.
+			const measure = () =>
+				cards( page ).evaluateAll( ( items ) => {
+					const bar = document
+						.querySelector( '.cbuild-bar:not([hidden])' )
+						?.getBoundingClientRect();
+					const foot =
+						bar && bar.top > 0 && bar.top < innerHeight
+							? bar.top
+							: innerHeight;
+					return items.map( ( item ) => {
+						const box = item.getBoundingClientRect();
+						// A name past two lines, as a long name takes in a wider fallback font (Linux's WebKit and Firefox in
+						// CI, D-436), is the name's own height, not the card's: its lines past two are counted apart.
+						const name =
+							item.querySelector< HTMLElement >(
+								'.cbuild-card__name'
+							);
+						let extra = 0;
+						if ( name ) {
+							const style = getComputedStyle( name );
+							const line =
+								parseFloat( style.lineHeight ) ||
+								parseFloat( style.fontSize ) * 1.2;
+							const lines = Math.round(
+								name.getBoundingClientRect().height / line
+							);
+							extra = Math.max( 0, lines - 2 ) * line;
+						}
+						return {
+							top: Math.round( box.top ),
+							height: Math.round( box.height ),
+							extra,
+							whole: box.top >= 0 && box.bottom <= foot,
+						};
+					} );
+				} );
+			let boxes = await measure();
+			await expect
+				.poll( async () => {
+					const before = JSON.stringify( boxes );
+					boxes = await measure();
+					return JSON.stringify( boxes ) === before;
+				}, 'the cards laid out' )
+				.toBe( true );
+			// A phone's first view is the stage and the bar; its cards are held to the height alone.
+			if ( ! phone ) {
+				expect(
+					boxes.filter( ( box ) => box.whole ).length,
+					'whole decks in the first view under the header'
+				).toBeGreaterThanOrEqual( 1 );
+			}
+			for ( const box of boxes ) {
+				// A row's cards are as tall as its tallest, so a name's extra lines count for the row.
+				const extra = Math.max(
+					...boxes
+						.filter( ( other ) => other.top === box.top )
+						.map( ( other ) => other.extra )
+				);
+				expect(
+					box.height - extra,
+					`a deck card, ${ tallest } px at most, any name's lines past two apart (${ extra } px)`
+				).toBeLessThanOrEqual( tallest );
+			}
+			// The other widths on one line: the six of seven said as a count, not listed. In French in french.spec.ts.
+			await expect(
+				cards( page ).first().locator( '.cbuild-card__also' )
+			).toHaveText( 'Also in 6 other widths' );
+		} );
+	}
+} );
+
+// Cowork's review of 1.2.0, F30: on the demo a width's answer came 0.9 to 1.3 s after the press, past the 500 ms CLS
+// leaves out after an input, and the deck step moved up as it came: the step's lead went then (D-360), 97 px on an
+// iPhone 13, where it takes two lines, and 73 px at 1440 by 900, and on the desktop the brand chips showed two lines
+// for a frame or two before they folded to one row. 0.130 and 0.099, against M12's gate of under 0.1. Here the answer
+// is held a second, the shelf kit's deck step has its four brands and "Help me choose" at its start (#134), and the
+// shifts CLS counts (no recent input) are read from the press (D-405).
+test.describe( 'A width pressed, its answer a second late (F30)', () => {
+	for ( const theme of [ 'twentytwentyfive', 'kadence' ] ) {
+		test( `moves nothing when the answer comes, on ${ theme }`, async ( {
+			page,
+			context,
+			baseURL,
+		}, info ) => {
+			test.skip(
+				! info.project.name.startsWith( 'chromium' ) ||
+					info.project.name.includes( 'tablet' ),
+				'Only Chromium reports layout shift (the Layout Instability API); a phone and a desktop.'
+			);
+			test.setTimeout( 90_000 );
+			const phone = info.project.name.includes( 'phone' );
+			await context.addCookies( [
+				{
+					name: 'cbuild_e2e_theme',
+					value: theme,
+					url: baseURL || SITE,
+				},
+			] );
+			// An iPhone 13's window, where the lead takes two lines, or the desktop Cowork measured.
+			await page.setViewportSize(
+				phone
+					? { width: 390, height: 664 }
+					: { width: 1440, height: 900 }
+			);
+			const builder = page.locator( '.cbuild' );
+			await page.goto( shelf().page );
+			await expect( builder ).toHaveAttribute( 'data-ready', '' );
+			const lead = page.locator( '.cbuild-step__lead' );
+			await expect( lead ).toBeVisible();
+			if ( phone ) {
+				const lines = await lead.evaluate(
+					( shown ) =>
+						shown.getBoundingClientRect().height /
+						parseFloat( getComputedStyle( shown ).lineHeight )
+				);
+				expect(
+					Math.round( lines ),
+					'the lead on two lines'
+				).toBeGreaterThanOrEqual( 2 );
+			}
+			// The guided start sits at the builder's start, as the width is asked (#134, D-402).
+			await expect( page.locator( '.cbuild-guide' ) ).toBeVisible();
+			// The demo's brands are more than a desktop's row holds: here each is 12rem wide, so the row folds behind
+			// "N more", as D-314's tests make it.
+			if ( ! phone ) {
+				await page.addStyleTag( {
+					content:
+						'.cbuild .cbuild-chips__group:first-of-type .cbuild-chip { min-inline-size: 12rem; }',
+				} );
+			}
+			await page.waitForLoadState( 'networkidle' );
+			// The demo's theme header above the builder, its rail at 129 px (F31).
+			await themeHeader( page, 129 );
+			// On the demo the width's answer brings brands the row has not measured, which the shelf kit's four, in
+			// stock at both widths, never do: on a desktop the answer here brings a fifth.
+			await holdAnswers( page, {
+				edit: ( answer ) => {
+					const view = answer.view as {
+						step?: {
+							shelf?: {
+								chips?: {
+									groups?: { inputs?: Answer[] }[];
+								};
+							};
+						};
+					};
+					const inputs =
+						view?.step?.shelf?.chips?.groups?.[ 0 ]?.inputs;
+					if ( ! phone && inputs?.[ 0 ] ) {
+						inputs.push( {
+							...inputs[ 0 ],
+							id: 'cbuild-chip-deck-new-brand',
+							value: 'shelf-new-brand',
+							text: 'Elm',
+							said: 'Elm, 1',
+							count: '1',
+							checked: false,
+						} );
+					}
+				},
+			} );
+			await watchShifts( page );
+			// The brands' row, as each frame draws it, for the four seconds after the press.
+			await page.evaluate( () => {
+				const seen = window as unknown as { rows: number[] };
+				seen.rows = [];
+				const from = performance.now();
+				const frame = () => {
+					const row = document.querySelector(
+						'.cbuild-chips__options--row'
+					);
+					if ( row?.checkVisibility() ) {
+						seen.rows.push(
+							Math.round( row.getBoundingClientRect().height )
+						);
+					}
+					if ( performance.now() - from < 4000 ) {
+						requestAnimationFrame( frame );
+					}
+				};
+				requestAnimationFrame( frame );
+			} );
+			const from = await now( page );
+			await page
+				.locator( '.cbuild-width__option', {
+					has: page.locator( '.cbuild-chip__text', {
+						hasText: /^8\.25″$/,
+					} ),
+				} )
+				.click();
+			// The lead and the guide go at the press, while the answer is held, so it finds neither to take away.
+			await expect( builder ).toHaveAttribute( 'aria-busy', 'true' );
+			// Read once, not polled: the answer would hide them a second later.
+			expect
+				.soft( await lead.isVisible(), 'the lead, at the press' )
+				.toBe( false );
+			expect
+				.soft(
+					await page.locator( '.cbuild-guide' ).isVisible(),
+					'the guide, at the press'
+				)
+				.toBe( false );
+			await expect
+				.poll( () => page.url(), { timeout: 10_000 } )
+				.toContain( 'cbuild%5B_width%5D=8.25in' );
+			await expect( builder ).toHaveAttribute( 'aria-busy', 'false' );
+			await expect( cards( page ) ).toHaveCount( 30 );
+			// The answer drawn, its pictures painted, and the row's frames done.
+			await page.waitForTimeout( 3500 );
+			const { counted, said } = await shiftsSince( page, from );
+			const rows = await page.evaluate(
+				() => ( window as unknown as { rows: number[] } ).rows
+			);
+			info.annotations.push( {
+				type: 'layout shift, a width answered a second late',
+				description: said,
+			} );
+			// eslint-disable-next-line no-console
+			console.log( `${ info.project.name } ${ theme }: ${ said }` );
+			expect
+				.soft( counted, `the width's layout shift: ${ said }` )
+				.toBeLessThan( 0.1 );
+			// On a desktop the brands' row is one line in every frame, the answer's first included (D-314).
+			if ( ! phone ) {
+				const folded = rows[ rows.length - 1 ] ?? 0;
+				expect( folded, 'the row is drawn' ).toBeGreaterThan( 0 );
+				expect(
+					Math.max( ...rows ),
+					`the brands' row, frame by frame: ${ rows.join( ' ' ) }`
+				).toBeLessThanOrEqual( folded + 1 );
+			}
 		} );
 	}
 } );

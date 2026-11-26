@@ -147,6 +147,24 @@ The Build tab gains a **Width guide** section (#114, D-350), kept in the same `_
 | Use the builder's rows | none stored (a checkbox) | ticked, unticked | ticked | The restore-defaults control. Ticked, no `rows` are stored and the guide has the plugin's rows, by US shoe size in the shopper's language. The tab shows those rows in the editor to start from; typing in a row, adding or removing one unticks it where the page runs its script, and a screen reader hears it once as typing unticks it. Without the script, rows typed while it is ticked are not saved, and the tab says so with a link to the box. |
 | Rows | `width_guide.rows[]` with `shoe`, `from`, `to` | One to twelve rows. **Shoe size**: plain text as the shop writes it, up to 40 characters, through `cbuild_kit_text` (`width_guide_shoe`). **Deck width from** and **to**: 5 to 12 in, typed as the shop writes a measure (its decimal separator, or a fraction); **to** left empty is "and wider", and is never under **from**. | none | The guide's rows, in the order given. Add a row and Remove work by keyboard; the server draws twelve rows, and those past the kit's and one empty one wait hidden. A row left empty is no row. A row that is wrong is named at its field and the guide is not saved; its notice leads to the field, and the rest of the kit saves (D-385). |
 
+### Wheel guide (#134)
+
+From 1.3.0 the Build tab gains a **Wheel guide** section, kept in the same `_cbuild_settings` document as `wheel_guide`, so a rollback to 1.2.0 still reads the kit (D-354). The guided start, "Help me choose" before the first step, recommends wheels in these sizes for where the shopper skates, and its ready builds take wheels in them. A kit saved before 1.3.0 has none, and has the plugin's sizes (D-400).
+
+| Setting | Key | Choices | Default | What it does |
+| --- | --- | --- | --- | --- |
+| Smallest wheel and Largest wheel, a row a riding style: Street, Skatepark, Bowl and transition, Cruising | `wheel_guide.rows[]` with `style` (`street`, `park`, `bowl` or `cruising`), `from` and `to` | 40 to 90 mm, typed as the shop writes a measure (its decimal separator, with or without "mm"). **Largest** left empty is the smallest alone, and is never under **smallest**. A row with both left empty is stored as no row. | none: street 50 to 54 mm, park 53 to 56, bowl 55 to 58, cruising 59 to 65 (D-400) | The wheel sizes the guided start recommends for each answer to "Where do you skate?". A style with no row has the plugin's sizes, which each row's note names, so a later release's change of them reaches the kit. A size that is wrong is named at its style's field and the guide is not saved; its notice leads to the field, and the rest of the kit saves (D-385). `cbuild_guided_start` answers last. |
+
+### Shown in the builder (D-409)
+
+From 1.3.0 the Build tab's **Layout** section gains a group, **Shown in the builder**, three checkboxes kept in the same `_cbuild_settings` document, so a rollback to 1.2.0 still reads the kit (D-354). A kit saved before 1.3.0 has none of the keys, and shows all three. Each box sends `0` unticked, so a form that does not send the field, as another plugin's save may, keeps what the kit has. Saved by who may manage the shop, through WooCommerce's product save and its nonce.
+
+| Setting | Key | Choices | Default | What it does |
+| --- | --- | --- | --- | --- |
+| Help me choose | `guide` | `true`, `false` (a checkbox) | `true` (the key left out) | Whether the builder offers "Help me choose", the guided start's questions and the ready builds they recommend, at its start (#134). Off, the page draws none of it, with or without JavaScript: no disclosure, form, label or builds, and no room left for them; the step follows its lead, and answers in a link recommend nothing. The Wheel guide's sizes are kept. `cbuild_help_me_choose` answers last. |
+| Ready-build picks on cards | `picks` | `true`, `false` (a checkbox) | `true` (the key left out) | Whether a card whose part a ready build shown uses says which, such as "Picked for Street" (#137). Off, no card says it, and no card keeps a line for it. `cbuild_card_picks` answers last. |
+| Ratings on cards | `ratings` | `true`, `false` (a checkbox) | `true` (the key left out) | Whether a card whose part has reviews shows its star and score beside its price, and says its rating to a screen reader (#137). Off, no card shows or says it. On, none shows while WooCommerce's "Enable star rating on reviews" is off, as before. `cbuild_card_ratings` answers last. |
+
 ### Assembly time (#142)
 
 The Build tab's **Assembly** section gains a field beside the lead time, kept in the same `_cbuild_settings` document as `lead_days` (D-375), so a rollback to 1.1.0 still reads the kit (D-354). A kit saved before 1.2.0 has none.
@@ -164,6 +182,22 @@ On a product's Part specs tab, and on each variation's Part specs fields, kept a
 | Setting | Key | Choices | Default | What it does |
 | --- | --- | --- | --- | --- |
 | Not offered in the builder | `_cbuild_not_offered` (product meta) | ticked (`yes`), not ticked (no meta) | not ticked | Keeps the part out of every kit, exactly as `cbuild_part_available` returning `false` does, and the filter still answers last. On a variable product it keeps out every variation; on a variation, that variation alone. The part stays in the shop. The Catalogue check lists it under "Parts kept out of the builder", not as a fix. Saved by who may edit products, through WooCommerce's product save and its nonce. |
+
+### Offer smart swaps (#135)
+
+In a kit's Build tab, Layout section, under "Where shoppers find it", beside Show "Build a complete with this deck" on its parts' pages, kept in `_cbuild_settings` (D-397). A kit saved before 1.3.0 has none, and offers them, so an update changes nothing.
+
+| Setting | Key | Choices | Default | What it does |
+| --- | --- | --- | --- | --- |
+| Offer smart swaps | `swaps` | `true`, `false` (a checkbox, which sends `0` unticked) | `true` (the key left out) | Whether the builder offers, on the review and on the picked card, the same board for less and a part for less or a better one in each slot, each checked by the fit engine. Off, the state route's answer has no `swaps` and the builder shows no swap control and leaves no room for one. A form that does not send the field keeps what the kit has. `cbuild_swaps` answers last. Saved by who may manage the shop, through WooCommerce's product save and its nonce. |
+
+### Rank in its slot (#135)
+
+On a product's Part specs tab, and on each variation's Part specs fields, in a group of its own, "Rank", kept as `_cbuild_rank` product meta (D-395). A part saved before 1.3.0 has none.
+
+| Setting | Key | Choices | Default | What it does |
+| --- | --- | --- | --- | --- |
+| Rank in its slot | `_cbuild_rank` (product meta) | a whole number from 0 to 999999999, or empty | empty (none) | Where the builder offers a better part for a pick (smart swaps), it offers the next rank up among the parts that fit; where no part in the slot has a rank, the next price up. Higher is better. A variation left empty takes its product's. `cbuild_part_rank` answers last. Saved by who may edit products, through WooCommerce's product save and its nonce. |
 
 ## Options beside the settings
 

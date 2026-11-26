@@ -2,7 +2,55 @@
 
 All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html). One entry per milestone; `v1.0.0` closes milestone 10 (D-236).
 
-## [Unreleased]
+## [1.3.0] - 2026-11-26
+
+### Added
+
+- **Compare saved builds** under My builds (#136, D-411): tick up to three builds and see them side by side in one table, a column a build, at today's prices. The rows whose parts differ say "Differs", and the gap between the totals is said in words, both tinted too. A part changed since the save is named as reopening names it (D-254). On a phone the table scrolls sideways in its own region. It is the query parameter `cbuild_compare`, sent as `cbuild_compare[]`, on My builds' own endpoint; nothing is stored, and only the customer's own builds are read.
+- **The part picked is outlined on the board** for 600 ms, each of its layers, by transform and opacity alone; under reduced motion or a kit's subtle Motion it shows at once and fades, with no movement. The build's sentence still says what changed (#138, D-413).
+- **Wheel guide** (1.3.0), a section of a kit's Build tab: the smallest and largest wheel the guided start recommends for each riding style, street, skatepark, bowl and transition, and cruising, 40 to 90 mm. Kept as `wheel_guide` in `_cbuild_settings`; a kit without one, or a style left empty, has the builder's sizes from published wheel guides: 50 to 54, 53 to 56, 55 to 58 and 59 to 65 mm (#134, D-400).
+- **Help me choose** (1.3.0), at the builder's start: a shoe size from the kit's width guide, where the shopper skates and a budget, each optional, in a GET form that works without JavaScript, with Skip from the questions and from the builds. The answers recommend a deck width, wheel sizes from the kit's wheel guide and up to three ready builds, budget, mid-range and high-end, from parts in stock that pass the fit engine whole, each with its total and why. As many as the shop can make, never one that fails fit; a budget keeps the builds within it, or the closest, said to be over. The answers travel in the build's link alone, as `cbuild[_guide][…]`, and are stored nowhere. `cbuild_guided_start` answers with the width and wheel sizes after the kit's settings (#134, D-401, D-402).
+- **Ready builds' picks and ratings on the cards:** a part a ready build shown picks says "Picked for Street", and a part with reviews shows a star and "4.5 (12)" beside its price, read as "4.5 out of 5, 12 reviews", from WooCommerce's own rating and count, wherever the shop shows ratings. A card with both is one line taller at most, so a screen holds as many plain cards as before. The state route's answer gains `presets` on each option and `rating` on each card; nothing is renamed (#137, D-392, D-393).
+- **A thumbnail on each part's row in the review,** the picture its card shows, in the same file, in a 3rem square kept on a row with no picture. Decorative (`alt=""`), and a part another plugin flags is flagged there too: the class `cbuild-review__photo` takes `cbuild_part_classes`' answer, as its row does (#132, D-403). The deck's thumbnail, where it is its layer image, is also `cbuild-review__photo--drawn`, as its card is `cbuild-card__photo--drawn`, so a plugin that flags only a deck's layer image blurs it and leaves a photo sharp (D-398).
+- **Smart swaps** (#135, D-394 to D-397):
+  - the state route's answer gains `swaps`: on the review the same board for less, then each picked slot's part for less and the next better one; on a step its own pick's. Each is checked whole by the fit engine, in stock, with the change to the total it makes, tax, fee and build discount counted. The deck is never swapped;
+  - **Rank in its slot**, a group on a part's Part specs and on each variation's: `_cbuild_rank`, a whole number, higher being better, which "better" follows; a slot with no rank goes by price. A variation with none takes its product's, and the filter `cbuild_part_rank` answers last;
+  - in the builder: the same board for less at the top of the review, each slot's swaps under its review row and on the picked card, each a link that works without JavaScript; after a swap a notice says what it swapped, with Undo, which puts the build back, and focus goes to it, then back to the swap after Undo. A plain card is as tall as before (D-397);
+  - **Offer smart swaps**, a switch in a kit's Build tab, `swaps` in `_cbuild_settings`, on by default and for a kit saved before 1.3.0; off, no swap is offered or shown. The filter `cbuild_swaps` answers after it;
+  - the state route's `Server-Timing` to a shop manager names `cbuild-swaps`.
+- **Shown in the builder** (1.3.0), a group of a kit's Build tab, Layout section: **Help me choose**, **Ready-build picks on cards** and **Ratings on cards**, kept as `guide`, `picks` and `ratings` in `_cbuild_settings`, each on by default and for a kit saved before 1.3.0, each box sending 0 unticked so a save without the field keeps the kit's. Off, the builder draws none of that feature and leaves no room for it; ratings stay off while WooCommerce's star ratings are. The filters `cbuild_help_me_choose`, `cbuild_card_picks` and `cbuild_card_ratings` answer last (D-409).
+- **A place above the cards for other plugins** (1.3.0): `cbuild-step__above-cards`, an empty element just above a step's card list, which the builder renders on every step and never draws into, so another plugin's element there, such as a notice about the cards, stays through every redraw and comes in with the cards. Mature Content asked for it: its notice there adds 0.067 of layout shift to a width press on a phone, against 0.155 first in the step's form (#151, D-407).
+
+### Changed
+
+- **Development:**
+  - The layout-shift browser tests can hold the state route's answer a second, as the demo's host takes, with a theme's header above the builder, and count the builder's own shifts (`tests/e2e/support/held.ts`, D-406).
+  - CI's update job updates from every release from 1.0.0 on, and from 0.1.0 and 0.9.0, with `npm run upgrade:all -- --sample`: from every release it took 16 minutes (#144, D-414). `npm run upgrade:all` alone still updates from every release.
+  - `npm run upgrade` and `upgrade:all` read an old release's own browser fixture from its tag file by file: from 1.2.0, `.gitattributes` keeps `tests/` out of `git archive`, so the update from 1.2.0 found no fixture and failed (D-414).
+  - `npm run upgrade` runs every waiting job after the update, once no queue runner holds a batch. On a loaded machine an earlier release's runner still held its batch, WP-CLI's runner would not start beside it, and the five jobs listed were that batch's, so the update's own job for the grip was never run and the run from 0.7.0 failed (D-427).
+- **Every step's cards put the part's picture beside its words,** in a square 5rem box, as the deck step's compact cards do: two to four times as many trucks, wheels, hardware and grip in a desktop's screen, and a phone's as before. The chosen card's tick sits on the picture's corner. The deck step's cards are as they were (#131, D-391).
+
+### Fixed
+
+- My builds and its compare keep their styles on a theme that dequeues WooCommerce's stylesheet, as Kadence and Storefront do. On a phone the compare's table scrolls in its own region, so every build is reached, with its columns, the Differs mark and the row tints, and each row names its build. A part's row on an order's page stays indented under its kit (D-450).
+- Help me choose reads a budget as it is typed: "$150", "150.50", "1,000" and "1 000,50 $" are read, a decimal amount rounded to a whole one. A budget that is still no amount is left out and the builds say so: "Your budget was left out: type an amount, such as 150." It had been dropped with no word (D-433).
+- After a smart swap a screen reader hears what it swapped once, from the notice that takes focus; the status says the build and its total alone (D-432).
+- Smart swaps cost the state route no product loads: each part's rank is kept with what is kept of it, so the review with every slot picked answers in about 66 ms at 2,000 parts, where it took about 620 (D-434).
+- A build Help me choose recommends, and a ready build's tile, shows its whole picture. A deck with a photo showed the shop's square thumbnail on its tile, the middle of the deck alone; a tile now takes the photo in the shop's single-product size, which WooCommerce never crops (D-461).
+- A list the builder says is joined in its own words, in every language. In French the swap notice read "Échangé : wheels et .hardware.", from WordPress's own French for joining two, and three had a comma before "et". In English a list of three or more has no comma before "and", as the share card's "8.5″ complete: Deck, Trucks and Wheels" (D-460).
+- A card's rating writes its average as the page's language writes numbers, "4,5 sur 5" in French, where it took the shop's separator for prices (D-435).
+- "Build your own at" a width, under Help me choose's builds, asks search engines not to follow it, as every link into a build does.
+- "Build a complete with this deck" reads on a theme whose row colours its links. In Add to cart's fill it takes the outline whatever its words, and words that read below 4.5:1 on its fill take Add to cart's, or black or white. On the demo it was cream on Add to cart's yellow, 1.20:1 (#149, D-416).
+- The bar's Back and Next keep their own padding and size under a theme's rule for every button, so on a phone they stay beside the total. Storefront's button padding put them under it, and the bar was 259 px tall at the review on an iPhone 13; it is 206 (D-417).
+- The bar's delivery and arrival lines at the review on a phone take no theme's paragraph margin. Kadence put 32 px under each, 64 px of a 198 px bar on an iPhone 13 (#150, D-417).
+- A ready build's tile keeps its lines close under a theme's paragraph margin. A margin like Kadence's for its content's paragraphs made each tile 96 px taller (D-418).
+- The builder's paragraphs, headings and lists keep their own spacing under a theme's margins for its content's words. A margin like Kadence's put 32 px under each line of the review, the guide's questions, a step's lead, the stage's words and the change panel, and the review's last line sat 144 px lower. On Twenty Twenty-Five the stage on a phone is 18 px shorter before a pick, since WordPress's margin for a figure no longer reaches it (D-419).
+- A width pressed on the deck step no longer moves the step when its answer comes late, as on a slow host: the step's lead and "Help me choose" go at the press, as the answer takes them, and on a desktop the brand chips keep to their one line until they are folded again, where they had shown a second line for a frame or two. On the demo a width press counted 0.130 of layout shift on an iPhone 13 and 0.099 at 1440 by 900 (#147, D-405).
+- A build Help me choose recommends showed its deck's layer image, where the deck has no photo, without the mark a card gives it, so a plugin that blurs a deck's layer image alone, as Mature Content does, left it sharp on the tile. The tile's picture is now `cbuild-preset__photo--drawn` where it is the layer image, a class named in HOOKS.md (D-408).
+- My builds names each build on a phone. WooCommerce's small-screen styles hid each row's header, the build's picture and name, so a phone showed each build's total and buttons with nothing to say which build they were for (D-412).
+- **A deck's card after a width is about 150 px again, not 230:** a deck sold in more than two other widths says how many, as "Also in 6 other widths", in place of listing them over three lines; one or two are still named. The stock sits beside the price where the line has room, and the deck's picture keeps its 7rem box on a theme that sets `img { height: auto }`, as Kadence and Storefront do, where an upright deck was drawn 211 px tall, and 1,500 px before the script ran. Under a theme's 129 px header, the first view after a width holds a whole deck on Twenty Twenty-Five, Kadence and Storefront (Cowork's 1.2.0 F31, #148, D-399).
+
+## [1.2.0] - 2026-11-25
 
 ### Added
 
@@ -885,7 +933,8 @@ Milestone 1, the foundation. Nothing a shopper or shop owner sees yet: the skele
   - A weekly canary on WordPress trunk and WooCommerce's pre-release, the release workflow with CycloneDX SBOMs, and Dependabot.
 - Docs: `HOOKS.md`, `SETTINGS.md`, `SECURITY.md`, `PRIVACY.md`, `A11Y.md`, `BENCHMARK.md`, `DECISIONS.md` (D-020 to D-048), `reviews/M1.md`, `README.md` and `readme.txt`; the POT file.
 
-[Unreleased]: https://github.com/zachatkinson/creative-skateboard-builder/compare/v1.1.0...HEAD
+[1.3.0]: https://github.com/zachatkinson/creative-skateboard-builder/compare/v1.2.0...v1.3.0
+[1.2.0]: https://github.com/zachatkinson/creative-skateboard-builder/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/zachatkinson/creative-skateboard-builder/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/zachatkinson/creative-skateboard-builder/compare/v0.9.0...v1.0.0
 [0.9.0]: https://github.com/zachatkinson/creative-skateboard-builder/compare/v0.8.0...v0.9.0

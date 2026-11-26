@@ -860,6 +860,78 @@ final class BuildTabTest extends IntegrationTestCase {
 		self::assertTrue( self::stored( $kit->get_id() )[ Options::META_KIT_LAYOUT ]['show_presets'] );
 	}
 
+	// #135: Offer smart swaps, beside Show on its parts' pages and kept in `_cbuild_settings` (D-397). Ticked on a kit
+	// saved before 1.3.0; the box sends 0 under its 1, so a form that sends neither, as another plugin's save may,
+	// keeps what the kit has.
+	public function test_offer_smart_swaps_is_ticked_for_a_kit_saved_before_and_unticked_turns_them_off(): void {
+		$this->as( 'shop_manager' );
+		$kit   = KitFactory::kit();
+		$panel = $this->panel( $kit );
+		self::assertMatchesRegularExpression( '#<input\s+type="hidden"\s+name="cbuild_kit\[settings\]\[swaps\]"\s+value="0"\s*/>\s*<input\s+type="checkbox"[^>]*id="cbuild-kit-settings-swaps"[^>]*name="cbuild_kit\[settings\]\[swaps\]"[^>]*checked#', $panel, 'ticked, its unticked value before it' );
+		self::assertMatchesRegularExpression( '#<label for="cbuild-kit-settings-swaps">Offer smart swaps</label>#', $panel );
+		self::assertMatchesRegularExpression( '#id="cbuild-kit-settings-swaps"[^>]*aria-describedby="cbuild-kit-settings-swaps-note"#', $panel );
+
+		$sent                      = self::form();
+		$sent['settings']['swaps'] = '0';
+		$this->send( $kit, $sent );
+		self::assertSame( array(), self::notices() );
+		self::assertFalse( self::stored( $kit->get_id() )[ Options::META_KIT_SETTINGS ]['swaps'] );
+		self::assertFalse( $this->service( \CreativeBranding\SkateboardBuilder\Port\Kits::class )->kit( $kit->get_id() )?->settings->swaps );
+		self::assertDoesNotMatchRegularExpression( '/id="cbuild-kit-settings-swaps"[^>]*checked/', $this->panel( $kit ) );
+
+		unset( $sent['settings']['swaps'] );
+		$this->send( $kit, $sent );
+		self::assertFalse( self::stored( $kit->get_id() )[ Options::META_KIT_SETTINGS ]['swaps'], 'a form without the field keeps it' );
+
+		$sent['settings']['swaps'] = '1';
+		$this->send( $kit, $sent );
+		self::assertTrue( self::stored( $kit->get_id() )[ Options::META_KIT_SETTINGS ]['swaps'], 'ticked, stored as true' );
+	}
+
+	// D-409: Help me choose, the cards' ready-build picks and their ratings, three boxes in the Layout section's "Shown in
+	// the builder", kept in `_cbuild_settings`. Each is ticked on a kit saved before 1.3.0, and sends 0 under its 1, so a
+	// form that sends neither, as another plugin's save may, keeps what the kit has.
+	public function test_the_three_switches_are_ticked_for_a_kit_saved_before_and_each_unticked_turns_its_feature_off(): void {
+		$this->as( 'shop_manager' );
+		$kit   = KitFactory::kit();
+		$panel = $this->panel( $kit );
+		self::assertMatchesRegularExpression( '#id="cbuild-kit-layout".*?<legend id="cbuild-kit-layout-shown-legend">Shown in the builder</legend>#s', $panel, 'a group of the Layout section' );
+		$read = fn(): ?\CreativeBranding\SkateboardBuilder\Domain\Kit\KitSettings => $this->service( \CreativeBranding\SkateboardBuilder\Port\Kits::class )->kit( $kit->get_id() )?->settings;
+		$on   = static fn( ?\CreativeBranding\SkateboardBuilder\Domain\Kit\KitSettings $settings ): array => array( $settings?->guided, $settings?->cardPicks, $settings?->cardRatings );
+		foreach ( array(
+			'guide'   => array( 'Help me choose', array( false, true, true ) ),
+			'picks'   => array( 'Ready-build picks on cards', array( false, false, true ) ),
+			'ratings' => array( 'Ratings on cards', array( false, false, false ) ),
+		) as $key => [ $label, $after ] ) {
+			$id = 'cbuild-kit-settings-' . $key;
+			self::assertMatchesRegularExpression( '#<input\s+type="hidden"\s+name="cbuild_kit\[settings\]\[' . $key . '\]"\s+value="0"\s*/>\s*<input\s+type="checkbox"[^>]*id="' . $id . '"[^>]*name="cbuild_kit\[settings\]\[' . $key . '\]"[^>]*checked#', $panel, $key . ': ticked, its unticked value before it' );
+			self::assertMatchesRegularExpression( '#<label for="' . $id . '">' . preg_quote( $label, '#' ) . '</label>#', $panel, $key . ': labelled' );
+			self::assertMatchesRegularExpression( '#id="' . $id . '"[^>]*aria-describedby="' . $id . '-note"#', $panel, $key . ': described' );
+			self::assertSame( 2, preg_match_all( '/name="cbuild_kit\[settings\]\[' . $key . '\]"/', $panel ), $key . ': one box and its unticked value' );
+		}
+		self::assertSame( array( true, true, true ), $on( $read() ), 'a kit saved before 1.3.0 shows all three' );
+
+		// Each unticked in turn, the others as the form last had them.
+		$sent = self::form();
+		foreach ( array( 'guide', 'picks', 'ratings' ) as $at => $key ) {
+			$sent['settings'][ $key ] = '0';
+			$this->send( $kit, $sent );
+			self::assertSame( array(), self::notices() );
+			self::assertFalse( self::stored( $kit->get_id() )[ Options::META_KIT_SETTINGS ][ $key ], $key . ': stored off' );
+			self::assertSame( array( $at < 0, $at < 1, $at < 2 ), $on( $read() ), $key . ': off, and the rest as they were' );
+			self::assertDoesNotMatchRegularExpression( '/id="cbuild-kit-settings-' . $key . '"[^>]*checked/', $this->panel( $kit ), $key . ': unticked' );
+		}
+
+		unset( $sent['settings']['guide'], $sent['settings']['picks'], $sent['settings']['ratings'] );
+		$this->send( $kit, $sent );
+		self::assertSame( array( false, false, false ), $on( $read() ), 'a form without the fields keeps them' );
+
+		$sent['settings']['picks'] = '1';
+		$this->send( $kit, $sent );
+		self::assertTrue( self::stored( $kit->get_id() )[ Options::META_KIT_SETTINGS ]['picks'], 'ticked, stored as true' );
+		self::assertSame( array( false, true, false ), $on( $read() ) );
+	}
+
 	// #115: Show on its parts' pages, in the Layout section and kept in `_cbuild_settings` (D-354). Ticked on a kit
 	// saved before 1.2.0; unticked, the kit places no "Build a complete with this deck". Saved by who may manage the
 	// shop alone, through WooCommerce's product save, from wp-admin with no WP-CLI.
@@ -1173,6 +1245,90 @@ final class BuildTabTest extends IntegrationTestCase {
 		self::assertMatchesRegularExpression( '/id="cbuild-kit-settings-width_guide-rows-1-to"[^>]*aria-describedby="cbuild-kit-settings-width_guide-rows-1-to-note cbuild-kit-error-0"\s+aria-invalid="true"/', $panel );
 		self::assertMatchesRegularExpression( '#id="cbuild-kit-settings-width_guide".*?Not saved\. This is what you typed.*?<li id="cbuild-kit-error-0"><a href="\#cbuild-kit-settings-width_guide-rows-1-to">#s', $panel, 'listed in the Width guide section' );
 		self::assertDoesNotMatchRegularExpression( '#id="cbuild-kit-layout"(?:(?!id="cbuild-kit-settings-width_guide").)*cbuild-kit-error-0#s', $panel, 'and not in the Layout section' );
+	}
+
+	/**
+	 * A wheel guide's field, as the tab draws it.
+	 *
+	 * @param string $panel The panel.
+	 * @param string $style The riding style.
+	 * @param string $field from or to.
+	 */
+	private static function wheelField( string $panel, string $style, string $field ): ?string {
+		$found = array();
+		return 1 === preg_match( '#name="cbuild_kit\[settings\]\[wheel_guide\]\[' . $style . '\]\[' . $field . '\]"\s+value="([^"]*)"#', $panel, $found ) ? $found[1] : null;
+	}
+
+	// #134: the Build tab's Wheel guide section, a row a riding style. A kit saved before 1.3.0 has none, so each row is
+	// empty and its note says the builder's sizes; the shop's sizes are kept in `_cbuild_settings` with its separator,
+	// and a row emptied again is the builder's. All from wp-admin, with no WP-CLI.
+	public function test_the_wheel_guide_section_keeps_the_shops_sizes_a_style_and_the_builders_for_the_rest(): void {
+		$this->as( 'shop_manager' );
+		$kit   = KitFactory::kit();
+		$panel = $this->panel( $kit );
+		self::assertMatchesRegularExpression( '#<div class="options_group" id="cbuild-kit-settings-wheel_guide"[^>]*>\s*<h3>Wheel guide</h3>#', $panel );
+		foreach ( array( 'street', 'park', 'bowl', 'cruising' ) as $style ) {
+			self::assertSame( array( '', '' ), array( self::wheelField( $panel, $style, 'from' ), self::wheelField( $panel, $style, 'to' ) ), $style . ': empty on a kit saved before 1.3.0' );
+		}
+		self::assertMatchesRegularExpression( '#<fieldset id="cbuild-kit-settings-wheel_guide-street" class="cbuild-kit-group">\s*<legend id="cbuild-kit-settings-wheel_guide-street-legend">Street</legend>#', $panel );
+		self::assertMatchesRegularExpression( '#>Cruising</legend>.*?Leave both empty for the builder&\#039;s 59\hmm to 65\hmm\.#su', $panel, 'each row says the builder\'s sizes' );
+
+		update_option( 'woocommerce_price_decimal_sep', ',' );
+		$sent                            = self::form();
+		$sent['settings']['wheel_guide'] = array(
+			'street'   => array( 'from' => '51', 'to' => '53,5' ),
+			'park'     => array( 'from' => '', 'to' => '' ),
+			'bowl'     => array( 'from' => '56', 'to' => '' ),
+			'cruising' => array( 'from' => '', 'to' => '' ),
+		);
+		$this->send( $kit, $sent );
+		self::assertSame( array(), self::notices() );
+		self::assertSame(
+			array(
+				'rows' => array(
+					array( 'style' => 'street', 'from' => '51', 'to' => '53.5' ),
+					array( 'style' => 'bowl', 'from' => '56' ),
+				),
+			),
+			self::stored( $kit->get_id() )[ Options::META_KIT_SETTINGS ]['wheel_guide']
+		);
+		$read = $this->service( \CreativeBranding\SkateboardBuilder\Port\Kits::class )->kit( $kit->get_id() );
+		self::assertSame( '53.5000', $read?->settings->wheels->span( \CreativeBranding\SkateboardBuilder\Domain\Guide\RidingStyle::Street )->to?->decimal(), 'the kit the builder reads' );
+		$panel = $this->panel( $kit );
+		self::assertSame( array( '51', '53,5' ), array( self::wheelField( $panel, 'street', 'from' ), self::wheelField( $panel, 'street', 'to' ) ), 'shown with the shop\'s separator' );
+		self::assertSame( array( '', '' ), array( self::wheelField( $panel, 'park', 'from' ), self::wheelField( $panel, 'park', 'to' ) ) );
+
+		// Emptied, the builder's sizes again, stored as no row.
+		$sent['settings']['wheel_guide'] = array( 'street' => array( 'from' => '', 'to' => '' ) );
+		$this->send( $kit, $sent );
+		self::assertSame( array(), self::stored( $kit->get_id() )[ Options::META_KIT_SETTINGS ]['wheel_guide'] );
+	}
+
+	// #134: a size that is wrong is named at its style's field in the Wheel guide section, and the guide alone is not
+	// saved (D-385).
+	public function test_a_wheel_guide_size_that_is_wrong_is_not_saved_and_the_notice_names_its_field(): void {
+		$this->as( 'shop_manager' );
+		$kit                              = KitFactory::kit();
+		$sent                             = self::form();
+		$sent['settings']['wheel_guide']  = array(
+			'street'   => array( 'from' => '52' ),
+			'cruising' => array( 'from' => '60', 'to' => '95' ),
+		);
+		$sent['settings']['start_button'] = '';
+		$this->send( $kit, $sent );
+		self::assertSame(
+			array(
+				'<a href="#cbuild-kit-settings-wheel_guide-cruising-to">The kit&#039;s wheel guide was not saved. The Build tab shows it as you typed it, with what to put right.</a>',
+				'<a href="#cbuild-kit-settings-wheel_guide-cruising-to">Wheel guide, Cruising, Largest wheel: type a size from 40 to 90 mm.</a>',
+			),
+			self::notices()
+		);
+		self::assertSame( array( 'schema_version' => 1, 'start_button' => false ), self::stored( $kit->get_id() )[ Options::META_KIT_SETTINGS ], 'the rest of the settings saved, with no guide, as the kit had' );
+		$panel = $this->panel( $kit );
+		self::assertSame( '95', self::wheelField( $panel, 'cruising', 'to' ), 'shown as typed' );
+		self::assertSame( '52', self::wheelField( $panel, 'street', 'from' ) );
+		self::assertMatchesRegularExpression( '/id="cbuild-kit-settings-wheel_guide-cruising-to"[^>]*aria-invalid="true"/', $panel );
+		self::assertMatchesRegularExpression( '#id="cbuild-kit-settings-wheel_guide".*?Not saved\. This is what you typed.*?<a href="\#cbuild-kit-settings-wheel_guide-cruising-to">#s', $panel, 'listed in the Wheel guide section' );
 	}
 
 	/**

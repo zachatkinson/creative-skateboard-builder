@@ -17,9 +17,25 @@ export interface CbuildSettings {
 	 */
 	lead_days?: string;
 	/**
+	 * Whether the builder offers "Help me choose", the guided start's questions, at its start, from 1.3.0 (D-409). Off, the page draws no disclosure, form or builds, and answers in a link recommend nothing. The default is true.
+	 */
+	guide?: boolean;
+	/**
+	 * Whether a card in the builder says which ready builds pick its part, such as "Picked for Street", from 1.3.0 (#137, D-409). Off, no card says it. The default is true.
+	 */
+	picks?: boolean;
+	/**
+	 * Whether a card in the builder shows its part's rating, a star and its score, from 1.3.0 (#137, D-409). Off, no card shows them; on, none show while WooCommerce's star ratings are off. The default is true.
+	 */
+	ratings?: boolean;
+	/**
 	 * Whether the kit places "Build a complete with this deck" on the pages of the parts its first slot offers. Off, the kit is passed over, and another kit that offers the part may place it. The default is true.
 	 */
 	start_button?: boolean;
+	/**
+	 * Whether the builder offers smart swaps, from 1.3.0 (#135): on the review and on the picked card, a part for less and a better one that fit the build. Off, the state route's answer has none and the builder shows no swap control. The default is true.
+	 */
+	swaps?: boolean;
 	/**
 	 * "Not sure of your width?" under the deck step's width question. Left out, the guide is shown with the plugin's rows, by US shoe size.
 	 */
@@ -45,6 +61,30 @@ export interface CbuildSettings {
 			from: string;
 			/**
 			 * The widest, in inches, no narrower than from. Left out or empty, the row says from and wider.
+			 */
+			to?: string;
+		}[];
+	};
+	/**
+	 * From 1.3.0 (#134): the wheel sizes the guided start recommends for each riding style, in millimetres. Left out, or a style with no row, the plugin's sizes, from published wheel guides: street 50 to 54, park 53 to 56, bowl 55 to 58 and cruising 59 to 65.
+	 */
+	wheel_guide?: {
+		/**
+		 * The shop's own sizes, a row a riding style at most.
+		 *
+		 * @maxItems 4
+		 */
+		rows?: {
+			/**
+			 * The riding style the guided start asks about.
+			 */
+			style: 'street' | 'park' | 'bowl' | 'cruising';
+			/**
+			 * The smallest wheel it recommends, in millimetres, from 40 to 90, with a point and up to four decimals.
+			 */
+			from: string;
+			/**
+			 * The largest, in millimetres, no smaller than from. Left out or empty, from alone.
 			 */
 			to?: string;
 		}[];

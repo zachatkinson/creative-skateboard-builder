@@ -35,7 +35,8 @@ if ( ! defined( 'ABSPATH' ) ) {
  * - **How it is drawn** (#133, D-377). As the theme's own button, `button` for a classic theme and `wp-element-button`
  *   for a block theme, and never Add to cart's `single_add_to_cart_button`, which WooCommerce's scripts bind to, nor
  *   `alt`. A script after it gives it Add to cart's font and height as the page draws them, and where the theme draws
- *   both buttons the same it takes Add to cart's colour as an outline, so it reads as the page's second action.
+ *   it in Add to cart's fill it takes Add to cart's colour as an outline, so it reads as the page's second action.
+ *   Words that do not read on its own fill take Add to cart's, or black or white with the outline (#149, D-416).
  *
  * @since 1.0.0
  */
@@ -60,6 +61,8 @@ final class StartButton implements Hookable {
 	private const string HANDLE = 'cbuild-start';
 
 	/**
+	 * The words the button takes where the theme's own do not read on its fill, in the colour the script below sets as
+	 * `--cbuild-start-words`, at three classes' weight, over a page builder's row that colours its links (#149, D-416).
 	 * The outline the button takes where the theme draws it as Add to cart's twin, in the colour the script below sets
 	 * as `--cbuild-start-ink`. Its weight outranks a theme's plain `.button:hover`. An inset ring, not a border, so its
 	 * height stays Add to cart's. Focused, the button is the theme's own, so the theme's focus mark shows whether it is
@@ -68,15 +71,19 @@ final class StartButton implements Hookable {
 	 * assets/client/blocks/wc-block-library-style.css, 11.3.1), which set the button 4 px in from the quantity and
 	 * Add to cart on a block theme.
 	 */
-	private const string STYLES = '.cbuild-start{padding-inline:0}:where(.cbuild-start__link){display:inline-block}.cbuild-start .cbuild-start__link.cbuild-start__link--outline:not(:focus){background:transparent;color:var(--cbuild-start-ink);border-color:var(--cbuild-start-ink);box-shadow:inset 0 0 0 2px var(--cbuild-start-ink)}.cbuild-start .cbuild-start__link.cbuild-start__link--outline:not(:focus):hover{background:color-mix(in srgb,var(--cbuild-start-ink) 12%,transparent)}';
+	private const string STYLES = '.cbuild-start{padding-inline:0}:where(.cbuild-start__link){display:inline-block}.cbuild-start .cbuild-start__link.cbuild-start__link--words{color:var(--cbuild-start-words)}.cbuild-start .cbuild-start__link.cbuild-start__link--outline:not(:focus){background:transparent;color:var(--cbuild-start-ink);border-color:var(--cbuild-start-ink);box-shadow:inset 0 0 0 2px var(--cbuild-start-ink)}.cbuild-start .cbuild-start__link.cbuild-start__link--outline:not(:focus):hover{background:color-mix(in srgb,var(--cbuild-start-ink) 12%,transparent)}';
 
 	/**
 	 * Gives the button just printed Add to cart's font, weight and height as the page draws them (#133, D-377): a theme
 	 * may style Add to cart through its own class or a setting aimed at it alone, which no rule of the plugin's can
-	 * name without naming the theme. The padding makes up any difference in the borders. Where the theme draws the two
-	 * in the same colours, the button takes the outline above, in Add to cart's fill where that reads at 4.5:1 or more
-	 * against the first background behind the button that is not transparent (white where none is), else in Add to
-	 * cart's words where they do, else not at all, keeping the theme's own button (WCAG 1.4.3, 1.4.11). The ratio is
+	 * name without naming the theme. The padding makes up any difference in the borders. Its colours (#149, D-416):
+	 * - **Its words.** Where the theme's own words read below 4.5:1 on the button's fill (or, with no fill, on the first
+	 *   background behind it), as a page builder's row that colours its links makes them, the button takes Add to
+	 *   cart's words where they read on that fill, else black or white, whichever reads more, with the outline.
+	 * - **The outline.** Where the theme draws the button in Add to cart's fill, whatever its words, or its words read
+	 *   on its fill in neither its own colour nor Add to cart's, it takes the outline above, in Add to cart's fill where
+	 *   that reads at 4.5:1 or more against the first background behind the button that is not transparent (white
+	 *   where none is), else in Add to cart's words where they do, else not at all (WCAG 1.4.3, 1.4.11). The ratio is
 	 * WCAG's, from relative luminance; a part-transparent background is read as solid, and a background image not at
 	 * all. The script holds no angle bracket: a block theme passes the template's markup through WordPress's
 	 * texturizer, which takes a "<" and a later ">" in a script for a tag and turns the script's "&&" into entities. It runs as the button is parsed, before the first paint,
@@ -85,7 +92,7 @@ final class StartButton implements Hookable {
 	 * leaves the page. The copy is made with the theme's transitions off, so a theme that eases every change of its
 	 * buttons (Kadence's) shows no growing or shrinking button. Without it the button is the theme's as it stands.
 	 */
-	private const string MATCH = '(function(s){var w=s&&s.previousElementSibling,u=function(x){var m=String(x).match(/^rgba?\\(([^)]*)\\)$/);return m?m[1].split(/[\\s,\\/]+/).filter(Boolean).map(parseFloat):null},l=function(v){return[.2126,.7152,.0722].reduce(function(t,k,i){var j=v[i]/255;return t+k*(j===Math.min(j,.04045)?j/12.92:Math.pow((j+.055)/1.055,2.4));},0)},q=function(x,y){var i=u(x),j=u(y),h,m;if(!i||!j){return 0;}h=l(i);m=l(j);return(Math.max(h,m)+.05)/(Math.min(h,m)+.05)};[].forEach.call(w&&w.matches(".cbuild-start")?[w]:document.querySelectorAll(".cbuild-start"),function(p){var b=p.querySelector(".cbuild-start__link"),a=(p.closest(".product")||document).querySelector(".single_add_to_cart_button");if(!b||!a){return;}var c=getComputedStyle(a),o=getComputedStyle(b),n=function(x,k){return parseFloat(x[k])||0},r=window.ResizeObserver?new ResizeObserver(function(){f();}):null,f=function(){if(!a.isConnected){if(r){r.disconnect();}return;}b.style.transition="none";["fontFamily","fontSize","fontWeight","letterSpacing","lineHeight"].forEach(function(k){b.style[k]=c[k];});b.style.paddingTop=Math.max(0,n(c,"paddingTop")+n(c,"borderTopWidth")-n(o,"borderTopWidth"))+"px";b.style.paddingBottom=Math.max(0,n(c,"paddingBottom")+n(c,"borderBottomWidth")-n(o,"borderBottomWidth"))+"px";void b.offsetHeight;b.style.transition="";};if(o.backgroundColor===c.backgroundColor&&o.color===c.color){var g="rgb(255, 255, 255)",e,t,v,k,i;for(e=p;e;e=e.parentElement){t=getComputedStyle(e).backgroundColor;v=u(t);if(v&&0!==v[3]){g=t;break;}}k=/^(transparent|rgba\\(.*, 0\\))$/.test(c.backgroundColor)?c.color:c.backgroundColor;i=4.5===Math.min(q(k,g),4.5)?k:4.5===Math.min(q(c.color,g),4.5)?c.color:"";if(i){b.style.setProperty("--cbuild-start-ink",i);b.classList.add("cbuild-start__link--outline");}}if("inline"===o.display){b.style.display="inline-block";}f();if(r){r.observe(a);}});})(document.currentScript);';
+	private const string MATCH = '(function(s){var w=s&&s.previousElementSibling,u=function(x){var m=String(x).match(/^rgba?\\(([^)]*)\\)$/);return m?m[1].split(/[\\s,\\/]+/).filter(Boolean).map(parseFloat):null},l=function(v){return[.2126,.7152,.0722].reduce(function(t,k,i){var j=v[i]/255;return t+k*(j===Math.min(j,.04045)?j/12.92:Math.pow((j+.055)/1.055,2.4));},0)},q=function(x,y){var i=u(x),j=u(y),h,m;if(!i||!j){return 0;}h=l(i);m=l(j);return(Math.max(h,m)+.05)/(Math.min(h,m)+.05)};[].forEach.call(w&&w.matches(".cbuild-start")?[w]:document.querySelectorAll(".cbuild-start"),function(p){var b=p.querySelector(".cbuild-start__link"),a=(p.closest(".product")||document).querySelector(".single_add_to_cart_button");if(!b||!a){return;}var c=getComputedStyle(a),o=getComputedStyle(b),n=function(x,k){return parseFloat(x[k])||0},r=window.ResizeObserver?new ResizeObserver(function(){f();}):null,f=function(){if(!a.isConnected){if(r){r.disconnect();}return;}b.style.transition="none";["fontFamily","fontSize","fontWeight","letterSpacing","lineHeight"].forEach(function(k){b.style[k]=c[k];});b.style.paddingTop=Math.max(0,n(c,"paddingTop")+n(c,"borderTopWidth")-n(o,"borderTopWidth"))+"px";b.style.paddingBottom=Math.max(0,n(c,"paddingBottom")+n(c,"borderBottomWidth")-n(o,"borderBottomWidth"))+"px";void b.offsetHeight;b.style.transition="";};var W="rgb(255, 255, 255)",K="rgb(0, 0, 0)",g=W,e,t,v,k,i,y,z,h=function(x){return/^(transparent|rgba\\(.*, 0\\))$/.test(x)},m=function(x,y){return 4.5===Math.min(q(x,y),4.5)};for(e=p;e;e=e.parentElement){t=getComputedStyle(e).backgroundColor;v=u(t);if(v&&0!==v[3]){g=t;break;}}y=h(o.backgroundColor)?g:o.backgroundColor;z=m(o.color,y);if(!z&&u(y)){t=m(c.color,y)?c.color:q(K,y)===Math.max(q(K,y),q(W,y))?K:W;b.style.setProperty("--cbuild-start-words",t);b.classList.add("cbuild-start__link--words");z=t===c.color;}k=h(c.backgroundColor)?c.color:c.backgroundColor;i=m(k,g)?k:m(c.color,g)?c.color:"";if(i&&(o.backgroundColor===c.backgroundColor||!z)){b.style.setProperty("--cbuild-start-ink",i);b.classList.add("cbuild-start__link--outline");}if("inline"===o.display){b.style.display="inline-block";}f();if(r){r.observe(a);}});})(document.currentScript);';
 
 	/**
 	 * Constructor.

@@ -154,6 +154,18 @@ final class KitSchemasTest extends IntegrationTestCase {
 		$this->assertTrue( self::accepts( array( 'schema_version' => 1, 'width_guide' => array( 'shown' => true ) ), 'kit-settings' ), 'shown with the plugin\'s rows' );
 		$this->assertTrue( self::accepts( array( 'schema_version' => 1, 'width_guide' => array( 'rows' => array_fill( 0, 12, $guide['rows'][0] ) ) ), 'kit-settings' ), 'twelve rows' );
 		$this->assertSame( 4, count( Kit::fromDocuments( KitDocuments::slots(), RuleSettings::DEFAULTS, KitDocuments::presets(), KitDocuments::assembly(), null, null, array( 'schema_version' => 1, 'width_guide' => $guide ) )->settings->guide->rows ?? array() ) );
+		$wheels = array(
+			'rows' => array(
+				array( 'style' => 'street', 'from' => '50', 'to' => '54' ),
+				array( 'style' => 'park', 'from' => '40', 'to' => '90.0000' ),
+				array( 'style' => 'bowl', 'from' => '56.5', 'to' => '' ),
+				array( 'style' => 'cruising', 'from' => '89.9999' ),
+			),
+		);
+		$this->assertTrue( self::accepts( array( 'schema_version' => 1, 'wheel_guide' => $wheels ), 'kit-settings' ), 'the wheel guide, from 1.3.0 (#134)' );
+		$this->assertTrue( self::accepts( array( 'schema_version' => 1, 'wheel_guide' => array() ), 'kit-settings' ), 'the plugin\'s sizes' );
+		$this->assertTrue( self::accepts( array( 'schema_version' => 1, 'wheel_guide' => array( 'rows' => array() ) ), 'kit-settings' ), 'no rows, the plugin\'s sizes' );
+		$this->assertTrue( Kit::fromDocuments( KitDocuments::slots(), RuleSettings::DEFAULTS, KitDocuments::presets(), KitDocuments::assembly(), null, null, array( 'schema_version' => 1, 'wheel_guide' => $wheels ) )->settings->wheels->isOwn( \CreativeBranding\SkateboardBuilder\Domain\Guide\RidingStyle::Cruising ) );
 
 		$kit = Kit::fromDocuments( $slots, RuleSettings::DEFAULTS, self::presets(), $assembly, $picture );
 		$this->assertSame( array( 'grip', 'deck', 'wheels', 'trucks' ), $kit->picture->order );
@@ -231,6 +243,14 @@ final class KitSchemasTest extends IntegrationTestCase {
 			'a width as a number'            => array( 'kit-settings', array( 'schema_version' => 1, 'width_guide' => array( 'rows' => array( array( 'shoe' => '9', 'from' => 8 ) ) ) ) ),
 			'a width of 4.5 in'              => array( 'kit-settings', array( 'schema_version' => 1, 'width_guide' => array( 'rows' => array( array( 'shoe' => '9', 'from' => '4.5' ) ) ) ) ),
 			'a widest past 12 in'            => array( 'kit-settings', array( 'schema_version' => 1, 'width_guide' => array( 'rows' => array( array( 'shoe' => '9', 'from' => '8', 'to' => '12.5' ) ) ) ) ),
+			'a wheel guide that is a list'   => array( 'kit-settings', array( 'schema_version' => 1, 'wheel_guide' => array( 'rows' ) ) ),
+			'a wheel guide of five rows'     => array( 'kit-settings', array( 'schema_version' => 1, 'wheel_guide' => array( 'rows' => array_fill( 0, 5, array( 'style' => 'park', 'from' => '54' ) ) ) ) ),
+			'a wheel row with no style'      => array( 'kit-settings', array( 'schema_version' => 1, 'wheel_guide' => array( 'rows' => array( array( 'from' => '54' ) ) ) ) ),
+			'a style not asked'              => array( 'kit-settings', array( 'schema_version' => 1, 'wheel_guide' => array( 'rows' => array( array( 'style' => 'vert', 'from' => '54' ) ) ) ) ),
+			'a wheel row with no size'       => array( 'kit-settings', array( 'schema_version' => 1, 'wheel_guide' => array( 'rows' => array( array( 'style' => 'park' ) ) ) ) ),
+			'a wheel of 39.9 mm'             => array( 'kit-settings', array( 'schema_version' => 1, 'wheel_guide' => array( 'rows' => array( array( 'style' => 'park', 'from' => '39.9' ) ) ) ) ),
+			'a wheel past 90 mm'             => array( 'kit-settings', array( 'schema_version' => 1, 'wheel_guide' => array( 'rows' => array( array( 'style' => 'park', 'from' => '54', 'to' => '90.1' ) ) ) ) ),
+			'a wheel size as a number'       => array( 'kit-settings', array( 'schema_version' => 1, 'wheel_guide' => array( 'rows' => array( array( 'style' => 'park', 'from' => 54 ) ) ) ) ),
 			'an order with a bad key'        => array( 'kit-picture', array( 'schema_version' => 1, 'order' => array( 'Grip Tape' ) ) ),
 			'an order naming a slot twice'   => array( 'kit-picture', array( 'schema_version' => 1, 'order' => array( 'deck', 'deck' ) ) ),
 			'an order of 21 slots'           => array( 'kit-picture', array( 'schema_version' => 1, 'order' => array_map( static fn( int $n ): string => 'slot_' . $n, range( 1, 21 ) ) ) ),
@@ -312,6 +332,17 @@ final class KitSchemasTest extends IntegrationTestCase {
 			'width_guide'    => array( 'rows' => array( array( 'shoe' => '9', 'from' => '8' ), array( 'shoe' => '9', 'from' => '8.5' ) ) ),
 		);
 		$this->assertTrue( self::accepts( $twice, 'kit-settings' ) );
+		// A wheel guide row whose largest is smaller than its smallest, and one that names a style twice (#134).
+		$smaller = array(
+			'schema_version' => 1,
+			'wheel_guide'    => array( 'rows' => array( array( 'style' => 'park', 'from' => '56', 'to' => '54' ) ) ),
+		);
+		$this->assertTrue( self::accepts( $smaller, 'kit-settings' ) );
+		$style_twice = array(
+			'schema_version' => 1,
+			'wheel_guide'    => array( 'rows' => array( array( 'style' => 'park', 'from' => '54' ), array( 'style' => 'park', 'from' => '56' ) ) ),
+		);
+		$this->assertTrue( self::accepts( $style_twice, 'kit-settings' ) );
 		// An assembly time with the most first, or a range of one day, which the Build tab keeps as that day (#142).
 		$backwards = array(
 			'schema_version' => 1,
@@ -323,7 +354,7 @@ final class KitSchemasTest extends IntegrationTestCase {
 			'lead_days'      => '3-3',
 		);
 		$this->assertTrue( self::accepts( $one_day, 'kit-settings' ) );
-		foreach ( array( array( Slots::class, $repeated ), array( Slots::class, $reversed ), array( Slots::class, $bolts_first ), array( RuleSettings::class, $disordered ), array( PictureSettings::class, $text ), array( KitSettings::class, $narrower ), array( KitSettings::class, $twice ), array( KitSettings::class, $backwards ), array( KitSettings::class, $one_day ) ) as [ $reader, $document ] ) {
+		foreach ( array( array( Slots::class, $repeated ), array( Slots::class, $reversed ), array( Slots::class, $bolts_first ), array( RuleSettings::class, $disordered ), array( PictureSettings::class, $text ), array( KitSettings::class, $narrower ), array( KitSettings::class, $twice ), array( KitSettings::class, $smaller ), array( KitSettings::class, $style_twice ), array( KitSettings::class, $backwards ), array( KitSettings::class, $one_day ) ) as [ $reader, $document ] ) {
 			try {
 				$reader::fromDocument( $document );
 				$this->fail( 'the domain accepted it' );

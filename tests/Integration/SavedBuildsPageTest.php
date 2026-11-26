@@ -451,11 +451,11 @@ final class SavedBuildsPageTest extends CartTestCase {
 
 	/**
 	 * The milestone 8 walkthrough: a build's picture sat inline with its name, so a two-word name wrapped around it. On
-	 * My builds, and there alone, the picture takes its own line above the name, beside WooCommerce's own styles.
+	 * My builds, and there alone, the picture takes its own line above the name, on the plugin's own handle (D-450).
 	 */
 	public function test_my_builds_sets_each_picture_above_its_name_and_no_other_page_gets_the_rule(): void {
 		$styles = static function (): string {
-			$after = wp_styles()->get_data( 'woocommerce-general', 'after' );
+			$after = wp_styles()->get_data( 'cbuild-my-builds', 'after' );
 			return is_array( $after ) ? implode( '', $after ) : '';
 		};
 		// Each page gets styles of its own, and the site's are put back for the tests after this one.
@@ -472,6 +472,41 @@ final class SavedBuildsPageTest extends CartTestCase {
 			do_action( 'wp_enqueue_scripts' );
 			self::assertStringNotContainsString( 'cbuild-my-builds', $styles(), 'not on another account page' );
 		} finally {
+			$GLOBALS['wp_styles'] = $kept; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Restored.
+		}
+	}
+
+	/**
+	 * Milestone 13's walkthrough: Kadence and Storefront dequeue `woocommerce-general`, and My builds' rules went with
+	 * it, so the compare's table lost its scroll region on a phone. The rules print on the plugin's own handle, whatever
+	 * a theme does with WooCommerce's (D-450).
+	 */
+	public function test_my_builds_rules_print_when_the_theme_dequeues_woocommerce_general(): void {
+		$dequeue = static function (): void {
+			wp_dequeue_style( 'woocommerce-general' );
+		};
+		add_action( 'wp_enqueue_scripts', $dequeue, 100 );
+		$kept = $GLOBALS['wp_styles'] ?? null;
+		try {
+			$GLOBALS['wp_styles'] = new \WP_Styles(); // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- A fresh set of styles for the test, restored below.
+			$this->go_to( wc_get_account_endpoint_url( SavedBuildHooks::ENDPOINT ) );
+			do_action( 'wp_enqueue_scripts' );
+			self::assertFalse( wp_style_is( 'woocommerce-general', 'enqueued' ), 'the theme has dequeued WooCommerce\'s styles' );
+			ob_start();
+			wp_print_styles();
+			$printed = (string) ob_get_clean();
+			self::assertStringContainsString( '.cbuild-compare{overflow-x:auto', $printed, 'the compare\'s scroll region' );
+			self::assertStringContainsString( '.cbuild-compare__mark{', $printed, 'the Differs mark' );
+			self::assertStringContainsString( 'tbody tr th[scope=row]{display:block', $printed, 'each row\'s name on a phone (D-412)' );
+
+			$GLOBALS['wp_styles'] = new \WP_Styles(); // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- As above.
+			$this->go_to( wc_get_account_endpoint_url( 'orders' ) );
+			do_action( 'wp_enqueue_scripts' );
+			ob_start();
+			wp_print_styles();
+			self::assertStringNotContainsString( 'cbuild-compare', (string) ob_get_clean(), 'not on another account page' );
+		} finally {
+			remove_action( 'wp_enqueue_scripts', $dequeue, 100 );
 			$GLOBALS['wp_styles'] = $kept; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Restored.
 		}
 	}
@@ -506,12 +541,14 @@ final class SavedBuildsPageTest extends CartTestCase {
 		$this->post( $this->saveFields( wp_create_nonce( SavedBuildHooks::SAVE ), 'Park' ) );
 		$dom   = new \DOMXPath( self::html( $this->page() ) );
 		$names = array();
-		foreach ( $dom->query( '//a[contains(@class,"cbuild-my-builds__open")] | //button | //input[@type="text"]' ) as $control ) {
+		// The row's controls, its Compare box among them from 1.3.0 (#136); the one Compare button under the table is
+		// named by its own words.
+		foreach ( $dom->query( '//a[contains(@class,"cbuild-my-builds__open")] | //tbody//button | //input[@type="text"] | //input[@type="checkbox"]' ) as $control ) {
 			self::assertInstanceOf( \DOMElement::class, $control );
 			$names[] = $control->getAttribute( 'aria-label' );
 		}
 		sort( $names );
-		self::assertSame( array( 'Delete Park', 'Delete Street', 'Name of Park', 'Name of Street', 'Open Park', 'Open Street', 'Rename Park', 'Rename Street' ), $names );
+		self::assertSame( array( 'Compare Park', 'Compare Street', 'Delete Park', 'Delete Street', 'Name of Park', 'Name of Street', 'Open Park', 'Open Street', 'Rename Park', 'Rename Street' ), $names );
 	}
 
 	/**

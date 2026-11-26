@@ -92,11 +92,14 @@ final class WooPartCardsTest extends IntegrationTestCase {
 		self::assertSame( array( $gone, $deck, $plain ), array_keys( $cards ), 'in the order asked, each once, and nothing for what is no part' );
 
 		$card = $cards[ $deck ];
-		self::assertSame( array( 'name', 'url', 'price', 'stock', 'stock_class', 'image', 'photo', 'large' ), array_keys( $card ) );
+		self::assertSame( array( 'name', 'url', 'price', 'stock', 'stock_class', 'image', 'photo', 'large', 'rating' ), array_keys( $card ) );
+		self::assertNull( $card['rating'], 'no reviews (#137)' );
 		self::assertTrue( $card['photo'] );
 		// #82: the photo uncropped, at the shop's single-product size, for the picture's deck with no layer image.
 		self::assertSame( wp_get_attachment_image_src( $photo, 'woocommerce_single' )[0], $card['large']['src'] ?? null );
 		self::assertSame( array( 'src', 'width', 'height', 'srcset', 'sizes' ), array_keys( $card['large'] ?? array() ) );
+		// D-461: a ready build's own picture, uncropped too, so its tile shows it whole.
+		self::assertSame( wp_get_attachment_image_src( $photo, 'woocommerce_single' )[0], $this->cards()->photo( $photo )['src'] ?? null, 'a tile\'s picture whole, not the shop\'s square thumbnail' );
 		self::assertSame( 'Rascals "8.25" & deck', $card['name'], 'plain text, where WordPress stores &amp;: the edge escapes it once' );
 		self::assertSame( get_permalink( $deck ), $card['url'] );
 		self::assertSame( self::price( 44.5 ), $card['price'], 'the price of one as the shop shows it' );
@@ -212,8 +215,14 @@ final class WooPartCardsTest extends IntegrationTestCase {
 		self::assertIsArray( $entry );
 		self::assertSame( wp_json_encode( $entry ), wp_json_encode( json_decode( (string) wp_json_encode( $entry ), true ) ), 'scalars and arrays of them alone' );
 
+		// A card kept before 1.3.0 has no `rating`, and is read again with it (#137).
+		self::quietly( $deck, '80' );
+		unset( $entry['cards'][ $context ]['rating'] );
+		wp_cache_set( 'card_' . $deck, $entry, Options::CACHE_GROUP );
+		self::assertSame( self::price( 80 ), $this->cards()->cards( array( $deck ) )[ $deck ]['price'], 'read again, for its rating' );
+
 		$this->cards()->forget( $deck, 0, -1 );
-		self::assertSame( self::price( 75 ), $this->cards()->cards( array( $deck ) )[ $deck ]['price'] );
+		self::assertSame( self::price( 80 ), $this->cards()->cards( array( $deck ) )[ $deck ]['price'] );
 		$this->cards()->forget();
 	}
 
@@ -341,7 +350,7 @@ final class WooPartCardsTest extends IntegrationTestCase {
 		// The right stamp and a card that lost a field, or whose photo is not one.
 		$entry = wp_cache_get( 'card_' . $deck, Options::CACHE_GROUP );
 		$key   = array_key_first( $entry['cards'] );
-		foreach ( array( array( 'name' => 7 ), array( 'image' => 'photo.jpg' ), array( 'image' => array( 'src' => 'photo.jpg' ) ) ) as $broken ) {
+		foreach ( array( array( 'name' => 7 ), array( 'image' => 'photo.jpg' ), array( 'image' => array( 'src' => 'photo.jpg' ) ), array( 'rating' => 4.5 ), array( 'rating' => array( 'average' => '4.5', 'count' => 2 ) ), array( 'rating' => array( 'average' => 4.5 ) ) ) as $broken ) {
 			$bad                  = $entry;
 			$bad['cards'][ $key ] = $broken + $entry['cards'][ $key ];
 			wp_cache_set( 'card_' . $deck, $bad, Options::CACHE_GROUP, 60 );

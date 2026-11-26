@@ -18,7 +18,7 @@
 		"dealerdirect/phpcodesniffer-composer-installer": "^1.2",
 		"deptrac/deptrac": "^4.7",
 		"infection/infection": "^0.35",
-		"php-stubs/woocommerce-stubs": "^11.2",
+		"php-stubs/woocommerce-stubs": "^11.3",
 		"php-stubs/wordpress-stubs": "^7.1",
 		"phpcompatibility/phpcompatibility-wp": "^2.1",
 		"phpstan/extension-installer": "^1.4",
@@ -56,7 +56,8 @@
 			"bash tools/gates-selftest.sh",
 			"bash tools/release-plan-selftest.sh",
 			"bash tools/ci-code-hash-selftest.sh",
-			"bash tools/focused-selftest.sh"
+			"bash tools/focused-selftest.sh",
+			"bash tools/upgrade-releases-selftest.sh"
 		],
 		"focused": "bash tools/focused.sh",
 		"test:unit": "phpunit -c phpunit.xml.dist --testsuite unit --exclude-group benchmark",

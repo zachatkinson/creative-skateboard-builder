@@ -190,6 +190,45 @@ final class OrderEmailTest extends CartTestCase {
 	}
 
 	/**
+	 * Milestone 13's walkthrough: Kadence and Storefront dequeue `woocommerce-general`, where the rule that indents a
+	 * part's row under its kit, on an order's page in My account, was put. It prints on the plugin's own handle (D-450).
+	 */
+	public function test_the_order_pages_indent_prints_when_the_theme_dequeues_woocommerce_general(): void {
+		$dequeue = static function (): void {
+			wp_dequeue_style( 'woocommerce-general' );
+		};
+		add_action( 'wp_enqueue_scripts', $dequeue, 100 );
+		$kept = $GLOBALS['wp_styles'] ?? null;
+		try {
+			$GLOBALS['wp_styles'] = new \WP_Styles(); // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- A fresh set of styles for the test, restored below.
+			$account = self::factory()->post->create(
+				array(
+					'post_type'    => 'page',
+					'post_content' => '<!-- wp:shortcode -->[woocommerce_my_account]<!-- /wp:shortcode -->',
+				)
+			);
+			update_option( 'woocommerce_myaccount_page_id', $account );
+			$this->go_to( (string) get_permalink( $account ) );
+			self::assertTrue( is_account_page(), 'in My account' );
+			do_action( 'wp_enqueue_scripts' );
+			self::assertFalse( wp_style_is( 'woocommerce-general', 'enqueued' ), 'the theme has dequeued WooCommerce\'s styles' );
+			ob_start();
+			wp_print_styles();
+			self::assertStringContainsString( '.cbuild-order-part td:first-child', (string) ob_get_clean(), 'a part\'s row indented under its kit' );
+
+			$GLOBALS['wp_styles'] = new \WP_Styles(); // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- As above.
+			$this->go_to( home_url( '/' ) );
+			do_action( 'wp_enqueue_scripts' );
+			ob_start();
+			wp_print_styles();
+			self::assertStringNotContainsString( 'cbuild-order-part', (string) ob_get_clean(), 'not on a page with no order' );
+		} finally {
+			remove_action( 'wp_enqueue_scripts', $dequeue, 100 );
+			$GLOBALS['wp_styles'] = $kept; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Restored.
+		}
+	}
+
+	/**
 	 * The kit's assembly words, as the shop owner wrote them.
 	 *
 	 * @param string $lead The lead time.

@@ -77,8 +77,11 @@ defined( 'ABSPATH' ) || exit;
 				<template data-wp-each--group="state.view.step.shelf.chips.groups" data-wp-each-key="context.group.key">
 					<fieldset class="cbuild-chips__group">
 						<legend class="cbuild-chips__legend" data-wp-text="context.group.legend"></legend>
-						<?php // On a desktop the brand chips sit in one row, and "N more" opens the rest in place; without the script every chip shows (#98). ?>
-						<div class="cbuild-chips__options" data-wp-bind--id="context.group.more.id" data-wp-class--cbuild-chips__options--row="context.group.more.shown" data-wp-watch="callbacks.row">
+						<?php
+						// On a desktop the brand chips sit in one row, and "N more" opens the rest in place; without the script every
+						// chip shows (#98). Until the store has laid out chips an answer brought, the row shows its first line alone (D-405).
+						?>
+						<div class="cbuild-chips__options" data-wp-bind--id="context.group.more.id" data-wp-class--cbuild-chips__options--row="context.group.more.shown" data-wp-class--cbuild-chips__options--laying="state.laying" data-wp-watch="callbacks.row">
 							<template data-wp-each--chip="context.group.inputs" data-wp-each-key="context.chip.value">
 								<span class="cbuild-chips__chip" data-wp-class--cbuild-chips__chip--past="state.past">
 									<input class="cbuild-chips__control" type="checkbox" data-wp-bind--id="context.chip.id" data-wp-bind--name="context.chip.name" data-wp-bind--value="context.chip.value" data-wp-bind--checked="context.chip.checked" data-wp-bind--aria-label="context.chip.said" data-wp-on--change="actions.narrow">
@@ -138,6 +141,11 @@ defined( 'ABSPATH' ) || exit;
 				<button class="cbuild-button cbuild-found__clear" type="submit" value="" data-wp-bind--name="state.view.step.found.clear.name" data-wp-bind--hidden="!state.view.step.found.clear.shown" data-wp-text="state.view.step.found.clear.text"></button>
 			</p>
 		</div>
+		<?php
+		// A place for another plugin's own element just above the cards, such as a notice about them, which comes in with
+		// them (#151): rendered empty, with no directive, so the builder never draws into it (HOOKS.md).
+		?>
+		<div class="cbuild-step__above-cards"></div>
 		<?php // The deck step's cards are compact: the deck small and upright beside its words, two columns on a desktop (F14, #99). ?>
 		<ul class="cbuild-cards" data-wp-class--cbuild-cards--compact="state.view.step.compact">
 			<template data-wp-each--option="state.view.step.options" data-wp-each-key="context.option.id">
@@ -151,12 +159,19 @@ defined( 'ABSPATH' ) || exit;
 						<span class="cbuild-card__look" data-wp-bind--hidden="!context.option.hasLook" data-wp-text="context.option.look"></span>
 						<span class="cbuild-card__about" data-wp-bind--id="context.option.about">
 							<?php // The full price large, and the change under it once the step has a pick (D-249). ?>
-							<span class="cbuild-card__price" data-wp-text="context.option.price"></span>
+							<?php // Its rating beside the price where there is room, under it where there isn't (#137, D-392, D-393): the stars and the short score are seen, the sentence is said. ?>
+							<span class="cbuild-card__priced">
+								<span class="cbuild-card__price" data-wp-text="context.option.price"></span>
+								<span class="cbuild-card__rating" data-wp-bind--hidden="!context.option.hasRating"><span class="cbuild-card__star" aria-hidden="true"></span><span class="cbuild-card__score" aria-hidden="true" data-wp-text="context.option.score"></span><span class="cbuild-card__rated screen-reader-text" data-wp-text="context.option.rated"></span></span>
+							</span>
 							<span class="cbuild-card__delta" data-wp-bind--hidden="!context.option.hasDelta" data-wp-text="context.option.delta"></span>
-							<span class="cbuild-card__also" data-wp-bind--hidden="!context.option.hasAlso" data-wp-text="context.option.also"></span>
+							<?php // The stock before a deck's other widths: on a deck's compact card it sits beside the price where there is room, and the widths take a line of their own (F31, D-399). ?>
 							<span data-wp-bind--class="context.option.stockClass" data-wp-text="context.option.stock"></span>
+							<span class="cbuild-card__also" data-wp-bind--hidden="!context.option.hasAlso" data-wp-text="context.option.also"></span>
 							<span data-wp-bind--class="context.option.fitClass" data-wp-text="context.option.fit"></span>
 							<span class="cbuild-card__recommended" data-wp-bind--hidden="!context.option.recommended" data-wp-text="context.option.recommendedAs"></span>
+							<?php // The ready builds that pick it (#137, D-392). ?>
+							<span class="cbuild-card__picked" data-wp-bind--hidden="!context.option.hasPickedFor" data-wp-text="context.option.pickedFor"></span>
 						</span>
 					</label>
 					<ul class="cbuild-card__notes" data-wp-bind--id="context.option.notesId">
@@ -177,6 +192,12 @@ defined( 'ABSPATH' ) || exit;
 							</template>
 						</div>
 					</fieldset>
+					<?php // The pick's smart swaps, on its card alone (#135, D-397): links, so they work without the script. ?>
+					<p class="cbuild-card__swaps" data-wp-bind--hidden="!context.option.hasSwaps">
+						<template data-wp-each--swap="context.option.swaps" data-wp-each-key="context.swap.id">
+							<a class="cbuild-swap" rel="nofollow" data-wp-on--click="actions.follow" data-wp-bind--id="context.swap.id" data-wp-bind--href="context.swap.url" data-wp-text="context.swap.text"></a>
+						</template>
+					</p>
 				</li>
 			</template>
 		</ul>

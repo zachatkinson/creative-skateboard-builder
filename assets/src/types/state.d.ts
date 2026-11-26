@@ -354,6 +354,47 @@ export interface CbuildState {
 		}[];
 	} | null;
 	/**
+	 * From 1.3.0: the swaps the build is offered (#135, D-394, D-396). On the review, the same board for less first, where there is one, then each picked slot's in step order, for less before better; on a step, the step's own pick's; otherwise none. Each fits the whole build, is in stock in the quantity the build takes, and leaves the build no problem it did not have. The deck is never swapped. An answer an earlier container makes has none.
+	 *
+	 * Items: A swap: one press that puts these parts in place of the build's.
+	 */
+	swaps?: {
+		/**
+		 * `less`: one slot's part, the cheapest that fits. `better`: one slot's part, the next up by the shop's rank, or by price where no part of the slot has a rank. `board`: the same board for less, every picked slot but the deck that has a part for less.
+		 */
+		kind: 'less' | 'better' | 'board';
+		/**
+		 * What it swaps, one entry a slot, in step order.
+		 *
+		 * @minItems 1
+		 */
+		parts: {
+			/**
+			 * The slot's key.
+			 */
+			slot: string;
+			/**
+			 * The ID of the part the build has now.
+			 */
+			was: number;
+			/**
+			 * The ID of the part it takes in its place.
+			 */
+			part: number;
+			/**
+			 * That part's name, or an empty string when its product has gone.
+			 */
+			name: string;
+		}[];
+		/**
+		 * What the swap does to the total, as the total is worked out: `amount` in minor units, below 0 where it takes off, and `text`, how much without a sign, as the shop writes prices. The total after the swap is the total now plus `amount`.
+		 */
+		change: {
+			amount: number;
+			text: string;
+		};
+	}[];
+	/**
 	 * What the build costs so far.
 	 */
 	total: {
@@ -506,6 +547,16 @@ export interface CbuildState {
 		 * Whether the change panel is shown.
 		 */
 		isChanges: boolean;
+		/**
+		 * After a smart swap, from 1.3.0 (#135): whether its notice, with Undo, is shown. The store puts focus on it after a swap.
+		 */
+		swapped: {
+			/**
+			 * Whether the notice is shown.
+			 */
+			shown: boolean;
+			[k: string]: unknown;
+		};
 		errors: {
 			/**
 			 * Whether the error summary is shown.
@@ -809,6 +860,10 @@ export interface Option {
 		 */
 		layers: Layer[];
 	} | null;
+	/**
+	 * From 1.3.0: the ready builds offered to the shopper that pick this part, by their places among the kit's, as `presets[].at`, in the kit's order (#137). Empty where none does, and where the kit shows no ready builds.
+	 */
+	presets: number[];
 }
 /**
  * What a card shows of a part.
@@ -842,6 +897,23 @@ export interface Card {
 	 * Whether `image` is the part's photo, not its layer image (1.0.0).
 	 */
 	photo: boolean;
+	/**
+	 * From 1.3.0: the part's star rating and review count as WooCommerce keeps them from its reviews, a variation's being its product's (#137). Null where it has no reviews, or the shop shows no ratings (WooCommerce's Enable star rating on reviews).
+	 */
+	rating: {
+		/**
+		 * The average rating, 0 to 5, as WooCommerce keeps it.
+		 */
+		average: number;
+		/**
+		 * How many reviews it is the average of.
+		 */
+		count: number;
+		/**
+		 * The rating as words, the text its stars stand for: `4.5 out of 5, 12 reviews`, in the site's language and its decimal separator.
+		 */
+		text: string;
+	} | null;
 }
 /**
  * One layer of the board: a part with a layer image, where it is drawn and the image.
@@ -1291,6 +1363,10 @@ export interface Option1 {
 		 */
 		layers: Layer[];
 	} | null;
+	/**
+	 * From 1.3.0: the ready builds offered to the shopper that pick this part, by their places among the kit's, as `presets[].at`, in the kit's order (#137). Empty where none does, and where the kit shows no ready builds.
+	 */
+	presets: number[];
 }
 /**
  * A group of chips: chips in one group widen, and groups narrow each other.

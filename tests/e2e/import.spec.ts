@@ -1,7 +1,7 @@
-import { execSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { test, expect, Page, inLocale, answered } from './support/test';
 import { axe } from './support/axe';
+import { wp } from './support/cli';
 import { login } from './support/login';
 
 /**
@@ -35,11 +35,8 @@ async function check( page: Page, name: string, text: string ) {
 // too, so the job may be running in another process already; then this asks again until that one has finished.
 async function finish( page: Page ) {
 	await expect( async () => {
-		execSync(
-			'npx wp-env run cli -- wp action-scheduler run --hooks=cbuild_import --quiet',
-			// Quiet: Action Scheduler's own command warns under PHP 8.5, and a job that did not run fails the wait below.
-			{ stdio: 'ignore' }
-		);
+		// Quiet: Action Scheduler's own command warns under PHP 8.5, and a job that did not run fails the wait below.
+		wp( 'action-scheduler run --hooks=cbuild_import --quiet' );
 		await page.goto( TAB );
 		await expect(
 			page.getByRole( 'heading', { name: 'The last import' } )

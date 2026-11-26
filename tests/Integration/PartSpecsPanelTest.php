@@ -191,7 +191,7 @@ final class PartSpecsPanelTest extends IntegrationTestCase {
 	public function test_the_groups_headings_are_styled_on_the_product_screen_and_nowhere_else(): void {
 		wp_register_style( 'woocommerce_admin_styles', 'https://example.com/admin.css', array(), '1' );
 		wp_register_script( 'wc-admin-variation-meta-boxes', 'https://example.com/meta-boxes.js', array(), '1', true );
-		$added  = static fn(): string => implode( '', (array) wp_styles()->get_data( 'woocommerce_admin_styles', 'after' ) );
+		$added  = static fn(): string => implode( '', (array) wp_styles()->get_data( 'cbuild-part-specs', 'after' ) );
 		$inline = static fn(): string => implode( '', (array) wp_scripts()->get_data( 'wc-admin-variation-meta-boxes', 'after' ) );
 
 		set_current_screen( 'dashboard' );
@@ -260,7 +260,7 @@ final class PartSpecsPanelTest extends IntegrationTestCase {
 		self::assertStringContainsString( '<option value="0"  selected=\'selected\'>No</option>', $panel );
 		self::assertSame( 5, substr_count( $panel, '<option value="">Not set</option>' ), 'three choices and two flags: spacers built in, and bearings included (D-246)' );
 
-		self::assertSame( 9, substr_count( $panel, '<details' ), 'a group per kind of part, and the Picture (0.7.0)' );
+		self::assertSame( 10, substr_count( $panel, '<details' ), 'a group per kind of part, the Picture (0.7.0) and the Rank (1.3.0)' );
 		self::assertSame( 3, substr_count( $panel, '<details open>' ), 'open where the part has a value: deck, bearings and sets' );
 		self::assertStringNotContainsString( '<fieldset', $panel, 'the tab names its panel; WooCommerce lays out a fieldset\'s labels differently' );
 		self::assertStringContainsString( '<optgroup label="Independent">', $panel );
@@ -733,7 +733,7 @@ final class PartSpecsPanelTest extends IntegrationTestCase {
 		list( $parent, $variation ) = self::variable();
 		self::assertSame( array(), self::sent( $this->fields( $variation ) ), 'a variation with no specs' );
 		self::assertSame( array(), self::sent( $this->panel( $parent ) ), 'and its parent' );
-		self::assertSame( 23, substr_count( $this->fields( $variation ), ' disabled' ), 'every field is still drawn: 22 specs and the layer image' );
+		self::assertSame( 24, substr_count( $this->fields( $variation ), ' disabled' ), 'every field is still drawn: 22 specs, the layer image and the rank' );
 
 		$variation->update_meta_data( Options::META_SPECS, array( 'wheel_diameter' => '54.0000' ) );
 		$variation->save();
@@ -793,17 +793,17 @@ final class PartSpecsPanelTest extends IntegrationTestCase {
 		$size->update_meta_data( Options::META_SPECS, array( 'wheel_diameter' => '54.0000' ) );
 		$size->save();
 		$this->hooks = null;
-		self::assertSame( 9, substr_count( $this->fields( $size ), '<details' ), 'eight of specs and the Picture' );
+		self::assertSame( 10, substr_count( $this->fields( $size ), '<details' ), 'eight of specs, the Picture and the Rank' );
 
 		// A part of a kit is drawn as ever.
 		wp_set_object_terms( $shirt->get_id(), array( $trucks ), 'product_cat' );
 		$this->hooks = null;
-		self::assertSame( 9, substr_count( $this->panel( $shirt ), '<details' ) );
+		self::assertSame( 10, substr_count( $this->panel( $shirt ), '<details' ) );
 	}
 
 	public function test_a_shop_with_no_kit_yet_draws_every_products_fields(): void {
 		list( $parent, $variation ) = self::variable();
-		self::assertSame( 9, substr_count( $this->fields( $variation ), '<details' ) );
-		self::assertSame( 9, substr_count( $this->panel( $parent ), '<details' ) );
+		self::assertSame( 10, substr_count( $this->fields( $variation ), '<details' ) );
+		self::assertSame( 10, substr_count( $this->panel( $parent ), '<details' ) );
 	}
 }

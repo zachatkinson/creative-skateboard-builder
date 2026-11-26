@@ -18,6 +18,7 @@ import {
 	framesFor,
 	measured,
 	money,
+	outline,
 	play,
 	side,
 	type Currency,
@@ -101,6 +102,7 @@ describe( 'the moments, from the spec’s table', () => {
 			total: 300,
 			step: 200,
 			cart: 400,
+			outline: 600,
 		} );
 		expect( FADE ).toBe( 150 );
 		expect( STAGGER ).toEqual( { trucks: 60, wheels: 40 } );
@@ -190,6 +192,18 @@ describe( 'play', () => {
 		const element = document.createElement( 'span' );
 		Object.defineProperty( element, 'animate', { value: undefined } );
 		expect( play( element, 'deck', [], false ) ).toBeUndefined();
+	} );
+
+	it( 'plays on a pseudo-element where one is named, and on the element itself otherwise', () => {
+		const played: Played[] = [];
+		const element = animated( document.createElement( 'span' ), played );
+		play( element, 'outline', [], false, 0, 'none', '::after' );
+		play( element, 'outline', [], true, 0, 'out', '::after' );
+		play( element, 'deck', [], false );
+		expect(
+			played.map( ( { options } ) => options.pseudoElement )
+		).toEqual( [ '::after', '::after', undefined ] );
+		expect( 'pseudoElement' in played[ 2 ]!.options ).toBe( false );
 	} );
 } );
 
@@ -398,6 +412,195 @@ describe( 'build', () => {
 		expect( () =>
 			build( null, [], [ { key: 'deck-1' } ], false )
 		).not.toThrow();
+	} );
+} );
+
+describe( 'outline', () => {
+	/**
+	 * A board of drawn layers past its template, each noting what it plays.
+	 *
+	 * @param many   How many layers.
+	 * @param played Where each call is noted.
+	 */
+	const drawnBoard = ( many: number, played: Played[] ) => {
+		const board = document.createElement( 'div' );
+		board.innerHTML =
+			'<template></template>' + '<picture></picture>'.repeat( many );
+		const layers = [ ...board.querySelectorAll( 'picture' ) ].map(
+			( layer ) => animated( layer, played )
+		);
+		return { board, layers };
+	};
+
+	afterEach( () => {
+		vi.useRealTimers();
+	} );
+
+	it( 'outlines each part new to the board or swapped for 600 ms, on its layer’s ::after, by transform and opacity alone', () => {
+		const played: Played[] = [];
+		const { board, layers } = drawnBoard( 4, played );
+		outline(
+			board,
+			[
+				{ key: 'deck-1', src: 'deck.png' },
+				{ key: 'wheels-1', src: 'a.png' },
+			],
+			[
+				{ key: 'deck-1', src: 'deck.png' },
+				{ key: 'wheels-1', src: 'b.png' },
+				{ key: 'trucks-1' },
+				{ key: 'trucks-2' },
+			],
+			false
+		);
+		expect( played ).toHaveLength( 3 );
+		expect( played.map( ( { animation } ) => animation.id ) ).toEqual( [
+			'cbuild-outline',
+			'cbuild-outline',
+			'cbuild-outline',
+		] );
+		for ( const { frames, options } of played ) {
+			expect( options ).toEqual( {
+				duration: 600,
+				delay: 0,
+				easing: 'cubic-bezier(0.2, 0, 0, 1)',
+				fill: 'backwards',
+				pseudoElement: '::after',
+			} );
+			expect(
+				keysOf( frames ).filter( ( key ) => 'offset' !== key )
+			).toEqual( [ 'opacity', 'transform' ] );
+			// Drawn in from just inside the part's box, so it never reaches past it, held, and gone at the end.
+			expect( frames[ 0 ] ).toEqual( {
+				opacity: 0,
+				transform: 'scale(0.94)',
+			} );
+			expect( frames.map( ( frame ) => frame.opacity ) ).toEqual( [
+				0, 1, 1, 0,
+			] );
+			expect( frames.map( ( frame ) => frame.offset ) ).toEqual( [
+				undefined,
+				0.25,
+				0.7,
+				undefined,
+			] );
+			expect( frames.map( ( frame ) => frame.transform ) ).toEqual( [
+				'scale(0.94)',
+				'none',
+				'none',
+				'none',
+			] );
+		}
+		expect(
+			layers.map( ( layer ) => layer.hasAttribute( 'data-outlined' ) )
+		).toEqual( [ false, false, false, false ] );
+	} );
+
+	it( 'where it is calm, shows the outline at once, then fades it out in 150 ms with no movement, 600 ms in all', () => {
+		vi.useFakeTimers();
+		const played: Played[] = [];
+		const { board, layers } = drawnBoard( 2, played );
+		outline(
+			board,
+			[ { key: 'deck-1' } ],
+			[ { key: 'deck-1' }, { key: 'trucks-1' } ],
+			true
+		);
+		expect( played, 'nothing moves' ).toEqual( [] );
+		expect( layers[ 1 ]!.getAttribute( 'data-outlined' ) ).toBe( '' );
+		expect( layers[ 0 ]!.hasAttribute( 'data-outlined' ) ).toBe( false );
+		vi.advanceTimersByTime( 449 );
+		expect( layers[ 1 ]!.hasAttribute( 'data-outlined' ) ).toBe( true );
+		expect( played ).toEqual( [] );
+		vi.advanceTimersByTime( 1 );
+		expect( layers[ 1 ]!.hasAttribute( 'data-outlined' ) ).toBe( false );
+		expect( played ).toHaveLength( 1 );
+		expect( played[ 0 ]!.frames ).toEqual( [
+			{ opacity: 1 },
+			{ opacity: 0 },
+		] );
+		expect( played[ 0 ]!.options ).toEqual( {
+			duration: FADE,
+			delay: 0,
+			easing: 'linear',
+			fill: 'backwards',
+			pseudoElement: '::after',
+		} );
+		expect( played[ 0 ]!.animation.id ).toBe( 'cbuild-outline' );
+	} );
+
+	it( 'where it is calm, a second pick before the fade holds the outline 600 ms from then, and fades it once', () => {
+		vi.useFakeTimers();
+		const played: Played[] = [];
+		const { board, layers } = drawnBoard( 1, played );
+		outline( board, [], [ { key: 'deck-1', src: 'a.png' } ], true );
+		vi.advanceTimersByTime( 300 );
+		outline(
+			board,
+			[ { key: 'deck-1', src: 'a.png' } ],
+			[ { key: 'deck-1', src: 'b.png' } ],
+			true
+		);
+		vi.advanceTimersByTime( 300 );
+		expect( layers[ 0 ]!.hasAttribute( 'data-outlined' ) ).toBe( true );
+		expect( played ).toEqual( [] );
+		vi.advanceTimersByTime( 150 );
+		expect( layers[ 0 ]!.hasAttribute( 'data-outlined' ) ).toBe( false );
+		vi.advanceTimersByTime( 1000 );
+		expect( played ).toHaveLength( 1 );
+	} );
+
+	it( 'is cut short with every moment: the calm outline goes at once, and fades nothing after', () => {
+		vi.useFakeTimers();
+		const played: Played[] = [];
+		const { board, layers } = drawnBoard( 1, played );
+		outline( board, [], [ { key: 'deck-1' } ], true );
+		cut();
+		expect( layers[ 0 ]!.hasAttribute( 'data-outlined' ) ).toBe( false );
+		vi.advanceTimersByTime( 1000 );
+		expect( played ).toEqual( [] );
+		outline( board, [], [ { key: 'deck-1' } ], false );
+		cut();
+		expect( played[ 0 ]!.animation.finish ).toHaveBeenCalledTimes( 1 );
+	} );
+
+	it( 'outlines nothing on an unchanged board, a layer not drawn, a board that is none, or where the browser animates nothing', () => {
+		vi.useFakeTimers();
+		const played: Played[] = [];
+		const { board, layers } = drawnBoard( 1, played );
+		outline(
+			board,
+			[ { key: 'deck-1', src: 'a.png' } ],
+			[ { key: 'deck-1', src: 'a.png' } ],
+			false
+		);
+		outline(
+			board,
+			[ { key: 'deck-1' } ],
+			[ { key: 'deck-1' }, { key: 'trucks-1' } ],
+			false
+		);
+		outline(
+			board,
+			[ { key: 'deck-1' } ],
+			[ { key: 'deck-1' }, { key: 'trucks-1' } ],
+			true
+		);
+		expect( played ).toEqual( [] );
+		expect( layers[ 0 ]!.hasAttribute( 'data-outlined' ) ).toBe( false );
+		expect( () =>
+			outline( null, [], [ { key: 'deck-1' } ], true )
+		).not.toThrow();
+		const still = document.createElement( 'div' );
+		still.innerHTML = '<picture></picture>';
+		Object.defineProperty( still.firstElementChild!, 'animate', {
+			value: undefined,
+		} );
+		outline( still, [], [ { key: 'deck-1' } ], true );
+		outline( still, [], [ { key: 'deck-1' } ], false );
+		expect( still.firstElementChild!.hasAttribute( 'data-outlined' ) ).toBe(
+			false
+		);
 	} );
 } );
 

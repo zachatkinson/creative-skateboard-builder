@@ -198,8 +198,9 @@ final class BuilderPageTest extends IntegrationTestCase {
 			self::assertSame( 0, $dom->query( 'ancestor::*[@data-wp-interactive]', $region )->length, 'no region inside another' );
 			$regions[] = strtok( $region->getAttribute( 'class' ), ' ' );
 		}
+		// From 1.3.0 the smart swap's notice is a piece of its own, before the step (#135, D-397).
 		self::assertSame(
-			array( 'cbuild__status', 'cbuild-progress', 'cbuild__stage', 'cbuild-errors', 'cbuild__heading', 'cbuild-step__lead', 'cbuild-step', 'cbuild-presets', 'cbuild-changes', 'cbuild-review', 'cbuild-bar' ),
+			array( 'cbuild__status', 'cbuild-progress', 'cbuild__stage', 'cbuild-errors', 'cbuild__heading', 'cbuild-step__lead', 'cbuild-guide', 'cbuild-swapped', 'cbuild-step', 'cbuild-presets', 'cbuild-changes', 'cbuild-review', 'cbuild-bar' ),
 			$regions
 		);
 		// No directive is left outside a region, where nothing would run it.
@@ -249,6 +250,79 @@ final class BuilderPageTest extends IntegrationTestCase {
 		// The stage keeps its heading and says what starts the board, as the prototype has it.
 		self::assertNull( $dom->query( '//figure[@id="cbuild-picture"]//*[contains(@class,"cbuild-picture__heading")][@hidden]' )->item( 0 ), 'The stage is headed before anything is picked.' );
 		self::assertSame( 'Pick a deck to start', self::text( $dom, '//figure[@id="cbuild-picture"]//p[contains(@class,"cbuild-picture__empty")][not(@hidden)]' ) );
+	}
+
+	/**
+	 * #134: "Help me choose" works with no JavaScript, as a GET form whose answers travel in the address, its answers
+	 * checked as sent, with Skip a plain link to the start; once sent, what it found is in the page.
+	 */
+	public function test_the_guided_start_is_a_get_form_at_the_start_with_its_answers_checked_and_skip_a_link(): void {
+		$dom  = self::dom( $this->kitPage() );
+		$form = '//section[contains(@class, "cbuild-guide")]//form[@method="get"]';
+		self::assertSame( 'Help me choose', self::text( $dom, '//summary[@id="cbuild-guide-summary"]' ) );
+		self::assertSame( 5, $dom->query( $form . '//input[@type="radio"][@name="cbuild[_guide][shoe]"]' )->length, 'Not sure and four rows' );
+		self::assertSame( 5, $dom->query( $form . '//input[@type="radio"][@name="cbuild[_guide][style]"]' )->length );
+		self::assertSame( 1, $dom->query( $form . '//input[@id="cbuild-guide-budget"][@name="cbuild[_guide][budget]"]' )->length );
+		self::assertSame( 1, $dom->query( '//label[@for="cbuild-guide-budget"]' )->length );
+		self::assertSame( 1, $dom->query( $form . '//input[@type="hidden"][@name="cbuild[_guide][asked]"][@value="1"]' )->length );
+		self::assertSame( 1, $dom->query( $form . '//input[@type="radio"][@name="cbuild[_guide][style]"][@value=""][@checked]' )->length, 'Not sure, until answered' );
+		self::assertSame( 1, $dom->query( '//div[contains(@class, "cbuild-guide__builds")][@hidden]' )->length, 'no builds until asked' );
+
+		$dom = self::dom(
+			$this->kitPage(
+				array(
+					'_guide' => array(
+						'style'  => 'park',
+						'budget' => '90',
+						'asked'  => '1',
+					),
+				)
+			)
+		);
+		self::assertSame( 'Change your answers', self::text( $dom, '//summary[@id="cbuild-guide-summary"]' ) );
+		self::assertSame( 1, $dom->query( $form . '//input[@type="radio"][@name="cbuild[_guide][style]"][@value="park"][@checked]' )->length );
+		self::assertSame( 0, $dom->query( $form . '//input[@type="radio"][@name="cbuild[_guide][style]"][@value=""][@checked]' )->length );
+		self::assertSame( 1, $dom->query( $form . '//input[@name="cbuild[_guide][budget]"][@value="90"]' )->length );
+		self::assertSame( 0, $dom->query( '//div[contains(@class, "cbuild-guide__builds")][@hidden]' )->length );
+		// This catalogue holds no wheels: no build, said so.
+		self::assertSame( 'The shop cannot make a build from these answers right now. Leave one blank, or skip to the builder.', self::text( $dom, '//p[contains(@class, "cbuild-guide__none")]' ) );
+		foreach ( $dom->query( '//a[contains(@class, "cbuild-guide__skip")]' ) ?: array() as $skip ) {
+			self::assertInstanceOf( \DOMElement::class, $skip );
+			self::assertStringNotContainsString( 'cbuild', $skip->getAttribute( 'href' ), 'Skip is the builder with nothing in its address' );
+		}
+	}
+
+	// D-409: with the kit's Help me choose off, the page draws no guide: no disclosure, no form, no label and no region,
+	// and the step follows the lead as it would with no guide at all, without JavaScript too.
+	public function test_help_me_choose_off_draws_no_guide_and_the_step_follows_the_lead(): void {
+		$product = wc_get_product( $this->kit );
+		self::assertInstanceOf( KitProduct::class, $product );
+		$product->setDocument( Options::META_KIT_SETTINGS, array( 'schema_version' => 1, 'guide' => false ) );
+		$product->save();
+		foreach ( array(
+			'at the start'      => null,
+			'with answers sent' => array(
+				'_guide' => array(
+					'style' => 'park',
+					'asked' => '1',
+				),
+			),
+		) as $case => $sent ) {
+			$html = $this->kitPage( $sent );
+			$dom  = self::dom( $html );
+			self::assertStringNotContainsString( 'cbuild-guide', $html, $case . ': nothing of the guide' );
+			self::assertStringNotContainsString( 'Help me choose', $html, $case );
+			self::assertSame( 0, $dom->query( '//*[@for="cbuild-guide-budget"]' )->length, $case . ': no label' );
+			// Between them only the smart swap's notice (#135, D-397), hidden where no swap was made.
+			$notice = $dom->query( '//p[contains(@class, "cbuild-step__lead")]/following-sibling::*[1]' )->item( 0 );
+			self::assertInstanceOf( \DOMElement::class, $notice, $case );
+			self::assertSame( 'cbuild-swapped', $notice->getAttribute( 'class' ), $case . ': the swap\'s notice next' );
+			self::assertTrue( $notice->hasAttribute( 'hidden' ), $case . ': hidden, with no swap' );
+			$next = $dom->query( '//p[contains(@class, "cbuild-step__lead")]/following-sibling::*[2]' )->item( 0 );
+			self::assertInstanceOf( \DOMElement::class, $next, $case );
+			self::assertSame( 'form', $next->tagName, $case . ': the step next' );
+			self::assertStringContainsString( 'cbuild-step', $next->getAttribute( 'class' ), $case );
+		}
 	}
 
 	public function test_the_picture_is_named_by_a_heading_a_sighted_shopper_reads_too(): void {
@@ -660,6 +734,30 @@ final class BuilderPageTest extends IntegrationTestCase {
 	}
 
 	/**
+	 * #151 (Mature Content's ask, from Cowork's review of 1.2.0): a documented place just above the step's cards, which
+	 * the builder renders empty on every step and never draws into, so another plugin's notice there comes in with the
+	 * cards. In the step's form, inside the part the width question hides, and the cards' list its next sibling.
+	 */
+	public function test_the_step_has_an_empty_place_for_another_plugin_just_above_its_cards(): void {
+		foreach ( array( array(), array( '_width' => '8in' ), array( 'step' => 'trucks', 'deck' => (string) $this->parts['deck 8.0'] ) ) as $sent ) {
+			$dom    = self::dom( $this->kitPage( $sent ) );
+			$places = $dom->query( '//*[contains(concat(" ", normalize-space(@class), " "), " ' . Options::CLASS_ABOVE_CARDS . ' ")]' );
+			self::assertSame( 1, $places->length, 'one place a page' );
+			$place = $places->item( 0 );
+			self::assertInstanceOf( \DOMElement::class, $place );
+			self::assertSame( 'div', $place->nodeName );
+			self::assertSame( 0, $place->childNodes->length, 'rendered empty' );
+			self::assertSame( Options::CLASS_ABOVE_CARDS, $place->getAttribute( 'class' ) );
+			self::assertSame( 1, $place->attributes->length, 'its class alone: nothing the store binds' );
+			self::assertSame( 1, $dom->query( 'ancestor::form[contains(@class,"cbuild-step")]', $place )->length, 'in the step\'s form' );
+			self::assertSame( 1, $dom->query( 'ancestor::fieldset[contains(@class,"cbuild-step__fieldset")]', $place )->length, 'with the cards, hidden while the width is asked' );
+			$next = $dom->query( 'following-sibling::*[1]', $place )->item( 0 );
+			self::assertInstanceOf( \DOMElement::class, $next );
+			self::assertSame( 'cbuild-cards', strtok( $next->getAttribute( 'class' ), ' ' ), 'just above the cards' );
+		}
+	}
+
+	/**
 	 * The deck step at 8″ with more decks than a step lists alone, so it has Sort, as the step's form sends it: Sort's
 	 * row and the count's paragraph, as served.
 	 *
@@ -723,6 +821,53 @@ final class BuilderPageTest extends IntegrationTestCase {
 		$review = $dom->query( '//ul[contains(@class,"cbuild-review__items")]/li' );
 		self::assertSame( 'cbuild-review__item is-flagged', $review->item( 0 )->getAttribute( 'class' ), 'the deck' );
 		self::assertStringNotContainsString( 'is-flagged', $review->item( 1 )->getAttribute( 'class' ), 'the trucks' );
+		// Issue #132: and its thumbnail there, which Mature Content blurs.
+		$photos = $dom->query( '//ul[contains(@class,"cbuild-review__items")]/li/span[@class="cbuild-review__thumb"]/img' );
+		self::assertSame( 'cbuild-review__photo is-flagged', $photos->item( 0 )->getAttribute( 'class' ), 'the deck\'s thumbnail' );
+		self::assertSame( 'cbuild-review__photo', $photos->item( 1 )->getAttribute( 'class' ), 'the trucks\'' );
+	}
+
+	// Issue #132: each row of the review shows its part's thumbnail, the picture and rendition its card shows, decorative
+	// beside the name; a row with no picture keeps the place, its image hidden.
+	public function test_each_row_of_the_review_is_served_with_its_cards_thumbnail_and_a_row_without_one_keeps_its_place(): void {
+		$truck = wc_get_product( $this->parts['truck 149'] );
+		$photo = LayerFiles::attachment( 600, 600, false, 'png' );
+		$truck->set_image_id( $photo );
+		$truck->save();
+		do_action( 'cbuild_parts_changed', array( $this->parts['truck 149'] ) );
+		$picks = array(
+			'deck'   => (string) $this->parts['deck 8.5'],
+			'trucks' => (string) $this->parts['truck 149'],
+		);
+
+		$card = self::dom( $this->kitPage( $picks + array( 'step' => 'trucks' ) ) )->query( '//li[contains(@class,"cbuild-card--chosen")]//img[contains(@class,"cbuild-card__photo")]' )->item( 0 );
+		self::assertInstanceOf( \DOMElement::class, $card, 'the trucks\' card has a photo' );
+		$GLOBALS['wp_interactivity'] = new WP_Interactivity_API();
+
+		$dom  = self::dom( $this->kitPage( $picks + array( 'step' => 'review' ) ) );
+		$rows = $dom->query( '//ul[contains(@class,"cbuild-review__items")]/li' );
+		self::assertGreaterThan( 2, $rows->length );
+		foreach ( $rows as $row ) {
+			self::assertSame( 1, $dom->query( './span[@class="cbuild-review__thumb"]/img[@alt=""]', $row )->length, 'every row keeps the thumbnail\'s place, its image decorative' );
+		}
+		$trucks = $dom->query( './span[@class="cbuild-review__thumb"]/img', $rows->item( 1 ) )->item( 0 );
+		self::assertInstanceOf( \DOMElement::class, $trucks );
+		self::assertFalse( $trucks->hasAttribute( 'hidden' ) );
+		$attributes = array( 'src', 'srcset', 'sizes', 'width', 'height' );
+		self::assertSame(
+			array_map( static fn( string $name ): string => $card->getAttribute( $name ), $attributes ),
+			array_map( static fn( string $name ): string => $trucks->getAttribute( $name ), $attributes ),
+			'the card\'s picture, in the same rendition'
+		);
+		self::assertSame( (string) wp_get_attachment_image_src( $photo, 'woocommerce_thumbnail' )[0], $trucks->getAttribute( 'src' ) );
+		self::assertSame( 'lazy', $trucks->getAttribute( 'loading' ) );
+
+		$deck = $dom->query( './span[@class="cbuild-review__thumb"]/img', $rows->item( 0 ) )->item( 0 );
+		self::assertInstanceOf( \DOMElement::class, $deck );
+		self::assertTrue( $deck->hasAttribute( 'hidden' ), 'the deck has no photo: its place is kept, empty' );
+		$grip = $dom->query( './span[@class="cbuild-review__thumb"]/img', $rows->item( $rows->length - 1 ) )->item( 0 );
+		self::assertInstanceOf( \DOMElement::class, $grip );
+		self::assertTrue( $grip->hasAttribute( 'hidden' ), 'nothing chosen: the place kept' );
 	}
 
 	// Audit, spec review S12 (plan risk 3): markup sent through every text the builder shows is text, never a tag.
@@ -758,18 +903,69 @@ final class BuilderPageTest extends IntegrationTestCase {
 	}
 
 	public function test_every_link_into_a_state_carries_nofollow_on_every_state(): void {
+		// The kit's deck and trucks alone required, so a build of the two reaches the review; and a truck for less that
+		// fits the 8.0 deck as the 139 does, so the review offers a swap (#135).
+		$category = static fn( int $part ): int => (int) wp_get_object_terms( $part, 'product_cat', array( 'fields' => 'ids' ) )[0];
+		$slots    = KitDocuments::slots();
+		foreach ( $slots['slots'] as $at => $slot ) {
+			$slots['slots'][ $at ]['required'] = $at < 2;
+		}
+		$slots['slots'][0]['sources'] = array( 'categories' => array( $category( $this->parts['deck 8.0'] ) ) );
+		$slots['slots'][1]['sources'] = array( 'categories' => array( $category( $this->parts['truck 139'] ) ) );
+		$this->kit                    = KitFactory::kit( 'Complete', array( Options::META_KIT_SLOTS => $slots ) )->get_id();
+		$less   = $this->part(
+			'Truck 139 for less',
+			'20',
+			array(
+				'axle_width'    => '8.0000',
+				'deck_min'      => '7.8000',
+				'deck_max'      => '8.2000',
+				'baseplate'     => 'new_school',
+				'max_wheel'     => '56.0000',
+				'axle_diameter' => '8.0000',
+				'set_size'      => '2',
+			),
+			$category( $this->parts['truck 139'] )
+		);
+		$swaps  = array(
+			'deck'   => (string) $this->parts['deck 8.0'],
+			'trucks' => (string) $this->parts['truck 139'],
+			'step'   => 'review',
+		);
 		$states = array(
-			'the blank start'   => array(),
-			'a step'            => array( 'deck' => (string) $this->parts['deck 8.5'] ),
-			'the error summary' => array( 'step' => 'review' ),
-			'the review'        => array(
+			'the blank start'                    => array(),
+			'a step'                             => array( 'deck' => (string) $this->parts['deck 8.5'] ),
+			'the error summary'                  => array( 'step' => 'review' ),
+			'the review'                         => array(
 				'deck' => (string) $this->parts['deck 8.5'],
 				'step' => 'review',
 			),
+			// The guided start with its answers sent: its builds, and "Build your own at" a width (#134).
+			'a guided start with answers'        => array(
+				'_guide' => array(
+					'shoe'  => '2',
+					'asked' => '1',
+				),
+			),
+			'a review with swaps'                => $swaps,
+			// After a swap: its notice and Undo, a link back to the picks before it.
+			'a page after a swap'                => array(
+				'trucks' => (string) $less,
+				'_undo'  => array( 'trucks' => (string) $this->parts['truck 139'] ),
+			) + $swaps,
+		);
+		$expect = array(
+			'a guided start with answers' => 'cbuild-guide__width',
+			'a review with swaps'         => 'cbuild-swap',
+			'a page after a swap'         => 'cbuild-swapped__undo',
 		);
 		foreach ( $states as $state => $build ) {
-			$links = self::dom( $this->kitPage( $build ) )->query( '//div[contains(concat(" ",@class," ")," cbuild ")]//a[contains(@href,"cbuild%5B") or contains(@href,"cbuild[")]' );
+			$dom   = self::dom( $this->kitPage( $build ) );
+			$links = $dom->query( '//div[contains(concat(" ",@class," ")," cbuild ")]//a[contains(@href,"cbuild%5B") or contains(@href,"cbuild[")]' );
 			self::assertGreaterThan( 0, $links->length, $state . ' has links into states to check.' );
+			if ( isset( $expect[ $state ] ) ) {
+				self::assertGreaterThan( 0, $dom->query( '//div[contains(concat(" ",@class," ")," cbuild ")]//a[contains(concat(" ",@class," ")," ' . $expect[ $state ] . ' ")][contains(@href,"cbuild%5B") or contains(@href,"cbuild[")]' )->length, $state . ': its own link, ' . $expect[ $state ] . ', is among them.' );
+			}
 			foreach ( $links as $link ) {
 				self::assertSame( 'nofollow', $link->getAttribute( 'rel' ), $state . ': ' . trim( $link->textContent ) . ' leads into a state, so crawlers are asked not to follow it (spec: SEO and sharing).' );
 			}

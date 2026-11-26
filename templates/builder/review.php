@@ -12,14 +12,26 @@ defined( 'ABSPATH' ) || exit;
 ?>
 <section class="cbuild-review" data-wp-interactive="creative-skateboard-builder" data-wp-bind--hidden="!state.view.isReview">
 	<h3 class="cbuild-review__heading screen-reader-text" data-wp-text="state.view.review.heading"></h3>
+	<?php // The same board for less (#135, D-397): every slot but the deck at its cheapest that fits, in one press. ?>
+	<p class="cbuild-review__board" data-wp-bind--hidden="!state.view.board.shown">
+		<a class="cbuild-button cbuild-swap cbuild-swap--board" rel="nofollow" data-wp-on--click="actions.follow" data-wp-bind--id="state.view.board.id" data-wp-bind--href="state.view.board.url" data-wp-text="state.view.board.text"></a>
+	</p>
 	<ul class="cbuild-review__items">
 		<template data-wp-each--item="state.view.review.items" data-wp-each-key="context.item.key">
 			<li data-wp-bind--class="context.item.classes">
+				<?php // The part's thumbnail, its card's picture (#132, D-403): decorative, since its name is beside it. A row with none keeps the place. ?>
+				<span class="cbuild-review__thumb"><img data-wp-bind--class="context.item.photoClasses" alt="" loading="lazy" decoding="async" data-wp-bind--hidden="!context.item.hasImage" data-wp-bind--src="context.item.src" data-wp-bind--srcset="context.item.srcset" data-wp-bind--sizes="context.item.sizes" data-wp-bind--width="context.item.width" data-wp-bind--height="context.item.height"></span>
 				<span class="cbuild-review__slot" data-wp-text="context.item.label"></span>
 				<span class="cbuild-review__name" data-wp-text="context.item.name"></span>
 				<span class="cbuild-review__fit" data-wp-text="context.item.fit"></span>
 				<span class="cbuild-review__amount" data-wp-text="context.item.amount"></span>
 				<a class="cbuild-button cbuild-review__change" rel="nofollow" data-wp-on--click="actions.follow" data-wp-bind--href="context.item.url" data-wp-bind--aria-label="context.item.change" data-wp-text="context.item.text"></a>
+				<?php // The slot's smart swaps, under its row (#135, D-397): links, so they work without the script. ?>
+				<span class="cbuild-review__swaps" data-wp-bind--hidden="!context.item.hasSwaps">
+					<template data-wp-each--swap="context.item.swaps" data-wp-each-key="context.swap.id">
+						<a class="cbuild-swap" rel="nofollow" data-wp-on--click="actions.follow" data-wp-bind--id="context.swap.id" data-wp-bind--href="context.swap.url" data-wp-text="context.swap.text"></a>
+					</template>
+				</span>
 			</li>
 		</template>
 	</ul>
