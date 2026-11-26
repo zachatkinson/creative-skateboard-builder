@@ -1716,4 +1716,45 @@ final class StateAnswerTest extends TestCase {
 		}
 		self::assertSame( array(), $this->answer( self::COMPLETE, State::REVIEW )['swaps'], 'none without the swaps' );
 	}
+
+	// #135: the board for less takes, in a later slot, a part the build's own picks hid. The 58 mm wheels need the 1/4"
+	// risers, which hide the 1" bolts; once the board drops to the 52s and the 1/8" risers, the 1" bolts fit and cost less.
+	public function test_the_board_for_less_takes_a_part_the_picks_it_changes_had_hidden(): void {
+		$picks  = array(
+			SlotKey::WHEELS   => 303,
+			SlotKey::RISERS   => 402,
+			SlotKey::HARDWARE => 602,
+		) + self::COMPLETE;
+		$review = $this->swapping( $picks, State::REVIEW );
+		self::assertSame( 'board', $review['swaps'][0]['kind'] );
+		self::assertSame(
+			array(
+				SlotKey::WHEELS   => 301,
+				SlotKey::RISERS   => 401,
+				SlotKey::HARDWARE => 601,
+			),
+			array_column( $review['swaps'][0]['parts'], 'part', 'slot' )
+		);
+	}
+
+	// #135: a part for less whose saving the build discount rounds away is no saving to offer, alone or on the board.
+	// A better one is offered whatever it costs.
+	public function test_a_part_for_less_whose_saving_rounds_to_nothing_is_not_offered(): void {
+		$parts                      = Shop::parts();
+		$parts[ SlotKey::WHEELS ][] = Shop::priced( Builds::wheel( '52', 305 ), 2999 );
+		$this->kits->add( self::KIT, Shop::kit(), $parts );
+		$picks = array( SlotKey::WHEELS => 301 ) + self::COMPLETE;
+		$kinds = static fn( array $answer ): array => array_map( static fn( array $swap ): string => $swap['kind'] . ' ' . implode( ',', array_column( $swap['parts'], 'part', 'slot' ) ) . ' ' . $swap['change']['amount'], $answer['swaps'] );
+
+		self::assertSame( array( 'board 305 -1', 'less 305 -1', 'better 302 200', 'better 602 50' ), $kinds( $this->swapping( $picks, State::REVIEW ) ), 'a cent less is a saving' );
+		$this->settings->terms = BuildTerms::read( array( BuildTerms::DISCOUNT => '50' ) );
+		self::assertSame( array( 'better 302 100', 'better 602 25' ), $kinds( $this->swapping( $picks, State::REVIEW ) ), 'half a cent less rounds to the same total' );
+	}
+
+	// #135: the kit's Offer smart swaps, and a plugin's answer to cbuild_swaps, turn the swaps off on a build that has some.
+	public function test_a_plugin_that_turns_the_swaps_off_leaves_a_build_none(): void {
+		self::assertNotSame( array(), $this->swapping( self::COMPLETE, State::REVIEW )['swaps'] );
+		$GLOBALS['cbuild_test_filters']['cbuild_swaps'] = static fn( bool $offers, int $kit ): bool => ! ( $offers && self::KIT === $kit );
+		self::assertSame( array(), $this->swapping( self::COMPLETE, State::REVIEW )['swaps'] );
+	}
 }

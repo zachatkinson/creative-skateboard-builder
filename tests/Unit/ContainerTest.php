@@ -78,6 +78,9 @@ final class ContainerTest extends TestCase {
 				array( \CreativeBranding\SkateboardBuilder\Port\Kits::class, 'meta', \CreativeBranding\SkateboardBuilder\Port\ProductMeta::class ),
 				array( \CreativeBranding\SkateboardBuilder\Front\MyBuildsView::class, 'meta', \CreativeBranding\SkateboardBuilder\Port\ProductMeta::class ),
 				array( \CreativeBranding\SkateboardBuilder\Service\ComposedPictures::class, 'layers', \CreativeBranding\SkateboardBuilder\Port\ComposedLayers::class ),
+				array( \CreativeBranding\SkateboardBuilder\Front\Builder::class, 'guided', \CreativeBranding\SkateboardBuilder\Front\GuidedStart::class ),
+				array( \CreativeBranding\SkateboardBuilder\Front\StateAnswer::class, 'swaps', \CreativeBranding\SkateboardBuilder\Service\BuildSwaps::class ),
+				array( \CreativeBranding\SkateboardBuilder\Front\SavedBuildHooks::class, 'compare', \Closure::class ),
 			) as [ $id, $property, $type ]
 		) {
 			$service = $container->get( $id );
@@ -108,6 +111,10 @@ final class ContainerTest extends TestCase {
 				array( \CreativeBranding\SkateboardBuilder\Front\StartButton::class, 'address', static fn( object $earlier ): object => $earlier->withAddress( $address ) ),
 				array( \CreativeBranding\SkateboardBuilder\Front\MyBuildsView::class, 'address', static fn( object $earlier ): object => $earlier->withAddress( $address ) ),
 				array( \CreativeBranding\SkateboardBuilder\Front\MyBuildsView::class, 'meta', static fn( object $earlier ): object => $earlier->withMeta( $meta ) ),
+				// 1.3.0's: the guided start's builds, the smart swaps and My builds' compare.
+				array( \CreativeBranding\SkateboardBuilder\Front\Builder::class, 'guided', static fn( object $earlier ): object => $earlier->withGuide( $container->get( \CreativeBranding\SkateboardBuilder\Front\GuidedStart::class ) ) ),
+				array( \CreativeBranding\SkateboardBuilder\Front\StateAnswer::class, 'swaps', static fn( object $earlier ): object => $earlier->withSwaps( $container->get( \CreativeBranding\SkateboardBuilder\Service\BuildSwaps::class ) ) ),
+				array( \CreativeBranding\SkateboardBuilder\Front\SavedBuildHooks::class, 'compare', static fn( object $earlier ): object => $earlier->withCompare( static fn(): object => $container->get( \CreativeBranding\SkateboardBuilder\Front\CompareView::class ) ) ),
 			) as [ $class, $property, $with ]
 		) {
 			$earlier = ( new \ReflectionClass( $class ) )->newInstanceWithoutConstructor();

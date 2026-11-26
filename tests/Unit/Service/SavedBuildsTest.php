@@ -114,6 +114,9 @@ final class SavedBuildsTest extends TestCase {
 		self::assertSame( 301, $reopened->state->counted()[ SlotKey::WHEELS ]->id, 'the build as it would be, with the closest wheels' );
 		self::assertSame( array( array( SlotKey::TRUCKS, 149, $then->lines[ SlotKey::TRUCKS ], 5900 ) ), array_map( static fn( array $price ): array => array( $price['slot'], $price['part'], $price['then'], $price['now'] ), $reopened->prices ), 'each new price, then and now: a pair at 59.00' );
 		self::assertSame( array( $then->total, $reopened->state->quote->total ), array( $reopened->then, $reopened->state->quote->total ) );
+		$found = $this->builds->find( self::ANA, $saved['uuid'] );
+		self::assertNotNull( $found );
+		self::assertEquals( $reopened, $this->builds->changed( $found ), 'My builds\' compare reads the same from the build it has read (#136)' );
 
 		$this->money->currency = 'USD';
 		$other                 = $this->builds->reopened( self::ANA, $saved['uuid'] );

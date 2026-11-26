@@ -460,17 +460,18 @@ final class KitEditor {
 	 * A wheel guide row's path by the style it is for, as the tab sends it: `wheel_guide.rows[1].to` is
 	 * `wheel_guide.cruising.to` where the second row stored is cruising's (#134). The tab draws a row a style, and the
 	 * stored rows hold only the styles given sizes, so a row's place there is no field's. Any other path is as it was.
+	 * The rows are `wheels()`'s, made from the tab's fields, so each row named holds a riding style's code.
 	 *
 	 * @param array<string, mixed> $document The settings.
 	 * @param string               $path     A problem's path in them.
 	 */
 	private static function styled( array $document, string $path ): string {
-		if ( 1 !== preg_match( '/\Awheel_guide\.rows\[(\d+)\](.*)\z/s', $path, $found ) ) {
+		if ( 1 !== preg_match( '/\Awheel_guide\.rows\[(\d+)\](.*)\z/', $path, $found ) ) {
 			return $path;
 		}
 		$rows  = self::map( self::map( $document['wheel_guide'] ?? null )['rows'] ?? null );
-		$style = self::map( $rows[ (int) $found[1] ] ?? null )['style'] ?? null;
-		return is_string( $style ) && 1 === preg_match( '/\A[a-z]{1,16}\z/', $style ) ? 'wheel_guide.' . $style . $found[2] : $path;
+		$style = self::map( $rows[ $found[1] ] ?? null )['style'] ?? null;
+		return is_string( $style ) ? 'wheel_guide.' . $style . $found[2] : $path;
 	}
 
 	/**
