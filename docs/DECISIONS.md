@@ -288,6 +288,7 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-465 · A lane lands only after CI's own checks on its changed lines and a walkthrough of them](#d-465--a-lane-lands-only-after-cis-own-checks-on-its-changed-lines-and-a-walkthrough-of-them--2026-11-26)
 - [D-467 · ShellCheck holds every shell script, pinned as actionlint and zizmor are](#d-467--shellcheck-holds-every-shell-script-pinned-as-actionlint-and-zizmor-are--2026-11-26)
 - [D-468 · A plugin blurs the 3D view by class, so a shopper's reveal can lift it](#d-468--a-plugin-blurs-the-3d-view-by-class-so-a-shoppers-reveal-can-lift-it--2026-11-26)
+- [D-469 · A landing skips its second /verify when the lane passed it on the same tree](#d-469--a-landing-skips-its-second-verify-when-the-lane-passed-it-on-the-same-tree--2026-11-26)
 - [D-432 · After a swap the notice says the swap and the status the build alone, so a screen reader hears it once](#d-432--after-a-swap-the-notice-says-the-swap-and-the-status-the-build-alone-so-a-screen-reader-hears-it-once--2026-11-25)
 
 ### Motion
@@ -6860,6 +6861,16 @@ Asked by Claude in Cowork, for Mature Content, while #139 was being built. On th
 The cost is that the CSS blur covers the whole view, trucks and wheels too, not the deck's graphic alone. Cowork said either way works for Mature Content once HOOKS.md says which.
 
 **Tests:** a browser test adds `is-flagged` through `cbuild_part_classes` and a veil to `.cbuild-3d__frame`, then checks the class on the canvas and the veil after a part change and a reopen (lane 2).
+
+**Status:** Accepted.
+
+### D-469 · A landing skips its second /verify when the lane passed it on the same tree · 2026-11-26
+
+Lane 2's landing (D-465) took 41 minutes, 40 of them a /verify that repeated the run the lane had just passed. Each landing paid for it, and two lanes ready together waited on each other.
+
+**Decision:** the handoff's verify.sh writes a receipt when every step passed on a clean checkout that didn't change while it ran, with wp-env up. Its key is the tree (`git ls-tree -r HEAD`, with `languages/` left out, since a landing remakes its made files). land.sh skips its full /verify when the merged tree has a receipt. It then runs `i18n:check` on the remade files, and `composer infection:diff` as before. `CBUILD_FULL_VERIFY=1` forces the full run. A lane earns a receipt by merging the newest milestone branch, committing, and running verify.sh last.
+
+The second run had the same tree on the same lane's sites, so it couldn't find what the first missed. Any change after the lane's run gives a new key and the full run. The rule "/verify before every commit" is kept: the landing's commit holds only the made files, which `i18n:check` checks.
 
 **Status:** Accepted.
 
