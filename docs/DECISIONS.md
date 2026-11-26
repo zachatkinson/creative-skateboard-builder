@@ -511,6 +511,7 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-430 · The swaps-off test measures its own plain card, so it holds when it runs alone](#d-430--the-swaps-off-test-measures-its-own-plain-card-so-it-holds-when-it-runs-alone--2026-11-25)
 - [D-431 · Every browser test passes when it runs alone](#d-431--every-browser-test-passes-when-it-runs-alone--2026-11-25)
 - [D-511 · The browser tests' lock reads the clock once to judge a lock and to give up on it](#d-511--the-browser-tests-lock-reads-the-clock-once-to-judge-a-lock-and-to-give-up-on-it--2026-11-26)
+- [D-466 · My builds, the deck page's start button and the bar run their key browser tests on Kadence and Storefront too](#d-466--my-builds-the-deck-pages-start-button-and-the-bar-run-their-key-browser-tests-on-kadence-and-storefront-too--2026-11-26)
 
 ### Releases and the repository
 
@@ -6928,5 +6929,17 @@ A gate can't land red, and fixing those moments is beyond #152, so the test keep
 
 - **Red runs.** The held Next test, now counting the bar too ("… moves nothing of the step or the bar …"), on the patch alone, chromium-phone: "at the press: the builder's layout shift: 0.004 … [cbuild-bar__actions 766→783; cbuild-bar__more 792→809]". The store test "shows the next step's Back at the press of the first step's Next, and hides it again at a limit" failed with `onward()`'s Back part taken out (store.test.ts:4076). The step fix's own red runs are D-408's, in the M13 handoff's patch: 0.021, and 0.020 to 0.046.
 - **After.** As in the table, A's row. `BuilderViewTest::test_the_first_step_gives_the_next_steps_back_for_nexts_press` covers the server's `ahead`. Two store tests cover the press and the cases that leave Back alone, and the patch's two store tests cover the width line.
+
+**Status:** Accepted.
+
+### D-466 · My builds, the deck page's start button and the bar run their key browser tests on Kadence and Storefront too · 2026-11-26
+
+Milestone 14's pipeline, the real-theme runs (Zach, 26 November). In 1.3.0 four defects passed every test on Twenty Twenty-Five and broke on a real theme: the compare's lost rules (D-450), and F31 to F33. The key browser tests of three areas now run on each of the three themes, through the e2e theme fixture's cookie, as shelf.spec.ts and the bar's tests already do: `for ( const theme of [ 'twentytwentyfive', 'storefront', 'kadence' ] )`.
+
+- **My builds:** "a customer saves, opens, saves over and deletes a build under My builds" and "three builds compared by keyboard in a table that says what differs in words". "Every build's column is reached in the compare's region on a phone" already ran on Kadence and Storefront.
+- **The deck page's start button (F32):** "keeps a deck page's start button readable under the hostile theme", axe's contrast with the hostile fixture on. "The start button on a theme (#133)" already looped the three themes.
+- **The bar (F33):** "keeps the bar no taller at the review on a phone under a theme's paragraph margin (#150)". #153's "The bar on a phone" covers the three themes in English and French (D-510).
+
+**Red run.** With D-450's handle change reverted (`SavedBuildHooks::styles()` adding its rules to `woocommerce-general` again), on chromium-desktop and chromium-phone: the looped compare failed on Kadence and on Storefront, on the desktop "a build a column, at least 14rem" (builder.spec.ts:9021) and on the phone "the row says which build it is" (builder.spec.ts:8917). Twenty Twenty-Five passed, as it did in 1.3.0. The save test passed on all three, since its page needs none of those rules. Put back, all passed.
 
 **Status:** Accepted.

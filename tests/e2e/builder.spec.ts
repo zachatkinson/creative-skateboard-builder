@@ -8683,132 +8683,153 @@ test.describe( 'Saved builds', () => {
 		expect( back ).toContain( String( id( 'builder-test-deck-8-0' ) ) );
 	} );
 
-	test( 'a customer saves, opens, saves over and deletes a build under My builds', async ( {
-		page,
-		javaScriptEnabled,
-	}, info ) => {
-		// A customer of this test's own, with a cart nothing else writes. The administrator's session is also saved
-		// whole by requests the test doesn't make, each with the cart it read as it started: WordPress's heartbeat on
-		// an admin screen, and Action Scheduler's queue runner, sent with the administrator's cookies. Under load one
-		// ended seconds after the test that sent it, and the cart read 2 before the saves and 0 after (#145).
-		await customer( page );
-		// Saving is no add: the cart's lines are as they were after both saves (CI run 44119225891).
-		const lines = async () =>
-			(
-				await (
-					await page.request.get( '/wp-json/wc/store/v1/cart' )
-				).json()
-			).items_count as number;
-		const before = await lines();
-		const name = `E2E ${ info.project.name } ${ Date.now() }`;
-		await page.goto( full() );
-		await expect( heading( page ) ).toHaveText( /: Check your build$/ );
-		await page.getByLabel( 'Name it (optional)' ).fill( name );
-		await answered( page, () =>
-			page.getByRole( 'button', { name: 'Save build' } ).click()
-		);
-		await expect( page ).toHaveURL( /my-builds/ );
-		await expect(
-			page.getByText( 'The build is saved. It is listed below.' )
-		).toBeVisible();
-		const row = page
-			.locator( '.cbuild-my-builds__build' )
-			.filter( { hasText: name } );
-		await expect( row ).toHaveCount( 1 );
-		if ( javaScriptEnabled ) {
-			// axe runs in the page, so not where scripts are off.
-			await axe( page, 'My builds', '.woocommerce-MyAccount-content' );
-		}
-
-		// Open: the builder at the review, checked again, and Save build there updates it.
-		await row.getByRole( 'link', { name: 'Open' } ).click();
-		await expect( heading( page ) ).toHaveText( /: Check your build$/ );
-		expect( page.url() ).toContain( 'cbuild_saved=' );
-		await expect(
-			page.getByLabel( 'Link to this build' ),
-			'the saved build is no part of a shared link'
-		).not.toHaveValue( /cbuild_saved/ );
-		// answered() waits for the next page's load, so the page it acts on must have had its own: WebKit, pressed
-		// before then, sent no form and the wait took the opened page's load for the answer (CI run 44119225891, #50).
-		await page.waitForLoadState( 'load' );
-		await answered( page, () =>
-			page.getByRole( 'button', { name: 'Save build' } ).click()
-		);
-		await expect(
-			page.getByText( 'Your saved build is updated.' )
-		).toBeVisible();
-		await expect(
-			page
-				.locator( '.cbuild-my-builds__build' )
-				.filter( { hasText: name } ),
-			'kept its name, and is one build still'
-		).toHaveCount( 1 );
-		expect( await lines(), 'nothing was added to the cart' ).toBe( before );
-
-		await answered( page, () =>
-			page
-				.locator( '.cbuild-my-builds__build' )
-				.filter( { hasText: name } )
-				.getByRole( 'button', { name: 'Delete' } )
-				.click()
-		);
-		await expect( page.getByText( 'The build is deleted.' ) ).toBeVisible();
-		await expect(
-			page
-				.locator( '.cbuild-my-builds__build' )
-				.filter( { hasText: name } )
-		).toHaveCount( 0 );
-
-		// Undo (Cowork's 0.8.0 review, F3; D-231): named for the build, reached and pressed by keyboard, and the build
-		// is back, with and without JavaScript.
-		const undo = page.getByRole( 'button', {
-			name: `Undo deleting ${ name }`,
-		} );
-		await expect( undo ).toBeVisible();
-		if ( javaScriptEnabled ) {
-			await axe(
-				page,
-				`${ info.project.name }: My builds, Undo offered`,
-				'.woocommerce-MyAccount-content'
+	// The real-theme runs (Zach, 26 November; D-466): in 1.3.0 the compare's lost rules (D-450) and F32 and F33 all
+	// passed on Twenty Twenty-Five and broke on a real theme, so this runs on Kadence and Storefront too.
+	for ( const theme of [ 'twentytwentyfive', 'storefront', 'kadence' ] ) {
+		test( `a customer saves, opens, saves over and deletes a build under My builds, on ${ theme }`, async ( {
+			page,
+			context,
+			baseURL,
+			javaScriptEnabled,
+		}, info ) => {
+			await context.addCookies( [
+				{
+					name: 'cbuild_e2e_theme',
+					value: theme,
+					url: baseURL || SITE,
+				},
+			] );
+			// A customer of this test's own, with a cart nothing else writes. The administrator's session is also saved
+			// whole by requests the test doesn't make, each with the cart it read as it started: WordPress's heartbeat on
+			// an admin screen, and Action Scheduler's queue runner, sent with the administrator's cookies. Under load one
+			// ended seconds after the test that sent it, and the cart read 2 before the saves and 0 after (#145).
+			await customer( page );
+			// Saving is no add: the cart's lines are as they were after both saves (CI run 44119225891).
+			const lines = async () =>
+				(
+					await (
+						await page.request.get( '/wp-json/wc/store/v1/cart' )
+					).json()
+				).items_count as number;
+			const before = await lines();
+			const name = `E2E ${ info.project.name } ${ Date.now() }`;
+			await page.goto( full() );
+			await expect( heading( page ) ).toHaveText( /: Check your build$/ );
+			await page.getByLabel( 'Name it (optional)' ).fill( name );
+			await answered( page, () =>
+				page.getByRole( 'button', { name: 'Save build' } ).click()
 			);
-			// WooCommerce puts focus on its notice as the page loads and again 500 ms later. Focus taken before the
-			// second was moved under the press, and Enter fell on the notice (CI runs 44289674928, 44307517356): the
-			// shopper reaches Undo after both.
-			await noticeFocusDone( page );
+			await expect( page ).toHaveURL( /my-builds/ );
+			await expect(
+				page.getByText( 'The build is saved. It is listed below.' )
+			).toBeVisible();
+			const row = page
+				.locator( '.cbuild-my-builds__build' )
+				.filter( { hasText: name } );
+			await expect( row ).toHaveCount( 1 );
+			if ( javaScriptEnabled ) {
+				// axe runs in the page, so not where scripts are off.
+				await axe(
+					page,
+					'My builds',
+					'.woocommerce-MyAccount-content'
+				);
+			}
+
+			// Open: the builder at the review, checked again, and Save build there updates it.
+			await row.getByRole( 'link', { name: 'Open' } ).click();
+			await expect( heading( page ) ).toHaveText( /: Check your build$/ );
+			expect( page.url() ).toContain( 'cbuild_saved=' );
+			await expect(
+				page.getByLabel( 'Link to this build' ),
+				'the saved build is no part of a shared link'
+			).not.toHaveValue( /cbuild_saved/ );
+			// answered() waits for the next page's load, so the page it acts on must have had its own: WebKit, pressed
+			// before then, sent no form and the wait took the opened page's load for the answer (CI run 44119225891, #50).
+			await page.waitForLoadState( 'load' );
+			await answered( page, () =>
+				page.getByRole( 'button', { name: 'Save build' } ).click()
+			);
+			await expect(
+				page.getByText( 'Your saved build is updated.' )
+			).toBeVisible();
 			await expect(
 				page
-					.locator( '[role="alert"]' )
-					.filter( { hasText: 'The build is deleted.' } )
-			).toBeFocused();
-		}
-		await undo.focus();
-		await expect( undo ).toBeFocused();
-		await answered( page, () => page.keyboard.press( 'Enter' ) );
-		await expect(
-			page.getByText( 'The build is back in My builds.' )
-		).toBeVisible();
-		const back = page
-			.locator( '.cbuild-my-builds__build' )
-			.filter( { hasText: name } );
-		await expect( back ).toHaveCount( 1 );
-		if ( javaScriptEnabled ) {
-			// Focus goes where WooCommerce puts it after any action in My account: on its notice, which says the
-			// build is back (woocommerce.js, focus_populate_live_region; D-231).
+					.locator( '.cbuild-my-builds__build' )
+					.filter( { hasText: name } ),
+				'kept its name, and is one build still'
+			).toHaveCount( 1 );
+			expect( await lines(), 'nothing was added to the cart' ).toBe(
+				before
+			);
+
+			await answered( page, () =>
+				page
+					.locator( '.cbuild-my-builds__build' )
+					.filter( { hasText: name } )
+					.getByRole( 'button', { name: 'Delete' } )
+					.click()
+			);
+			await expect(
+				page.getByText( 'The build is deleted.' )
+			).toBeVisible();
 			await expect(
 				page
-					.locator( '[role="alert"]' )
-					.filter( { hasText: 'The build is back in My builds.' } ),
-				'focus on the notice that says so'
-			).toBeFocused();
-		}
-		await expect(
-			page.locator( '.cbuild-my-builds__undo' ),
-			'offered once'
-		).toHaveCount( 0 );
-		await answered( page, () =>
-			back.getByRole( 'button', { name: 'Delete' } ).click()
-		);
-	} );
+					.locator( '.cbuild-my-builds__build' )
+					.filter( { hasText: name } )
+			).toHaveCount( 0 );
+
+			// Undo (Cowork's 0.8.0 review, F3; D-231): named for the build, reached and pressed by keyboard, and the build
+			// is back, with and without JavaScript.
+			const undo = page.getByRole( 'button', {
+				name: `Undo deleting ${ name }`,
+			} );
+			await expect( undo ).toBeVisible();
+			if ( javaScriptEnabled ) {
+				await axe(
+					page,
+					`${ info.project.name }: My builds, Undo offered`,
+					'.woocommerce-MyAccount-content'
+				);
+				// WooCommerce puts focus on its notice as the page loads and again 500 ms later. Focus taken before the
+				// second was moved under the press, and Enter fell on the notice (CI runs 44289674928, 44307517356): the
+				// shopper reaches Undo after both.
+				await noticeFocusDone( page );
+				await expect(
+					page
+						.locator( '[role="alert"]' )
+						.filter( { hasText: 'The build is deleted.' } )
+				).toBeFocused();
+			}
+			await undo.focus();
+			await expect( undo ).toBeFocused();
+			await answered( page, () => page.keyboard.press( 'Enter' ) );
+			await expect(
+				page.getByText( 'The build is back in My builds.' )
+			).toBeVisible();
+			const back = page
+				.locator( '.cbuild-my-builds__build' )
+				.filter( { hasText: name } );
+			await expect( back ).toHaveCount( 1 );
+			if ( javaScriptEnabled ) {
+				// Focus goes where WooCommerce puts it after any action in My account: on its notice, which says the
+				// build is back (woocommerce.js, focus_populate_live_region; D-231).
+				await expect(
+					page.locator( '[role="alert"]' ).filter( {
+						hasText: 'The build is back in My builds.',
+					} ),
+					'focus on the notice that says so'
+				).toBeFocused();
+			}
+			await expect(
+				page.locator( '.cbuild-my-builds__undo' ),
+				'offered once'
+			).toHaveCount( 0 );
+			await answered( page, () =>
+				back.getByRole( 'button', { name: 'Delete' } ).click()
+			);
+		} );
+	}
 } );
 
 // #136 (D-411): up to three saved builds side by side under My builds, chosen by keyboard, in a real table whose
@@ -8828,194 +8849,210 @@ test.describe( 'Compare saved builds (#136)', () => {
 
 	test.afterAll( clear );
 
-	test( 'three builds compared by keyboard in a table that says what differs in words', async ( {
-		page,
-		javaScriptEnabled,
-	}, info ) => {
-		await customer( page );
-		clear();
-		const street = {
-			deck: id( 'builder-test-deck-8-0' ),
-			trucks: id( 'builder-test-trucks-139' ),
-			wheels: id( 'builder-test-wheels-54' ),
-			bearings: id( 'builder-test-bearings' ),
-			hardware: id( 'builder-test-bolts-1-25' ),
-			grip: id( 'builder-test-grip' ),
-		};
-		// Park: wheels $2 cheaper. Bowl: a wider deck and its trucks, dearer.
-		const builds = [
-			street,
-			{ ...street, wheels: id( 'builder-test-wheels-52' ) },
-			{
-				...street,
-				deck: id( 'builder-test-deck-8-5' ),
-				trucks: id( 'builder-test-trucks-149' ),
-			},
-		];
-		runPhp(
-			`$u = get_user_by( 'login', 'e2e-saver' ); $s = CreativeBranding\\SkateboardBuilder\\Plugin::container()->get( CreativeBranding\\SkateboardBuilder\\Service\\SavedBuilds::class ); foreach ( json_decode( '${ JSON.stringify(
-				builds.map( ( picks, at ) => ( { name: names[ at ], picks } ) )
-			) }', true ) as $b ) { if ( 'saved' !== $s->save( $u->ID, ${
-				fixture().kit
-			}, $b['picks'], true, $b['name'] )['code'] ) { throw new RuntimeException( $b['name'] ); } }`
-		);
-		const french = 'fr-ca' === info.project.name;
-		if ( french ) {
-			await page.setExtraHTTPHeaders( {
-				'x-cbuild-e2e-locale': 'fr_CA',
-				'x-cbuild-e2e-translated': '1',
-			} );
-		}
-		const say = ( english: string, inFrench: string ) =>
-			french ? inFrench : english;
-		await page.goto( '/my-account/my-builds/' );
-
-		// Each row names its build on a phone too, where WooCommerce's small-screen styles hide a responsive table's
-		// row headers, so a box is never ticked for a build the shopper can't see (D-412).
-		for ( const name of names ) {
-			await expect(
-				page.locator( '.cbuild-my-builds__name' ).filter( {
-					hasText: name,
-				} ),
-				'the row says which build it is'
-			).toBeVisible();
-		}
-
-		// Chosen by keyboard: each build's box, then the one button.
-		for ( const name of names ) {
-			const box = page.getByRole( 'checkbox', {
-				name: say( `Compare ${ name }`, `Comparer ${ name }` ),
-			} );
-			await box.focus();
-			await page.keyboard.press( 'Space' );
-			await expect( box ).toBeChecked();
-		}
-		await page
-			.getByRole( 'button', {
-				name: say(
-					'Compare the ticked builds',
-					'Comparer les montages cochés'
-				),
-			} )
-			.focus();
-		await answered( page, () => page.keyboard.press( 'Enter' ) );
-		expect( decodeURIComponent( page.url() ) ).toContain(
-			'cbuild_compare[]='
-		);
-
-		const caption = say(
-			"Your builds side by side, at today's prices",
-			'Vos montages côte à côte, aux prix d’aujourd’hui'
-		);
-		const table = page.getByRole( 'table', { name: caption } );
-		await expect( table ).toBeVisible();
-		await expect( table.getByRole( 'columnheader' ) ).toHaveText( [
-			say( 'Part', 'Pièce' ),
-			// In the order chosen: My builds lists the last saved first.
-			/^\s*Bowl setup/,
-			/^\s*Park setup/,
-			/^\s*Street setup/,
-		] );
-		const differs = say( 'Differs', 'Diffère' );
-		await expect(
-			table.getByRole( 'rowheader', { name: `Wheels ${ differs }` } ),
-			'a row that differs says so in words'
-		).toBeVisible();
-		await expect(
-			table.getByRole( 'rowheader', {
-				name: 'Bearings',
-				exact: true,
-			} ),
-			'a row the same in each is not marked'
-		).toBeVisible();
-		const gaps = table
-			.getByRole( 'row' )
-			.filter( {
-				has: page.getByRole( 'rowheader', {
-					name: say( 'Price difference', 'Écart de prix' ),
-				} ),
-			} )
-			.getByRole( 'cell' );
-		await expect( gaps ).toHaveText( [
-			/ more than the lowest$| de plus que le plus bas$/,
-			say( 'Lowest total', 'Total le plus bas' ),
-			/ more than the lowest$| de plus que le plus bas$/,
-		] );
-		await expect(
-			table.getByRole( 'link', {
-				name: say( 'Open Park setup', 'Ouvrir Park setup' ),
-			} )
-		).toBeVisible();
-
-		// The region takes focus, to scroll by keyboard; the page itself never scrolls sideways.
-		const region = page.getByRole( 'region', { name: caption } );
-		// Reached by Tab from the link before it: in the tab order, not only focusable by a script.
-		await page
-			.getByRole( 'link', {
-				name: say( 'Back to My builds', 'Retour à Mes montages' ),
-			} )
-			.focus();
-		await page.keyboard.press( 'Tab' );
-		await expect( region ).toBeFocused();
-		const sizes = () =>
-			page.evaluate( () => {
-				const box = document.querySelector( '.cbuild-compare' )!;
-				return {
-					scroll: box.scrollWidth,
-					client: box.clientWidth,
-					left: Math.abs( box.scrollLeft ),
-					page: document.documentElement.scrollWidth,
-					view: document.documentElement.clientWidth,
-					columns: [
-						...document.querySelectorAll(
-							'.cbuild-compare__build'
-						),
-					].map( ( th ) => th.getBoundingClientRect().width ),
-				};
-			} );
-		const measured = await sizes();
-		expect(
-			measured.page,
-			'no sideways scroll of the page'
-		).toBeLessThanOrEqual( measured.view );
-		for ( const width of measured.columns ) {
-			expect(
-				width,
-				'a build a column, at least 14rem'
-			).toBeGreaterThanOrEqual( 14 * 16 - 1 );
-		}
-		if ( info.project.name.includes( 'phone' ) ) {
-			expect(
-				measured.columns[ 0 ],
-				'about one build in view at a time'
-			).toBeGreaterThan( measured.client / 2 );
-			expect( measured.scroll, 'the region scrolls' ).toBeGreaterThan(
-				measured.client
+	// The real-theme runs (Zach, 26 November; D-466): in 1.3.0 the compare's lost rules (D-450) and F32 and F33 all
+	// passed on Twenty Twenty-Five and broke on a real theme, so this runs on Kadence and Storefront too.
+	for ( const theme of [ 'twentytwentyfive', 'storefront', 'kadence' ] ) {
+		test( `three builds compared by keyboard in a table that says what differs in words, on ${ theme }`, async ( {
+			page,
+			context,
+			baseURL,
+			javaScriptEnabled,
+		}, info ) => {
+			await context.addCookies( [
+				{
+					name: 'cbuild_e2e_theme',
+					value: theme,
+					url: baseURL || SITE,
+				},
+			] );
+			await customer( page );
+			clear();
+			const street = {
+				deck: id( 'builder-test-deck-8-0' ),
+				trucks: id( 'builder-test-trucks-139' ),
+				wheels: id( 'builder-test-wheels-54' ),
+				bearings: id( 'builder-test-bearings' ),
+				hardware: id( 'builder-test-bolts-1-25' ),
+				grip: id( 'builder-test-grip' ),
+			};
+			// Park: wheels $2 cheaper. Bowl: a wider deck and its trucks, dearer.
+			const builds = [
+				street,
+				{ ...street, wheels: id( 'builder-test-wheels-52' ) },
+				{
+					...street,
+					deck: id( 'builder-test-deck-8-5' ),
+					trucks: id( 'builder-test-trucks-149' ),
+				},
+			];
+			runPhp(
+				`$u = get_user_by( 'login', 'e2e-saver' ); $s = CreativeBranding\\SkateboardBuilder\\Plugin::container()->get( CreativeBranding\\SkateboardBuilder\\Service\\SavedBuilds::class ); foreach ( json_decode( '${ JSON.stringify(
+					builds.map( ( picks, at ) => ( {
+						name: names[ at ],
+						picks,
+					} ) )
+				) }', true ) as $b ) { if ( 'saved' !== $s->save( $u->ID, ${
+					fixture().kit
+				}, $b['picks'], true, $b['name'] )['code'] ) { throw new RuntimeException( $b['name'] ); } }`
 			);
-			// The arrow keys scroll the focused region in Chromium and Firefox. Playwright's WebKit scrolled nothing for
-			// them here, so there the region's focus and its overflow, which are the page's part, are what is held.
-			if ( ! info.project.name.startsWith( 'webkit' ) ) {
-				await page.keyboard.press( 'ArrowRight' );
-				await expect
-					.poll( async () => ( await sizes() ).left )
-					.toBeGreaterThan( 0 );
+			const french = 'fr-ca' === info.project.name;
+			if ( french ) {
+				await page.setExtraHTTPHeaders( {
+					'x-cbuild-e2e-locale': 'fr_CA',
+					'x-cbuild-e2e-translated': '1',
+				} );
 			}
-		}
-		if ( javaScriptEnabled ) {
-			await axe(
-				page,
-				`${ info.project.name }: compare`,
-				'.woocommerce-MyAccount-content'
-			);
-		}
+			const say = ( english: string, inFrench: string ) =>
+				french ? inFrench : english;
+			await page.goto( '/my-account/my-builds/' );
 
-		await page
-			.getByRole( 'link', {
-				name: say( 'Back to My builds', 'Retour à Mes montages' ),
-			} )
-			.click();
-		await expect( page.locator( '.cbuild-my-builds' ) ).toBeVisible();
-	} );
+			// Each row names its build on a phone too, where WooCommerce's small-screen styles hide a responsive table's
+			// row headers, so a box is never ticked for a build the shopper can't see (D-412).
+			for ( const name of names ) {
+				await expect(
+					page.locator( '.cbuild-my-builds__name' ).filter( {
+						hasText: name,
+					} ),
+					'the row says which build it is'
+				).toBeVisible();
+			}
+
+			// Chosen by keyboard: each build's box, then the one button.
+			for ( const name of names ) {
+				const box = page.getByRole( 'checkbox', {
+					name: say( `Compare ${ name }`, `Comparer ${ name }` ),
+				} );
+				await box.focus();
+				await page.keyboard.press( 'Space' );
+				await expect( box ).toBeChecked();
+			}
+			await page
+				.getByRole( 'button', {
+					name: say(
+						'Compare the ticked builds',
+						'Comparer les montages cochés'
+					),
+				} )
+				.focus();
+			await answered( page, () => page.keyboard.press( 'Enter' ) );
+			expect( decodeURIComponent( page.url() ) ).toContain(
+				'cbuild_compare[]='
+			);
+
+			const caption = say(
+				"Your builds side by side, at today's prices",
+				'Vos montages côte à côte, aux prix d’aujourd’hui'
+			);
+			const table = page.getByRole( 'table', { name: caption } );
+			await expect( table ).toBeVisible();
+			await expect( table.getByRole( 'columnheader' ) ).toHaveText( [
+				say( 'Part', 'Pièce' ),
+				// In the order chosen: My builds lists the last saved first.
+				/^\s*Bowl setup/,
+				/^\s*Park setup/,
+				/^\s*Street setup/,
+			] );
+			const differs = say( 'Differs', 'Diffère' );
+			await expect(
+				table.getByRole( 'rowheader', { name: `Wheels ${ differs }` } ),
+				'a row that differs says so in words'
+			).toBeVisible();
+			await expect(
+				table.getByRole( 'rowheader', {
+					name: 'Bearings',
+					exact: true,
+				} ),
+				'a row the same in each is not marked'
+			).toBeVisible();
+			const gaps = table
+				.getByRole( 'row' )
+				.filter( {
+					has: page.getByRole( 'rowheader', {
+						name: say( 'Price difference', 'Écart de prix' ),
+					} ),
+				} )
+				.getByRole( 'cell' );
+			await expect( gaps ).toHaveText( [
+				/ more than the lowest$| de plus que le plus bas$/,
+				say( 'Lowest total', 'Total le plus bas' ),
+				/ more than the lowest$| de plus que le plus bas$/,
+			] );
+			await expect(
+				table.getByRole( 'link', {
+					name: say( 'Open Park setup', 'Ouvrir Park setup' ),
+				} )
+			).toBeVisible();
+
+			// The region takes focus, to scroll by keyboard; the page itself never scrolls sideways.
+			const region = page.getByRole( 'region', { name: caption } );
+			// Reached by Tab from the link before it: in the tab order, not only focusable by a script.
+			await page
+				.getByRole( 'link', {
+					name: say( 'Back to My builds', 'Retour à Mes montages' ),
+				} )
+				.focus();
+			await page.keyboard.press( 'Tab' );
+			await expect( region ).toBeFocused();
+			const sizes = () =>
+				page.evaluate( () => {
+					const box = document.querySelector( '.cbuild-compare' )!;
+					return {
+						scroll: box.scrollWidth,
+						client: box.clientWidth,
+						left: Math.abs( box.scrollLeft ),
+						page: document.documentElement.scrollWidth,
+						view: document.documentElement.clientWidth,
+						columns: [
+							...document.querySelectorAll(
+								'.cbuild-compare__build'
+							),
+						].map( ( th ) => th.getBoundingClientRect().width ),
+					};
+				} );
+			const measured = await sizes();
+			expect(
+				measured.page,
+				'no sideways scroll of the page'
+			).toBeLessThanOrEqual( measured.view );
+			for ( const width of measured.columns ) {
+				expect(
+					width,
+					'a build a column, at least 14rem'
+				).toBeGreaterThanOrEqual( 14 * 16 - 1 );
+			}
+			if ( info.project.name.includes( 'phone' ) ) {
+				expect(
+					measured.columns[ 0 ],
+					'about one build in view at a time'
+				).toBeGreaterThan( measured.client / 2 );
+				expect( measured.scroll, 'the region scrolls' ).toBeGreaterThan(
+					measured.client
+				);
+				// The arrow keys scroll the focused region in Chromium and Firefox. Playwright's WebKit scrolled nothing for
+				// them here, so there the region's focus and its overflow, which are the page's part, are what is held.
+				if ( ! info.project.name.startsWith( 'webkit' ) ) {
+					await page.keyboard.press( 'ArrowRight' );
+					await expect
+						.poll( async () => ( await sizes() ).left )
+						.toBeGreaterThan( 0 );
+				}
+			}
+			if ( javaScriptEnabled ) {
+				await axe(
+					page,
+					`${ info.project.name }: compare`,
+					'.woocommerce-MyAccount-content'
+				);
+			}
+
+			await page
+				.getByRole( 'link', {
+					name: say( 'Back to My builds', 'Retour à Mes montages' ),
+				} )
+				.click();
+			await expect( page.locator( '.cbuild-my-builds' ) ).toBeVisible();
+		} );
+	}
 
 	// Milestone 13's walkthrough (D-450): Kadence and Storefront dequeue WooCommerce's `woocommerce-general`, which
 	// held the compare's rules, so on a phone the table lost its scroll region and the third build was cut off where
@@ -12612,43 +12649,56 @@ test.describe( 'A hostile theme', () => {
 	// Cowork's review of 1.2.0, F33 (#150): at the review on a phone the bar holds the delivery and arrival lines, and
 	// Kadence's `.single-content p`, a class and an element, gave each 32 px below over the builder's `:where()` reset:
 	// 64 px of the demo's 198 px bar on an iPhone 13.
-	test( "keeps the bar no taller at the review on a phone under a theme's paragraph margin (#150)", async ( {
-		page,
-		context,
-		baseURL,
-	}, info ) => {
-		await phone( page, info.project.name );
-		const bar = page.locator( '.cbuild-bar' );
-		const lines = page.locator( '.cbuild-bar__more-lines' );
-		const measured = () =>
-			bar.evaluate( ( element ) => ( {
-				height: element.getBoundingClientRect().height,
-				margins: [
-					...element.querySelectorAll(
-						'.cbuild-bar__more-lines > *'
+	// The real-theme runs (Zach, 26 November; D-466): in 1.3.0 the compare's lost rules (D-450) and F32 and F33 all
+	// passed on Twenty Twenty-Five and broke on a real theme, so this runs on Kadence and Storefront too.
+	for ( const theme of [ 'twentytwentyfive', 'storefront', 'kadence' ] ) {
+		test( `keeps the bar no taller at the review on a phone under a theme's paragraph margin (#150), on ${ theme }`, async ( {
+			page,
+			context,
+			baseURL,
+		}, info ) => {
+			await context.addCookies( [
+				{
+					name: 'cbuild_e2e_theme',
+					value: theme,
+					url: baseURL || SITE,
+				},
+			] );
+			await phone( page, info.project.name );
+			const bar = page.locator( '.cbuild-bar' );
+			const lines = page.locator( '.cbuild-bar__more-lines' );
+			const measured = () =>
+				bar.evaluate( ( element ) => ( {
+					height: element.getBoundingClientRect().height,
+					margins: [
+						...element.querySelectorAll(
+							'.cbuild-bar__more-lines > *'
+						),
+					].map(
+						( line ) =>
+							`${ line.className }: ${
+								getComputedStyle( line ).marginBlockStart
+							} ${ getComputedStyle( line ).marginBlockEnd }`
 					),
-				].map(
-					( line ) =>
-						`${ line.className }: ${
-							getComputedStyle( line ).marginBlockStart
-						} ${ getComputedStyle( line ).marginBlockEnd }`
-				),
-			} ) );
-		await hostile( context, baseURL, false );
-		await page.goto( review() );
-		await expect( lines ).toContainText( 'This build ships free' );
-		await expect( lines ).toContainText( 'Arrives' );
-		const own = await measured();
-		await hostile( context, baseURL, true );
-		await page.goto( review() );
-		await expect( lines ).toContainText( 'This build ships free' );
-		const theirs = await measured();
-		expect( theirs.margins, "the lines' margins" ).toEqual( own.margins );
-		expect(
-			theirs.height,
-			`the bar, ${ own.height } px without the theme's rules`
-		).toBeLessThanOrEqual( own.height + 0.5 );
-	} );
+				} ) );
+			await hostile( context, baseURL, false );
+			await page.goto( review() );
+			await expect( lines ).toContainText( 'This build ships free' );
+			await expect( lines ).toContainText( 'Arrives' );
+			const own = await measured();
+			await hostile( context, baseURL, true );
+			await page.goto( review() );
+			await expect( lines ).toContainText( 'This build ships free' );
+			const theirs = await measured();
+			expect( theirs.margins, "the lines' margins" ).toEqual(
+				own.margins
+			);
+			expect(
+				theirs.height,
+				`the bar, ${ own.height } px without the theme's rules`
+			).toBeLessThanOrEqual( own.height + 0.5 );
+		} );
+	}
 
 	// The sweep: the builder's start, a step, the review and a deck's page, each with the fixture off and then on. The
 	// bar and the first card or ready build may differ by no more than LIMIT px, a rounding's worth, and axe finds no
@@ -12714,25 +12764,36 @@ test.describe( 'A hostile theme', () => {
 		} );
 	}
 
-	test( "keeps a deck page's start button readable under the hostile theme", async ( {
-		page,
-		context,
-		baseURL,
-		javaScriptEnabled,
-	} ) => {
-		test.skip(
-			! javaScriptEnabled,
-			"The button's colours are the script's (D-377, D-416); without it the button is the theme's own."
-		);
-		await hostile( context, baseURL, true );
-		await page.goto( `/?p=${ id( 'builder-test-deck-8-25' ) }` );
-		await expect( page.locator( '.cbuild-start__link' ) ).toBeVisible();
-		await axe(
+	// The real-theme runs (Zach, 26 November; D-466): in 1.3.0 the compare's lost rules (D-450) and F32 and F33 all
+	// passed on Twenty Twenty-Five and broke on a real theme, so this runs on Kadence and Storefront too.
+	for ( const theme of [ 'twentytwentyfive', 'storefront', 'kadence' ] ) {
+		test( `keeps a deck page's start button readable under the hostile theme, on ${ theme }`, async ( {
 			page,
-			'a deck page under the hostile theme',
-			'.cbuild-start'
-		);
-	} );
+			context,
+			baseURL,
+			javaScriptEnabled,
+		} ) => {
+			test.skip(
+				! javaScriptEnabled,
+				"The button's colours are the script's (D-377, D-416); without it the button is the theme's own."
+			);
+			await context.addCookies( [
+				{
+					name: 'cbuild_e2e_theme',
+					value: theme,
+					url: baseURL || SITE,
+				},
+			] );
+			await hostile( context, baseURL, true );
+			await page.goto( `/?p=${ id( 'builder-test-deck-8-25' ) }` );
+			await expect( page.locator( '.cbuild-start__link' ) ).toBeVisible();
+			await axe(
+				page,
+				'a deck page under the hostile theme',
+				'.cbuild-start'
+			);
+		} );
+	}
 
 	// The wide sweep (D-419): every text block the builder draws, measured with the fixture off and then on, on the
 	// start with "Help me choose" open and with its answers sent, a deck step after a width, a hardware step, the review
