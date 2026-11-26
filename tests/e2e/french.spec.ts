@@ -18,6 +18,7 @@ const fixture = () =>
 	) as {
 		page: string;
 		widths: { page: string };
+		three: { page: string };
 		parts: Record< string, number >;
 	};
 
@@ -144,5 +145,57 @@ test.describe( 'The builder in French', () => {
 			'lang',
 			'fr-CA'
 		);
+	} );
+
+	// Milestone 14: the 3D view's words in French, and its message where the browser has no WebGL.
+	test( 'offers the 3D view in French, and says in French when it can’t be shown', async ( {
+		page,
+		context,
+		javaScriptEnabled,
+		baseURL,
+	} ) => {
+		test.skip( ! javaScriptEnabled, 'The 3D view is the store’s.' );
+		await context.addCookies( [
+			{
+				name: 'cbuild_e2e_scene',
+				value: 'fixture',
+				url: baseURL ?? fixture().three.page,
+			},
+		] );
+		await page.addInitScript( () => {
+			const made = HTMLCanvasElement.prototype.getContext;
+			HTMLCanvasElement.prototype.getContext = function (
+				this: HTMLCanvasElement,
+				kind: string,
+				...rest: unknown[]
+			) {
+				return kind.startsWith( 'webgl' )
+					? null
+					: ( made as ( ...a: unknown[] ) => unknown ).call(
+							this,
+							kind,
+							...rest
+						);
+			} as typeof made;
+		} );
+		const url = new URL( fixture().three.page );
+		url.searchParams.set(
+			'cbuild[deck]',
+			String( fixture().parts[ 'builder-test-deck-8-0' ] )
+		);
+		await page.goto( url.toString() );
+		const button = page.getByRole( 'button', { name: 'Voir en 3D' } );
+		await expect( button ).toBeVisible();
+		await expect(
+			page.getByRole( 'group', {
+				name: 'Vues de la planche',
+				includeHidden: true,
+			} )
+		).toHaveCount( 1 );
+		await button.click();
+		await expect( page.locator( '.cbuild-3d__failed' ) ).toHaveText(
+			'La vue 3D ne peut pas s’afficher ici, la planche est donc montrée à plat.'
+		);
+		await axe( page, 'the 3D view’s message, in French', '.cbuild' );
 	} );
 } );

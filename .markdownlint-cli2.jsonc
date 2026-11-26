@@ -32,6 +32,13 @@
 			"combine": "merge"
 		},
 		{
+			// A lane's changelog fragment is a piece of the release's entry: its headings are the entry's own, from
+			// `### Added` down, and `tools/changelog.php` checks its shape (D-464).
+			"filter": ["changelog.d/*.md"],
+			"config": { "MD041": false },
+			"combine": "merge"
+		},
+		{
 			// The readme's H1 opens the centred header, inside its <div>. Its first heading must still be the H1.
 			"filter": ["README.md"],
 			"config": { "MD041": { "allow_preamble": true } },

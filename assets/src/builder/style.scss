@@ -2998,3 +2998,115 @@
 		);
 	}
 }
+
+/*
+ * The 3D view (1.4.0, #139). Its wrapper lays its pieces into the picture's own rows: View in 3D at the start of the
+ * turn's row, under the board, its place kept while the script loads so nothing moves when it shows; once pressed, the
+ * canvas in the board's row, the board and the parts' photos hidden, and the camera's buttons under the canvas. The
+ * board comes back with the message under it where the view can't be shown.
+ */
+:where(.cbuild-3d:not([hidden])) {
+	display: contents;
+}
+
+/* View in 3D shares the turn's cell, at its start, the turn at its end: neither takes a column of its own, so the board
+   is laid out as it is with no 3D view. */
+:where(.cbuild__stage .cbuild-3d__open),
+:where(.cbuild__stage .cbuild-3d ~ .cbuild-picture__turn) {
+	grid-column: 1;
+}
+
+:where(.cbuild__stage .cbuild-3d__open) {
+	grid-row: 5;
+	justify-self: start;
+	align-self: start;
+	z-index: 1;
+}
+
+:where(.cbuild-3d__open--waiting) {
+	visibility: hidden;
+}
+
+.cbuild-picture--3d > .cbuild-board,
+.cbuild-picture--3d > .cbuild-picture__items,
+.cbuild-picture--3d > .cbuild-picture__empty {
+	display: none;
+}
+
+/* Its width is its cell's, never its contents': Firefox sized the picture's column from the 4 by 3 frame's height,
+   and the canvas ran past the edge of a phone's screen. */
+:where(.cbuild-3d__stage:not([hidden])) {
+	display: grid;
+	grid-template-rows: minmax(0, 1fr) auto auto auto;
+	gap: var(--cbuild-gap-small);
+	min-block-size: 0;
+	min-inline-size: 0;
+	contain: inline-size;
+}
+
+:where(.cbuild__stage .cbuild-3d__stage) {
+	grid-row: 3;
+	grid-column: 1 / -1;
+	margin-block: var(--cbuild-gap-small);
+}
+
+:where(.cbuild-3d__frame) {
+	position: relative;
+	min-block-size: 16rem;
+}
+
+:where(.cbuild-3d__canvas) {
+	position: absolute;
+	inset: 0;
+	display: block;
+	inline-size: 100%;
+	block-size: 100%;
+	border-radius: 0.25rem;
+	cursor: grab;
+}
+
+:where(.cbuild-3d__note, .cbuild-3d__keys, .cbuild-3d__failed) {
+	margin: 0;
+	color: var(--cbuild-muted);
+	font-size: var(--cbuild-small);
+}
+
+:where(.cbuild__stage .cbuild-3d__failed) {
+	grid-row: 4;
+	grid-column: 1 / -1;
+}
+
+/* Pressed while the view is open, marked as the board's sides are: filled in the accent, in bold. */
+.cbuild.cbuild .cbuild-3d__open[aria-pressed="true"] {
+	border-color: var(--cbuild-accent);
+	background: var(--cbuild-accent);
+	color: var(--cbuild-text);
+	-webkit-text-fill-color: var(--cbuild-on-accent);
+	font-weight: 600;
+}
+
+:where(.cbuild-3d__places) {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.25rem;
+}
+
+.cbuild.cbuild .cbuild-3d__places .cbuild-button {
+	padding-inline: 0.625rem;
+	font-weight: 400;
+}
+
+/* Stacked, on a tablet or a phone, the open 3D view takes the room it needs: the stage stops sticking and grows to the
+   canvas, which keeps a 4 by 3 frame, so the page scrolls past it as past any picture. */
+@container cbuild (max-width: 63.99rem) {
+	.cbuild .cbuild__stage:has(.cbuild-picture--3d) {
+		position: relative;
+		inset-block-start: auto;
+		block-size: auto;
+	}
+
+	:where(.cbuild-3d__frame) {
+		aspect-ratio: 4 / 3;
+		min-block-size: 0;
+	}
+}

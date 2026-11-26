@@ -55,6 +55,8 @@ import {
 	type Currency,
 } from './motion';
 import { add, body } from './cart';
+import { flat, placeOf, type Renderer } from './picture';
+import type { Scene } from './three/scene';
 import type { CbuildState } from '../types/state';
 
 export const NAME = 'creative-skateboard-builder';
@@ -89,6 +91,11 @@ interface State {
 	limited: string;
 	/** Whether a phone's filters are folded behind the Filters button: only once the script runs, so they show without it. */
 	folded: boolean;
+	/**
+	 * The 3D view (1.4.0, #139): whether it is open, whether its script is on its way, and whether it failed, so the
+	 * board shows flat with the message under it.
+	 */
+	three: { open: boolean; loading: boolean; failed: boolean };
 	/** Whether the picture is being drawn: a pick has kept the shopper SLOW, and its answer or image is on its way (D-308). */
 	drawing: boolean;
 	/** What the step's Next said is missing when it was pressed dimmed, in the server's words; empty otherwise (#100). */
@@ -1402,6 +1409,88 @@ function nav( state: State ): Navigator {
 }
 
 /**
+ * The picture's renderer (SPEC: Ready for 3D): the 2D board's, which the template draws, until the 3D view opens.
+ */
+let renderer: Renderer = flat;
+
+/** Each press of View in 3D, so a press that closes it while its script is on its way leaves it closed. */
+let opening = 0;
+
+/**
+ * The scene the server measured for a view, where the kit offers 3D and a deck is picked.
+ *
+ * @param view The view.
+ */
+function scened( view: Shown ): Scene | null {
+	return ( view as Shown & { scene?: Scene | null } ).scene ?? null;
+}
+
+/**
+ * Close the 3D view, giving everything it holds back, and show the board.
+ *
+ * @param state The store's state.
+ */
+function flatten( state: State ): void {
+	opening++;
+	renderer.close();
+	renderer = flat;
+	state.three.open = false;
+	state.three.loading = false;
+}
+
+/**
+ * The 3D view could not be shown, or stopped: the board comes back, the message shows under it, and the status
+ * region says it once, in the server's words.
+ *
+ * @param state The store's state.
+ */
+function fell( state: State ): void {
+	flatten( state );
+	state.three.failed = true;
+	state.status =
+		root?.querySelector( '.cbuild-3d__failed' )?.textContent?.trim() ?? '';
+}
+
+/**
+ * Open the 3D view: its script, loaded now and not before, drawing the view's scene on the canvas the server
+ * rendered. No WebGL 2, a lost context or anything thrown goes back to the board.
+ *
+ * @param state The store's state.
+ */
+async function rise( state: State ): Promise< void > {
+	const canvas =
+		root?.querySelector< HTMLCanvasElement >( '.cbuild-3d__canvas' );
+	if ( ! canvas ) {
+		return;
+	}
+	const ticket = ++opening;
+	state.three.loading = true;
+	state.three.failed = false;
+	try {
+		const { open } = await import(
+			/* webpackChunkName: "builder/three" */ './three/index'
+		);
+		if ( ticket !== opening ) {
+			return;
+		}
+		state.three.open = true;
+		renderer = open( {
+			canvas,
+			reduced: () => calm( root ),
+			failed: () => fell( state ),
+		} );
+		renderer.show(
+			scened( state.view ),
+			true === state.view.picture?.turned
+		);
+	} catch {
+		fell( state );
+		return;
+	}
+	state.three.loading = false;
+}
+
+/**
  * Forget the navigator: for tests, which give each its own page.
  */
 export function reset(): void {
@@ -1410,6 +1499,9 @@ export function reset(): void {
 	held = null;
 	top = undefined;
 	boards.clear();
+	renderer.close();
+	renderer = flat;
+	opening = 0;
 	pressed = Number.NEGATIVE_INFINITY;
 	picking = false;
 	narrowing = undefined;
@@ -1541,6 +1633,7 @@ const { state } = store(
 			turning: false,
 			limited: '',
 			folded: false,
+			three: { open: false, loading: false, failed: false },
 			missing: '',
 			get dimmed(): boolean {
 				return state.live && false === state.view.bar?.next.ready;
@@ -1618,6 +1711,16 @@ const { state } = store(
 					laid.set( options, marks );
 					lay( options );
 				}
+			},
+			/**
+			 * Draw each view's scene in the 3D view, once it is open, on its step's side (1.4.0, #139): a part changed
+			 * swaps that part alone. The board's renderer has nothing to draw.
+			 */
+			scene(): void {
+				renderer.show(
+					scened( state.view ),
+					true === state.view.picture?.turned
+				);
 			},
 			/**
 			 * Say on the builder whether an answer is awaited: its root is no region, so no directive binds it (D-296).
@@ -1899,6 +2002,28 @@ const { state } = store(
 			 */
 			over(): void {
 				turnTo( true );
+			},
+			/**
+			 * View in 3D (1.4.0, #139): open the 3D view, or close it and show the board again. A press while its
+			 * script is on its way closes it as well.
+			 */
+			async three(): Promise< void > {
+				if ( state.three.open || state.three.loading ) {
+					flatten( state );
+					return;
+				}
+				await rise( state );
+			},
+			/**
+			 * One of the 3D view's camera buttons: the button's value names where it sends the camera.
+			 */
+			look(): void {
+				const where = placeOf(
+					( getElement().ref as HTMLButtonElement | null )?.value
+				);
+				if ( where ) {
+					renderer.look( where );
+				}
 			},
 			/**
 			 * The screen changed: fit the phone bar into the theme again (D-163).

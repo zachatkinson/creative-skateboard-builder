@@ -325,6 +325,16 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-372 · Site Health names up to five parts whose layer images have no resized copies](#d-372--site-health-names-up-to-five-parts-whose-layer-images-have-no-resized-copies--2026-11-24)
 - [D-373 · The update to 1.2.0 queues the index job of each part whose layer image has no copies](#d-373--the-update-to-120-queues-the-index-job-of-each-part-whose-layer-image-has-no-copies--2026-11-24)
 - [D-378 · An update's index jobs are due five minutes on, past any runner the earlier release started](#d-378--an-updates-index-jobs-are-due-five-minutes-on-past-any-runner-the-earlier-release-started--2026-11-24)
+- [D-490 · three.js is a chunk of its own, loaded on the press, and budgeted gzipped](#d-490--threejs-is-a-chunk-of-its-own-loaded-on-the-press-and-budgeted-gzipped--2026-11-26)
+- [D-491 · The board is drawn from the scene's sizes, in millimetres, its shapes generated](#d-491--the-board-is-drawn-from-the-scenes-sizes-in-millimetres-its-shapes-generated--2026-11-26)
+- [D-492 · The 3D view draws only when something changed, and never off the screen](#d-492--the-3d-view-draws-only-when-something-changed-and-never-off-the-screen--2026-11-26)
+- [D-493 · The camera: OrbitControls, keys, four places, and the step's side](#d-493--the-camera-orbitcontrols-keys-four-places-and-the-steps-side--2026-11-26)
+- [D-494 · Any failure brings the board back, with one message](#d-494--any-failure-brings-the-board-back-with-one-message--2026-11-26)
+- [D-495 · The view's markup is the server's, and the canvas sits in a frame](#d-495--the-views-markup-is-the-servers-and-the-canvas-sits-in-a-frame--2026-11-26)
+- [D-496 · Textures come from the shop's own origin, drawn in neutral tone mapping](#d-496--textures-come-from-the-shops-own-origin-drawn-in-neutral-tone-mapping--2026-11-26)
+- [D-497 · `view.three` says whether the view is offered, and the scene stays lane 1's](#d-497--viewthree-says-whether-the-view-is-offered-and-the-scene-stays-lane-1s--2026-11-26)
+- [D-498 · The browser tests read frames, and compare the page with the view on and off](#d-498--the-browser-tests-read-frames-and-compare-the-page-with-the-view-on-and-off--2026-11-26)
+- [D-499 · The 3D view's pictures are SwiftShader's, at 1 % tolerance](#d-499--the-3d-views-pictures-are-swiftshaders-at-1--tolerance--2026-11-26)
 
 ### Cart, checkout and orders
 
@@ -6799,5 +6809,80 @@ Milestone 14's pipeline. Every lane's `CHANGELOG.md` entry went under the same h
 - **A lane that touches layout** also runs the three tablet projects.
 - **Each lane takes a ten-minute walkthrough** of what it changed (`docs/reviews/M<n>/lanes/`), on Twenty Twenty-Five and Kadence, besides the full walkthrough at the end.
 - **The release's full local set** (`/audit-milestone`, step 1) gains the tablet projects and `infection:diff`.
+
+**Status:** Accepted.
+
+### D-490 · three.js is a chunk of its own, loaded on the press, and budgeted gzipped · 2026-11-26
+
+Milestone 14 (#139). three.js 0.187.0 is the approved run-time dependency, pinned exactly, with `@types/three` 0.187.0 for the types. Loaded with the builder's script it would multiply `view.js` many times over its 15 kB budget.
+
+**Decision:** the 3D view's code, three.js with it, is `build/builder/three.js`, which the store imports dynamically only when "View in 3D" is pressed. webpack's vendor split is off for the script-module build (`webpack.config.js`), so the chunk is one file with a stable name, not a numbered vendor file. `tools/budget.mjs` holds it to 200 kB gzipped, measured with gzip, as a server without Brotli sends it, beside the Brotli budgets, which do not move. It measures 142 kB gzipped and 117 kB with Brotli; `view.js` stays at 9.4 kB.
+
+`composer i18n:pot` leaves the chunk out: it holds no string of the plugin's, and WP-CLI's JavaScript parser ran out of its 128 MB on it.
+
+**Status:** Accepted.
+
+### D-491 · The board is drawn from the scene's sizes, in millimetres, its shapes generated · 2026-11-26
+
+The scene contract gives micrometres and tenths of a degree, +x to the nose, +y across, +z up; three.js is y up.
+
+**Decision:** the parts are built in the scene's own axes, in millimetres, inside one group turned a quarter turn about x into three's. No model file is loaded. The deck is its outline from width, length, nose and tail (ends as quarter ellipses), its top bent by the concave across and the kick past the outer holes, its edge striped a band a ply. The wheels are a lathe of their own profile, with the contact band flat; trucks, risers and bolts are boxes and cylinders at the scene's places. The copy under the canvas says so: sizes true to scale, shapes simplified.
+
+**Status:** Accepted.
+
+### D-492 · The 3D view draws only when something changed, and never off the screen · 2026-11-26
+
+Spec: Ready for 3D asks for no frame at rest.
+
+**Decision:** a frame is asked for by a change alone (a scene, a move, a key, a resize, a texture's arrival) and drawn once; a camera move or a trick asks for the next while it plays. Off the screen (IntersectionObserver) or with the tab hidden a change waits, and is drawn once it shows. The pixel ratio is the device's up to 2, or 1.5 with 4 GB of memory or less. Closing disposes every geometry, material, texture, the room's lighting and the renderer. The room's lighting (RoomEnvironment through PMREM) is made after the first frame, on a task of its own, so the board shows at once.
+
+A browser test reads the frames and the memory through a probe the page exposes only with `data-cbuild-probe` on its root element, which no shop's page has.
+
+**Status:** Accepted.
+
+### D-493 · The camera: OrbitControls, keys, four places, and the step's side · 2026-11-26
+
+**Decision:**
+
+- **Drag, the arrow keys and + and −** turn and zoom (OrbitControls; its `dollyOut` brings the camera in, so + calls it). Pan is off; the distance is held between 15 cm and 4 m.
+- **Four buttons** send the camera to the three-quarter view, the top, the underside and the graphic close-up. A step drawn from the board's other side (grip) turns the camera to it.
+- **A vertical swipe on a touch screen scrolls the page:** the canvas's `touch-action` is `pan-y`, where OrbitControls sets `none`.
+- **With reduced motion, or the kit's Motion subtle,** the camera goes to a place at once, and nothing moves that the shopper did not move.
+
+**Status:** Accepted.
+
+### D-494 · Any failure brings the board back, with one message · 2026-11-26
+
+**Decision:** no WebGL 2, a lost context (`webglcontextlost`), the chunk failing to load or anything thrown while drawing closes the view, gives back what it holds and shows the 2D board, with "The 3D view can’t be shown here, so the board is drawn flat." under it, said once in the status region. Nothing else on the page changes, and Add to cart goes on working. The words, like every word of the view, are the server's, through the text domain.
+
+**Status:** Accepted.
+
+### D-495 · The view's markup is the server's, and the canvas sits in a frame · 2026-11-26
+
+**Decision:** `templates/builder/three.php` renders the button, the canvas, its notes, the camera's buttons and the message, only where the kit's View in 3D is on (`view.three.shown`, from `KitSettings::$view3d`), and hidden until the view has a scene. The store binds them; no markup is made in JavaScript. The button keeps its place, hidden, until the store runs, so the page does not shift when it shows. The canvas is placed inside `.cbuild-3d__frame`, absolutely, so the size it is drawn at never changes the layout, which had grown it a pixel a frame. Open, the view takes the picture's whole width; stacked on a tablet or a phone the stage stops sticking and the frame is 4 by 3, so the page scrolls past it. Trick buttons will sit after the camera's (lane 3), each through the view's `play()`, which reduced motion refuses.
+
+**Status:** Accepted.
+
+### D-496 · Textures come from the shop's own origin, drawn in neutral tone mapping · 2026-11-26
+
+**Decision:** a scene's texture address on another origin is not loaded, and its part draws its colour, as a part with no texture does. The scene's textures are the plugin's renditions, on the shop's origin, and a cross-origin image would need CORS to be drawn at all. Colours go out in sRGB with Khronos's neutral tone mapping, which keeps a graphic's colours as printed where a filmic curve shifts them.
+
+**Status:** Accepted.
+
+### D-497 · `view.three` says whether the view is offered, and the scene stays lane 1's · 2026-11-26
+
+**Decision:** the state route's view gains `three`: `shown` (the kit's View in 3D), `tricks` (shown and the kit's Trick buttons) and `canvas` (the canvas's classes, with any part classes the deck's flags add, as the board's). The view reads its scene at `view.scene`, which the server gives (scene contract, "Where it lives"). Until lane 1 lands, this lane's tree adds `KitSettings::$view3d` (default off, `view_3d`) and `$tricks` (default on, `tricks`) in the least form, to merge with lane 1's, and the browser tests give the view the contract's fixture through a must-use plugin, by cookie, on a 3D test kit of their own.
+
+**Status:** Accepted.
+
+### D-498 · The browser tests read frames, and compare the page with the view on and off · 2026-11-26
+
+**Decision:** `tests/e2e/3d.spec.ts` reads three.js's own count of frames drawn. "With 3D on, before the press, the page matches 3D off" is read as: the same files at the same sizes, three.js not among them; the page's HTML larger only by the scene and the view's elements (under 6 kB); the same LCP element; and no more layout shift. LCP's time is left out, since it varies by more between two loads of one page than any difference made here.
+
+**Status:** Accepted.
+
+### D-499 · The 3D view's pictures are SwiftShader's, at 1 % tolerance · 2026-11-26
+
+**Decision:** `tests/e2e/3d-visual.spec.ts` pictures the canvas at its four places, with reduced motion so the camera is there at once, in the visual project alone. Playwright's Linux container draws WebGL in software (SwiftShader), the same pixels on each run there; a Mac's GPU would not match them. A picture may differ by 1 % of its pixels, each by Playwright's default colour threshold: an antialiased edge moves by a pixel between SwiftShader builds, a part drawn wrong or a camera out of place by far more. The baselines were made with `bash tools/visual.sh --update-snapshots` on this machine, and a second run matched them.
 
 **Status:** Accepted.
