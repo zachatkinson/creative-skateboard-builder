@@ -11,3 +11,7 @@
 
 - **A deck drilled for both patterns** takes trucks whose baseplates fit only old school holes on its old school holes, in the picture as in the 3D view (D-470).
 - **A wheel's width** comes from `wheel_width` where it gives one, in the picture as in the 3D view; without one it is still drawn three fifths as wide as its diameter (D-471).
+
+### Fixed
+
+- **The kit's page sends its visitor on to the Builder page with every other argument of the request,** so a newsletter's `utm_*` tags and an ad's `gclid` or `fbclid` are kept (F38, #161).

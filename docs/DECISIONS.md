@@ -255,6 +255,7 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-433 · Help me choose reads a budget as shoppers type one, and says so when it can't](#d-433--help-me-choose-reads-a-budget-as-shoppers-type-one-and-says-so-when-it-cant--2026-11-26)
 - [D-435 · A rating's average takes the language's decimal separator, not the shop's for prices](#d-435--a-ratings-average-takes-the-languages-decimal-separator-not-the-shops-for-prices--2026-11-26)
 - [D-436 · A deck card's height limit sets a long name's lines past two apart, so it holds in every engine's fonts](#d-436--a-deck-cards-height-limit-sets-a-long-names-lines-past-two-apart-so-it-holds-in-every-engines-fonts--2026-11-26)
+- [D-477 · The kit page carries every other argument of the request, by a name a tag's would be](#d-477--the-kit-page-carries-every-other-argument-of-the-request-by-a-name-a-tags-would-be--2026-11-26)
 
 ### Accessibility
 
@@ -7027,5 +7028,17 @@ Zach, 26 Nov: "On for new kits." Every optional shopper feature is a Build tab c
 - **"New" is "no slots stored".** Every kit a shop sells has its slots stored, since a kit without them doesn't read. So a kit saved before 1.4.0 with no settings row, as every kit saved before 1.2.0 is, keeps its slots and reads as off, and its Build tab shows the box unticked.
 - **A kit made outside the Build tab**, by an import or a plugin writing its documents, has the 3D view off until its Build tab turns it on. Nothing but the Build tab decides a default for the shop.
 - **The upgrade test holds it:** after `npm run upgrade`, none of the old release's kits has the 3D view on.
+
+**Status:** Accepted.
+
+### D-477 · The kit page carries every other argument of the request, by a name a tag's would be · 2026-11-26
+
+Cowork's 1.3.0 review, F38 (#161): the kit page's redirect to the Builder page kept the build and nothing else, so a newsletter's `utm_*` tags and an ad's `gclid` or `fbclid` were lost before an analytics script could read them. WordPress's own redirects keep the query string.
+
+**Decision:**
+
+- **Every other argument goes with the visitor**, not a list of known tags: a shop's own campaign tool may use any name, and an allowlist would lose it.
+- **Not the build's own, nor the kit page's query variables** (`$wp->query_vars`' keys, such as `product` or `p`), which found the kit and mean nothing on the Builder page. The build is added after them, as before.
+- **A name as tags and click IDs are written**, letters, digits, `_`, `.` and `-`, up to 64, and a value that is text, sanitised as text and encoded for the address. Anything else is left behind, so the redirect never carries markup or a nested array the Builder page would read as its own.
 
 **Status:** Accepted.
