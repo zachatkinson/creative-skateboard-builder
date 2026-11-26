@@ -10,4 +10,6 @@ fi
 # Vitest's GitHub reporter writes a job summary each time it runs, and Stryker runs it once per mutant: a run left a
 # report of "failures" per killed mutant on the summary page (issue #31). Stryker's own report is the one to read.
 unset GITHUB_STEP_SUMMARY
-exec npx stryker run stryker.config.mjs
+# Extra arguments pass through: `npm run mutate:js -- --incremental` reuses the last run's results for the code and
+# tests that did not change (tmp/stryker/incremental.json), for a lane before landing; CI runs it whole (D-465).
+exec npx stryker run stryker.config.mjs "$@"

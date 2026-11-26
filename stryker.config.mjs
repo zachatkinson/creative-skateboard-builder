@@ -10,6 +10,8 @@ export default {
 	vitest: { configFile: 'vitest.config.mts' },
 	reporters: [ 'clear-text', 'progress', 'html' ],
 	htmlReporter: { fileName: 'tmp/stryker/index.html' },
+	// Read and written only with --incremental (tools/mutate-js.sh, D-465), and kept out of git with tmp/.
+	incrementalFile: 'tmp/stryker/incremental.json',
 	tempDirName: '.stryker-tmp',
 	// What the tests never read is not copied into the sandbox: Composer's packages alone are most of the tree, and
 	// PHP_CodeSniffer's HTML fixtures in them drew a warning each (issue #31).
