@@ -24,7 +24,7 @@ export interface Pose {
 	yaw: number;
 }
 
-/** Keys of one value: each a time in milliseconds and the value then, the first at 0 and the last at the end. */
+/** Keys of one value: each a time in milliseconds and the value then, the first at 0; the last is held to the end. */
 type Keys = readonly ( readonly [ number, number ] )[];
 
 interface Moves {
@@ -49,7 +49,8 @@ export function smooth( t: number ): number {
 }
 
 /**
- * One value at a moment: each key's at its time, eased between two, and the first or last held past the ends.
+ * One value at a moment: each key's at its time, eased between two, and the first or last held past the ends. Every
+ * value a trick moves has at least one key.
  *
  * @param keys The keys.
  * @param ms   The moment, in milliseconds.
@@ -65,7 +66,7 @@ export function sample( keys: Keys, ms: number ): number {
 			);
 		}
 	}
-	return keys.at( -1 )?.[ 1 ] ?? 0;
+	return keys.at( -1 )![ 1 ];
 }
 
 const DEGREE = Math.PI / 180;
@@ -88,7 +89,6 @@ const MOVES: Record< TrickName, Moves > = {
 			[ 420, 0 ],
 			[ 720, 7 ],
 			[ 800, 0 ],
-			[ 930, 0 ],
 		],
 	},
 	// Rises 240 mm, with one full roll about the long axis.
@@ -105,7 +105,6 @@ const MOVES: Record< TrickName, Moves > = {
 			[ 100, 0 ],
 			[ 200, 20 ],
 			[ 420, 0 ],
-			[ 1200, 0 ],
 		],
 		roll: [
 			[ 0, 0 ],
@@ -128,7 +127,6 @@ const MOVES: Record< TrickName, Moves > = {
 			[ 100, 0 ],
 			[ 200, 20 ],
 			[ 420, 0 ],
-			[ 1200, 0 ],
 		],
 		roll: [
 			[ 0, 0 ],
@@ -151,7 +149,6 @@ const MOVES: Record< TrickName, Moves > = {
 			[ 90, 0 ],
 			[ 180, 14 ],
 			[ 400, 0 ],
-			[ 1430, 0 ],
 		],
 		yaw: [
 			[ 0, 0 ],
@@ -175,7 +172,6 @@ const MOVES: Record< TrickName, Moves > = {
 			[ 100, 0 ],
 			[ 200, 20 ],
 			[ 450, 0 ],
-			[ 1470, 0 ],
 		],
 		roll: [
 			[ 0, 0 ],
@@ -193,12 +189,12 @@ const MOVES: Record< TrickName, Moves > = {
 };
 
 /**
- * How long a trick lasts: its last key's time.
+ * How long a trick lasts: its rise's last key's time, which each trick has.
  *
  * @param moves The trick's keys.
  */
 function length( moves: Moves ): number {
-	return moves.rise.at( -1 )?.[ 0 ] ?? 0;
+	return moves.rise.at( -1 )![ 0 ];
 }
 
 /**

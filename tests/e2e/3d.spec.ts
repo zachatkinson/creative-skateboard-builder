@@ -460,6 +460,10 @@ test.describe( '3D view (milestone 14)', () => {
 		const ollie = page
 			.getByRole( 'group', { name: 'Tricks' } )
 			.getByRole( 'button', { name: 'Ollie' } );
+		// Measured where a shopper sees the buttons, not under the phone's bar at the scroll the press left.
+		await ollie.evaluate( ( shown ) =>
+			shown.scrollIntoView( { block: 'center' } )
+		);
 		await ollie.focus();
 		await page.keyboard.press( 'Enter' );
 		await expect( ollie ).toHaveAttribute( 'aria-disabled', 'true' );
@@ -499,6 +503,12 @@ test.describe( '3D view (milestone 14)', () => {
 		expect( played ).toBe( false );
 		await page.waitForTimeout( 1000 );
 		expect( await frames( page ) ).toBe( before );
+		// As the open view's own check: its controls measured where a shopper sees them on a phone.
+		await page
+			.locator( '.cbuild-3d__open' )
+			.evaluate( ( shown ) =>
+				shown.scrollIntoView( { block: 'center' } )
+			);
 		await axe( page, 'the 3D view, reduced motion', '.cbuild' );
 		// The kit's Motion subtle hides them too.
 		await page.emulateMedia( { reducedMotion: 'no-preference' } );

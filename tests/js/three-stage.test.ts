@@ -1075,6 +1075,29 @@ describe( 'play', () => {
 		expect( frames() ).toBe( last + 1 );
 	} );
 
+	it( 'draws nothing again for leaving the screen and coming back with nothing changed', () => {
+		const { shown, frames } = open();
+		shown.show( scene(), false );
+		frame();
+		const drawn = frames();
+		seen!( [ { isIntersecting: false } ] );
+		seen!( [ { isIntersecting: true } ] );
+		frame();
+		expect( frames() ).toBe( drawn );
+	} );
+
+	it( 'sends the camera nowhere once closed', () => {
+		const { shown, camera, reduce } = open();
+		shown.show( scene(), false );
+		frame();
+		const was = camera();
+		shown.close();
+		// Reduced, a camera that moved would be there at once.
+		reduce( true );
+		shown.look( 'top' );
+		expect( camera().distanceTo( was ) ).toBeLessThan( 1e-6 );
+	} );
+
 	it( 'lands a trick at rest once the tab hides', async () => {
 		const { shown, board } = open();
 		shown.show( scene(), false );

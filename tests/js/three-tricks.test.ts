@@ -18,6 +18,7 @@ import {
 } from '../../assets/src/builder/three/tricks';
 
 const TURN = 2 * Math.PI;
+const DEG = Math.PI / 180;
 
 /**
  * The board's group at a moment of a trick.
@@ -92,8 +93,9 @@ describe( 'sample', () => {
 		expect( sample( keys, 900 ) ).toBe( 30 );
 	} );
 
-	it( 'is 0 with no keys', () => {
-		expect( sample( [], 10 ) ).toBe( 0 );
+	it( 'is its one key’s value at every moment, where it has one', () => {
+		expect( sample( [ [ 0, 7 ] ], -5 ) ).toBe( 7 );
+		expect( sample( [ [ 0, 7 ] ], 10 ) ).toBe( 7 );
 	} );
 } );
 
@@ -197,6 +199,43 @@ describe( 'the tricks', () => {
 			}
 		}
 		expect( airborne ).toEqual( [] );
+	} );
+
+	it.each( NAMES )(
+		'%s is a number at every moment, and never below the ground',
+		( name ) => {
+			const wrong: string[] = [];
+			for ( let ms = 0; ms <= TRICKS[ name ].duration; ms += 5 ) {
+				const now = at( name, ms / TRICKS[ name ].duration );
+				for ( const [ key, value ] of Object.entries( now ) ) {
+					if ( ! Number.isFinite( value ) ) {
+						wrong.push( `${ key } at ${ ms } ms` );
+					}
+				}
+				if ( now.rise < 0 ) {
+					wrong.push( `below the ground at ${ ms } ms` );
+				}
+			}
+			expect( wrong ).toEqual( [] );
+		}
+	);
+
+	it( 'a heelflip is upside down the other way half over, and every flip pops nose up', () => {
+		expect( at( 'heelflip', 510 / 1200 ).roll ).toBeCloseTo( -Math.PI, 9 );
+		expect( at( 'kickflip', 200 / 1200 ).pitch ).toBeCloseTo( 20 * DEG, 9 );
+		expect( at( 'heelflip', 200 / 1200 ).pitch ).toBeCloseTo( 20 * DEG, 9 );
+		expect( at( '360-flip', 200 / 1470 ).pitch ).toBeCloseTo( 20 * DEG, 9 );
+		expect( at( 'pop-shove-it', 180 / 1430 ).pitch ).toBeCloseTo(
+			14 * DEG,
+			9
+		);
+		// The 360 flip's spin and flip are each half done in the middle of their own keys.
+		expect( at( '360-flip', 640 / 1470 ).yaw ).toBeCloseTo( Math.PI, 9 );
+		expect( at( '360-flip', 635 / 1470 ).roll ).toBeCloseTo( Math.PI, 9 );
+		expect( at( 'pop-shove-it', 470 / 1430 ).yaw ).toBeCloseTo(
+			Math.PI / 2,
+			9
+		);
 	} );
 
 	it( 'a 360 flip turns a full turn about the vertical with one flip', () => {
