@@ -295,6 +295,7 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-432 · After a swap the notice says the swap and the status the build alone, so a screen reader hears it once](#d-432--after-a-swap-the-notice-says-the-swap-and-the-status-the-build-alone-so-a-screen-reader-hears-it-once--2026-11-25)
 - [D-514 · Focused, the start button keeps the outline's ground and words, and gives up only its ring](#d-514--focused-the-start-button-keeps-the-outlines-ground-and-words-and-gives-up-only-its-ring--2026-11-26)
 - [D-516 · Show builds takes focus to the builds, and Skip shuts the questions and takes it to the step](#d-516--show-builds-takes-focus-to-the-builds-and-skip-shuts-the-questions-and-takes-it-to-the-step--2026-11-26)
+- [D-479 · Help me choose's press is the move's own, handed back with its answer alone](#d-479--help-me-chooses-press-is-the-moves-own-handed-back-with-its-answer-alone--2026-11-26)
 - [D-388 · Focus is kept clear of what the bar says over itself, in Firefox too](#d-388--focus-is-kept-clear-of-what-the-bar-says-over-itself-in-firefox-too--2026-11-24)
 
 ### Motion
@@ -7302,5 +7303,18 @@ Cowork's review of 1.3.0, F39 (#162). A 118 px element put in `.cbuild-step__abo
 
 - **Red run** on chromium-phone: "the answer's layout shift: 0.034 +1172 ms 0.034 [cbuild-cards 545→0]" (shelf.spec.ts:965). The desktop measured 0.000 here.
 - **After:** 0.000 on both, and the cards at the event are the answer's. The #143 tests and the F30 width tests pass.
+
+**Status:** Accepted.
+
+### D-479 · Help me choose's press is the move's own, handed back with its answer alone · 2026-11-26
+
+The auditor's M14 review, F3. D-516 kept Show builds' and Skip's press in one variable, set at the press and cleared only when an answer was said. A press that never answered left it set: a later move overtook it, the route's limit answered it, or the request was given up. A pick's own answer replaces the history entry and never read it, so the auditor's case of a plain pick showed nothing. The next answer that moved did: a pick that opened the change panel emptied the status, so its count went unsaid, and Back went to the builds' heading in place of the step's.
+
+**Decision:** the press goes with the move. `Move` has an optional `press`, Show builds or Skip, and the navigator hands it to `show()` with that move's answer alone. An answer dropped, refused or given up takes its press with it, and no other move's answer can read one. The store's navigator is private (D-148), so this changes no public API item.
+
+**Tests.** store.test.ts, "Show builds overtaken": a pick that overtakes the press and opens the change panel; the same pick after a press a 429 answered; Back after a 429; and the press's own answers, Show builds to the builds and Skip to the step with the questions shut.
+
+- **Red runs:** "expected '' to be '1 part no longer fits.'" (store.test.ts, both picks); "expected <h3 …(2)></h3> to be <h2 class="cbuild__heading" …(1)></h2>" (Back).
+- **Deliberate break:** the navigator not handing the press on fails the press's own test: "expected '1 part no longer fits.' to be ''".
 
 **Status:** Accepted.

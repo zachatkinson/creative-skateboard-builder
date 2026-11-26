@@ -386,12 +386,6 @@ const swapPress: { from: string; undo: boolean; pressed: boolean } = {
 };
 
 /**
- * Help me choose's press (F35, D-516): Show builds, whose builds focus goes to by their heading, or Skip, which shuts
- * the questions and takes focus to the step's heading, as the page that answers without the script has them.
- */
-let guidePress: '' | 'show' | 'skip' = '';
-
-/**
  * What the shopper reads first after a step changes, by the template's classes.
  *
  * @param view The view now shown.
@@ -413,13 +407,17 @@ function first( view: Shown ): string {
  * @param history How the move treats history.
  * @param config  The page's config.
  * @param before  The view it takes the place of.
+ * @param guided  Help me choose's press that made the move (F35, D-516): Show builds, whose builds focus goes to by
+ *                their heading, or Skip, which shuts the questions and takes focus to the step's heading, as the page
+ *                that answers without the script has them. The move's own, so a later answer never takes it (D-479).
  */
 function say(
 	state: State,
 	view: Shown,
 	history: Move[ 'history' ],
 	config: Partial< Config >,
-	before: Shown
+	before: Shown,
+	guided: Move[ 'press' ]
 ): void {
 	if ( 'replace' === history ) {
 		state.status = view.status;
@@ -430,9 +428,7 @@ function say(
 		! before.isChanges &&
 		! view.errors.shown &&
 		view.step.slot === before.step.slot;
-	const guided = guidePress;
-	guidePress = '';
-	if ( '' !== guided ) {
+	if ( undefined !== guided ) {
 		// The heading is read as focus comes to it; the region would say the build and its total over it.
 		state.status = '';
 		if ( 'skip' === guided ) {
@@ -1438,7 +1434,7 @@ function nav( state: State ): Navigator {
 			locale: String( config.locale ?? '' ),
 			late: String( config.late ?? '' ),
 			fetch: ( input, init ) => window.fetch( input, init ),
-			show: ( view, history ) => {
+			show: ( view, history, guided ) => {
 				const shown = view as Shown;
 				// A pick that opens the change panel is a step: an entry of its own, which Back leaves for the step
 				// the pick was made on, with focus on the panel's heading, as Next would have it (D-152).
@@ -1483,7 +1479,7 @@ function nav( state: State ): Navigator {
 					state.added = false;
 					state.limited = '';
 					state.missing = '';
-					say( state, shown, turned, config, before );
+					say( state, shown, turned, config, before, guided );
 					priced( before, shown );
 					// The Interactivity API draws the view in a microtask queued as it is set, so one queued after it finds the
 					// view drawn, in the same task: what another plugin adds on the event is laid out with the answer, not a
@@ -1946,14 +1942,14 @@ const { state } = store(
 				}
 				// Next leaves the step, so nothing on it is held in place: the page's own scroll anchoring has the say.
 				onward( state.view, event.submitter )?.();
-				guidePress = form.classList.contains( 'cbuild-guide__form' )
-					? 'show'
-					: '';
 				const move: Move = {
 					fields: fields( form, event.submitter ),
 					history: 'push',
 					fallback: () => send( form, event.submitter ),
 				};
+				if ( form.classList.contains( 'cbuild-guide__form' ) ) {
+					move.press = 'show';
+				}
 				nav( state ).go( move );
 			},
 			narrow( event: Event ): void {
@@ -2240,13 +2236,13 @@ const { state } = store(
 				if ( link.classList.contains( 'cbuild-swap' ) ) {
 					swapPress.from = link.id;
 				}
-				guidePress = link.classList.contains( 'cbuild-guide__skip' )
-					? 'skip'
-					: '';
 				nav( state ).go( {
 					fields: [ ...url.searchParams ],
 					history: 'push',
 					fallback: () => browser.assign( url.href ),
+					...( link.classList.contains( 'cbuild-guide__skip' )
+						? { press: 'skip' as const }
+						: {} ),
 				} );
 			},
 			back(): void {
