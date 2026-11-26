@@ -247,6 +247,7 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-418 · The hostile theme sweep, and a ready build's lines at two classes' weight](#d-418--the-hostile-theme-sweep-and-a-ready-builds-lines-at-two-classes-weight--2026-11-25)
 - [D-419 · The block margins of the builder's paragraphs, headings and lists hold at two classes' weight, measured by a sweep of every text block](#d-419--the-block-margins-of-the-builders-paragraphs-headings-and-lists-hold-at-two-classes-weight-measured-by-a-sweep-of-every-text-block--2026-11-25)
 - [D-433 · Help me choose reads a budget as shoppers type one, and says so when it can't](#d-433--help-me-choose-reads-a-budget-as-shoppers-type-one-and-says-so-when-it-cant--2026-11-26)
+- [D-435 · A rating's average takes the language's decimal separator, not the shop's for prices](#d-435--a-ratings-average-takes-the-languages-decimal-separator-not-the-shops-for-prices--2026-11-26)
 
 ### Accessibility
 
@@ -5689,7 +5690,7 @@ Issue #137, in milestone 13's plan ("Rider picks and ratings in each step"). A s
 - **Shown only where the shop shows ratings.** `wc_review_ratings_enabled()` (includes/wc-conditional-functions.php:531) is asked on every request, after a kept card is read, so turning the shop's ratings or reviews off hides them at once without forgetting a card. A part with no reviews shows nothing.
 - **A variation has its product's rating.** WooCommerce keeps reviews on the product, not its variations (a variation has no rating props). So the cards read every missed variation's parent, in the one query that already read the parents of variations with no photo.
 - **No query per card.** The rating is read from the product objects the cards already load, kept in the card with its stamp, and a card kept before 1.3.0, without `rating`, is read again. A new review saves the product (`WC_Comments::clear_transients()`, includes/class-wc-comments.php:295-298), which moves its stamp and forgets its card. The state route's query-count test now reviews every deck it adds and still asks the same number of queries for 8, 30 and 60 decks.
-- **Said in words, the stars standing for them.** One pattern through `_n()`, "%1$s out of 5, %2$s review(s)": the average to one decimal, a whole one without it, in the shop's decimal separator (`wc_get_price_decimal_separator()`, as its prices), and the count through `number_format_i18n()`. The five stars are drawn by CSS, filled to the nearest half, `aria-hidden`, and the words beside them are what a screen reader says, in the card's description after its fit. In a right-to-left page the stars fill from the right.
+- **Said in words, the stars standing for them.** One pattern through `_n()`, "%1$s out of 5, %2$s review(s)": the average to one decimal, a whole one without it, in the shop's decimal separator (`wc_get_price_decimal_separator()`, as its prices), and the count through `number_format_i18n()`. (Replaced by D-435: the average too takes the language's, through `number_format_i18n()`.) The five stars are drawn by CSS, filled to the nearest half, `aria-hidden`, and the words beside them are what a screen reader says, in the card's description after its fit. In a right-to-left page the stars fill from the right.
 - **"Picked for Street", not "Picked by".** The kit's ready builds have names ("Street", "Cruiser") and no rider field, and "Picked by Street" reads as a person. "Picked for %s" follows the house's "Start from %s", with the builds joined as the site's language joins a list (`wp_sprintf( '%l' )`). A rider's name would need a field on the preset, which is the owner's call (For Zach).
 - **Which ready builds count.** Only those the shopper is offered (`shownPresets()`): none where the kit's Show ready builds is off, and none whose own parts keep it from the cart, so a card never names a build the page doesn't show. A part counts where it is the ready build's pick in that slot, by its ID.
 - **The answer, additions only.** Each option gains `presets`, the places of the ready builds that pick it as `presets[].at` gives them, and each card `rating`, null or `average`, `count` and `text`. Both are in `schema/state.json`, HOOKS.md and the changelog; nothing is renamed.
@@ -6594,3 +6595,16 @@ The auditor's 1.3.0 should-fix 4. The budget field took digits alone (`GuideAnsw
 - **Deliberate break.** The reason line taken out: "about 150: said, with the fix", "Failed asserting that an array contains 'Your budget was left out: type an amount, such as 150.'" (GuidedStartTest.php:323).
 
 **Status:** Accepted.
+
+### D-435 · A rating's average takes the language's decimal separator, not the shop's for prices · 2026-11-26
+
+The auditor's 1.3.0 minor. D-392 wrote a card's average rating in the shop's decimal separator for prices (`wc_get_price_decimal_separator()`), "as its prices", and its count in the language's (`number_format_i18n()`). A rating is no price: a page in French on a shop that writes its prices with a point said "4.5 sur 5, 2 avis", one sentence with two ways of writing numbers.
+
+**Decision:** `Words::average()` writes the average with `number_format_i18n()`, as the count and every other number the builder says that is not money. D-392's point on the separator is replaced; the rest stands.
+
+**Tests.**
+
+- **Red run.** `WordsTest::test_a_rating_takes_the_languages_decimal_separator_not_the_shops_for_prices`, the language's separator a comma and the shop's for prices a point (the unit shims now keep the two apart): "Failed asserting that two strings are identical" (WordsTest.php:296).
+- **After.** It passes, with the rest of `WordsTest`. `builder.spec.ts`, "says them in French, its decimal separator the language's", on fr-ca: "4,5 sur 5, 2 avis" and "4,5 (2)".
+
+**Status:** Accepted. Replaces D-392's separator.

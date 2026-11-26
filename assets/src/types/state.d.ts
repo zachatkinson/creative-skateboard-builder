@@ -910,7 +910,7 @@ export interface Card {
 		 */
 		count: number;
 		/**
-		 * The rating as words, the text its stars stand for: `4.5 out of 5, 12 reviews`, in the site's language and the shop's decimal separator.
+		 * The rating as words, the text its stars stand for: `4.5 out of 5, 12 reviews`, in the site's language and its decimal separator.
 		 */
 		text: string;
 	} | null;

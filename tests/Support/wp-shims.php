@@ -88,7 +88,8 @@ if ( ! function_exists( 'number_format_i18n' ) ) {
 }
 if ( ! function_exists( 'wc_get_price_decimal_separator' ) ) {
 	function wc_get_price_decimal_separator(): string {
-		return $GLOBALS['cbuild_test_decimal'] ?? '.';
+		// The shop's own for prices, which a test may set apart from the language's.
+		return $GLOBALS['cbuild_test_price_decimal'] ?? $GLOBALS['cbuild_test_decimal'] ?? '.';
 	}
 }
 

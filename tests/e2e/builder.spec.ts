@@ -11061,6 +11061,9 @@ test.describe( "Ready builds' picks and ratings on the cards (#137)", () => {
 			.locator( '.cbuild-step .cbuild-cards > li' )
 			.filter( { has: page.getByRole( 'radio', { name } ) } );
 
+	// The average in the language's decimal separator: a comma in fr-ca's site, French with its words in English (D-435).
+	const half = () => ( 'fr-ca' === test.info().project.name ? '4,5' : '4.5' );
+
 	test( 'says which ready build picks a part, and its rating, in words beside the stars', async ( {
 		page,
 		javaScriptEnabled,
@@ -11073,7 +11076,7 @@ test.describe( "Ready builds' picks and ratings on the cards (#137)", () => {
 			'Picked for Street'
 		);
 		await expect( rated.locator( '.cbuild-card__rated' ) ).toHaveText(
-			'4.5 out of 5, 2 reviews'
+			`${ half() } out of 5, 2 reviews`
 		);
 		// One star and the short score are seen, and stand for the sentence, which is said (D-393): the rating beside
 		// the price, read after it, and the pick after the fit.
@@ -11081,11 +11084,11 @@ test.describe( "Ready builds' picks and ratings on the cards (#137)", () => {
 		await expect( star ).toBeVisible();
 		await expect( star ).toHaveAttribute( 'aria-hidden', 'true' );
 		const score = rated.locator( '.cbuild-card__score' );
-		await expect( score ).toHaveText( '4.5 (2)' );
+		await expect( score ).toHaveText( `${ half() } (2)` );
 		await expect( score ).toBeVisible();
 		await expect( score ).toHaveAttribute( 'aria-hidden', 'true' );
 		await expect( rated.getByRole( 'radio' ) ).toHaveAccessibleDescription(
-			/4\.5 out of 5, 2 reviews.*Picked for Street/
+			new RegExp( `${ half() } out of 5, 2 reviews.*Picked for Street` )
 		);
 		await expect(
 			rated.getByRole( 'radio' ),
@@ -11210,7 +11213,7 @@ test.describe( "Ready builds' picks and ratings on the cards (#137)", () => {
 			await page.goto( trucks() );
 			const rated = card( page, /^Choose Builder test trucks 139/ );
 			await expect( rated.locator( '.cbuild-card__rated' ) ).toHaveText(
-				'4.5 out of 5, 2 reviews'
+				`${ half() } out of 5, 2 reviews`
 			);
 			await expect( rated.locator( '.cbuild-card__star' ) ).toBeVisible();
 			await expect(
@@ -11228,7 +11231,7 @@ test.describe( "Ready builds' picks and ratings on the cards (#137)", () => {
 				).toHaveCount( 0 );
 				await expect(
 					rated.locator( '.cbuild-card__rated' )
-				).toHaveText( '4.5 out of 5, 2 reviews' );
+				).toHaveText( `${ half() } out of 5, 2 reviews` );
 			}
 		} );
 
@@ -11244,7 +11247,7 @@ test.describe( "Ready builds' picks and ratings on the cards (#137)", () => {
 					card( page, /^Choose Builder test trucks 139/ ).locator(
 						'.cbuild-card__score'
 					)
-				).toHaveText( '4.5 (2)' );
+				).toHaveText( `${ half() } (2)` );
 				plain = await tall( page, '.cbuild-card__rating' );
 			}
 			cardSwitches( null, false );
@@ -11283,7 +11286,7 @@ test.describe( "Ready builds' picks and ratings on the cards (#137)", () => {
 		} );
 	} );
 
-	test( "says them in French, its decimal separator the shop's", async ( {
+	test( "says them in French, its decimal separator the language's", async ( {
 		page,
 	}, info ) => {
 		test.skip( 'fr-ca' !== info.project.name, 'The fr-ca project alone' );
@@ -11304,12 +11307,13 @@ test.describe( "Ready builds' picks and ratings on the cards (#137)", () => {
 		await expect( rated.locator( '.cbuild-card__picked' ) ).toHaveText(
 			'Choisi pour Street'
 		);
-		// The shop's own decimal separator, a point in the fixture's, as its prices are written (D-392).
+		// The language's decimal separator, a comma in French, as the count is written: a rating is no price, whose
+		// separator, a point in the fixture's shop, is the shop's (D-435).
 		await expect( rated.locator( '.cbuild-card__rated' ) ).toHaveText(
-			'4.5 sur 5, 2 avis'
+			'4,5 sur 5, 2 avis'
 		);
 		await expect( rated.locator( '.cbuild-card__score' ) ).toHaveText(
-			'4.5 (2)'
+			'4,5 (2)'
 		);
 		await axe( page, 'the trucks step in French', '.cbuild-step' );
 	} );

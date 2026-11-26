@@ -287,6 +287,19 @@ final class WordsTest extends TestCase {
 		}
 	}
 
+	// The auditor's 1.3.0 minor: a rating is no price, so it is written in the language's decimal separator, as its
+	// count is, not the shop's for prices: a shop in dollars with a page in French says "4,5".
+	public function test_a_rating_takes_the_languages_decimal_separator_not_the_shops_for_prices(): void {
+		$GLOBALS['cbuild_test_decimal']       = ',';
+		$GLOBALS['cbuild_test_price_decimal'] = '.';
+		try {
+			self::assertSame( '4,5 (2)', Words::score( 4.5, 2 ) );
+			self::assertSame( '4,5 out of 5, 2 reviews', Words::rating( 4.5, 2 ) );
+		} finally {
+			unset( $GLOBALS['cbuild_test_decimal'], $GLOBALS['cbuild_test_price_decimal'] );
+		}
+	}
+
 	public function test_a_spec_this_version_does_not_know_is_named_as_it_came(): void {
 		self::assertSame(
 			'kingpin_angle is not filled in for this part, so its fit cannot be checked.',

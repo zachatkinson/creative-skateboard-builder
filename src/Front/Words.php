@@ -478,7 +478,7 @@ final class Words {
 
 	/**
 	 * A part's star rating as words, the text the stars stand for, as "4.5 out of 5, 12 reviews" (#137, D-392): the
-	 * average to one decimal, a whole one without it, in the shop's decimal separator, and the count in the site's.
+	 * average to one decimal, a whole one without it, and the count, both in the language's separators.
 	 *
 	 * @since 1.3.0
 	 *
@@ -513,13 +513,14 @@ final class Words {
 	}
 
 	/**
-	 * An average rating to one decimal, a whole one without it, in the shop's decimal separator.
+	 * An average rating to one decimal, a whole one without it, in the language's decimal separator, as its count is: a
+	 * rating is no price.
 	 *
 	 * @param float $average The average rating, 0 to 5.
 	 */
 	private static function average( float $average ): string {
 		$tenths = (int) round( $average * 10 );
-		return number_format( $tenths / 10, 0 === $tenths % 10 ? 0 : 1, wc_get_price_decimal_separator(), '' );
+		return number_format_i18n( $tenths / 10, 0 === $tenths % 10 ? 0 : 1 );
 	}
 
 	/**
