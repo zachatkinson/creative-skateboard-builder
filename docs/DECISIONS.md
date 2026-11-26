@@ -493,6 +493,7 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-423 · The i18n check fails a translation compiled before its strings were translated](#d-423--the-i18n-check-fails-a-translation-compiled-before-its-strings-were-translated--2026-11-25)
 - [D-424 · The thumbnails test counts the shifts from the gate on, once the fonts are in](#d-424--the-thumbnails-test-counts-the-shifts-from-the-gate-on-once-the-fonts-are-in--2026-11-25)
 - [D-426 · StrykerJS copies the browser tests' lock into its sandbox](#d-426--strykerjs-copies-the-browser-tests-lock-into-its-sandbox--2026-11-25)
+- [D-428 · The integration variants' plugins pinned to the hashes of the releases D-420 named](#d-428--the-integration-variants-plugins-pinned-to-the-hashes-of-the-releases-d-420-named--2026-11-25)
 - [D-430 · The swaps-off test measures its own plain card, so it holds when it runs alone](#d-430--the-swaps-off-test-measures-its-own-plain-card-so-it-holds-when-it-runs-alone--2026-11-25)
 - [D-431 · Every browser test passes when it runs alone](#d-431--every-browser-test-passes-when-it-runs-alone--2026-11-25)
 
@@ -6546,6 +6547,30 @@ D-430 found a browser test that compared against a variable only the test before
 
 **Status:** Accepted.
 
+### D-428 · The integration variants' plugins pinned to the hashes of the releases D-420 named · 2026-11-25
+
+`composer test:integration:object-cache` and `:yoast` stopped at the zip's check: "Redis Object Cache 3.0.1 could not be installed, or its zip is not the one pinned", and the same for Yoast SEO 28.9.
+
+**Cause.** D-420 (3b7c04d) moved `plugin_version` in `tools/object-cache.sh` and `tools/yoast.sh` but kept the hashes, which are those of the releases before. wordpress.org did not change a zip under a version:
+
+- `redis-cache.3.0.0.zip` is still `7a03342d…f54a` (Last-Modified 18 Sep), the hash pinned on 10 November (fc6edb4).
+- `wordpress-seo.28.8.zip` is still `27cc01cb…5105` (Last-Modified 27 Oct), pinned on 10 November (066b7c5).
+
+**What the new releases are.** Each read in plugins.svn.wordpress.org's log and diffed file by file against the release before, both zips unpacked in an empty directory and nothing in them run:
+
+- **Redis Object Cache 3.0.1.** `tags/3.0.1` was made once, in r3806147 ("Tagging 3.0.1", 16 Nov, tillkruess), copied from trunk at r3806146 ("Sync with GitHub", tillkruess). Every commit to the plugin since 3.0.0 (r3702555 to r3702558, 18 Sep) is his. Zip `8de85553394c4462dd43d38a403b805e8fb404d7dc34e02ecd313ea37002196b`, 18 files changed. The diff is what its changelog says: `INFO` fetched on first use, not on connect; a running count of bytes read and written in place of serializing the cache to measure it; flushing a group on `WP_REDIS_SHARDS` runs the script on each shard; database `0` left out of Predis's parameters; the `WP_REDIS_DISABLE_DROPIN_MODS_CHECK` constant; the admin bar's script and styles moved, unchanged, into `assets/` and printed through `wp_get_inline_script_tag()` for a CSP nonce. The rest is phpcs formatting and docblocks. No new host, request, `eval` or encoded string.
+- **Yoast SEO 28.9.** `tags/28.9` was made once, in r3808626 ("Tagging 28.9", 18 Nov), from trunk at r3808625 ("Committing 28.9 to trunk"), after RC1 to RC6 (r3768787 to r3807259); every commit is the `Yoast` account's, as every release's is. Zip `1f1af9d3dff70288b37e6edc04e27cff4979b258f62960c0b91c092614bf2301`. The diff is its changelog's: the alt-text assessments and bulk-editor filters, new abilities for terms, archives and author Schema, and a security fix: the head REST endpoints answer 404 for a private post, page, static front page or posts page the visitor can't read (`Meta_Surface::is_post_readable()`). The sitemap's XSL stylesheet becomes a CSS one whose processing instruction is not printed for now; our test reads the sitemap's entries, not its styling. The MyYoast software statement is re-signed with `software_version` 28.9. The CSS bundles are renamed for 28.9 with identical bytes. No host is new in the PHP or the built JavaScript, and neither has `eval`, `new Function` or `atob`.
+
+Files of each zip, the drop-in among them, match the svn tag byte for byte.
+
+**Decision:** pin each script to its new release's hash. The releases are the ones D-420 chose; this finishes it.
+
+**Tests.** `bash tools/lane.sh 3 composer test:integration:object-cache` and `bash tools/lane.sh 3 composer test:integration:yoast`, both on the new pins.
+
+**Why:** both releases are their usual committers' bug and security fixes and features, plain in the diff, so the pins follow the versions, as a pin must name the bytes of the version it says.
+
+**Status:** Accepted.
+
 ### D-432 · After a swap the notice says the swap and the status the build alone, so a screen reader hears it once · 2026-11-25
 
 The auditor's 1.3.0 should-fix 3. After a swap the store focuses the notice (`.cbuild-swapped`, D-397), which a screen reader reads as it takes focus, and the polite status began with the same words, "Swapped: wheels and hardware.", before the build and its total (`BuilderView`, the swap's words put before the status). A screen reader heard the swap twice.
@@ -6557,6 +6582,26 @@ The auditor's 1.3.0 should-fix 3. After a swap the store focuses the notice (`.c
 - **Red run.** `BuilderTest::test_each_swap_is_a_link_to_the_build_swapped_and_its_notice_undoes_it_until_the_next_move`: "the status does not say the swap the focused notice says", `'Swapped: wheels. The build so far: …'` contains "Swapped" (BuilderTest.php:2114).
 - **After.** It passes. `builder.spec.ts`, "Smart swaps (#135) › the same board for less swaps the build…", on chromium-desktop and no-js: the notice focused, the status says the total and not the notice's words.
 - **Deliberate break.** The swap's words put back before the status: the unit case fails as in the red run, and the browser test fails with `expect(locator).not.toContainText` "Swapped: wheels and hardware." (builder.spec.ts:11989).
+
+**Status:** Accepted.
+
+### D-433 · Help me choose reads a budget as shoppers type one, and says so when it can't · 2026-11-26
+
+The auditor's 1.3.0 should-fix 4. The budget field took digits alone (`GuideAnswers::whole()`), so "150.50", "$150" or "1,000" were dropped with no word, and the builds shown looked like builds within a budget nobody had read.
+
+**Decision: be forgiving, then say what is wrong.** Postel's principle for input, and GOV.UK's and the Baymard Institute's advice for form fields: accept what people type for an amount rather than make them retype it in the system's format, and where it still can't be read, say what is wrong and how to fix it, beside it, in plain words.
+
+- **Taken out:** any currency sign (`\p{Sc}`) and any space, a no-break or thin space among them, as a shop may write thousands.
+- **Thousands and decimals by their shape, not the shop's locale,** since a shopper may type in their own: a comma or a point before each group of three digits is a thousands separator; a comma or a point before one or two digits at the end is the decimals, the other one of the two where thousands are separated. So "1,000", "1.000" and "1 000" are a thousand, "150,50" and "150.50" are 150.50, "1,234.56" and "1 234,56 $" are 1,234.56. A budget with three decimals is not a thing shoppers type, so "1.000" is never one.
+- **A decimal amount is rounded to a whole one, half up,** as the field asks for a whole amount: 150.50 is 151, 150.49 is 150. At most six digits after rounding, as before.
+- **What is still no amount** ("about 150", "-5", "100-200", "1.2.3", more than six digits) is left out, as before, and `GuideAnswers::$budgetLeftOut` says so. The builds' reasons then start their budget line with "Your budget was left out: type an amount, such as 150." The field is left empty. Nothing of what was typed travels in the link. Empty, spaces alone or 0 are no budget, and say nothing.
+- The field's `maxlength` goes from 6 to 20, room for a sign, separators, decimals and spaces around six digits; `GuideAnswers` reads 20 characters at most. Its hint still asks for a whole amount.
+
+**Tests.**
+
+- **Red run.** `BuildLinkTest::test_a_budget_typed_with_a_sign_separators_or_decimals_is_read` "a decimal amount, rounded up": "Failed asserting that null is identical to 151" (BuildLinkTest.php:492). `GuidedStartTest::test_a_budget_typed_with_a_sign_separators_or_cents_is_read_and_one_that_is_no_amount_says_so`: "$150 reads as 150", the reasons differ (GuidedStartTest.php:312).
+- **After.** Both pass, with `test_a_budget_that_is_no_amount_is_left_out_and_said_so` and `test_an_empty_budget_is_any_and_is_not_said_to_be_left_out`. BuildLinkTest's "a budget in cents" left the cases of no answer: it is one now.
+- **Deliberate break.** The reason line taken out: "about 150: said, with the fix", "Failed asserting that an array contains 'Your budget was left out: type an amount, such as 150.'" (GuidedStartTest.php:323).
 
 **Status:** Accepted.
 
@@ -6580,26 +6625,6 @@ The auditor's 1.3.0 should-fix 2. `BuildSwaps::of()` asked `PartRanks::ranks()` 
 - **Deliberate break.** `BuildSwaps` asking `ranks()` by ID again: the benchmark fails at the review, cold, p95 581.3 ms, "Failed asserting that 49 is equal to 46 or is less than 46" (StateRouteBenchmarkTest.php:347).
 
 **Status:** Accepted. Replaces in part D-395's last point: the rank is kept with the part's facts, and read with them.
-
-### D-433 · Help me choose reads a budget as shoppers type one, and says so when it can't · 2026-11-26
-
-The auditor's 1.3.0 should-fix 4. The budget field took digits alone (`GuideAnswers::whole()`), so "150.50", "$150" or "1,000" were dropped with no word, and the builds shown looked like builds within a budget nobody had read.
-
-**Decision: be forgiving, then say what is wrong.** Postel's principle for input, and GOV.UK's and the Baymard Institute's advice for form fields: accept what people type for an amount rather than make them retype it in the system's format, and where it still can't be read, say what is wrong and how to fix it, beside it, in plain words.
-
-- **Taken out:** any currency sign (`\p{Sc}`) and any space, a no-break or thin space among them, as a shop may write thousands.
-- **Thousands and decimals by their shape, not the shop's locale,** since a shopper may type in their own: a comma or a point before each group of three digits is a thousands separator; a comma or a point before one or two digits at the end is the decimals, the other one of the two where thousands are separated. So "1,000", "1.000" and "1 000" are a thousand, "150,50" and "150.50" are 150.50, "1,234.56" and "1 234,56 $" are 1,234.56. A budget with three decimals is not a thing shoppers type, so "1.000" is never one.
-- **A decimal amount is rounded to a whole one, half up,** as the field asks for a whole amount: 150.50 is 151, 150.49 is 150. At most six digits after rounding, as before.
-- **What is still no amount** ("about 150", "-5", "100-200", "1.2.3", more than six digits) is left out, as before, and `GuideAnswers::$budgetLeftOut` says so. The builds' reasons then start their budget line with "Your budget was left out: type an amount, such as 150." The field is left empty. Nothing of what was typed travels in the link. Empty, spaces alone or 0 are no budget, and say nothing.
-- The field's `maxlength` goes from 6 to 20, room for a sign, separators, decimals and spaces around six digits; `GuideAnswers` reads 20 characters at most. Its hint still asks for a whole amount.
-
-**Tests.**
-
-- **Red run.** `BuildLinkTest::test_a_budget_typed_with_a_sign_separators_or_decimals_is_read` "a decimal amount, rounded up": "Failed asserting that null is identical to 151" (BuildLinkTest.php:492). `GuidedStartTest::test_a_budget_typed_with_a_sign_separators_or_cents_is_read_and_one_that_is_no_amount_says_so`: "$150 reads as 150", the reasons differ (GuidedStartTest.php:312).
-- **After.** Both pass, with `test_a_budget_that_is_no_amount_is_left_out_and_said_so` and `test_an_empty_budget_is_any_and_is_not_said_to_be_left_out`. BuildLinkTest's "a budget in cents" left the cases of no answer: it is one now.
-- **Deliberate break.** The reason line taken out: "about 150: said, with the fix", "Failed asserting that an array contains 'Your budget was left out: type an amount, such as 150.'" (GuidedStartTest.php:323).
-
-**Status:** Accepted.
 
 ### D-435 · A rating's average takes the language's decimal separator, not the shop's for prices · 2026-11-26
 
