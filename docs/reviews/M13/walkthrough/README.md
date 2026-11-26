@@ -5,7 +5,7 @@ The screens milestone 13 built, taken on 26 November 2026 for the review (`docs/
 ## How they were taken
 
 - **The first pass,** 90 pictures: lane 3 (:8902) on `ecb30b9` (the combined tree `800d07e` and one tooling commit), built with `npm run build`, Kadence unless a name says another theme, by Playwright's Chromium. Desktop is 1440 by 900; phone is 390 by 844 at three device pixels. Dark is the e2e theme fixture's dark scheme; French is fr_CA with the plugin's translation. Motion is off but for the outline.
-- **Only the screens the pending audit fixes leave as they are.** Help me choose and the notice after a swap are in the second pass, below.
+- **The first pass took only the screens the pending audit fixes left as they were.** Help me choose and the notice after a swap are in the second pass, 46 pictures, below.
 - **The kits:** the e2e "Builder test kit" on the page that holds its block, "Build a complete" (`/builder-test-page/`, the block's full width), its picks in the address; the Build tab on "Build tab test kit"; a part's rank on "Builder test trucks 139".
 - **A `*-full-*` picture** is the whole page in one screen, the stage held at the height it has on the phone or desktop screen, as the visual snapshots take it; the fixed bar is then drawn at the page's foot.
 - **The pictures still loading** were made by holding every file from the uploads folder until the shot.
@@ -73,4 +73,32 @@ The screens milestone 13 built, taken on 26 November 2026 for the review (`docs/
 
 ## Help me choose and the swap notice (second pass)
 
-_Pending._ Help me choose (the guide, its answers and the builds it recommends) and the notice after a swap is pressed wait for the audit's fixes, which change both.
+Taken on 26 November 2026 on lane 3 on `m13-walk2`: the audit-fixed tree `2cd0cc6` with the first pass on top, built with `npm run build`, by the same script and in the same way as the first pass. The answers are pressed and typed in the form, as a shopper does. The fixture's three builds show only when no shoe size is given: a shoe size picks one deck width, and the shop has two wheels in street's sizes at it, so that answer gives two builds (`*-guide-*-shoe-*`). Help me choose was turned off on the kit for `*-guide-off-*` and turned back on after.
+
+### Help me choose (#134)
+
+| Screen | Desktop | Phone |
+| --- | --- | --- |
+| At the builder's start, closed | `desktop-guide-closed-light-en` | `phone-guide-closed-light-en` |
+| Open, with its questions, and the whole page | `desktop-guide-open-light-en`, `desktop-guide-open-full-light-en` | `phone-guide-open-light-en`, `phone-guide-open-full-light-en` |
+| Answered: Street, a budget of 250, no shoe size | `desktop-guide-answers-light-en` | `phone-guide-answers-light-en` |
+| The three builds, each with why, and the whole page | `desktop-guide-builds-light-en`, `desktop-guide-builds-full-light-en` | `phone-guide-builds-light-en`, `phone-guide-builds-full-light-en` |
+| Answered with a shoe size of 9.5 and larger, a budget of 200: two builds | `desktop-guide-answers-shoe-light-en`, `desktop-guide-builds-shoe-light-en`, `desktop-guide-builds-shoe-full-light-en` | `phone-guide-answers-shoe-light-en`, `phone-guide-builds-shoe-light-en`, `phone-guide-builds-shoe-full-light-en` |
+| A budget typed as "$150", read as 150 (D-433) | `desktop-guide-budget-dollar-light-en` | `phone-guide-budget-dollar-light-en` |
+| A budget typed as "abc", left out with a line that says so (D-433) | `desktop-guide-budget-unread-light-en` | `phone-guide-budget-unread-light-en` |
+| Turned off in the Build tab: the start without it (D-409) | `desktop-guide-off-light-en` | `phone-guide-off-light-en` |
+
+### The swap notice (#135, D-432)
+
+| Screen | Desktop | Phone |
+| --- | --- | --- |
+| "Same board for $3.00 less" pressed: the notice with Undo swap, and the whole page | `desktop-swap-notice-light-en`, `desktop-swap-notice-full-light-en` | `phone-swap-notice-light-en`, `phone-swap-notice-full-light-en` |
+| After Undo swap: the build and the offer back | `desktop-swap-undone-light-en` | `phone-swap-undone-light-en` |
+
+### Dark and French
+
+| Screen | Dark | French |
+| --- | --- | --- |
+| Help me choose answered | `desktop-guide-answers-dark-en`, `phone-guide-answers-dark-en` | `desktop-guide-answers-light-fr`, `phone-guide-answers-light-fr` |
+| Its builds | `desktop-guide-builds-dark-en`, `phone-guide-builds-dark-en`, `desktop-guide-builds-full-dark-en`, `phone-guide-builds-full-dark-en` | `desktop-guide-builds-light-fr`, `phone-guide-builds-light-fr`, `desktop-guide-builds-full-light-fr`, `phone-guide-builds-full-light-fr` |
+| The swap notice | `desktop-swap-notice-dark-en`, `phone-swap-notice-dark-en` | `desktop-swap-notice-light-fr`, `phone-swap-notice-light-fr` |
