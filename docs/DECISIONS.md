@@ -486,6 +486,7 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-422 · The browser tests reach wp-env one command at a time, under a lock](#d-422--the-browser-tests-reach-wp-env-one-command-at-a-time-under-a-lock--2026-11-25)
 - [D-423 · The i18n check fails a translation compiled before its strings were translated](#d-423--the-i18n-check-fails-a-translation-compiled-before-its-strings-were-translated--2026-11-25)
 - [D-424 · The thumbnails test counts the shifts from the gate on, once the fonts are in](#d-424--the-thumbnails-test-counts-the-shifts-from-the-gate-on-once-the-fonts-are-in--2026-11-25)
+- [D-426 · StrykerJS copies the browser tests' lock into its sandbox](#d-426--strykerjs-copies-the-browser-tests-lock-into-its-sandbox--2026-11-25)
 - [D-430 · The swaps-off test measures its own plain card, so it holds when it runs alone](#d-430--the-swaps-off-test-measures-its-own-plain-card-so-it-holds-when-it-runs-alone--2026-11-25)
 - [D-431 · Every browser test passes when it runs alone](#d-431--every-browser-test-passes-when-it-runs-alone--2026-11-25)
 
@@ -6519,5 +6520,19 @@ D-430 found a browser test that compared against a variable only the test before
 - **Red run.** `ContainerTest::test_the_build_link_and_its_guide_answers_build_as_an_earlier_release_built_them`: "PluginException: Service CreativeBranding\SkateboardBuilder\Domain\Guide\RidingStyle is not instantiable and has no binding."
 - **After.** It passes, with the unit suite. `tools/upgrade.sh` from 0.6.0 and from 0.9.0 passes: "its container fits 1.3.0's files". Then the full `npm run upgrade:all` passes.
 - **Deliberate break.** The constructor's `?string $style` put back as `?RidingStyle $style`: the test fails with the red run's message.
+
+**Status:** Accepted.
+
+### D-426 · StrykerJS copies the browser tests' lock into its sandbox · 2026-11-25
+
+`npm run mutate:js` on the combined tree stopped in its first run: "tests/js/e2e-lock.test.ts: Cannot find module '../e2e/support/lock'". D-422 added that Vitest test of `tests/e2e/support/lock.ts`, and `stryker.config.mjs` leaves all of `tests/e2e` out of the sandbox, so StrykerJS ran no mutant. Vitest alone passed, since it reads the tree.
+
+**Decision:** the sandbox leaves out `tests/e2e` but for `tests/e2e/support/lock.ts`, in `.gitignore`'s terms: `tests/e2e/*`, `!tests/e2e/support`, `tests/e2e/support/*`, `!tests/e2e/support/lock.ts`. The rest of the browser tests stay out, as issue #31 wanted.
+
+**Tests.**
+
+- **Red run.** `npm run mutate:js`: "An error occurred outside of a test run: …/tests/js/e2e-lock.test.ts: Cannot find module '../e2e/support/lock'", then "Something went wrong in the initial test run".
+- **After.** 97.41 % of all mutants (98.01 % of those covered), the admin's script 99.33 % and the builder's store 96.93 %, above the 95 % floor (D-379).
+- **Deliberate break.** Without `!tests/e2e/support/lock.ts` the run stops with the red run's message.
 
 **Status:** Accepted.
