@@ -6,7 +6,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { setElement, stores } from './support/interactivity';
 import { NAME, reset } from '../../assets/src/builder/view';
-import { flat, placeOf, PLACES } from '../../assets/src/builder/picture';
+import {
+	flat,
+	placeOf,
+	PLACES,
+	TRICKS,
+	trickOf,
+} from '../../assets/src/builder/picture';
 import { scene } from './support/scene';
 
 const drawn = {
@@ -18,6 +24,10 @@ const drawn = {
 
 const opened = vi.hoisted( () => ( {
 	open: vi.fn(),
+	tricks: {
+		ollie: { duration: 930, pose: () => undefined },
+		kickflip: { duration: 1200, pose: () => undefined },
+	} as Record< string, { duration: number; pose: () => void } >,
 } ) );
 
 vi.mock( '../../assets/src/builder/three/index', () => opened );
@@ -26,9 +36,18 @@ interface Defined {
 	state: {
 		view: Record< string, unknown >;
 		status: string;
-		three: { open: boolean; loading: boolean; failed: boolean };
+		three: {
+			open: boolean;
+			loading: boolean;
+			failed: boolean;
+			playing: boolean;
+		};
 	};
-	actions: { three: () => Promise< void >; look: () => void };
+	actions: {
+		three: () => Promise< void >;
+		look: () => void;
+		trick: () => Promise< void >;
+	};
 	callbacks: { init: () => void; scene: () => void };
 }
 
@@ -47,6 +66,8 @@ function page( canvas = true ): HTMLCanvasElement | null {
 				${ canvas ? '<canvas class="cbuild-3d__canvas"></canvas>' : '' }
 				<button type="button" value="top">Top</button>
 				<button type="button" value="nowhere">Nowhere</button>
+				<button type="button" value="kickflip">Kickflip</button>
+				<button type="button" value="ollie">Ollie</button>
 				<p class="cbuild-3d__failed">
 					The 3D view can’t be shown here, so the board is drawn flat.
 				</p>
@@ -61,7 +82,12 @@ beforeEach( () => {
 	reset();
 	vi.clearAllMocks();
 	opened.open.mockImplementation( () => drawn );
-	state.three = { open: false, loading: false, failed: false };
+	state.three = {
+		open: false,
+		loading: false,
+		failed: false,
+		playing: false,
+	};
 	state.status = '';
 	state.view = {
 		step: { slot: 'deck' },
@@ -86,6 +112,7 @@ describe( 'View in 3D', () => {
 			open: true,
 			loading: false,
 			failed: false,
+			playing: false,
 		} );
 		expect( opened.open ).toHaveBeenCalledTimes( 1 );
 		const [ opening ] = opened.open.mock.calls[ 0 ]!;
@@ -134,6 +161,7 @@ describe( 'View in 3D', () => {
 			open: false,
 			loading: false,
 			failed: false,
+			playing: false,
 		} );
 	} );
 
@@ -154,6 +182,7 @@ describe( 'View in 3D', () => {
 			open: false,
 			loading: false,
 			failed: true,
+			playing: false,
 		} );
 		expect( state.status ).toBe(
 			'The 3D view can’t be shown here, so the board is drawn flat.'
@@ -182,6 +211,7 @@ describe( 'View in 3D', () => {
 			open: false,
 			loading: false,
 			failed: true,
+			playing: false,
 		} );
 		expect( state.status ).toContain( 'drawn flat' );
 		// A failure clears once it opens again.
@@ -226,6 +256,91 @@ describe( 'the camera’s buttons', () => {
 	} );
 } );
 
+describe( 'the trick buttons', () => {
+	/**
+	 * Press a trick's button.
+	 *
+	 * @param value The button's value.
+	 */
+	const press = ( value: string ): Promise< void > => {
+		setElement(
+			document.querySelector< HTMLElement >( `[value="${ value }"]` )
+		);
+		return actions.trick();
+	};
+
+	it( 'play the trick their values name, and say it plays until it lands', async () => {
+		page();
+		await actions.three();
+		let landed: ( played: boolean ) => void = () => undefined;
+		drawn.play.mockImplementationOnce(
+			() =>
+				new Promise< boolean >( ( done ) => {
+					landed = done;
+				} )
+		);
+		const pressed = press( 'kickflip' );
+		expect( drawn.play ).toHaveBeenCalledWith( opened.tricks.kickflip );
+		expect( state.three.playing ).toBe( true );
+		// A press while it plays does nothing: the buttons say they are disabled.
+		await press( 'ollie' );
+		expect( drawn.play ).toHaveBeenCalledTimes( 1 );
+		landed( true );
+		await pressed;
+		expect( state.three.playing ).toBe( false );
+		await press( 'ollie' );
+		expect( drawn.play ).toHaveBeenLastCalledWith( opened.tricks.ollie );
+		expect( state.three.playing ).toBe( false );
+	} );
+
+	it( 'play nothing for a value that names no trick, or with the view closed', async () => {
+		page();
+		await press( 'kickflip' );
+		expect( drawn.play ).not.toHaveBeenCalled();
+		await actions.three();
+		await press( 'nowhere' );
+		setElement( null );
+		await actions.trick();
+		expect( drawn.play ).not.toHaveBeenCalled();
+		expect( state.three.playing ).toBe( false );
+	} );
+
+	it( 'are free again once the view closes in the middle of one', async () => {
+		page();
+		await actions.three();
+		drawn.play.mockImplementationOnce(
+			() => new Promise< boolean >( () => undefined )
+		);
+		void press( 'ollie' );
+		expect( state.three.playing ).toBe( true );
+		await actions.three();
+		expect( state.three.playing ).toBe( false );
+	} );
+
+	it( 'leave a trick on a view opened again playing, where one on the closed view lands late', async () => {
+		page();
+		await actions.three();
+		let late: ( played: boolean ) => void = () => undefined;
+		drawn.play.mockImplementationOnce(
+			() =>
+				new Promise< boolean >( ( done ) => {
+					late = done;
+				} )
+		);
+		const first = press( 'ollie' );
+		await actions.three();
+		const again = { ...drawn };
+		opened.open.mockImplementation( () => again );
+		await actions.three();
+		again.play = vi.fn( () => new Promise< boolean >( () => undefined ) );
+		void press( 'kickflip' );
+		expect( again.play ).toHaveBeenCalledTimes( 1 );
+		late( false );
+		await first;
+		expect( state.three.playing ).toBe( true );
+	} );
+} );
+
 describe( 'the picture’s renderers', () => {
 	it( 'has the board’s draw nothing and play nothing', async () => {
 		expect( flat.show( scene(), true ) ).toBeUndefined();
@@ -243,5 +358,13 @@ describe( 'the picture’s renderers', () => {
 		}
 		expect( placeOf( 'side' ) ).toBeNull();
 		expect( placeOf( undefined ) ).toBeNull();
+	} );
+
+	it( 'reads a trick from a button’s value', () => {
+		for ( const one of TRICKS ) {
+			expect( trickOf( one ) ).toBe( one );
+		}
+		expect( trickOf( 'nollie' ) ).toBeNull();
+		expect( trickOf( undefined ) ).toBeNull();
 	} );
 } );

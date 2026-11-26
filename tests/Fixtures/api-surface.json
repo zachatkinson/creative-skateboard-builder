@@ -185,6 +185,7 @@
         "cbuild-3d__open",
         "cbuild-3d__places",
         "cbuild-3d__stage",
+        "cbuild-3d__tricks",
         "cbuild-assembly",
         "cbuild-bar__photo",
         "cbuild-board__layer",
@@ -219,6 +220,7 @@
         "cbuild:rendered"
     ],
     "css_properties": [
+        "--cbuild-3d-ground",
         "--cbuild-accent",
         "--cbuild-bar-height",
         "--cbuild-bar-offset",

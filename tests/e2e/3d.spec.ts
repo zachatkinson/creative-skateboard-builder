@@ -17,7 +17,7 @@ interface Fixture {
 	kit: number;
 	page: string;
 	parts: Record< string, number >;
-	three: { kit: number; page: string };
+	three: { kit: number; page: string; quiet: string };
 }
 
 interface Probe {
@@ -26,6 +26,8 @@ interface Probe {
 	textures: number;
 	groups: Record< string, string >;
 	closed: boolean;
+	playing: boolean;
+	board: number[];
 }
 
 const fixture = (): Fixture =>
@@ -356,6 +358,197 @@ test.describe( '3D view (milestone 14)', () => {
 		const after = await frames( page );
 		await page.waitForTimeout( 3000 );
 		expect( await frames( page ) ).toBe( after );
+	} );
+
+	test( 'offers no trick where the kit’s Trick buttons is off', async ( {
+		page,
+	} ) => {
+		await page.goto( build( fixture().three.quiet ) );
+		test.skip(
+			! ( await drawsWebGL( page ) ),
+			'This browser has no WebGL 2 here; the fallback tests cover it.'
+		);
+		await page.getByRole( 'button', { name: 'View in 3D' } ).click();
+		await expect(
+			page.getByRole( 'group', { name: 'Views of the board' } )
+		).toBeVisible();
+		await still( page );
+		await expect( page.locator( '.cbuild-3d__tricks' ) ).toHaveCount( 0 );
+		await expect(
+			page.getByRole( 'group', { name: 'Tricks' } )
+		).toHaveCount( 0 );
+	} );
+
+	test( 'a trick plays on its press alone, its buttons disabled, and lands where it took off', async ( {
+		page,
+	} ) => {
+		await open( page );
+		const tricks = page.getByRole( 'group', { name: 'Tricks' } );
+		await expect( tricks.getByRole( 'button' ) ).toHaveText( [
+			'Ollie',
+			'Kickflip',
+			'Heelflip',
+			'Pop shove-it',
+			'360 flip',
+		] );
+		// None plays on its own.
+		const rest = await probe( page );
+		expect( rest!.board ).toEqual( [ 0, 0, 0, 0, 0, 0 ] );
+		expect( rest!.playing ).toBe( false );
+		await page.waitForTimeout( 1500 );
+		expect( await frames( page ) ).toBe( rest!.frames );
+		for ( const one of await tricks.getByRole( 'button' ).all() ) {
+			await expect( one ).toHaveAttribute( 'aria-disabled', 'false' );
+		}
+		// The press and the landing, timed in the page: from the click to the buttons free again.
+		const timed = page.evaluate(
+			() =>
+				new Promise< { took: number; high: number } >( ( done ) => {
+					const button = document.querySelector< HTMLButtonElement >(
+						'.cbuild-3d__tricks [value="kickflip"]'
+					)!;
+					const probed = (
+						window as Window & {
+							cbuildProbe?: {
+								probe: () => { board: number[] };
+							};
+						}
+					 ).cbuildProbe!;
+					let high = 0;
+					const start = performance.now();
+					const watch = () => {
+						high = Math.max( high, probed.probe().board[ 2 ]! );
+						if (
+							'false' === button.getAttribute( 'aria-disabled' )
+						) {
+							done( { took: performance.now() - start, high } );
+							return;
+						}
+						requestAnimationFrame( watch );
+					};
+					button.click();
+					requestAnimationFrame( watch );
+				} )
+		);
+		await expect(
+			tricks.getByRole( 'button', { name: 'Ollie' } )
+		).toHaveAttribute( 'aria-disabled', 'true' );
+		const { took, high } = await timed;
+		// A kickflip is 1,200 ms; a frame either side, and a slow machine's late frames, are allowed for.
+		expect( took ).toBeGreaterThanOrEqual( 1150 );
+		expect( took ).toBeLessThan( 3000 );
+		expect( high ).toBeGreaterThan( 100 );
+		const landed = await probe( page );
+		expect( landed!.board ).toEqual( [ 0, 0, 0, 0, 0, 0 ] );
+		expect( landed!.playing ).toBe( false );
+		// Some 70 frames at 60 a second; at least a frame for every 100 ms on a loaded machine.
+		expect( landed!.frames - rest!.frames ).toBeGreaterThan( 12 );
+		for ( const one of await tricks.getByRole( 'button' ).all() ) {
+			await expect( one ).toHaveAttribute( 'aria-disabled', 'false' );
+		}
+		await still( page );
+		// Landed, it draws nothing more.
+		const after = await frames( page );
+		await page.waitForTimeout( 1500 );
+		expect( await frames( page ) ).toBe( after );
+	} );
+
+	test( 'a trick is played from the keyboard, and keeps focus on its button', async ( {
+		page,
+	} ) => {
+		await open( page );
+		const ollie = page
+			.getByRole( 'group', { name: 'Tricks' } )
+			.getByRole( 'button', { name: 'Ollie' } );
+		await ollie.focus();
+		await page.keyboard.press( 'Enter' );
+		await expect( ollie ).toHaveAttribute( 'aria-disabled', 'true' );
+		await expect( ollie ).toBeFocused();
+		// While it plays, the meets-WCAG check reads the buttons disabled.
+		await axe( page, 'the 3D view, a trick playing', '.cbuild-3d' );
+		await expect( ollie ).toHaveAttribute( 'aria-disabled', 'false', {
+			timeout: 5000,
+		} );
+		await expect( ollie ).toBeFocused();
+		expect( ( await probe( page ) )!.board ).toEqual( [
+			0, 0, 0, 0, 0, 0,
+		] );
+	} );
+
+	test( 'with reduced motion, or Motion subtle, no trick is offered and none plays', async ( {
+		page,
+	} ) => {
+		await page.emulateMedia( { reducedMotion: 'reduce' } );
+		await open( page );
+		await expect( page.locator( '.cbuild-3d__tricks' ) ).toBeHidden();
+		await expect(
+			page.getByRole( 'group', { name: 'Tricks' } )
+		).toHaveCount( 0 );
+		const before = await frames( page );
+		const played = await page.evaluate( () => {
+			const probed = (
+				window as Window & {
+					cbuildProbe?: {
+						play: ( trick: unknown ) => Promise< boolean >;
+						tricks: Record< string, unknown >;
+					};
+				}
+			 ).cbuildProbe!;
+			return probed.play( probed.tricks.ollie );
+		} );
+		expect( played ).toBe( false );
+		await page.waitForTimeout( 1000 );
+		expect( await frames( page ) ).toBe( before );
+		await axe( page, 'the 3D view, reduced motion', '.cbuild' );
+		// The kit's Motion subtle hides them too.
+		await page.emulateMedia( { reducedMotion: 'no-preference' } );
+		await expect( page.locator( '.cbuild-3d__tricks' ) ).toBeVisible();
+		await page
+			.locator( '.cbuild' )
+			.evaluate( ( root ) => root.classList.add( 'cbuild--subtle' ) );
+		await expect( page.locator( '.cbuild-3d__tricks' ) ).toBeHidden();
+	} );
+
+	test( 'its ground is the builder’s, and a theme’s own where it sets one', async ( {
+		page,
+	} ) => {
+		await open( page );
+		const read = () =>
+			page.evaluate( () => {
+				const frame = document.querySelector( '.cbuild-3d__frame' )!;
+				const canvas =
+					document.querySelector< HTMLCanvasElement >(
+						'.cbuild-3d__canvas'
+					)!;
+				const sample = document.createElement( 'span' );
+				sample.style.background = 'var(--cbuild-ground)';
+				frame.append( sample );
+				const ground = getComputedStyle( sample ).backgroundColor;
+				sample.remove();
+				return {
+					frame: getComputedStyle( frame ).backgroundColor,
+					ground,
+					canvas: getComputedStyle( canvas ).backgroundColor,
+					// The renderer's own context: a canvas gives back the context it already has.
+					alpha: (
+						canvas.getContext( 'webgl2' ) as WebGL2RenderingContext
+					 ).getContextAttributes()?.alpha,
+				};
+			} );
+		const shown = await read();
+		expect( shown.ground ).not.toBe( 'rgba(0, 0, 0, 0)' );
+		expect( shown.frame ).toBe( shown.ground );
+		expect( shown.canvas ).toBe( 'rgba(0, 0, 0, 0)' );
+		expect( shown.alpha ).toBe( true );
+		await page
+			.locator( '.cbuild' )
+			.evaluate( ( root: HTMLElement ) =>
+				root.style.setProperty(
+					'--cbuild-3d-ground',
+					'rgb(10, 20, 30)'
+				)
+			);
+		expect( ( await read() ).frame ).toBe( 'rgb(10, 20, 30)' );
 	} );
 
 	test( 'on a touch screen a vertical swipe scrolls the page', async ( {

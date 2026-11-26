@@ -337,6 +337,11 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-497 · `view.three` says whether the view is offered, and the scene stays lane 1's](#d-497--viewthree-says-whether-the-view-is-offered-and-the-scene-stays-lane-1s--2026-11-26)
 - [D-498 · The browser tests read frames, and compare the page with the view on and off](#d-498--the-browser-tests-read-frames-and-compare-the-page-with-the-view-on-and-off--2026-11-26)
 - [D-499 · The 3D view's pictures are SwiftShader's, at 1 % tolerance](#d-499--the-3d-views-pictures-are-swiftshaders-at-1--tolerance--2026-11-26)
+- [D-500 · The 3D view's ground is the builder's, and a theme can set its own](#d-500--the-3d-views-ground-is-the-builders-and-a-theme-can-set-its-own--2026-11-26)
+- [D-501 · The tricks are keyframed poses of the whole board, timed from the teardown](#d-501--the-tricks-are-keyframed-poses-of-the-whole-board-timed-from-the-teardown--2026-11-26)
+- [D-502 · The trick buttons are the server's, play on a press alone, and wait for each other](#d-502--the-trick-buttons-are-the-servers-play-on-a-press-alone-and-wait-for-each-other--2026-11-26)
+- [D-503 · With reduced motion no trick is offered](#d-503--with-reduced-motion-no-trick-is-offered--2026-11-26)
+- [D-504 · During a trick the camera waits](#d-504--during-a-trick-the-camera-waits--2026-11-26)
 
 ### Cart, checkout and orders
 
@@ -6926,5 +6931,57 @@ A browser test reads the frames and the memory through a probe the page exposes 
 ### D-499 · The 3D view's pictures are SwiftShader's, at 1 % tolerance · 2026-11-26
 
 **Decision:** `tests/e2e/3d-visual.spec.ts` pictures the canvas at its four places, with reduced motion so the camera is there at once, in the visual project alone. Playwright's Linux container draws WebGL in software (SwiftShader), the same pixels on each run there; a Mac's GPU would not match them. A picture may differ by 1 % of its pixels, each by Playwright's default colour threshold: an antialiased edge moves by a pixel between SwiftShader builds, a part drawn wrong or a camera out of place by far more. The baselines were made with `bash tools/visual.sh --update-snapshots` on this machine, and a second run matched them.
+
+**Status:** Accepted.
+
+### D-500 · The 3D view's ground is the builder's, and a theme can set its own · 2026-11-26
+
+Zach asked whether the 3D view's background can be set. It could not: the stage painted `#f3f1ec` behind the board, a light box on a dark theme that no shop could change.
+
+**Decision:** the renderer is made with `alpha: true`, `premultipliedAlpha` left at its default, and clears to alpha 0; the scene has no background. `.cbuild-3d__frame` paints `var(--cbuild-3d-ground, var(--cbuild-ground))`, so by default the view's ground is the builder's own, which follows the theme's base colour and its dark scheme as the phone bar's does, and a theme sets `--cbuild-3d-ground` on `.cbuild` for the view alone. This is the colour properties' pattern from 0.6.0 (D-159, D-162): a documented custom property with a fallback, set on the root, never a setting. `--cbuild-3d-ground` is in HOOKS.md's table with `@since 1.4.0`.
+
+Looked at on Twenty Twenty-Five, Kadence and Storefront, light and dark: the board reads on each ground with the lights as they were, the deck's edge, its graphic and the white wheels standing out on Kadence's and Storefront's black, so no light or floor shadow was added. The four light pictures of `3d-visual.spec.ts` were retaken on the theme's ground, and `3d-dark.png` added.
+
+**Status:** Accepted.
+
+### D-501 · The tricks are keyframed poses of the whole board, timed from the teardown · 2026-11-26
+
+**Decision:** `assets/src/builder/three/tricks.ts` gives each trick keys of rise, roll, pitch and yaw in milliseconds, eased between with a smooth step, and poses the board's group from them in the scene's axes. The parts stay assembled; nothing is simulated.
+
+- **Times** are the teardown's (`docs/research/3d-teardown.md`, "Tricks and other motion"): an ollie 930 ms, a kickflip and a heelflip 1,200, a pop shove-it 1,130 and a 360 flip 1,470.
+- **Heights** are about two-thirds of the teardown's (200, 240, 200 and 280 mm), so the board stays inside the frame from the three-quarter view on a phone's 4 by 3 canvas.
+- **Each ends at the pose it started from.** A kickflip rolls one turn about the long axis, a heelflip one the other way, a 360 flip one roll with a full turn about the vertical. A pop shove-it turns 180° in the air, as the trick does, and would land with its nose where its tail was. So it reverts the other 180° on its wheels in 300 ms (1,430 ms in all), a move skaters do, and the graphic close-up still looks at the nose.
+- **The board turns about its middle,** 45 mm below the deck's top, about halfway to the axles, so a flip spins it in place and doesn't swing it about the deck's face. The Euler order is ZYX, so a roll is about the board's own long axis after it has turned.
+
+**Status:** Accepted.
+
+### D-502 · The trick buttons are the server's, play on a press alone, and wait for each other · 2026-11-26
+
+**Decision:** `templates/builder/three.php` renders `.cbuild-3d__tricks`, five real buttons in a group named "Tricks", after the camera's buttons, only where `view.three.tricks` is true. Each name is translatable, with the context "a skateboard trick"; fr_CA keeps the English names, as Quebec's skaters do, and names the group "Figures". A button's value names its trick, which the store passes to the renderer's `play()` (D-495), the tricks coming with the 3D chunk so `view.js` grows by the action alone.
+
+- **No trick plays on its own:** not on opening, a step or a part change.
+- **While one plays,** every trick button has `aria-disabled="true"` and a press does nothing. The buttons keep focus, which `disabled` would drop. The board ends at rest.
+- **The view's probe** (D-492) also holds a trick at a moment (`hold()`), so a picture of one mid-air is the same on every run.
+
+**Status:** Accepted.
+
+### D-503 · With reduced motion no trick is offered · 2026-11-26
+
+WCAG 2.2's 2.3.3 Animation from Interactions (AAA) asks that motion started by an interaction can be turned off unless it is essential. A trick is nothing but motion, and none of it is essential to buying the board. The two ways to meet it are no buttons, or buttons that do nothing. A button that does nothing tells a shopper something is broken.
+
+Sources:
+
+- W3C, Understanding SC 2.3.3: <https://www.w3.org/WAI/WCAG22/Understanding/animation-from-interactions.html>;
+- MDN, `prefers-reduced-motion`: <https://developer.mozilla.org/en-US/docs/Web/CSS/@media/prefers-reduced-motion>.
+
+**Decision:** with `prefers-reduced-motion: reduce`, or the kit's Motion subtle (`cbuild--subtle`), the stylesheet hides `.cbuild-3d__tricks`, so they leave the accessibility tree too and follow a change of the setting at once. `play()` still refuses under reduced motion (D-495) as a second guard, so the probe's count of frames stays at zero.
+
+**Status:** Accepted.
+
+### D-504 · During a trick the camera waits · 2026-11-26
+
+The brief allowed an orbit or a camera button during a trick to wait or to cancel it cleanly. A cancel would put the board back at rest in one frame, a jump in the middle of the air.
+
+**Decision:** while a trick plays, the camera holds still. OrbitControls is off, so a drag turns nothing. The arrow keys and + and − are taken, so the page doesn't scroll, but move nothing. A camera button pressed meanwhile goes once the board lands, the last one pressed if there were several. A camera move already under way goes on to its end. A trick lands at rest at once, its promise kept, where the canvas leaves the screen, the tab hides or the view closes, so no frame is drawn out of sight and the buttons are free again.
 
 **Status:** Accepted.

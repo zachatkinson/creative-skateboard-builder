@@ -243,7 +243,7 @@ final class Options {
 
 	/**
 	 * The 3D view's classes, which docs/HOOKS.md offers a theme (#139, D-495): View in 3D, the open view, the canvas's
-	 * box, the canvas, the camera's buttons and the message where it can't be shown.
+	 * box, the canvas, the camera's buttons, the trick buttons and the message where it can't be shown.
 	 *
 	 * @since 1.4.0
 	 */
@@ -252,6 +252,7 @@ final class Options {
 	public const CLASS_THREE_FRAME  = 'cbuild-3d__frame';
 	public const CLASS_THREE_CANVAS = 'cbuild-3d__canvas';
 	public const CLASS_THREE_PLACES = 'cbuild-3d__places';
+	public const CLASS_THREE_TRICKS = 'cbuild-3d__tricks';
 	public const CLASS_THREE_FAILED = 'cbuild-3d__failed';
 
 	/**
@@ -551,6 +552,7 @@ final class Options {
 			self::CLASS_THREE_FRAME,
 			self::CLASS_THREE_CANVAS,
 			self::CLASS_THREE_PLACES,
+			self::CLASS_THREE_TRICKS,
 			self::CLASS_THREE_FAILED,
 		);
 	}
