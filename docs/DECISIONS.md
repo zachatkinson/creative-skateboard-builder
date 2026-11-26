@@ -481,6 +481,7 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-406 · The layout-shift tests hold the state route's answer a second, as the demo's host takes](#d-406--the-layout-shift-tests-hold-the-state-routes-answer-a-second-as-the-demos-host-takes--2026-11-25)
 - [D-415 · The review shot waits until the page is still, the pick's outline gone](#d-415--the-review-shot-waits-until-the-page-is-still-the-picks-outline-gone--2026-11-25)
 - [D-420 · The toolchain's patch and minor releases, and TypeScript kept at 6 while typescript-eslint is](#d-420--the-toolchains-patch-and-minor-releases-and-typescript-kept-at-6-while-typescript-eslint-is--2026-11-25)
+- [D-421 · axe on Firefox reads aria-labelledby from the attribute, past a crash in Playwright's Firefox](#d-421--axe-on-firefox-reads-aria-labelledby-from-the-attribute-past-a-crash-in-playwrights-firefox--2026-11-25)
 
 ### Releases and the repository
 
@@ -6371,5 +6372,32 @@ Zach asked on 25 November for the toolchains to be reviewed and brought up to da
 **Tests.** The whole of milestone 13's combined-tree run, on the moved tools. Playwright's patch release means new browser builds, so the visual baselines are made again in that run, on purpose, as milestone 13's screens need anyway.
 
 **Why:** current tools, without a major release that the linter under it doesn't support yet.
+
+**Status:** Accepted.
+
+### D-421 · axe on Firefox reads aria-labelledby from the attribute, past a crash in Playwright's Firefox · 2026-11-25
+
+"passes axe on the 10 s limit after a width press and the rate limit after a pick (D-364)", builder.spec.ts:1413, failed on firefox-desktop and firefox-phone on every run with "frame.evaluate: Page crashed", in `builder.analyze()` (support/axe.ts:44). It predates milestone 13's last work.
+
+**The cause is Firefox's, not the builder's.** Found on lane 3, step by step:
+
+- The content process dies on signal 11 (`WARNING: process … exited on signal 11`, with `DEBUG=pw:browser`). The page is small, 643 elements, and answers a plain `page.evaluate` up to the crash, so it is not memory, a huge DOM or a loop in the page. Releasing the held route first changes nothing.
+- axe's rules run one at a time die at the first that names a role, `aria-allowed-attr`. Its elements one at a time die at `section.cbuild-guide`, which has `aria-labelledby`, and axe's steps on it die in `arialabelledbyText()`. That reads the element's `ariaLabelledByElements` (axe-core 4.14, `getIdrefsValue()`), and a plain `page.evaluate` of that property on any element with `aria-labelledby` crashes at the same point.
+- It needs Playwright to have read the same property in its utility world first. Playwright 1.65 does when it names roles (`getAriaLabelledByElements()` in its injected script), as an assertion that retries does. A page made with `setContent`, none of the builder's in it, crashes the same way: a `toBeVisible()` that retries, then the read in the page. With a `waitForSelector` or a plain wait in its place, it passes. `getByRole( 'region', { name } )` and then the read in the page crash in either order. Chromium and WebKit pass every one.
+- This is [microsoft/playwright#43967](https://github.com/microsoft/playwright/issues/43967), a regression in 1.65.0. Playwright's bot reproduced it in Firefox 159 and laid it on Firefox: [Mozilla's bug 2090055](https://bugzilla.mozilla.org/show_bug.cgi?id=2090055), which stock Firefox 159.0.1 hits too, with an extension's content script. It was closed on 9 November as fixed in the next Firefox roll, which is only in 1.66's alphas. 1.65.1, the newest release, still has Firefox build 1572.
+
+**Decision: on Firefox, axe reads `aria-labelledby` from the attribute alone.** `support/axe.ts` gives AxeBuilder, on Firefox only, the axe-core source it injects anyway, from its own copy, with one line after it: `axe.configure( { standards: { ariaAttrs: { 'aria-labelledby': { prop: '' } } } } )`. Every read axe makes of the property goes through that standard's `prop`, so with it empty axe resolves the attribute's IDs itself, as it does where the property is missing. The elements are the same: the builder sets every `aria-labelledby` in its markup and none from script (`assets/src` has no `ariaLabelledByElements`). Chromium and WebKit still read the property. Every axe check on Firefox stays, on every rule.
+
+The test stays as it was. On Firefox, its axe checks run on the 10 s limit and on the rate limit as on the other engines. A page with a button named by `aria-labelledby` and one whose `aria-labelledby` names no element gave the same finding on Firefox, with this change, as on Chromium: `button-name` on the second button.
+
+**Considered:**
+
+- Moving Playwright to a 1.66 alpha, a prerelease that brings new browser builds and the visual baselines with them. It is the fix, but not one to take on a prerelease.
+- Hiding the property from the page by redefining `Element.prototype.ariaLabelledByElements`, which changes the page under test for the rest of the test.
+- Leaving axe out on Firefox for this test, which drops the check the test is for.
+
+**Tests.** Red, before: the test failed on firefox-desktop and firefox-phone with `Error: frame.evaluate: Page crashed` at `support/axe.ts:44`. Deliberate break, with the source passed on no engine: firefox-phone failed the same way at `support/axe.ts:67`.
+
+**Why:** the defect is in Playwright's Firefox build and is fixed upstream, and the check on the builder is wanted on every engine. The line goes once Playwright's stable release carries the fixed Firefox: drop it and run the test on both Firefox projects.
 
 **Status:** Accepted.

@@ -1,5 +1,24 @@
+import { createRequire } from 'node:module';
 import { expect, Page } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
+
+/**
+ * axe for Firefox, told to read `aria-labelledby` from the attribute alone (D-421). Playwright 1.65's Firefox (159,
+ * build 1572) crashes its content process, on signal 11, once an element's `ariaLabelledByElements` has been read in
+ * both Playwright's utility world and the page's: Playwright reads it there to name roles, since 1.65.0, and axe reads
+ * it in the page wherever an element has `aria-labelledby` (microsoft/playwright#43967, Mozilla's bug 2090055). With
+ * the property's name taken off axe's standard for the attribute, axe resolves the attribute's IDs itself: the same
+ * elements, since the builder sets every reference in its markup and none from script. The source is the one
+ * AxeBuilder injects, from its own copy of axe-core.
+ */
+const FIREFOX_AXE = `${
+	(
+		createRequire( require.resolve( '@axe-core/playwright' ) )(
+			'axe-core'
+		) as { source: string }
+	 ).source
+}
+axe.configure( { standards: { ariaAttrs: { 'aria-labelledby': { prop: '' } } } } );`;
 
 /**
  * Fails on any violation of the WCAG 2.0, 2.1 and 2.2 A and AA rules inside a region; shared by every spec.
@@ -36,7 +55,11 @@ export async function axe(
 				.map( ( a ) => a.finished.catch( () => undefined ) )
 		)
 	);
-	const builder = new AxeBuilder( { page } )
+	const firefox =
+		'firefox' === page.context().browser()?.browserType().name();
+	const builder = new AxeBuilder(
+		firefox ? { page, axeSource: FIREFOX_AXE } : { page }
+	)
 		.withTags( [ 'wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa' ] )
 		.include( include )
 		.disableRules( exempt );
