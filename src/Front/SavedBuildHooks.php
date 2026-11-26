@@ -259,12 +259,12 @@ final class SavedBuildHooks implements Hookable {
 		$said  = null;
 		if ( null !== $asked && null !== $this->compare ) {
 			$table = ( $this->compare )()->table( get_current_user_id(), $asked );
-			if ( count( $table['builds'] ) > 1 ) {
+			$said  = CompareView::refused( $table );
+			if ( null === $said ) {
 				$back = self::url();
 				require CBUILD_PATH . 'templates/account/compare.php';
 				return;
 			}
-			$said = __( 'Choose two or three of your saved builds to compare.', 'creative-skateboard-builder' );
 		}
 		$rows    = ( $this->view )()->rows( get_current_user_id() );
 		$action  = self::url();

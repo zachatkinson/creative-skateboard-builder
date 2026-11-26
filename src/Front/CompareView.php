@@ -98,6 +98,18 @@ final class CompareView {
 	}
 
 	/**
+	 * What My builds says in place of a compare's table, or null where it shows the table: it shows one of two builds
+	 * or more, and asks for them where fewer of those asked are the customer's own.
+	 *
+	 * @since 1.3.0
+	 *
+	 * @param array{builds: list<mixed>} $table The table, from table().
+	 */
+	public static function refused( array $table ): ?string {
+		return count( $table['builds'] ) > 1 ? null : __( 'Choose two or three of your saved builds to compare.', 'creative-skateboard-builder' );
+	}
+
+	/**
 	 * The table of the customer's builds among those asked, the first MOST of them, in the order asked.
 	 *
 	 * @since 1.3.0
