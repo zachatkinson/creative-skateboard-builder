@@ -1,6 +1,6 @@
-import { execSync } from 'node:child_process';
 import { test, expect, Page } from './support/test';
 import { axe } from './support/axe';
+import { wp } from './support/cli';
 import { login } from './support/login';
 
 /**
@@ -13,14 +13,6 @@ const TAB = '/wp-admin/admin.php?page=cbuild&tab=check';
 const REGION = '#wpbody-content .wrap';
 const SKU = 'smoke-test-deck';
 const FOUND = "It names a maker's chart that is no longer there.";
-
-function wp( command: string ): string {
-	return execSync( `npx wp-env run cli -- wp ${ command }`, {
-		stdio: [ 'ignore', 'pipe', 'ignore' ],
-	} )
-		.toString()
-		.trim();
-}
 
 // Takes the chart's name off the part. WP-CLI's own delete fails when there is nothing to delete; this does not.
 function forget( part: string ) {

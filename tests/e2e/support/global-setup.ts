@@ -1,8 +1,8 @@
-import { execSync } from 'node:child_process';
 import { mkdirSync } from 'node:fs';
 import path from 'node:path';
 import { request } from '@playwright/test';
 import type { FullConfig } from '@playwright/test';
+import { locked } from './cli';
 import { SESSION } from './login';
 import { SITE } from './site';
 
@@ -19,9 +19,8 @@ import { SITE } from './site';
 export default async function globalSetup( config: FullConfig ) {
 	// Inside tools/visual.sh's container there is no wp-env: the script has made the site ready on the host.
 	if ( '1' !== process.env.CBUILD_E2E_SITE_READY ) {
-		execSync( 'bash tools/e2e-site.sh', {
-			stdio: [ 'ignore', 'ignore', 'inherit' ],
-		} );
+		// Under the tests' lock on wp-env (D-422), as another run of the tests in this checkout may be calling it.
+		locked( 'bash tools/e2e-site.sh' );
 	}
 
 	const baseURL = config.projects[ 0 ]?.use.baseURL || SITE;

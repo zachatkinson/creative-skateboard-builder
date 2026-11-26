@@ -482,6 +482,7 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-415 · The review shot waits until the page is still, the pick's outline gone](#d-415--the-review-shot-waits-until-the-page-is-still-the-picks-outline-gone--2026-11-25)
 - [D-420 · The toolchain's patch and minor releases, and TypeScript kept at 6 while typescript-eslint is](#d-420--the-toolchains-patch-and-minor-releases-and-typescript-kept-at-6-while-typescript-eslint-is--2026-11-25)
 - [D-421 · axe on Firefox reads aria-labelledby from the attribute, past a crash in Playwright's Firefox](#d-421--axe-on-firefox-reads-aria-labelledby-from-the-attribute-past-a-crash-in-playwrights-firefox--2026-11-25)
+- [D-422 · The browser tests reach wp-env one command at a time, under a lock](#d-422--the-browser-tests-reach-wp-env-one-command-at-a-time-under-a-lock--2026-11-25)
 
 ### Releases and the repository
 
@@ -6399,5 +6400,29 @@ The test stays as it was. On Firefox, its axe checks run on the 10 s limit and o
 **Tests.** Red, before: the test failed on firefox-desktop and firefox-phone with `Error: frame.evaluate: Page crashed` at `support/axe.ts:44`. Deliberate break, with the source passed on no engine: firefox-phone failed the same way at `support/axe.ts:67`.
 
 **Why:** the defect is in Playwright's Firefox build and is fixed upstream, and the check on the builder is wanted on every engine. The line goes once Playwright's stable release carries the fixed Firefox: drop it and run the test on both Firefox projects.
+
+**Status:** Accepted.
+
+### D-422 · The browser tests reach wp-env one command at a time, under a lock · 2026-11-25
+
+A full browser run on lane 1 on 25 November, every project at three workers, failed 62 tests, 43 of them from one cause. The browser site's `wp-env-cache.json` had lost its `runtime` and `config_checksum` keys, leaving `{"latestWordPressVersion":"7.1.5"}`, and every `npx wp-env run cli …` after it failed with "Environment not initialized. Run `wp-env start` first."
+
+**The cause** is in `@wordpress/env` 12.2.0. Every command, `run` too, records the newest WordPress version with `setCache()` (`lib/wordpress.js:100`). `setCache()` (`lib/cache.js:39`) reads the file, sets one key and writes the whole file back with `fs.writeFile`, which is not atomic. `getCacheFile()` (`lib/cache.js:78`) returns `{}` when its read meets a file mid-write. Two `wp-env run` at once can therefore write back a cache with only the version in it, and `getSavedRuntime()` (`lib/runtime/index.js`) then finds no runtime. The specs call `wp-env run` from every worker: `wp()` and `runPhp()` in builder.spec.ts, `wp()` in check.spec.ts and the import's job in import.spec.ts.
+
+**Reproduced on lane 3.** Twenty `npx wp-env run cli -- wp option get siteurl` at once on the browser site, three times. They failed 7, 9 and 9 of 20 with "Environment not initialized", and left the cache as `{"latestWordPressVersion":"7.1.5"}` twice and, once, as `{"latestWordPressVersion":"7.1.5"}"config_checksum":"d2f06a99c3a05be90f03c6efe33ba67c","runtime":"docker"}`: two writes over each other, not JSON at all. The cache was put back by hand after each. The same twenty at once through the new helper, three times: none failed, each printed the site's address, and the cache kept its three keys.
+
+**Upstream.** [WordPress/gutenberg#86905](https://github.com/WordPress/gutenberg/issues/86905), open since 16 November, reports the same race with `wp-env status`, and [#86909](https://github.com/WordPress/gutenberg/pull/86909), open, writes the file atomically. Nothing filed from here.
+
+**Decision: one helper, behind a lock.**
+
+- `tests/e2e/support/cli.ts` is the one way the browser tests reach the site's command line: `wp()`, `cli()`, and `locked()` for a host command that calls wp-env itself. The global setup runs `tools/e2e-site.sh` through `locked()`, and builder.spec.ts, check.spec.ts and import.spec.ts use `wp()`. No spec calls `execSync` any more.
+- `tests/e2e/support/lock.ts` serialises them across Playwright's worker processes: an atomic `mkdir` of `tmp/wp-env-run.lock`, in the checkout and so in its lane, with the holder's process ID and a token written into it. A lock whose holder has died, or one older than five minutes, is set aside with an atomic rename, checked to be the one judged abandoned, and taken. It waits with `Atomics.wait`, since the callers are synchronous.
+- The helper keeps the command's stderr and stdout and throws with them, where the old helpers threw stderr away (`stdio: ignore`): a failure now says why.
+- `runPhp()` writes its PHP to a file per worker, `tmp/e2e-eval-<pid>.php`, where two workers shared `tmp/e2e-eval.php`.
+- No script in `tools/` runs `wp-env run` in parallel: each runs its commands one after another, and none of them runs beside a browser run. They are left as they are.
+
+**Tests.** `tests/js/e2e-lock.test.ts`, five, in Vitest: ten processes that each read, change and write one file under the lock, with a pause between, keep all ten keys; a dead holder's lock is taken at once; an old one is taken from a live holder; a held one is waited for; and the lock is let go when what it runs throws. Red, with `withLock()` running its function without the lock: "keeps every key when ten processes rewrite one file at once" failed with `expected [ 'key9' ] to deeply equal [ Array(10) ]`, and "waits while a holder still running has it" with `expected 0 to be greater than or equal to 300`.
+
+**Why:** the race is wp-env's, but the specs start it, and one command at a time costs a second or two a call against a run that fails 43 tests when the race is lost. The lock goes once wp-env writes its cache atomically and the pin moves to that release.
 
 **Status:** Accepted.

@@ -1,4 +1,3 @@
-import { execSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
@@ -22,6 +21,7 @@ import {
 	themeHeader,
 	watchShifts,
 } from './support/held';
+import { wp } from './support/cli';
 import { login } from './support/login';
 
 /**
@@ -8890,20 +8890,6 @@ async function moveTo( page: Page, name: string | RegExp, titled: RegExp ) {
 }
 
 /**
- * Runs WP-CLI in the browser site. A test that changes the shop puts it back in its afterAll, so the others see the
- * fixture as made; the projects run one test at a time (playwright.config.ts, workers: 1).
- *
- * @param command The command, after `wp`.
- */
-function wp( command: string ): string {
-	return execSync( `npx wp-env run cli -- wp ${ command }`, {
-		stdio: [ 'ignore', 'pipe', 'ignore' ],
-	} )
-		.toString()
-		.trim();
-}
-
-/**
  * Runs PHP in the browser site, the plugin loaded, with `$cbuild_index`, which saves a part and indexes it again as
  * the fixture does.
  *
@@ -8912,10 +8898,14 @@ function wp( command: string ): string {
 function runPhp( code: string ): void {
 	const index =
 		'$cbuild_index = static function ( WC_Product $p ): void { $p->save(); CreativeBranding\\SkateboardBuilder\\Plugin::container()->get( CreativeBranding\\SkateboardBuilder\\Service\\SpecIndexer::class )->index( $p->get_id() ); };';
-	const file = path.join( process.cwd(), 'tmp', 'e2e-eval.php' );
-	writeFileSync( file, `<?php\n${ index }\n${ code }\n` );
+	// A file per worker: two workers writing one file could each run the other's code.
+	const name = `e2e-eval-${ process.pid }.php`;
+	writeFileSync(
+		path.join( process.cwd(), 'tmp', name ),
+		`<?php\n${ index }\n${ code }\n`
+	);
 	wp(
-		'eval-file wp-content/plugins/creative-skateboard-builder/tmp/e2e-eval.php'
+		`eval-file wp-content/plugins/creative-skateboard-builder/tmp/${ name }`
 	);
 }
 
