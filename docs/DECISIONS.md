@@ -484,6 +484,7 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-421 · axe on Firefox reads aria-labelledby from the attribute, past a crash in Playwright's Firefox](#d-421--axe-on-firefox-reads-aria-labelledby-from-the-attribute-past-a-crash-in-playwrights-firefox--2026-11-25)
 - [D-422 · The browser tests reach wp-env one command at a time, under a lock](#d-422--the-browser-tests-reach-wp-env-one-command-at-a-time-under-a-lock--2026-11-25)
 - [D-423 · The i18n check fails a translation compiled before its strings were translated](#d-423--the-i18n-check-fails-a-translation-compiled-before-its-strings-were-translated--2026-11-25)
+- [D-424 · The thumbnails test counts the shifts from the gate on, once the fonts are in](#d-424--the-thumbnails-test-counts-the-shifts-from-the-gate-on-once-the-fonts-are-in--2026-11-25)
 - [D-430 · The swaps-off test measures its own plain card, so it holds when it runs alone](#d-430--the-swaps-off-test-measures-its-own-plain-card-so-it-holds-when-it-runs-alone--2026-11-25)
 - [D-431 · Every browser test passes when it runs alone](#d-431--every-browser-test-passes-when-it-runs-alone--2026-11-25)
 
@@ -6485,5 +6486,21 @@ D-430 found a browser test that compared against a variable only the test before
 
 - The grip sheet test deletes its attachments but leaves the options `cbuild_e2e_grip_sheet_printed` and `cbuild_e2e_grip_sheet_plain` behind. No test reads them, and the next run writes them again.
 - The Settings tab's terms test and the Build tab's tests save through wp-admin and put the shop back at their own end, not in an `afterAll`. A failure part way leaves its values behind. The Settings tests start by setting what a new shop has, so their next run is not misled. The Build tab's tests work on a kit of their own, which no other file reads.
+
+**Status:** Accepted.
+
+### D-424 · The thumbnails test counts the shifts from the gate on, once the fonts are in · 2026-11-25
+
+`tests/e2e/builder.spec.ts`, "Thumbnails in the review (#132) › moves nothing as the thumbnails load", failed in the final run on the combined tree, on chromium-desktop (in /verify) and fr-ca: "the review's layout shift, Expected: 0, Received: 0.000994065284729004". Run alone on lane 1 it failed 1 of 5, then 2 of 20, each time at the same 0.000994.
+
+**Cause: the theme's font, not a thumbnail.** With each shift's sources logged, both failures were one shift at 212 and 217 ms, before the test lets a picture through: Twenty Twenty-Five's header group moved from x 221.3 to 227, and the review's `$60.00` grew from 65.95 to 71.06 px wide, at the same height. That is a web font arriving and the text set again in it. The test already left the header out as the theme's, but the price is inside `.cbuild-review`, so it counted. Whether it comes in the window depends on when the font arrives, so it fails now and then.
+
+**Decision:** the test counts only the review's shifts that start at or after the moment it lets the pictures through, and before that moment it waits for every font that is loading. It does not use `document.fonts.ready`: WebKit holds that promise until the page's load event, which waits on the test's gate, so the test timed out on webkit-desktop (6 of 20 before the change). What it measures is the same: what the thumbnails move, to 0, and the list as tall as before.
+
+**Tests.**
+
+- **Red run.** Alone, chromium-desktop, 2 of 20: "the review's layout shift, Expected: 0, Received: 0.000994065284729004".
+- **After.** Alone, 20 times each on chromium-desktop, chromium-phone, fr-ca, webkit-desktop, webkit-phone and firefox-desktop: every run passed.
+- **Deliberate break.** The thumbnail's square taken away (`aspect-ratio: 1` off `.cbuild-review__thumb` and `.cbuild-review__photo`, and the `width` and `height` binds off the image in `templates/builder/review.php`): it failed on chromium-desktop and webkit-desktop with "the list as tall as before, Expected: 865.53125, Received: 2462.703125". With that check made soft for the run, the shift check failed too: "Expected: 0, Received: 0.013692148407300314".
 
 **Status:** Accepted.

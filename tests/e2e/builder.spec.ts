@@ -11720,7 +11720,14 @@ test.describe( 'Thumbnails in the review (#132)', () => {
 							source.node instanceof Element &&
 							null !== source.node.closest( '.cbuild-review' )
 					);
-					if ( ! entry.hadRecentInput && ours ) {
+					// From the gate's release on, once the fonts are in: the theme's font arriving reflows the review's
+					// own words too, before any thumbnail could load (D-424).
+					const from = (
+						window as unknown as { shiftsFrom?: number }
+					 ).shiftsFrom;
+					const loading =
+						undefined !== from && entry.startTime >= from;
+					if ( ! entry.hadRecentInput && ours && loading ) {
 						( window as unknown as { shifted: number } ).shifted +=
 							entry.value;
 					}
@@ -11739,7 +11746,20 @@ test.describe( 'Thumbnails in the review (#132)', () => {
 		);
 		const height = async () =>
 			items.evaluate( ( list ) => list.getBoundingClientRect().height );
+		// The fonts that are loading, not document.fonts.ready: WebKit holds that until the page's load event, which waits
+		// on the gate.
+		await page.evaluate( () =>
+			Promise.all(
+				[ ...document.fonts ]
+					.filter( ( font ) => 'loading' === font.status )
+					.map( ( font ) => font.loaded )
+			)
+		);
 		const before = await height();
+		await page.evaluate( () => {
+			( window as unknown as { shiftsFrom?: number } ).shiftsFrom =
+				performance.now();
+		} );
 		release();
 		const photos = page.locator( '.cbuild-review__photo:not([hidden])' );
 		const count = await photos.count();
