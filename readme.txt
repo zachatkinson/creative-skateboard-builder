@@ -105,6 +105,7 @@ Yes. Its hooks, REST routes, block attributes, settings keys, order item keys, C
 == Changelog ==
 
 = 1.4.0 =
+* View in 3D: where a kit turns it on, the shopper turns and zooms the build in 3D, drawn to scale from the parts' sizes. Where the browser can't show it, the board is drawn flat as before.
 * A deck's nose and tail lengths, its concave depth and kick angle, and a wheel's width can be given on Part specs and in the specs import. Each is optional.
 * On a kit whose 3D view is on, the Catalogue check names a deck or wheel it draws at a usual size, with the size to fill in.
 

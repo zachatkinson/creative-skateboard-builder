@@ -14,7 +14,7 @@
 
 defined( 'ABSPATH' ) || exit;
 ?>
-<figure class="cbuild-picture" id="cbuild-picture" tabindex="-1" aria-labelledby="cbuild-picture-heading" data-wp-class--cbuild-picture--top="state.view.picture.turned" data-wp-class--cbuild-picture--turning="state.turning" data-wp-class--cbuild-picture--hero="state.view.picture.hero" data-wp-class--cbuild-picture--drawing="state.drawing" data-wp-bind--aria-busy="state.drawing">
+<figure class="cbuild-picture" id="cbuild-picture" tabindex="-1" aria-labelledby="cbuild-picture-heading" data-wp-class--cbuild-picture--top="state.view.picture.turned" data-wp-class--cbuild-picture--turning="state.turning" data-wp-class--cbuild-picture--hero="state.view.picture.hero" data-wp-class--cbuild-picture--drawing="state.drawing" data-wp-class--cbuild-picture--3d="state.three.open" data-wp-bind--aria-busy="state.drawing">
 	<h3 class="cbuild-picture__heading" id="cbuild-picture-heading" data-wp-text="state.view.picture.heading"></h3>
 	<?php // The side shown, under the heading; the caption says it with the build, so it is not read twice. A deck's photo in the board's place shows no side (#82). ?>
 	<p class="cbuild-picture__side" aria-hidden="true" data-wp-bind--hidden="state.view.picture.hero"><span data-wp-bind--hidden="state.view.picture.turned" data-wp-text="state.view.picture.side.under"></span><span data-wp-bind--hidden="!state.view.picture.turned" data-wp-text="state.view.picture.side.top"></span></p>
@@ -35,6 +35,8 @@ defined( 'ABSPATH' ) || exit;
 			<span data-wp-bind--class="context.layer.classes" data-wp-bind--style="context.layer.style"></span>
 		</template>
 	</div>
+	<?php // The 3D view, where the kit offers it (1.4.0, #139). ?>
+	<?php require __DIR__ . '/three.php'; ?>
 	<div class="cbuild-picture__turn" data-wp-bind--hidden="!state.view.picture.turnable">
 		<?php // A toggle button a side, each named the same whichever is pressed, in a group named by the heading a sighted shopper reads (D-369). ?>
 		<div class="cbuild-picture__sides" role="group" aria-labelledby="cbuild-picture-heading" data-wp-bind--hidden="!state.canTurn">

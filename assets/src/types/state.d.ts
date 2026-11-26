@@ -818,6 +818,23 @@ export interface CbuildState {
 				texture: string | null;
 			};
 		};
+		/**
+		 * From 1.4.0: the 3D view (#139). Whether the kit offers it (`view_3d`) and its trick buttons (`tricks`), and the canvas's classes, with the deck's `cbuild_part_classes` after its own.
+		 */
+		three?: {
+			/**
+			 * Whether the kit offers the 3D view.
+			 */
+			shown: boolean;
+			/**
+			 * Whether the 3D view offers its trick buttons: only with the view.
+			 */
+			tricks: boolean;
+			/**
+			 * The canvas's classes.
+			 */
+			canvas: string;
+		};
 		[k: string]: unknown;
 	};
 }

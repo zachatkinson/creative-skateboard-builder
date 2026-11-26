@@ -242,6 +242,19 @@ final class Options {
 	public const CLASS_PRESET_DRAWN = 'cbuild-preset__photo--drawn';
 
 	/**
+	 * The 3D view's classes, which docs/HOOKS.md offers a theme (#139, D-495): View in 3D, the open view, the canvas's
+	 * box, the canvas, the camera's buttons and the message where it can't be shown.
+	 *
+	 * @since 1.4.0
+	 */
+	public const CLASS_THREE_OPEN   = 'cbuild-3d__open';
+	public const CLASS_THREE_STAGE  = 'cbuild-3d__stage';
+	public const CLASS_THREE_FRAME  = 'cbuild-3d__frame';
+	public const CLASS_THREE_CANVAS = 'cbuild-3d__canvas';
+	public const CLASS_THREE_PLACES = 'cbuild-3d__places';
+	public const CLASS_THREE_FAILED = 'cbuild-3d__failed';
+
+	/**
 	 * Order item meta (spec: Data model, Order items). Hidden from customers by their underscore, and kept with the
 	 * shop's order records for good: a key is never renamed.
 	 */
@@ -533,6 +546,12 @@ final class Options {
 			self::CLASS_REVIEW_DRAWN,
 			self::CLASS_ABOVE_CARDS,
 			self::CLASS_PRESET_DRAWN,
+			self::CLASS_THREE_OPEN,
+			self::CLASS_THREE_STAGE,
+			self::CLASS_THREE_FRAME,
+			self::CLASS_THREE_CANVAS,
+			self::CLASS_THREE_PLACES,
+			self::CLASS_THREE_FAILED,
 		);
 	}
 

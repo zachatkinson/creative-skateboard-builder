@@ -274,6 +274,9 @@ final class BuilderView {
 				'amount'   => Cast::int( Cast::map( Cast::map( $answer['total'] ?? null )['total'] ?? null )['amount'] ?? null ),
 				'currency' => Cast::map( $answer['currency'] ?? null ),
 			),
+			// The 3D view (1.4.0, #139): whether the kit offers it and its trick buttons, and its canvas's classes, with
+			// what another plugin adds for the deck picked, so a flagged deck's graphic blurs there too.
+			'three'     => self::three( $state, $counted ),
 			'bar'       => self::bar( $summary, $step, $shown, $review, $panel, $first, $state->id, self::board( $picture, $state->id, self::BAR_SIZE ), self::back( $review, $step, $steps, $link, $url, $label ) ),
 			'picture'   => array(
 				'heading'     => __( 'Your board', 'creative-skateboard-builder' ),
@@ -2027,6 +2030,24 @@ final class BuilderView {
 			$classes[] = 'cbuild-card--chosen';
 		}
 		return self::flagged( $classes, $kit, $slot, $part );
+	}
+
+	/**
+	 * The 3D view's part of the view (1.4.0, #139): whether the kit offers it, whether it offers the trick buttons, and
+	 * the canvas's classes, the deck's `cbuild_part_classes` after its own.
+	 *
+	 * @param State              $state   The build's state.
+	 * @param array<string, int> $counted The parts the total counts, by slot.
+	 * @return array{shown: bool, tricks: bool, canvas: string}
+	 */
+	private static function three( State $state, array $counted ): array {
+		$settings = $state->kit->settings;
+		$own      = array( Options::CLASS_THREE_CANVAS );
+		return array(
+			'shown'  => $settings->view3d,
+			'tricks' => $settings->view3d && $settings->tricks,
+			'canvas' => isset( $counted[ SlotKey::DECK ] ) ? self::flagged( $own, $state->id, SlotKey::DECK, $counted[ SlotKey::DECK ] ) : implode( ' ', $own ),
+		);
 	}
 
 	/**

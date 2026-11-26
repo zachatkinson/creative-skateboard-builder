@@ -629,6 +629,39 @@ $cbuild_widths_page = (int) wp_insert_post(
 	)
 );
 
+// The 3D view's kit (milestone 14): the builder kit's parts and settings, with View in 3D on, so the shared kit and
+// every other test's page stay as they were. Remade from the builder kit's documents on each run.
+$cbuild_post      = get_page_by_path( 'three-test-kit', OBJECT, 'product' );
+$cbuild_three_kit = new CreativeBranding\SkateboardBuilder\Adapter\KitProduct( $cbuild_post instanceof WP_Post ? $cbuild_post->ID : 0 );
+$cbuild_three_kit->set_name( '3D test kit' );
+$cbuild_three_kit->set_slug( 'three-test-kit' );
+$cbuild_three_kit->set_status( 'publish' );
+foreach ( $cbuild_kit->documents() as $cbuild_key => $cbuild_document ) {
+	if ( is_array( $cbuild_document ) ) {
+		$cbuild_three_kit->setDocument( $cbuild_key, $cbuild_document );
+	}
+}
+$cbuild_three_kit->setDocument(
+	'_cbuild_settings',
+	array(
+		'schema_version' => 1,
+		'view_3d'        => true,
+	)
+);
+$cbuild_three_kit->save();
+$cbuild_three_page = get_page_by_path( 'three-test-page' );
+$cbuild_three_page = (int) wp_insert_post(
+	array(
+		'ID'           => $cbuild_three_page instanceof WP_Post ? $cbuild_three_page->ID : 0,
+		'post_type'    => 'page',
+		'post_status'  => 'publish',
+		'post_name'    => 'three-test-page',
+		// The builder page's own words, so the two pages differ by the kit's switch alone.
+		'post_title'   => 'Build a complete',
+		'post_content' => '<!-- wp:paragraph --><p>Pick a deck, and every later step offers only what fits it.</p><!-- /wp:paragraph -->' . "\n" . '<!-- wp:creative-skateboard-builder/builder {"kit":' . $cbuild_three_kit->get_id() . '} /-->',
+	)
+);
+
 // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents -- a test fixture, writing where the tests read.
 file_put_contents(
 	CBUILD_PATH . 'tmp/e2e-builder.json',
@@ -647,6 +680,10 @@ file_put_contents(
 				'kit'   => $cbuild_widths_kit->get_id(),
 				'page'  => (string) get_permalink( $cbuild_widths_page ),
 				'decks' => $cbuild_widths,
+			),
+			'three'  => array(
+				'kit'  => $cbuild_three_kit->get_id(),
+				'page' => (string) get_permalink( $cbuild_three_page ),
 			),
 		)
 	)
