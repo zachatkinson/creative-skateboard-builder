@@ -28,7 +28,7 @@ done <<'CASES'
 0.2.0 no  junk   yes yes
 CASES
 for bad in "v0.1.0 no 0.1.0" "0.1.0 maybe 0.1.0"; do
-	# shellcheck disable=SC2086 -- the words are the arguments.
+	# shellcheck disable=SC2086 # the words are the arguments.
 	if bash release-plan.sh $bad >/dev/null 2>&1; then
 		echo "release-plan accepted '${bad}'."; status=1
 	fi

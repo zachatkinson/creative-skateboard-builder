@@ -282,6 +282,8 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-463 · The translations merge by entry, and only the .po is committed in a lane](#d-463--the-translations-merge-by-entry-and-only-the-po-is-committed-in-a-lane--2026-11-26)
 - [D-464 · A lane's changelog entry is a fragment, put together at release](#d-464--a-lanes-changelog-entry-is-a-fragment-put-together-at-release--2026-11-26)
 - [D-465 · A lane lands only after CI's own checks on its changed lines and a walkthrough of them](#d-465--a-lane-lands-only-after-cis-own-checks-on-its-changed-lines-and-a-walkthrough-of-them--2026-11-26)
+- [D-467 · ShellCheck holds every shell script, pinned as actionlint and zizmor are](#d-467--shellcheck-holds-every-shell-script-pinned-as-actionlint-and-zizmor-are--2026-11-26)
+- [D-468 · A plugin blurs the 3D view by class, so a shopper's reveal can lift it](#d-468--a-plugin-blurs-the-3d-view-by-class-so-a-shoppers-reveal-can-lift-it--2026-11-26)
 - [D-432 · After a swap the notice says the swap and the status the build alone, so a screen reader hears it once](#d-432--after-a-swap-the-notice-says-the-swap-and-the-status-the-build-alone-so-a-screen-reader-hears-it-once--2026-11-25)
 
 ### Motion
@@ -6802,6 +6804,46 @@ Milestone 14's pipeline. Every lane's `CHANGELOG.md` entry went under the same h
 - **A lane that touches layout** also runs the three tablet projects.
 - **Each lane takes a ten-minute walkthrough** of what it changed (`docs/reviews/M<n>/lanes/`), on Twenty Twenty-Five and Kadence, besides the full walkthrough at the end.
 - **The release's full local set** (`/audit-milestone`, step 1) gains the tablet projects and `infection:diff`.
+- **StrykerJS takes `--incremental`** (`npm run mutate:js -- --incremental`), which reuses the last run's results for the code and tests that didn't change, from `tmp/stryker/incremental.json`. A lane uses it; CI and the audit run it whole.
+
+**Status:** Accepted.
+
+### D-467 · ShellCheck holds every shell script, pinned as actionlint and zizmor are · 2026-11-26
+
+Zach approved ShellCheck on 26 November ("if shellcheck is useful for our project, go ahead"). The project has 52 tracked shell scripts. They run the gates, the release, the lanes and the upgrade paths, and several already carried `# shellcheck` lines that nothing read. actionlint runs ShellCheck only on the workflows' `run:` scripts.
+
+Its first run found 10 findings:
+
+- two `cd` lines with no `|| exit`, in scripts that run without `set -e`;
+- a directive written so that ShellCheck couldn't parse it;
+- an unfollowed `source`, which hid a variable;
+- six that were right as written, each now marked at its line with the reason.
+
+**Decision:** `tools/shellcheck.sh`, in `composer gates`, runs ShellCheck 0.11.0 on every tracked `.sh` and the pre-commit hook, at every severity, with `.shellcheckrc`. That file follows `source` lines and turns off SC2016, since the scripts hand PHP, JavaScript and regular expressions to `php -r`, `node -e`, `wp eval` and `grep` in single quotes on purpose.
+
+- **The binary** is installed as actionlint and zizmor are (D-299): the release's Linux binary at a pinned version and SHA-256 in CI, and Homebrew's at the same version on the Mac.
+- **Not npm's `shellcheck` wrapper,** which fetches the binary at run time with no checksum.
+
+**Tests.** With `|| exit 1` taken off `tools/integration-yoast.sh`'s `cd`, the gate fails on SC2164 at line 5. Put back, all 52 scripts are clean.
+
+**Status:** Accepted.
+
+### D-468 · A plugin blurs the 3D view by class, so a shopper's reveal can lift it · 2026-11-26
+
+Asked by Claude in Cowork, for Mature Content, while #139 was being built. On the page, Mature Content blurs a flagged picture with CSS, and lifts the blur when the shopper chooses to see the artwork (`html.mcw-revealed`, and an `mcw:revealed` event on `document`). It blurs a composed picture on the server only where the picture is kept for others, such as the share card. The 3D view draws the deck's graphic as a WebGL texture, so an answer of `blurred` to `cbuild_composed_layer`'s new `3d` use would be baked into it, and no reveal could lift it. Cowork offered two ways:
+
+- **(a)** leave the texture as it is, and blur the view by its classes;
+- **(b)** blur on the server, and give the view a documented way to fetch its textures again after a reveal.
+
+**Decision:** (a). It is how a part's pictures already work on the page: the artwork reaches the page, and a class blurs it. (b) would need the server to know of a reveal that happens only in the browser.
+
+- **The canvas's classes:** `.cbuild-3d__canvas` carries the deck's `cbuild_part_classes` through every redraw and part change.
+- **The veil's place:** `.cbuild-3d__frame` is a promised place for a plugin's veil, as `.cbuild__stage` is. It is never replaced once the view opens, and an element put there survives part changes, steps and reopening.
+- **The `3d` use stays:** `cbuild_composed_layer` keeps it, with all three answers honoured. HOOKS.md says that for `3d`, `blurred` and `left_out` are fixed for that page view, and that a picture a shopper may reveal should be answered `as_is` and blurred by class.
+
+The cost is that the CSS blur covers the whole view, trucks and wheels too, not the deck's graphic alone. Cowork said either way works for Mature Content once HOOKS.md says which.
+
+**Tests:** a browser test adds `is-flagged` through `cbuild_part_classes` and a veil to `.cbuild-3d__frame`, then checks the class on the canvas and the veil after a part change and a reopen (lane 2).
 
 **Status:** Accepted.
 
