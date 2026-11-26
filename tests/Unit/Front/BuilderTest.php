@@ -2109,7 +2109,10 @@ final class BuilderTest extends TestCase {
 		self::assertSame( 'Part 301', array_column( $swapped['review']['items'], 'name', 'key' )[ SlotKey::WHEELS ] );
 		self::assertTrue( $swapped['swapped']['shown'] );
 		self::assertSame( 'Swapped: wheels.', $swapped['swapped']['text'] );
-		self::assertStringStartsWith( 'Swapped: wheels. ', $swapped['status'], 'and the status says it before the build and its total' );
+		// Focus goes to the notice, which a screen reader reads: the polite status says the build and its total alone, so
+		// the swap is not heard twice (the auditor's 1.3.0 should-fix 3).
+		self::assertStringNotContainsString( 'Swapped', $swapped['status'], 'the status does not say the swap the focused notice says' );
+		self::assertStringContainsString( 'Part 301', $swapped['status'], 'the status says the build' );
 		self::assertSame( self::url( array_map( 'strval', self::COMPLETE ) + array( 'step' => 'review' ) ), $swapped['swapped']['undo']['url'], 'Undo: the picks before, and nothing to undo after it' );
 		self::assertSame( 'Undo swap', $swapped['swapped']['undo']['text'] );
 		self::assertFalse( $swapped['board']['shown'], 'nothing left for less on the board' );

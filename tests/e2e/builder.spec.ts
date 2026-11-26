@@ -11974,10 +11974,18 @@ test.describe( 'Smart swaps (#135)', () => {
 				notice,
 				'focus on what the swap did, beside its Undo'
 			).toBeFocused();
-			await expect( page.locator( '.cbuild__status' ) ).toContainText(
+			// The notice is focused and read; the polite status says the build and its total alone, so the swap is
+			// not heard twice (D-432).
+			const swappedText =
 				( await notice
 					.locator( '.cbuild-swapped__text' )
-					.textContent() ) ?? ''
+					.textContent() ) ?? '';
+			expect( swappedText ).not.toBe( '' );
+			await expect( page.locator( '.cbuild__status' ) ).toContainText(
+				'Total'
+			);
+			await expect( page.locator( '.cbuild__status' ) ).not.toContainText(
+				swappedText
 			);
 			await axe( page, 'the review after a swap', '.cbuild__body' );
 		}

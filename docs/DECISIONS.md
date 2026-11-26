@@ -270,6 +270,7 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-401 · The guided start's ready builds: the cheapest, the middle and the dearest part a slot, through the fit engine](#d-401--the-guided-starts-ready-builds-the-cheapest-the-middle-and-the-dearest-part-a-slot-through-the-fit-engine--2026-11-25)
 - [D-402 · Help me choose: a disclosure at the builder's start, one GET form, answers in the link alone](#d-402--help-me-choose-a-disclosure-at-the-builders-start-one-get-form-answers-in-the-link-alone--2026-11-25)
 - [D-404 · Help me choose steps aside once a width is pressed, and the guide's tiles have their own list](#d-404--help-me-choose-steps-aside-once-a-width-is-pressed-and-the-guides-tiles-have-their-own-list--2026-11-25)
+- [D-432 · After a swap the notice says the swap and the status the build alone, so a screen reader hears it once](#d-432--after-a-swap-the-notice-says-the-swap-and-the-status-the-build-alone-so-a-screen-reader-hears-it-once--2026-11-25)
 
 ### Motion
 
@@ -5896,7 +5897,7 @@ Issue #135: "one press swaps in a part … one Undo puts the build back", and ev
 
 - **A swap is a link** (`rel="nofollow"`), not a form: the build with the swap's parts in place, at the same step, with `_undo`, the picks before it, an underscore key that is the builder's own and may change in any release (D-142). Without the script it loads the page; with it, the store follows it through the state route as any link (`actions.follow`), pushing a history entry. Its text says what it does to the total: "Same board for $3.00 less", "For less: Retna 52 mm, $2.00 less", "Step up: Bones 54 mm, $1.50 more" ("Step up" for better, ranked or by price, since the shop's rank is its claim, not ours).
 - **Where Undo lives, and for how long (for Zach).** In a notice above the step's cards and the review, "Swapped: wheels and hardware." with an Undo link, a link back to the picks before. It stays while the link carries `_undo`: through a reload and a shared address of that moment, and until the next move, which any other link or form makes without it (`BuildLink::at()` and every other link drops it; `Builder::show` keeps it only on the swap's own answer and never beside the change panel). Back undoes too, the swap being a step of the history. Not a toast that times out: a notice that vanishes on its own fails a keyboard or screen reader user who is slower than its timer (WCAG 2.2.1), and Undo that lasts until the next move is the pattern Gmail's and Material's snackbars aim at, without their timer.
-- **Focus.** After a swap the store focuses the notice (`tabindex="-1"`), which says the swap and holds Undo, and the status region says the swap and the build with its total. After Undo it focuses the control that made the swap (`cbuild-swap-<slot>-<kind>`, `cbuild-swap-board`), which the build has again, or the heading. Nothing moves focus for a swap without the script; the page loads with the notice at the top.
+- **Focus.** After a swap the store focuses the notice (`tabindex="-1"`), which says the swap and holds Undo, and the status region says the build with its total (from D-432; it said the swap too, which a screen reader heard twice). After Undo it focuses the control that made the swap (`cbuild-swap-<slot>-<kind>`, `cbuild-swap-board`), which the build has again, or the heading. Nothing moves focus for a swap without the script; the page loads with the notice at the top.
 - **The same board for less** is one button at the top of the review; each slot's swaps sit under its review row; on a step, under the picked card alone. The review's are drawn only on the review, so no control is drawn twice in the page.
 - **A plain card is no taller.** Only the picked card has swaps; a list whose picked card shows them lets each card keep its own height (`align-self: start`), so the line they take does not stretch the plain cards in its row. #131's count of whole cards is on steps with nothing picked, which have no swaps.
 - **A swap for less that saves nothing once the total is rounded is not offered.** A better one is, with its difference, "same price" where there is none.
@@ -6534,5 +6535,19 @@ D-430 found a browser test that compared against a variable only the test before
 - **Red run.** `npm run mutate:js`: "An error occurred outside of a test run: …/tests/js/e2e-lock.test.ts: Cannot find module '../e2e/support/lock'", then "Something went wrong in the initial test run".
 - **After.** 97.41 % of all mutants (98.01 % of those covered), the admin's script 99.33 % and the builder's store 96.93 %, above the 95 % floor (D-379).
 - **Deliberate break.** Without `!tests/e2e/support/lock.ts` the run stops with the red run's message.
+
+**Status:** Accepted.
+
+### D-432 · After a swap the notice says the swap and the status the build alone, so a screen reader hears it once · 2026-11-25
+
+The auditor's 1.3.0 should-fix 3. After a swap the store focuses the notice (`.cbuild-swapped`, D-397), which a screen reader reads as it takes focus, and the polite status began with the same words, "Swapped: wheels and hardware.", before the build and its total (`BuilderView`, the swap's words put before the status). A screen reader heard the swap twice.
+
+**Decision:** focus stays on the notice, which says the swap and holds Undo, and the status says the build and its total alone, as after a pick. D-397's "Focus" is changed so. Without the script the page loads with the notice at the top and the status is not read, as before.
+
+**Tests.**
+
+- **Red run.** `BuilderTest::test_each_swap_is_a_link_to_the_build_swapped_and_its_notice_undoes_it_until_the_next_move`: "the status does not say the swap the focused notice says", `'Swapped: wheels. The build so far: …'` contains "Swapped" (BuilderTest.php:2114).
+- **After.** It passes. `builder.spec.ts`, "Smart swaps (#135) › the same board for less swaps the build…", on chromium-desktop and no-js: the notice focused, the status says the total and not the notice's words.
+- **Deliberate break.** The swap's words put back before the status: the unit case fails as in the red run, and the browser test fails with `expect(locator).not.toContainText` "Swapped: wheels and hardware." (builder.spec.ts:11989).
 
 **Status:** Accepted.

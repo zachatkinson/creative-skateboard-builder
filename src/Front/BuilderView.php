@@ -221,11 +221,9 @@ final class BuilderView {
 			$status = sprintf( __( '%1$s %2$s', 'creative-skateboard-builder' ), $moved, $status );
 		}
 
+		// After a swap, focus goes to its notice, which says what it swapped: the status says the build and its total
+		// alone, so a screen reader does not hear the swap twice (D-432).
 		$swaps = self::swaps( $state, $answer, $link, $url, $label );
-		if ( ! $panel && $swaps['swapped']['shown'] ) {
-			/* translators: 1: what the build moved to, such as "Hard Hat is now 8.5″.". 2: what the status says after it. */
-			$status = sprintf( __( '%1$s %2$s', 'creative-skateboard-builder' ), $swaps['swapped']['text'], $status );
-		}
 
 		$board              = self::board( $picture, $state->id, null );
 		$top                = self::top( $picture, $state->id );
