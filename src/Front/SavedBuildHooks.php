@@ -48,6 +48,11 @@ final class SavedBuildHooks implements Hookable {
 	public const string ENDPOINT = 'my-builds';
 
 	/**
+	 * My builds' style handle, the plugin's own, so a theme that dequeues WooCommerce's styles keeps it (D-450).
+	 */
+	private const string STYLE = 'cbuild-my-builds';
+
+	/**
 	 * My builds' rules: the picture on its own line, its name under it, shown on a phone too, and the compare.
 	 *
 	 * The compare (#136, D-411): a column a build at least 14rem wide, so a phone shows about one build at a time and
@@ -278,14 +283,18 @@ final class SavedBuildHooks implements Hookable {
 	}
 
 	/**
-	 * On My builds alone, beside WooCommerce's own styles: each build's picture on its own line above its name, so a
-	 * name of more than one word does not wrap around it.
+	 * On My builds alone, where its list and its compare render: each build's picture on its own line above its name, so
+	 * a name of more than one word does not wrap around it, and the compare's rules. On the plugin's own handle, not
+	 * WooCommerce's: Kadence and Storefront dequeue `woocommerce-general`, and the rules went with it (D-450).
 	 *
 	 * @since 0.8.0
 	 */
 	public function styles(): void {
 		if ( function_exists( 'is_wc_endpoint_url' ) && is_wc_endpoint_url( self::ENDPOINT ) ) {
-			wp_add_inline_style( 'woocommerce-general', self::STYLES );
+			// A handle with no file: WordPress prints what is added to it and asks for nothing (as the carts' styles).
+			wp_register_style( self::STYLE, false, array(), CBUILD_VERSION );
+			wp_add_inline_style( self::STYLE, self::STYLES );
+			wp_enqueue_style( self::STYLE );
 		}
 	}
 

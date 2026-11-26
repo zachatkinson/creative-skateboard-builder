@@ -360,6 +360,7 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-278 · A saved build's prices go in its picks document under `_prices`; My builds' Open carries `_saved`](#d-278--a-saved-builds-prices-go-in-its-picks-document-under-_prices-my-builds-open-carries-_saved--2026-11-19)
 - [D-411 · My builds compares up to three saved builds in one table, a column a build, by a query string on its own page](#d-411--my-builds-compares-up-to-three-saved-builds-in-one-table-a-column-a-build-by-a-query-string-on-its-own-page--2026-11-25)
 - [D-412 · My builds names each build on a phone too](#d-412--my-builds-names-each-build-on-a-phone-too--2026-11-25)
+- [D-450 · My builds' and an order page's rules print on a style handle of the plugin's own](#d-450--my-builds-and-an-order-pages-rules-print-on-a-style-handle-of-the-plugins-own--2026-11-26)
 
 ### SEO and sharing
 
@@ -6664,3 +6665,21 @@ The auditor's 1.3.0 minor. D-392 wrote a card's average rating in the shop's dec
 - **After.** It passes, with the rest of `WordsTest`. `builder.spec.ts`, "says them in French, its decimal separator the language's", on fr-ca: "4,5 sur 5, 2 avis" and "4,5 (2)".
 
 **Status:** Accepted. Replaces D-392's separator.
+
+### D-450 · My builds' and an order page's rules print on a style handle of the plugin's own · 2026-11-26
+
+Found in milestone 13's walkthrough. `SavedBuildHooks::styles()` added My builds' rules to WooCommerce's `woocommerce-general` with `wp_add_inline_style()`, and `EmailHooks::pageStyles()` added the indent of a part's row on an order's page there too. Kadence and Storefront dequeue `woocommerce-general` and load their own WooCommerce styles, and WordPress prints a handle's inline rules only with the handle (`WP_Styles::do_item()`), so on either theme every rule was lost. On a phone the compare had no scroll region: its table was 404 px wide in a 326 px box, and the third build was cut off where no one could reach it. The 14rem columns, the Differs mark, the row tints and D-412's rule that names each row on a phone went too. Twenty Twenty-Five keeps WooCommerce's handle, so the suites, run on it, passed.
+
+**Decision:** each adds its rules to a handle of the plugin's own with no file, `cbuild-my-builds` on My builds alone, where its list and its compare render, and `cbuild-order-page` on an account page or the order-received page, registered and enqueued there, as the carts' `cbuild-cart` is (D-132). The rules are unchanged. No built stylesheet is added, so `npm run budget` is untouched.
+
+**Red runs.**
+
+- `SavedBuildsPageTest::test_my_builds_rules_print_when_the_theme_dequeues_woocommerce_general`, with `woocommerce-general` dequeued at `wp_enqueue_scripts` 100: "the compare's scroll region. Failed asserting that `<style id="wp-emoji-styles-inline-css">…` contains ".cbuild-compare{overflow-x:auto"" (`SavedBuildsPageTest.php:498`).
+- `OrderEmailTest::test_the_order_pages_indent_prints_when_the_theme_dequeues_woocommerce_general`: "a part's row indented under its kit. Failed asserting that `<style id="wp-emoji-styles-inline-css">…` contains ".cbuild-order-part td:first-child"".
+- "Compare saved builds (#136) › every build's column is reached in the compare's region on a phone, on kadence" and "on storefront", at 390 by 844, on chromium-phone: "the region scrolls sideways. Expected: "auto". Received: "visible"" (`builder.spec.ts:8950`). With that check set aside, the reach check failed alone on Kadence: "build 3's column reached in the region", `right: false`.
+
+**Deliberate breaks.** With `wp_enqueue_style()` taken out of each, both integration tests failed with their red runs' lines. With `overflow-x:auto` taken out of `.cbuild-compare`'s rule, the browser test failed on both themes with its red run's line. Put back, all passed.
+
+**Why:** a theme may dequeue WooCommerce's styles, and Kadence and Storefront, two of the themes the plugin is tested on, do. A rule the plugin needs is the plugin's to print.
+
+**Status:** Accepted.

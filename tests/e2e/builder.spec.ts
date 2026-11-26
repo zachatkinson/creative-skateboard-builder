@@ -8870,6 +8870,131 @@ test.describe( 'Compare saved builds (#136)', () => {
 			.click();
 		await expect( page.locator( '.cbuild-my-builds' ) ).toBeVisible();
 	} );
+
+	// Milestone 13's walkthrough (D-450): Kadence and Storefront dequeue WooCommerce's `woocommerce-general`, which
+	// held the compare's rules, so on a phone the table lost its scroll region and the third build was cut off where
+	// no one could reach it, and the row tints and the Differs mark were plain text. On the plugin's own handle, every
+	// build's column is reached by scrolling the region, on either theme.
+	for ( const theme of [ 'kadence', 'storefront' ] ) {
+		test( `every build's column is reached in the compare's region on a phone, on ${ theme }`, async ( {
+			page,
+			context,
+			baseURL,
+		}, info ) => {
+			await customer( page );
+			clear();
+			const street = {
+				deck: id( 'builder-test-deck-8-0' ),
+				trucks: id( 'builder-test-trucks-139' ),
+				wheels: id( 'builder-test-wheels-54' ),
+				bearings: id( 'builder-test-bearings' ),
+				hardware: id( 'builder-test-bolts-1-25' ),
+				grip: id( 'builder-test-grip' ),
+			};
+			const builds = [
+				street,
+				{ ...street, wheels: id( 'builder-test-wheels-52' ) },
+				{
+					...street,
+					deck: id( 'builder-test-deck-8-5' ),
+					trucks: id( 'builder-test-trucks-149' ),
+				},
+			];
+			runPhp(
+				`$u = get_user_by( 'login', 'e2e-saver' ); $s = CreativeBranding\\SkateboardBuilder\\Plugin::container()->get( CreativeBranding\\SkateboardBuilder\\Service\\SavedBuilds::class ); foreach ( json_decode( '${ JSON.stringify(
+					builds.map( ( picks, at ) => ( {
+						name: names[ at ],
+						picks,
+					} ) )
+				) }', true ) as $b ) { if ( 'saved' !== $s->save( $u->ID, ${
+					fixture().kit
+				}, $b['picks'], true, $b['name'] )['code'] ) { throw new RuntimeException( $b['name'] ); } }`
+			);
+			const french = 'fr-ca' === info.project.name;
+			if ( french ) {
+				await page.setExtraHTTPHeaders( {
+					'x-cbuild-e2e-locale': 'fr_CA',
+					'x-cbuild-e2e-translated': '1',
+				} );
+			}
+			const say = ( english: string, inFrench: string ) =>
+				french ? inFrench : english;
+			await context.addCookies( [
+				{
+					name: 'cbuild_e2e_theme',
+					value: theme,
+					url: baseURL || SITE,
+				},
+			] );
+			await page.setViewportSize( { width: 390, height: 844 } );
+			await page.goto( '/my-account/my-builds/' );
+			for ( const name of names ) {
+				await page
+					.getByRole( 'checkbox', {
+						name: say( `Compare ${ name }`, `Comparer ${ name }` ),
+					} )
+					.check();
+			}
+			await answered( page, () =>
+				page
+					.getByRole( 'button', {
+						name: say(
+							'Compare the ticked builds',
+							'Comparer les montages cochés'
+						),
+					} )
+					.click()
+			);
+			const region = page.locator( '.cbuild-compare' );
+			await expect( region ).toBeVisible();
+			const columns = page.locator( '.cbuild-compare__build' );
+			await expect( columns ).toHaveCount( 3 );
+			expect(
+				await region.evaluate(
+					( box ) => getComputedStyle( box ).overflowX
+				),
+				'the region scrolls sideways'
+			).toBe( 'auto' );
+			// Each column, scrolled into view inside the region (in either direction, for rtl), lies inside it.
+			for ( let at = 0; at < 3; at++ ) {
+				const inside = await page.evaluate( ( index ) => {
+					const box = document.querySelector( '.cbuild-compare' )!;
+					const th = document.querySelectorAll(
+						'.cbuild-compare__build'
+					)[ index ]!;
+					th.scrollIntoView( {
+						block: 'nearest',
+						inline: 'nearest',
+					} );
+					const outer = box.getBoundingClientRect();
+					const cell = th.getBoundingClientRect();
+					return {
+						left: cell.left >= outer.left - 1,
+						right: cell.right <= outer.right + 1,
+						page:
+							document.documentElement.scrollWidth <=
+							document.documentElement.clientWidth,
+					};
+				}, at );
+				expect(
+					inside,
+					`build ${ at + 1 }'s column reached in the region, and never by scrolling the page`
+				).toEqual( { left: true, right: true, page: true } );
+			}
+			const differs = page
+				.locator( '.cbuild-compare__mark' )
+				.filter( { hasText: say( 'Differs', 'Diffère' ) } )
+				.first();
+			await differs.scrollIntoViewIfNeeded();
+			await expect( differs, 'the Differs mark' ).toBeVisible();
+			expect(
+				await differs.evaluate(
+					( el ) => getComputedStyle( el ).borderTopStyle
+				),
+				'drawn as a mark, not plain words'
+			).toBe( 'solid' );
+		} );
+	}
 } );
 
 /**
