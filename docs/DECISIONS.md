@@ -34,7 +34,7 @@ Zach accepted D-002 to D-011 as proposed on 9 November 2026, before milestone 1.
 
 ## Index by area
 
-Each decision is listed once, under the area it is mostly about, in number order. The entries themselves follow in [The decisions](#the-decisions). D-316 to D-318, D-327, D-358, D-362, D-366, D-370 and D-381 are unused.
+Each decision is listed once, under the area it is mostly about, in number order. The entries themselves follow in [The decisions](#the-decisions). D-316 to D-318, D-327, D-358, D-362, D-366, D-370, D-381, D-390 and D-429 are unused. D-427 and D-428 were held for other lanes' work in milestone 13 and are written there or left unused; a number is never given twice.
 
 ### Project, scope and reviews
 
@@ -136,6 +136,7 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-354 · A kit's settings from 1.2.0 on are a document of their own, which the release before never reads](#d-354--a-kits-settings-from-120-on-are-a-document-of-their-own-which-the-release-before-never-reads--2026-11-24)
 - [D-385 · A wrong field of the kit's settings is refused alone, and the rest is saved](#d-385--a-wrong-field-of-the-kits-settings-is-refused-alone-and-the-rest-is-saved--2026-11-24)
 - [D-389 · No word joins the assembly time's range, in any language](#d-389--no-word-joins-the-assembly-times-range-in-any-language--2026-11-25)
+- [D-409 · Three switches in the Build tab: Help me choose, the cards' ready-build picks and their ratings](#d-409--three-switches-in-the-build-tab-help-me-choose-the-cards-ready-build-picks-and-their-ratings--2026-11-25)
 
 ### The state route and the public API
 
@@ -242,6 +243,7 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-398 · The review's thumbnail of a deck's layer image is marked drawn, as its card is](#d-398--the-reviews-thumbnail-of-a-decks-layer-image-is-marked-drawn-as-its-card-is--2026-11-25)
 - [D-399 · A deck's card counts its other widths past two, keeps its stock beside the price and its picture in its 7rem box](#d-399--a-decks-card-counts-its-other-widths-past-two-keeps-its-stock-beside-the-price-and-its-picture-in-its-7rem-box--2026-11-25)
 - [D-403 · Each row of the review shows its card's picture in a 3rem square, its place kept](#d-403--each-row-of-the-review-shows-its-cards-picture-in-a-3rem-square-its-place-kept--2026-11-25)
+- [D-408 · Follow-ups to #134 and #147 on lane 2: WebKit's Option-Tab, a flagged deck in the guide's builds, and Next with its answer held](#d-408--follow-ups-to-134-and-147-on-lane-2-webkits-option-tab-a-flagged-deck-in-the-guides-builds-and-next-with-its-answer-held--2026-11-25)
 - [D-416 · The start button is Add to cart's twin by its fill alone, its words read on its fill, and a hostile theme fixture tests the builder against a theme's rules](#d-416--the-start-button-is-add-to-carts-twin-by-its-fill-alone-its-words-read-on-its-fill-and-a-hostile-theme-fixture-tests-the-builder-against-a-themes-rules--2026-11-25)
 - [D-417 · The bar's Back and Next, and its delivery lines, hold their size and margins at two classes' weight](#d-417--the-bars-back-and-next-and-its-delivery-lines-hold-their-size-and-margins-at-two-classes-weight--2026-11-25)
 - [D-418 · The hostile theme sweep, and a ready build's lines at two classes' weight](#d-418--the-hostile-theme-sweep-and-a-ready-builds-lines-at-two-classes-weight--2026-11-25)
@@ -5866,7 +5868,7 @@ Issue #135: "better" follows the shop's rank, "a number on the part's Part specs
 - **A whole number from 0 to 999999999, higher being better,** kept as digits in `_cbuild_rank` product meta (`Support\PartRank`). Higher is better because "rank 5" reads as above "rank 1" on a scale the shop sets, and a shop can leave gaps (10, 20, 30) to slot a part in later. A leading zero, a sign, a decimal or anything over nine digits is not saved, and what was there is kept, as the panel keeps a spec typed wrong; an empty field takes it off.
 - **A group of its own on the panel, "Rank", closed and its field disabled where the part has none,** as every group is, so a page of fifteen variations adds nothing to the product's form (issue #23's `max_input_vars`). It is drawn wherever the panel has fields, and on a part no kit takes where it has a rank, so it can be cleared.
 - **A variation with none takes its product's,** as its specs and layer image do, so a shop ranks a variable product once.
-- **`cbuild_part_rank` answers last,** with the stored rank (or the product's) as its first value, as `cbuild_part_available` does for "Not offered". Anything but a whole number is none. A filter adds a part's rank to the choice but never a swap: every swap is still the fit engine's, so no answer can offer a part that does not fit or is not in stock. The plan's `cbuild_swaps` filter is not added, since it could put an unchecked swap in front of a shopper.
+- **`cbuild_part_rank` answers last,** with the stored rank (or the product's) as its first value, as `cbuild_part_available` does for "Not offered". Anything but a whole number is none. A filter adds a part's rank to the choice but never a swap: every swap is still the fit engine's, so no answer can offer a part that does not fit or is not in stock. The plan's `cbuild_swaps` filter is not added, since it could put an unchecked swap in front of a shopper. (The name was then reused for D-397's switch filter, `bool $offers`, `int $kit`, which turns swaps on or off for a kit and cannot add one; the filter of swaps this point rules out is still not added.)
 - **Read through WooCommerce's CRUD after one priming query** (`ProductMeta::primeWithParents()`, D-202), and only for the slots whose swaps are worked out (D-396), on each request. Nothing is kept: a part's rank changes only with a product save, and the parts are loaded in the same request anyway. (Replaced by D-434: the products were not loaded in the same request, and the rank is now kept with the part's facts.)
 
 **Tests.** `PartRankTest`: the field, open and enabled with a rank, closed and disabled without; saved, refused (`-1`, `2.5`, `top`, `07`, `1000000000`, `1e3`), kept when not sent, cleared when empty, and not saved by a customer; a variation's own and its product's; the filter last. `PartSpecsPanelTest`'s counts of groups gain the Rank group. `StateRouteTest`: the next rank up, not the top or the next price; a plugin's rank; no rank, the next dearer.
@@ -5904,6 +5906,7 @@ Issue #135: "one press swaps in a part … one Undo puts the build back", and ev
 - **The same board for less** is one button at the top of the review; each slot's swaps sit under its review row; on a step, under the picked card alone. The review's are drawn only on the review, so no control is drawn twice in the page.
 - **A plain card is no taller.** Only the picked card has swaps; a list whose picked card shows them lets each card keep its own height (`align-self: start`), so the line they take does not stretch the plain cards in its row. #131's count of whole cards is on steps with nothing picked, which have no swaps.
 - **A swap for less that saves nothing once the total is rounded is not offered.** A better one is, with its difference, "same price" where there is none.
+- **"Step up" names no reason.** It never says whether the part is better by the shop's rank or dearer by price alone. A rank is the shop's own claim, set on Part specs and answerable by a filter, and the plugin can't stand behind it as a fact about the part, while "more expensive" would sell the price rather than the part. "Step up" with the part's name and what it adds to the total gives a shopper what they need to judge it, and the same words work for a kit with ranks and one without.
 - **The switch.** "Offer smart swaps" in the Build tab, `swaps` in `_cbuild_settings` (D-354), on by default and for a kit saved before 1.3.0. Off, the answer has no swaps, so the review and the picked card draw none, and their places are `hidden`: nothing is left behind, with or without the script. Unlike `start_button`, the box sends `0` unticked (a hidden field before it), so a form that sends neither, as another plugin's save may, keeps the kit's setting instead of turning swaps off. `cbuild_swaps` (`bool $offers`, `int $kit`) answers after it, as the 1.2.0 settings' filters do; it turns swaps on or off and cannot add one (D-395's reason for having no filter of swaps).
 - **No picture.** A swap control is text alone, so it needs no flagged class for Mature Content.
 
@@ -6256,6 +6259,8 @@ Found while probing #110 on lane 3. The review shots in `tests/e2e/visual.spec.t
 **Why in the test, not the page:** the outline is the design (D-413): 600 ms of it after a pick. A picture of the builder's settled look is taken once it has settled.
 
 **#110 is not this.** Its failures are the bar's "Show the parts" a pixel lower, not the board, and the link stays masked. In 560 probe runs of Twenty Twenty-Five light tablet unmasked (360 without the wait, 200 with it), the link was never drawn lower, so this neither shows nor rules out a link with the wait. Prior traces had the step's crossing still on when `still()` began, which the wait now rules out before every review shot.
+
+**Status:** Accepted.
 
 ### D-416 · The start button is Add to cart's twin by its fill alone, its words read on its fill, and a hostile theme fixture tests the builder against a theme's rules · 2026-11-25
 
