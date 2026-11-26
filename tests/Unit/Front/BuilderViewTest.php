@@ -125,6 +125,22 @@ final class BuilderViewTest extends TestCase {
 		);
 		self::assertSame( $none, $this->view( array(), SlotKey::TRUCKS )['bar']['back']['ahead'], 'a step with its own Back' );
 		self::assertSame( $none, $this->view( array(), State::REVIEW )['bar']['back']['ahead'], 'the review' );
+		// The review's Back is the last step's, whatever step the view names and whether or not it shows its own.
+		$back = ( new \ReflectionMethod( BuilderView::class, 'back' ) )->invoke(
+			null,
+			true,
+			array(
+				'slot' => SlotKey::DECK,
+				'back' => array( 'shown' => false ),
+			),
+			array( SlotKey::DECK, SlotKey::TRUCKS ),
+			new BuildLink(),
+			static fn( BuildLink $link ): string => 'https://shop.test/kit/',
+			static fn( string $slot ): string => ucfirst( $slot )
+		);
+		self::assertIsArray( $back );
+		self::assertSame( $none, $back['ahead'], 'the review, its step named' );
+		self::assertSame( 'Back: Trucks', $back['label'] );
 	}
 
 	/**
