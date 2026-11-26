@@ -483,6 +483,7 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-420 · The toolchain's patch and minor releases, and TypeScript kept at 6 while typescript-eslint is](#d-420--the-toolchains-patch-and-minor-releases-and-typescript-kept-at-6-while-typescript-eslint-is--2026-11-25)
 - [D-421 · axe on Firefox reads aria-labelledby from the attribute, past a crash in Playwright's Firefox](#d-421--axe-on-firefox-reads-aria-labelledby-from-the-attribute-past-a-crash-in-playwrights-firefox--2026-11-25)
 - [D-422 · The browser tests reach wp-env one command at a time, under a lock](#d-422--the-browser-tests-reach-wp-env-one-command-at-a-time-under-a-lock--2026-11-25)
+- [D-423 · The i18n check fails a translation compiled before its strings were translated](#d-423--the-i18n-check-fails-a-translation-compiled-before-its-strings-were-translated--2026-11-25)
 
 ### Releases and the repository
 
@@ -6424,5 +6425,22 @@ A full browser run on lane 1 on 25 November, every project at three workers, fai
 **Tests.** `tests/js/e2e-lock.test.ts`, five, in Vitest: ten processes that each read, change and write one file under the lock, with a pause between, keep all ten keys; a dead holder's lock is taken at once; an old one is taken from a live holder; a held one is waited for; and the lock is let go when what it runs throws. Red, with `withLock()` running its function without the lock: "keeps every key when ten processes rewrite one file at once" failed with `expected [ 'key9' ] to deeply equal [ Array(10) ]`, and "waits while a holder still running has it" with `expected 0 to be greater than or equal to 300`.
 
 **Why:** the race is wp-env's, but the specs start it, and one command at a time costs a second or two a call against a run that fails 43 tests when the race is lost. The lock goes once wp-env writes its cache atomically and the pin moves to that release.
+
+**Status:** Accepted.
+
+### D-423 · The i18n check fails a translation compiled before its strings were translated · 2026-11-25
+
+Found by the fr-ca run for D-421 and D-422 on lane 3. "Compare saved builds (#136) › three builds compared by keyboard in a table that says what differs in words" failed on fr-ca, with `locator.focus: Test timeout of 60000ms exceeded` waiting for `getByRole('checkbox', { name: 'Comparer Street setup' })` (builder.spec.ts:8820). It failed the same way on milestone 13's landed tree with this branch's changes stashed. My builds showed the box as "Compare Street setup" in a page otherwise in French.
+
+**The cause.** `languages/creative-skateboard-builder-fr_CA.po` translates "Compare %s" as "Comparer %s", but the committed `.l10n.php` and `.mo` were compiled before it and 63 other strings were translated, among them #136's and #134's. WordPress reads the compiled file, so those strings showed in English. `composer i18n:check` read only the POT and the `.po`, so it passed.
+
+**Decision.**
+
+- `tools/i18n-check.php` also reads each translation's `.l10n.php` and fails every entry of the `.po` that it does not hold as the `.po` translates it, plural forms joined as WordPress joins them, and a translation with no compiled file. Its message says to run `composer i18n:compile`.
+- `composer i18n:compile` was run on lane 3: the `.l10n.php` and `.mo` changed, and the script translations' JSON did not.
+
+**Tests.** Red: the check on the committed files found 64 problems, among them `languages/creative-skateboard-builder-fr_CA.l10n.php: "Compare %s" is not compiled as languages/creative-skateboard-builder-fr_CA.po translates it`. After the compile it passes, and the browser test passes on fr-ca and chromium-desktop. Deliberate break: "Comparer %s" put back to "Compare %s" in the compiled file failed the check with that one line.
+
+**Why:** the check that the translation is complete has to check what WordPress loads, not only what the translator wrote.
 
 **Status:** Accepted.

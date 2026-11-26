@@ -79,8 +79,24 @@ foreach ( $cbuild_pos as $cbuild_po ) {
 	foreach ( array_diff( $cbuild_kept, array_keys( $cbuild_entries ) ) as $cbuild_key ) {
 		$cbuild_problems[] = "{$cbuild_po}: has no entry for " . cbuild_po_name( $cbuild_key ) . ' (run composer i18n:po)';
 	}
+	// WordPress reads the compiled .l10n.php, not the .po: a translation compiled before its strings were translated
+	// shows them in English (the compare's "Compare %s" in fr_CA, 25 November; D-423).
+	$cbuild_compiled_file = substr( $cbuild_po, 0, -3 ) . '.l10n.php';
+	$cbuild_compiled      = is_readable( $cbuild_compiled_file ) ? include $cbuild_compiled_file : null;
+	$cbuild_messages      = is_array( $cbuild_compiled ) && is_array( $cbuild_compiled['messages'] ?? null ) ? $cbuild_compiled['messages'] : null;
+	if ( null === $cbuild_messages ) {
+		$cbuild_problems[] = "{$cbuild_po}: no compiled {$cbuild_compiled_file} (run composer i18n:compile)";
+	}
 	foreach ( $cbuild_entries as $cbuild_entry ) {
 		$cbuild_name = '"' . $cbuild_entry['id'] . '"';
+		if ( null !== $cbuild_messages && ! $cbuild_entry['fuzzy'] ) {
+			$cbuild_compiled_key = ( '' === $cbuild_entry['ctx'] ? '' : $cbuild_entry['ctx'] . "\4" ) . $cbuild_entry['id'];
+			$cbuild_strs         = $cbuild_entry['strs'];
+			ksort( $cbuild_strs );
+			if ( ( $cbuild_messages[ $cbuild_compiled_key ] ?? null ) !== implode( "\0", $cbuild_strs ) ) {
+				$cbuild_problems[] = "{$cbuild_compiled_file}: {$cbuild_name} is not compiled as {$cbuild_po} translates it (run composer i18n:compile)";
+			}
+		}
 		if ( $cbuild_entry['fuzzy'] ) {
 			$cbuild_problems[] = "{$cbuild_po}: {$cbuild_name} is fuzzy";
 		}
