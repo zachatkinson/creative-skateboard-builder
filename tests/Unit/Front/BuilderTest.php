@@ -22,6 +22,7 @@ use CreativeBranding\SkateboardBuilder\Front\Builder;
 use CreativeBranding\SkateboardBuilder\Front\BuilderView;
 use CreativeBranding\SkateboardBuilder\Front\BuildLink;
 use CreativeBranding\SkateboardBuilder\Front\Delivery;
+use CreativeBranding\SkateboardBuilder\Front\GuidedStart;
 use CreativeBranding\SkateboardBuilder\Front\ShippingWords;
 use CreativeBranding\SkateboardBuilder\Front\StateAnswer;
 use CreativeBranding\SkateboardBuilder\Service\BuildState;
@@ -1476,6 +1477,7 @@ final class BuilderTest extends TestCase {
 		self::assertTrue( $items[ SlotKey::BEARINGS ]['fits'], 'and they fit' );
 		self::assertSame( array( false, '' ), array( $items[ SlotKey::BEARINGS ]['hasImage'], $items[ SlotKey::BEARINGS ]['src'] ), 'no thumbnail of their own, the place kept (#132)' );
 		self::assertSame( 'cbuild-review__photo', $items[ SlotKey::BEARINGS ]['photoClasses'] );
+		self::assertSame( array( array(), false ), array( $items[ SlotKey::BEARINGS ]['swaps'], $items[ SlotKey::BEARINGS ]['hasSwaps'] ), 'nothing to swap: they change with the wheels' );
 	}
 
 	// Spec (configurator): Risers, "It opens on the riser that clears them, with the reason ("Your 56 mm wheels need ½″
@@ -2133,5 +2135,68 @@ final class BuilderTest extends TestCase {
 		self::assertSame( array( false, false ), array( $cards[301]['hasSwaps'], $cards[303]['hasSwaps'] ) );
 		self::assertSame( array(), $cards[301]['swaps'] );
 		self::assertSame( array(), array_column( $step['review']['items'], null, 'key' )[ SlotKey::WHEELS ]['swaps'], 'the hidden review draws none, so no control is drawn twice' );
+	}
+
+	/**
+	 * The builder with the guided start (#134).
+	 */
+	private function guided(): Builder {
+		return $this->builder()->withGuide( new GuidedStart( $this->kits, new InMemoryPartCards(), new FakeMoney() ) );
+	}
+
+	/**
+	 * A link with the guided start's answers, sent or not.
+	 *
+	 * @param array<string, string> $answers The answers.
+	 * @param array<string, string> $more    The rest of the query.
+	 */
+	private static function answered( array $answers, array $more = array() ): BuildLink {
+		return BuildLink::read( $more + array( '_guide' => $answers ) );
+	}
+
+	// #134: the answers sent at the start bring the builds they recommend, each a tile; answers not yet sent keep the
+	// questions, checked as given, with no builds. A builder an earlier release's container made asks and shows none.
+	public function test_answers_sent_at_the_start_bring_the_builds_they_recommend(): void {
+		$sent = $this->guided()->show( self::KIT, self::answered( array( 'style' => 'street', 'asked' => '1' ) ), self::BASE )['view']['guide'] ?? array();
+		self::assertTrue( $sent['shown'] );
+		self::assertTrue( $sent['asked'] );
+		self::assertNotSame( array(), $sent['tiles'] );
+		self::assertContains( array( 'text' => "Wheels of 50\u{00A0}mm to 54\u{00A0}mm suit street skating." ), $sent['reasons'] );
+
+		$unsent = $this->guided()->show( self::KIT, self::answered( array( 'style' => 'street' ) ), self::BASE )['view']['guide'] ?? array();
+		self::assertTrue( $unsent['shown'] );
+		self::assertFalse( $unsent['asked'] );
+		self::assertSame( array(), $unsent['tiles'] );
+		self::assertSame( array( 'street' ), array_column( array_filter( $unsent['style']['choices'], static fn( array $choice ): bool => $choice['checked'] ), 'value' ), 'the answer stays in the start\'s address' );
+
+		$earlier = $this->builder()->show( self::KIT, self::answered( array( 'style' => 'street', 'asked' => '1' ) ), self::BASE )['view']['guide'] ?? array();
+		self::assertFalse( $earlier['asked'] );
+		self::assertSame( array(), $earlier['tiles'] );
+	}
+
+	// #134: the answers stay in the address of the start they were given at, and in no other; a kit with Help me choose
+	// off draws no builds though the answers were sent.
+	public function test_the_answers_stay_at_the_start_and_a_kit_with_help_me_choose_off_draws_no_builds(): void {
+		$begun = $this->guided()->show( self::KIT, self::answered( array( 'style' => 'street', 'asked' => '1' ), array( 'deck' => '101', 'step' => 'trucks' ) ), self::BASE )['view'] ?? array();
+		self::assertStringNotContainsString( '_guide', urldecode( $begun['url'] ) );
+		self::assertFalse( $begun['guide']['shown'] );
+		self::assertFalse( $begun['guide']['asked'], 'no builds for a build begun' );
+		self::assertSame( array( true, false, false, false, false ), array_column( $begun['guide']['style']['choices'], 'checked' ) );
+
+		$GLOBALS['cbuild_test_filters']['cbuild_help_me_choose'] = static fn(): bool => false;
+		$off = $this->guided()->show( self::KIT, self::answered( array( 'style' => 'street', 'asked' => '1' ) ), self::BASE )['view']['guide'] ?? array();
+		self::assertSame( array( false, false, false, array() ), array( $off['offered'], $off['shown'], $off['asked'], $off['tiles'] ) );
+	}
+
+	// D-397: a smart swap's Undo stays with the build it made until the next move, and a change that breaks a later
+	// pick is a move: its panel's address holds no Undo.
+	public function test_a_change_that_breaks_a_later_pick_leaves_a_swaps_undo_behind(): void {
+		$was  = array( SlotKey::DECK => 101, SlotKey::TRUCKS => 139, SlotKey::WHEELS => 301 );
+		$now  = array( SlotKey::DECK => 103 ) + $was;
+		$undo = array( SlotKey::WHEELS => 302 );
+		$view = $this->show( new BuildLink( $now, $was, SlotKey::TRUCKS, undo: $undo ) )['view'];
+		self::assertTrue( $view['isChanges'] );
+		self::assertStringNotContainsString( '_undo', urldecode( $view['url'] ) );
+		self::assertStringContainsString( '_undo', urldecode( $this->show( new BuildLink( $was, null, SlotKey::TRUCKS, undo: $undo ) )['view']['url'] ), 'with no change it stays' );
 	}
 }

@@ -9,7 +9,6 @@ declare( strict_types=1 );
 
 namespace CreativeBranding\SkateboardBuilder\Service;
 
-use CreativeBranding\SkateboardBuilder\Domain\Fit\BuildValidator;
 use CreativeBranding\SkateboardBuilder\Domain\Fit\FitEngine;
 use CreativeBranding\SkateboardBuilder\Domain\Fit\Option;
 use CreativeBranding\SkateboardBuilder\Domain\Guide\ReadyBuilds;
@@ -95,15 +94,13 @@ final readonly class GuidedBuilds {
 		$kit        = $state->kit;
 		$candidates = self::candidates( $state );
 		$engine     = FitEngine::standard();
-		$validator  = new BuildValidator( $engine );
 		$pricer     = new Pricer();
 		$decimals   = $this->kits->decimals();
-		$ids        = array_map( static fn( array $parts ): array => array_map( static fn( Part $part ): int => $part->id, $parts ), $candidates );
 		$made       = array();
 		$totals     = array();
 		foreach ( ( new ReadyBuilds( $engine ) )->choose( $kit, $candidates, $width, $wheels ) as $build ) {
-			$checked  = $validator->validate( $kit, $build->picks, $ids );
-			$totals[] = $pricer->quote( $kit, $checked->build, $kit->assembly->defaultOn, $state->discount, $decimals )->total;
+			// Priced as the cart prices a build: each part with the quantity the engine gives it.
+			$totals[] = $pricer->quote( $kit, $engine->build( $kit, $build->picks ), $kit->assembly->defaultOn, $state->discount, $decimals )->total;
 			$picks    = array();
 			foreach ( $kit->slots->keys() as $slot ) {
 				$part = $build->picks->part( $slot );
@@ -133,7 +130,7 @@ final readonly class GuidedBuilds {
 				'picks'  => $picks,
 				'total'  => $this->money->text( $totals[ $at ], $decimals ),
 				'amount' => $totals[ $at ],
-				'over'   => $over ? $this->money->text( $totals[ $at ] - (int) $budget, $decimals ) : '',
+				'over'   => $over ? $this->money->text( $totals[ $at ] - $budget, $decimals ) : '',
 				// A tile shows its picture whole (D-461): a photo in the shop's single-product size, never cropped, not its
 				// thumbnail, which WooCommerce crops square; a layer image as the card has it, never cropped either.
 				'image'  => $cards[ $deck ]['large'] ?? $cards[ $deck ]['image'] ?? null,

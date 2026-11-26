@@ -633,7 +633,7 @@ final class BuilderView {
 			}
 			$picks = array();
 			foreach ( Cast::map( $build['picks'] ?? null ) as $slot => $part ) {
-				$picks[ (string) $slot ] = Cast::int( $part );
+				$picks[ $slot ] = Cast::int( $part );
 			}
 			$over    = Cast::str( $build['over'] ?? null );
 			$tiles[] = self::tile(
@@ -2559,8 +2559,8 @@ final class BuilderView {
 			$photo = isset( $counted[ $slot ], $thumbnails[ $slot ] ) ? $thumbnails[ $slot ] : self::image( null );
 			// The deck's layer image is marked as its card's is, so a plugin that flags only a layer image blurs it and
 			// leaves a photo sharp (D-398).
-			$marks   = true === ( $photo['drawn'] ?? null ) ? array( Options::CLASS_REVIEW_PHOTO, Options::CLASS_REVIEW_DRAWN ) : array( Options::CLASS_REVIEW_PHOTO );
-			$photo   = array_diff_key( $photo, array( 'drawn' => true ) );
+			$marks = true === ( $photo['drawn'] ?? null ) ? array( Options::CLASS_REVIEW_PHOTO, Options::CLASS_REVIEW_DRAWN ) : array( Options::CLASS_REVIEW_PHOTO );
+			unset( $photo['drawn'] );
 			$items[] = array(
 				'key'          => $slot,
 				'classes'      => self::joined( $own, $added ),
