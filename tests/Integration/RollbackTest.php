@@ -30,7 +30,8 @@ use CreativeBranding\SkateboardBuilder\Tests\Support\KitFactory;
 final class RollbackTest extends IntegrationTestCase {
 
 	/**
-	 * The kit documents of the release before, 1.1.0: each meta key and its schema's file in the fixtures.
+	 * The kit documents of the release before, 1.2.0: each meta key and its schema's file in the fixtures. 1.2.0's
+	 * `_cbuild_settings` lets through a key it does not know at its top, and closes the objects it has.
 	 */
 	private const array PREVIOUS = array(
 		'_cbuild_slots'    => 'kit-slots.json',
@@ -39,6 +40,7 @@ final class RollbackTest extends IntegrationTestCase {
 		'_cbuild_assembly' => 'kit-assembly.json',
 		'_cbuild_picture'  => 'kit-picture.json',
 		'_cbuild_layout'   => 'kit-layout.json',
+		'_cbuild_settings' => 'kit-settings.json',
 	);
 
 	public function set_up(): void {
@@ -73,8 +75,9 @@ final class RollbackTest extends IntegrationTestCase {
 	}
 
 	// The release blocker of milestone 12's audit: 1.2.0 wrote its new settings into `_cbuild_layout`, whose schema in
-	// 1.1.0 has additionalProperties false, so 1.1.0 read no kit saved on 1.2.0. Every 1.2.0 setting is set here, as
-	// the Build tab sends them, and every kit document the release before reads must still pass its schema.
+	// 1.1.0 has additionalProperties false, so 1.1.0 read no kit saved on 1.2.0. Every setting of 1.2.0 and of 1.3.0 is
+	// set here, as the Build tab sends them, and every kit document 1.2.0 reads must still pass 1.2.0's schema (the
+	// auditor's 1.3.0 should-fix 6).
 	public function test_a_kit_saved_with_every_setting_of_this_release_passes_the_schemas_of_the_release_before(): void {
 		wp_set_current_user( self::factory()->user->create( array( 'role' => 'shop_manager' ) ) );
 		$kit  = KitFactory::kit();
@@ -106,6 +109,14 @@ final class RollbackTest extends IntegrationTestCase {
 			$guide . '[rows][1][shoe]'                        => 'EU 41 and up',
 			$guide . '[rows][1][from]'                        => '8.25',
 			$guide . '[rows][1][to]'                          => '',
+			// 1.3.0's: a wheel guide row, and smart swaps, Help me choose, the cards' picks and their ratings unticked,
+			// each sending its 0 (#134, #135, #137, D-397, D-409).
+			self::named( $panel, 'Smallest wheel (mm)' )      => '51',
+			self::named( $panel, 'Largest wheel (mm)' )       => '55',
+			self::named( $panel, 'Offer smart swaps' )        => '0',
+			self::named( $panel, 'Help me choose' )           => '0',
+			self::named( $panel, 'Ready-build picks on cards' ) => '0',
+			self::named( $panel, 'Ratings on cards' )         => '0',
 			BuildTab::FIELD . '[' . BuildTab::END . ']'       => '1',
 		);
 		parse_str( http_build_query( $fields ), $sent );
@@ -136,5 +147,9 @@ final class RollbackTest extends IntegrationTestCase {
 		self::assertFalse( $read?->settings->startButton );
 		self::assertFalse( $read?->settings->guide->shown );
 		self::assertSame( array( 'EU 38 to 40', 'EU 41 and up' ), array_map( static fn( $row ): string => $row->shoe, $read?->settings->guide->rows ?? array() ) );
+		$street = $read?->settings->wheels->span( \CreativeBranding\SkateboardBuilder\Domain\Guide\RidingStyle::Street );
+		self::assertSame( array( '51.0000', '55.0000' ), array( $street?->from->decimal(), $street?->to?->decimal() ), 'the wheel guide\'s row' );
+		self::assertTrue( $read?->settings->wheels->isOwn( \CreativeBranding\SkateboardBuilder\Domain\Guide\RidingStyle::Street ) );
+		self::assertSame( array( false, false, false, false ), array( $read?->settings->swaps, $read?->settings->guided, $read?->settings->cardPicks, $read?->settings->cardRatings ), 'smart swaps, Help me choose, the picks and the ratings, off' );
 	}
 }
