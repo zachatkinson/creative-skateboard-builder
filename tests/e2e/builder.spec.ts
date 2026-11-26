@@ -2490,6 +2490,14 @@ test.describe( 'The builder with JavaScript', () => {
 		// Served, in every engine. Firefox's crash was in axe over the summary the store drew after Next (#36, D-167),
 		// which Next no longer asks for (#100).
 		await toHead();
+		// Since Help me choose's link sits above the width question (#134), a tablet's first screen ends on "Not sure of
+		// your width?" under the bar's top, as in "a width pressed" above (D-288): the question is brought into view as a
+		// shopper scrolls to it.
+		await page
+			.locator( '.cbuild-width' )
+			.evaluate( ( width ) =>
+				width.scrollIntoView( { block: 'nearest' } )
+			);
 		await check( 'the error summary' );
 
 		// A later step, with the parts that do not fit under their disclosure, open.

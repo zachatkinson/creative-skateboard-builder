@@ -679,9 +679,27 @@ test.describe( 'Deck cards after a width, under a theme header (F31)', () => {
 							: innerHeight;
 					return items.map( ( item ) => {
 						const box = item.getBoundingClientRect();
+						// A name past two lines, as a long name takes in a wider fallback font (Linux's WebKit and Firefox in
+						// CI, D-436), is the name's own height, not the card's: its lines past two are counted apart.
+						const name =
+							item.querySelector< HTMLElement >(
+								'.cbuild-card__name'
+							);
+						let extra = 0;
+						if ( name ) {
+							const style = getComputedStyle( name );
+							const line =
+								parseFloat( style.lineHeight ) ||
+								parseFloat( style.fontSize ) * 1.2;
+							const lines = Math.round(
+								name.getBoundingClientRect().height / line
+							);
+							extra = Math.max( 0, lines - 2 ) * line;
+						}
 						return {
 							top: Math.round( box.top ),
 							height: Math.round( box.height ),
+							extra,
 							whole: box.top >= 0 && box.bottom <= foot,
 						};
 					} );
@@ -702,9 +720,15 @@ test.describe( 'Deck cards after a width, under a theme header (F31)', () => {
 				).toBeGreaterThanOrEqual( 1 );
 			}
 			for ( const box of boxes ) {
+				// A row's cards are as tall as its tallest, so a name's extra lines count for the row.
+				const extra = Math.max(
+					...boxes
+						.filter( ( other ) => other.top === box.top )
+						.map( ( other ) => other.extra )
+				);
 				expect(
-					box.height,
-					`a deck card, ${ tallest } px at most`
+					box.height - extra,
+					`a deck card, ${ tallest } px at most, any name's lines past two apart (${ extra } px)`
 				).toBeLessThanOrEqual( tallest );
 			}
 			// The other widths on one line: the six of seven said as a count, not listed. In French in french.spec.ts.

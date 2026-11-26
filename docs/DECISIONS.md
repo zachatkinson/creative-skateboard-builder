@@ -250,6 +250,7 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-419 · The block margins of the builder's paragraphs, headings and lists hold at two classes' weight, measured by a sweep of every text block](#d-419--the-block-margins-of-the-builders-paragraphs-headings-and-lists-hold-at-two-classes-weight-measured-by-a-sweep-of-every-text-block--2026-11-25)
 - [D-433 · Help me choose reads a budget as shoppers type one, and says so when it can't](#d-433--help-me-choose-reads-a-budget-as-shoppers-type-one-and-says-so-when-it-cant--2026-11-26)
 - [D-435 · A rating's average takes the language's decimal separator, not the shop's for prices](#d-435--a-ratings-average-takes-the-languages-decimal-separator-not-the-shops-for-prices--2026-11-26)
+- [D-436 · A deck card's height limit sets a long name's lines past two apart, so it holds in every engine's fonts](#d-436--a-deck-cards-height-limit-sets-a-long-names-lines-past-two-apart-so-it-holds-in-every-engines-fonts--2026-11-26)
 
 ### Accessibility
 
@@ -6668,6 +6669,19 @@ The auditor's 1.3.0 minor. D-392 wrote a card's average rating in the shop's dec
 - **After.** It passes, with the rest of `WordsTest`. `builder.spec.ts`, "says them in French, its decimal separator the language's", on fr-ca: "4,5 sur 5, 2 avis" and "4,5 (2)".
 
 **Status:** Accepted. Replaces D-392's separator.
+
+### D-436 · A deck card's height limit sets a long name's lines past two apart, so it holds in every engine's fonts · 2026-11-26
+
+The first CI run of 1.3.0's pull request. F31's test (D-399) holds a deck card under a 129 px header to 170 px on Kadence and Storefront, and 190 on Twenty Twenty-Five, limits measured on the Mac. On CI's Linux runners, WebKit and Firefox draw Kadence's text in a wider fallback font. There, "Elmwood Skate Deck, Dragon Wizard" takes three lines, and its card and the card beside it in the row are 179 px. Chromium on the same runner, and every engine on the Mac, keep the name to two lines. The card's own parts were as D-399 left them: the stock beside the price, the other widths as a count on one line, and the picture in its 7rem box.
+
+**Decision:** the test measures each card less the lines its row's longest name takes past two, at the name's line height, and holds that to the same limit. The limit is not moved: a card on the Mac, where no name takes three lines, is held to 170 px as before. The names are not cut to two lines, since a shopper on Linux reads the whole name.
+
+**Tests.**
+
+- **Red run.** CI run 45802308781: `shelf.spec.ts:629`, "a deck card, 170 px at most", 179 on webkit-desktop, webkit-tablet, firefox-desktop and firefox-tablet.
+- **Deliberate break.** The card's "Also in" line given a 30 px top margin: "a deck card, 170 px at most, any name's lines past two apart (0 px)", 183 against 170 (firefox-desktop, lane 3). A 12 px margin stays under the limit on the Mac, whose cards are well inside it.
+
+**Status:** Accepted. Refines D-399's test.
 
 ### D-450 · My builds' and an order page's rules print on a style handle of the plugin's own · 2026-11-26
 
