@@ -108,6 +108,11 @@ Yes. Its hooks, REST routes, block attributes, settings keys, order item keys, C
 * My builds compares up to three saved builds side by side, at today's prices. The parts that differ and the gap between the totals are said in words, and a part changed since the save is named.
 * "Help me choose" at the builder's start asks a shoe size, where the shopper skates and a budget, each optional, and recommends a deck width, wheel sizes and up to three ready builds from parts in stock that fit. A kit's Build tab sets the wheel sizes for each riding style.
 * Each part's line in the review shows its thumbnail, the picture its card shows, so colourways with near-identical names are told apart before Add to cart.
+* Smart swaps: the review offers the same board for less, and each part picked a part for less or a step up, each checked to fit the whole build and in stock, with what it changes in the total. One press swaps it, and Undo puts the build back. A part's Part specs give it a rank in its slot, which a step up follows. A kit's Build tab can turn smart swaps off.
+* Cards show a part's star rating and its number of reviews, where the shop shows ratings, and "Picked for Street" where a ready build uses the part. A kit's Build tab can turn off each of these, and Help me choose.
+* Every step's cards put the part's picture beside its words, so a screen holds two to four times as many trucks, wheels, hardware and grip. The deck step's cards are as they were.
+* The part just picked is outlined on the board for a moment. With reduced motion it shows at once and fades.
+* Fixed: "Build a complete with this deck" reads on a theme whose links take another colour in its row.
 
 = 1.2.0 =
 * A kit's Build tab chooses the page its builder is on. The kit's page, "Build a complete with this deck", the cart's Edit build and My builds open the builder there, while the page is published and holds the kit's Builder block.
@@ -258,7 +263,7 @@ Yes. Its hooks, REST routes, block attributes, settings keys, order item keys, C
 == Upgrade Notice ==
 
 = 1.3.0 =
-Update from the updater or by uploading the zip; no step is needed. A kit saved before 1.3.0 has the builder's wheel sizes.
+Update from the updater or by uploading the zip; no step is needed. A kit saved before 1.3.0 has the builder's wheel sizes, and offers smart swaps, Help me choose, and the cards' picks and ratings, until its Build tab turns them off.
 
 = 1.2.0 =
 Update from the updater or by uploading the zip; no step is needed. A kit saved before 1.2.0 keeps its builder on its own page, its button on its decks' pages and the builder's width guide, and every part stays offered.
