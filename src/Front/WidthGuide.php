@@ -28,11 +28,6 @@ if ( ! defined( 'ABSPATH' ) ) {
 final class WidthGuide {
 
 	/**
-	 * The most rows the guide shows.
-	 */
-	private const int MOST = 12;
-
-	/**
 	 * The field a row's shoe size is asked of `cbuild_kit_text` as (1.2.0).
 	 *
 	 * @since 1.2.0
@@ -87,7 +82,8 @@ final class WidthGuide {
 				);
 			}
 		}
-		return array_slice( $kept, 0, self::MOST );
+		// The kit's own limit, which the guided start's shoe answer counts to (`GuideAnswers::ROWS`).
+		return array_slice( $kept, 0, SizeGuide::MAX_ROWS );
 	}
 
 	/**
