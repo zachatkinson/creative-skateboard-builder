@@ -170,6 +170,7 @@ if git cat-file -e "v$from:tests/e2e/fixtures/shop.php" 2>/dev/null; then
 		git show "v$from:$path" > "tmp/upgrade/fixture/$path"
 	done
 	said="$(wp_said eval-file "$here/tmp/upgrade/fixture/tests/e2e/fixtures/shop.php")"
+	# shellcheck disable=SC2001 # sed indents every line of the answer; a parameter expansion would miss the first.
 	case "$said" in *"Fatal error"*|*"Error:"*) echo "$said" | sed 's/^/   /'; fail "$from's own fixture did not run" ;; esac
 fi
 kits="$(wp eval-file "$here/tools/upgrade/seed.php" kits | tail -n 1)"

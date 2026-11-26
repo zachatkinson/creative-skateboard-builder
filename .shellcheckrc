@@ -1,0 +1,7 @@
+# ShellCheck's settings for every script (tools/shellcheck.sh, D-467).
+# Follow a script's `source`, by the path a `# shellcheck source=` line gives from the repository's root.
+external-sources=true
+source-path=SCRIPTDIR/..
+# SC2016, "expressions don't expand in single quotes": the scripts hand PHP, JavaScript and regular expressions to
+# php -r, node -e, wp eval and grep in single quotes so that the shell leaves their $ and backticks alone.
+disable=SC2016

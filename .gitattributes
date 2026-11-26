@@ -45,6 +45,7 @@ docs/** linguist-documentation
 .wp-env.tests.json export-ignore
 .wp-env.tests.override.json export-ignore
 CLAUDE.md export-ignore
+.shellcheckrc export-ignore
 changelog.d export-ignore
 START.md export-ignore
 composer.lock export-ignore

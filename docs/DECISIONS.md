@@ -280,6 +280,7 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-463 · The translations merge by entry, and only the .po is committed in a lane](#d-463--the-translations-merge-by-entry-and-only-the-po-is-committed-in-a-lane--2026-11-26)
 - [D-464 · A lane's changelog entry is a fragment, put together at release](#d-464--a-lanes-changelog-entry-is-a-fragment-put-together-at-release--2026-11-26)
 - [D-465 · A lane lands only after CI's own checks on its changed lines and a walkthrough of them](#d-465--a-lane-lands-only-after-cis-own-checks-on-its-changed-lines-and-a-walkthrough-of-them--2026-11-26)
+- [D-467 · ShellCheck holds every shell script, pinned as actionlint and zizmor are](#d-467--shellcheck-holds-every-shell-script-pinned-as-actionlint-and-zizmor-are--2026-11-26)
 - [D-432 · After a swap the notice says the swap and the status the build alone, so a screen reader hears it once](#d-432--after-a-swap-the-notice-says-the-swap-and-the-status-the-build-alone-so-a-screen-reader-hears-it-once--2026-11-25)
 
 ### Motion
@@ -6809,6 +6810,27 @@ Milestone 14's pipeline. Every lane's `CHANGELOG.md` entry went under the same h
 - **A lane that touches layout** also runs the three tablet projects.
 - **Each lane takes a ten-minute walkthrough** of what it changed (`docs/reviews/M<n>/lanes/`), on Twenty Twenty-Five and Kadence, besides the full walkthrough at the end.
 - **The release's full local set** (`/audit-milestone`, step 1) gains the tablet projects and `infection:diff`.
+- **StrykerJS takes `--incremental`** (`npm run mutate:js -- --incremental`), which reuses the last run's results for the code and tests that didn't change, from `tmp/stryker/incremental.json`. A lane uses it; CI and the audit run it whole.
+
+**Status:** Accepted.
+
+### D-467 · ShellCheck holds every shell script, pinned as actionlint and zizmor are · 2026-11-26
+
+Zach approved ShellCheck on 26 November ("if shellcheck is useful for our project, go ahead"). The project has 52 tracked shell scripts. They run the gates, the release, the lanes and the upgrade paths, and several already carried `# shellcheck` lines that nothing read. actionlint runs ShellCheck only on the workflows' `run:` scripts.
+
+Its first run found 10 findings:
+
+- two `cd` lines with no `|| exit`, in scripts that run without `set -e`;
+- a directive written so that ShellCheck couldn't parse it;
+- an unfollowed `source`, which hid a variable;
+- six that were right as written, each now marked at its line with the reason.
+
+**Decision:** `tools/shellcheck.sh`, in `composer gates`, runs ShellCheck 0.11.0 on every tracked `.sh` and the pre-commit hook, at every severity, with `.shellcheckrc`. That file follows `source` lines and turns off SC2016, since the scripts hand PHP, JavaScript and regular expressions to `php -r`, `node -e`, `wp eval` and `grep` in single quotes on purpose.
+
+- **The binary** is installed as actionlint and zizmor are (D-299): the release's Linux binary at a pinned version and SHA-256 in CI, and Homebrew's at the same version on the Mac.
+- **Not npm's `shellcheck` wrapper,** which fetches the binary at run time with no checksum.
+
+**Tests.** With `|| exit 1` taken off `tools/integration-yoast.sh`'s `cd`, the gate fails on SC2164 at line 5. Put back, all 52 scripts are clean.
 
 **Status:** Accepted.
 
