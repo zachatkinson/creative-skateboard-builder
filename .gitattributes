@@ -45,6 +45,7 @@ docs/** linguist-documentation
 .wp-env.tests.json export-ignore
 .wp-env.tests.override.json export-ignore
 CLAUDE.md export-ignore
+changelog.d export-ignore
 START.md export-ignore
 composer.lock export-ignore
 deptrac.yaml export-ignore
@@ -79,3 +80,8 @@ assets/src export-ignore
 CONTRIBUTING.md export-ignore
 CODE_OF_CONDUCT.md export-ignore
 SECURITY.md export-ignore
+
+# Merge drivers (D-462, D-463), which `composer hooks` registers: lanes' decisions and translations join by entry, not
+# by line, so two lanes that each add some never conflict. A clone without the drivers merges these as git always has.
+docs/DECISIONS.md merge=decisions
+languages/*.po merge=po

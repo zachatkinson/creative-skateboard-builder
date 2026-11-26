@@ -501,9 +501,12 @@ foreach ( $cbuild_surface as $cbuild_key => $cbuild_items ) {
 }
 
 // The third edit: the changelog's entry for the version an item arrived in names it (issue #5). The version is the one
-// docs/HOOKS.md gives beside the item; an entry not yet released is read from [Unreleased].
+// docs/HOOKS.md gives beside the item; an entry not yet released is read from [Unreleased] and changelog.d/.
 $cbuild_changelog = is_readable( $cbuild_root . '/CHANGELOG.md' ) ? (string) file_get_contents( $cbuild_root . '/CHANGELOG.md' ) : '';
 $cbuild_entries   = cbuild_api_changelog_entries( $cbuild_changelog );
+// A lane's entry waits in changelog.d/ until the release puts it in CHANGELOG.md (D-464): it counts as [Unreleased].
+require_once __DIR__ . '/changelog.php';
+$cbuild_entries['Unreleased'] = ( $cbuild_entries['Unreleased'] ?? '' ) . "\n" . cbuild_changelog_fragments_text( $cbuild_root );
 // The fourth: the plugin is at the version its newest item is dated to, and readme.txt has that version's entry for
 // shop owners, which the release's manifest is made from (D-053). Without this a milestone's merge could be tagged
 // while the header still gave the last version, and the release would fail, or ship under the old number (D-062).

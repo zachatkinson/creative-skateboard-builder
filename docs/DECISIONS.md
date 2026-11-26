@@ -277,6 +277,10 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-402 · Help me choose: a disclosure at the builder's start, one GET form, answers in the link alone](#d-402--help-me-choose-a-disclosure-at-the-builders-start-one-get-form-answers-in-the-link-alone--2026-11-25)
 - [D-404 · Help me choose steps aside once a width is pressed, and the guide's tiles have their own list](#d-404--help-me-choose-steps-aside-once-a-width-is-pressed-and-the-guides-tiles-have-their-own-list--2026-11-25)
 - [D-461 · A ready build's tile shows its picture whole, in a size WordPress never crops](#d-461--a-ready-builds-tile-shows-its-picture-whole-in-a-size-wordpress-never-crops--2026-11-26)
+- [D-462 · Lanes' decisions merge by entry, through a git merge driver](#d-462--lanes-decisions-merge-by-entry-through-a-git-merge-driver--2026-11-26)
+- [D-463 · The translations merge by entry, and only the .po is committed in a lane](#d-463--the-translations-merge-by-entry-and-only-the-po-is-committed-in-a-lane--2026-11-26)
+- [D-464 · A lane's changelog entry is a fragment, put together at release](#d-464--a-lanes-changelog-entry-is-a-fragment-put-together-at-release--2026-11-26)
+- [D-465 · A lane lands only after CI's own checks on its changed lines and a walkthrough of them](#d-465--a-lane-lands-only-after-cis-own-checks-on-its-changed-lines-and-a-walkthrough-of-them--2026-11-26)
 - [D-432 · After a swap the notice says the swap and the status the build alone, so a screen reader hears it once](#d-432--after-a-swap-the-notice-says-the-swap-and-the-status-the-build-alone-so-a-screen-reader-hears-it-once--2026-11-25)
 
 ### Motion
@@ -6745,6 +6749,57 @@ The ready builds' tiles share `templates/builder/tile.php` and the same risk: a 
 - **Red run.** guide.spec.ts "A build's tile shows its whole picture" on twentytwentyfive and on kadence, chromium-desktop: "builder-test-deck-8-25-photo-324x324.png keeps its file's shape", the shape against the file's 2.93 apart, where 0.03 is allowed (guide.spec.ts:639). `WooPartCardsTest::test_a_card_is_the_parts_name_page_price_stock_and_photo_as_the_shop_shows_them`: "a tile's picture whole, not the shop's square thumbnail", `canola-88-300x300.jpg` where `canola-88-600x450.jpg` was expected (WooPartCardsTest.php:102).
 - **After.** Both pass. Five unit assertions on a preset tile's fallback picture (`StateAnswerTest`, `StateAnswerDetailTest`) expect the first part's `large`.
 - **Deliberate break.** The guide build's image back to its card's `image`: the browser test fails again on `-324x324.png`, 2.93 (guide.spec.ts:639).
+
+**Status:** Accepted.
+
+### D-462 · Lanes' decisions merge by entry, through a git merge driver · 2026-11-26
+
+Milestone 14's pipeline (Zach, 25 November). In milestones 12 and 13 every landing conflicted in `docs/DECISIONS.md`, because each lane adds its entries at the end of the file and its index lines at the end of the index, so two lanes' additions always meet at the same lines. Each conflict was settled by hand, or by a script kept outside the repository.
+
+**Decision:** `tools/merge-decisions.php` is git's merge driver for the file (`.gitattributes`: `merge=decisions`), and `composer hooks` registers it. It runs git's own three-way merge (`git merge-file --diff3`), then settles each conflict whose two sides only add entries or index lines: both are kept, in number order. A conflict that changes a line the base had, or two sides adding the same number, stays marked and the merge fails, as git's own would. Each lane takes its own range of numbers. A clone without the driver merges the file as git always has. `tools/landing-selftest.sh`, in `composer gates`, holds both cases. With the attribute's line taken out of its repository, the first three checks fail.
+
+**Status:** Accepted.
+
+### D-463 · The translations merge by entry, and only the .po is committed in a lane · 2026-11-26
+
+Milestone 14's pipeline. A lane that adds strings regenerated the `.pot`, the `.mo`, the `.l10n.php` and the script JSON, all made files that differ in their dates and their order, so every landing conflicted in all of them.
+
+**Decision:**
+
+- **A lane commits only `languages/creative-skateboard-builder-fr_CA.po`,** with its strings' French. It makes the other files to test, and leaves them out of its commits. They are made once at landing (`composer i18n:pot`, `i18n:po` and `i18n:compile`).
+- **`tools/merge-po.php` is the .po files' merge driver** (`merge=po`). It merges by entry, an entry being its msgctxt and msgid:
+  - the header is ours;
+  - an entry only one side changed or added takes that side's;
+  - an entry one side removed, and the other left as it was, goes;
+  - an entry both sides changed differently fails the merge, with ours kept.
+
+The landing selftest holds both.
+
+**Status:** Accepted.
+
+### D-464 · A lane's changelog entry is a fragment, put together at release · 2026-11-26
+
+Milestone 14's pipeline. Every lane's `CHANGELOG.md` entry went under the same headings of `[Unreleased]`, so they conflicted at landing.
+
+**Decision:** a lane writes `changelog.d/<lane>-<topic>.md`, with Keep a Changelog's headings and bullets. `composer changelog:check`, in `composer gates`, holds every fragment to that shape.
+
+- **`php tools/changelog.php --assemble <version> <date>`** puts them into the release's entry before its pull request. It keeps the standard heading order, renames `[Unreleased]` (as `changelog-version-before-merge` asks) and adds the compare link.
+- **`composer api:check`** reads the fragments as part of `[Unreleased]`, so a lane's new hook is named before assembly.
+
+`changelog.d/` is left out of the zip, as `docs/` is (D-346).
+
+**Status:** Accepted.
+
+### D-465 · A lane lands only after CI's own checks on its changed lines and a walkthrough of them · 2026-11-26
+
+1.3.0's first CI run failed on Infection over the pull request's changed lines, 79 % against 95 %. The local whole-codebase run, at 98.47 %, had hidden 138 escapes in new code that only integration and browser tests covered. The firefox-tablet project, which isn't in the local full set, found an axe state. M13's walkthrough at the end found four defects late.
+
+**Decision:**
+
+- **`composer infection:diff`** is CI's own command: `--git-diff-lines` against `CBUILD_DIFF_BASE` (default `origin/main`), with `--ignore-msi-with-no-mutations`. A lane runs it against the milestone branch before it lands, as an automatic deliberate break.
+- **A lane that touches layout** also runs the three tablet projects.
+- **Each lane takes a ten-minute walkthrough** of what it changed (`docs/reviews/M<n>/lanes/`), on Twenty Twenty-Five and Kadence, besides the full walkthrough at the end.
+- **The release's full local set** (`/audit-milestone`, step 1) gains the tablet projects and `infection:diff`.
 
 **Status:** Accepted.
 

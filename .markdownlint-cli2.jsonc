@@ -32,6 +32,13 @@
 			"combine": "merge"
 		},
 		{
+			// A changelog fragment (D-464) is bullets under Keep a Changelog's headings and nothing before them: it is put
+			// into CHANGELOG.md under the release's own heading.
+			"filter": ["changelog.d/*.md"],
+			"config": { "MD041": false },
+			"combine": "merge"
+		},
+		{
 			// The readme's H1 opens the centred header, inside its <div>. Its first heading must still be the H1.
 			"filter": ["README.md"],
 			"config": { "MD041": { "allow_preamble": true } },

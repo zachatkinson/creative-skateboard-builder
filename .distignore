@@ -24,6 +24,7 @@
 .wp-env.tests.json
 .wp-env.tests.override.json
 CLAUDE.md
+changelog.d
 START.md
 composer.lock
 deptrac.yaml

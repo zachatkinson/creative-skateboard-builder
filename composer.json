@@ -57,7 +57,9 @@
 			"bash tools/release-plan-selftest.sh",
 			"bash tools/ci-code-hash-selftest.sh",
 			"bash tools/focused-selftest.sh",
-			"bash tools/upgrade-releases-selftest.sh"
+			"bash tools/upgrade-releases-selftest.sh",
+			"bash tools/landing-selftest.sh",
+			"@php tools/changelog.php --check"
 		],
 		"focused": "bash tools/focused.sh",
 		"test:unit": "phpunit -c phpunit.xml.dist --testsuite unit --exclude-group benchmark",
@@ -88,7 +90,15 @@
 			"@api:check"
 		],
 		"build": "bash tools/build-zip.sh",
-		"hooks": "git config core.hooksPath .githooks",
+		"hooks": [
+			"git config core.hooksPath .githooks",
+			"git config merge.decisions.name 'DECISIONS.md by entry (D-462)'",
+			"git config merge.decisions.driver 'php tools/merge-decisions.php %O %A %B'",
+			"git config merge.po.name 'po files by entry (D-463)'",
+			"git config merge.po.driver 'php tools/merge-po.php %O %A %B'"
+		],
+		"infection:diff": "bash tools/infection.sh --git-diff-lines --git-diff-base=${CBUILD_DIFF_BASE:-origin/main} --ignore-msi-with-no-mutations",
+		"changelog:check": "@php tools/changelog.php --check",
 		"i18n:pot": "npx wp-env run cli --env-cwd=wp-content/plugins/creative-skateboard-builder -- wp i18n make-pot . languages/creative-skateboard-builder.pot --domain=creative-skateboard-builder --exclude=node_modules,vendor,tests,tools,tmp,docs,assets/src",
 		"i18n:po": "npx wp-env run cli --env-cwd=wp-content/plugins/creative-skateboard-builder -- wp i18n update-po languages/creative-skateboard-builder.pot languages/",
 		"i18n:check": [
