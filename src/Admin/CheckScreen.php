@@ -42,6 +42,11 @@ final class CheckScreen {
 	public const SHOWN = 500;
 
 	/**
+	 * The screen's style handle, the plugin's own (D-450).
+	 */
+	private const STYLE = 'cbuild-check';
+
+	/**
 	 * What the check found, null when it has not been run in this request.
 	 *
 	 * @var list<CheckFinding>|null
@@ -87,7 +92,11 @@ final class CheckScreen {
 	 * @since 0.3.0
 	 */
 	public function styles(): void {
-		wp_add_inline_style( 'common', '.cbuild-scroll{overflow-x:auto;margin:0 0 16px}' );
+		// A handle of the plugin's own with no file, not one another enqueues: WordPress prints what is added to it
+		// and asks for nothing (D-450).
+		wp_register_style( self::STYLE, false, array(), CBUILD_VERSION );
+		wp_add_inline_style( self::STYLE, '.cbuild-scroll{overflow-x:auto;margin:0 0 16px}' );
+		wp_enqueue_style( self::STYLE );
 	}
 
 	/**

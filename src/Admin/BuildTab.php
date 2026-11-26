@@ -87,7 +87,12 @@ final class BuildTab {
 	private const BUILT  = 'build/admin/build-tab';
 
 	/**
-	 * The tab's styles, added to WooCommerce's admin style sheet. WooCommerce floats a field's label into a column
+	 * The tab's style handle, the plugin's own (D-450).
+	 */
+	private const STYLE = 'cbuild-build-tab';
+
+	/**
+	 * The tab's styles, on a handle of the plugin's own beside WooCommerce's admin style sheet. WooCommerce floats a field's label into a column
 	 * 150 pixels wide, which these labels do not fit, least of all at phone width or in translation, so each label
 	 * stands above its field. Then a row's outline, its buttons in a line with targets 30 pixels high, a group's
 	 * heading 34 pixels high, and the list of what was not saved.
@@ -194,7 +199,11 @@ final class BuildTab {
 	 * @since 0.4.0
 	 */
 	public function styles(): void {
-		wp_add_inline_style( 'woocommerce_admin_styles', self::STYLES );
+		// A handle of the plugin's own with no file, not one another enqueues: WordPress prints what is added to it
+		// and asks for nothing (D-450).
+		wp_register_style( self::STYLE, false, array(), CBUILD_VERSION );
+		wp_add_inline_style( self::STYLE, self::STYLES );
+		wp_enqueue_style( self::STYLE );
 		// A checkout that was never built has no script; the tab saves without it, and the zip is checked for it.
 		$built = is_readable( CBUILD_PATH . self::BUILT . '.asset.php' ) ? require CBUILD_PATH . self::BUILT . '.asset.php' : null;
 		if ( ! is_array( $built ) || ! is_string( $built['version'] ?? null ) ) {

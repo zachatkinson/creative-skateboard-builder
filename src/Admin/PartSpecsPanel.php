@@ -83,6 +83,11 @@ final class PartSpecsPanel {
 	private const BUILT  = 'build/admin/part-specs';
 
 	/**
+	 * The panel's style handle, the plugin's own (D-450).
+	 */
+	private const STYLE = 'cbuild-part-specs';
+
+	/**
 	 * How many variations of one product the sources are asked for together.
 	 */
 	public const TOGETHER = 50;
@@ -187,7 +192,11 @@ final class PartSpecsPanel {
 	 * @since 0.3.0
 	 */
 	public function styles(): void {
-		wp_add_inline_style( 'woocommerce_admin_styles', self::STYLES );
+		// A handle of the plugin's own with no file, not one another enqueues: WordPress prints what is added to it
+		// and asks for nothing (D-450).
+		wp_register_style( self::STYLE, false, array(), CBUILD_VERSION );
+		wp_add_inline_style( self::STYLE, self::STYLES );
+		wp_enqueue_style( self::STYLE );
 		// A checkout that was never built has no script; the screen works without it, and the zip is checked for it.
 		$built = is_readable( CBUILD_PATH . self::BUILT . '.asset.php' ) ? require CBUILD_PATH . self::BUILT . '.asset.php' : null;
 		if ( ! is_array( $built ) || ! is_string( $built['version'] ?? null ) ) {

@@ -431,6 +431,7 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-414 · CI updates from every release from 1.0.0 on, and from 0.1.0 and 0.9.0](#d-414--ci-updates-from-every-release-from-100-on-and-from-010-and-090--2026-11-25)
 - [D-425 · The guide's answers take the riding style as its value, so an earlier release's container builds the build's link](#d-425--the-guides-answers-take-the-riding-style-as-its-value-so-an-earlier-releases-container-builds-the-builds-link--2026-11-25)
 - [D-427 · The update check runs every waiting job, once no queue runner holds a batch](#d-427--the-update-check-runs-every-waiting-job-once-no-queue-runner-holds-a-batch--2026-11-25)
+- [D-451 · The admin screens' rules print on style handles of the plugin's own too](#d-451--the-admin-screens-rules-print-on-style-handles-of-the-plugins-own-too--2026-11-26)
 
 ### Tooling, CI and tests
 
@@ -6681,5 +6682,19 @@ Found in milestone 13's walkthrough. `SavedBuildHooks::styles()` added My builds
 **Deliberate breaks.** With `wp_enqueue_style()` taken out of each, both integration tests failed with their red runs' lines. With `overflow-x:auto` taken out of `.cbuild-compare`'s rule, the browser test failed on both themes with its red run's line. Put back, all passed.
 
 **Why:** a theme may dequeue WooCommerce's styles, and Kadence and Storefront, two of the themes the plugin is tested on, do. A rule the plugin needs is the plugin's to print.
+
+**Status:** Accepted.
+
+### D-451 · The admin screens' rules print on style handles of the plugin's own too · 2026-11-26
+
+Found with D-450, by a search of `src/` for `wp_add_inline_style()` on a handle the plugin does not own. Five admin screens added their rules to another's handle: the Catalogue check, the import and the spec tables to core's `common`, and the Build tab and Part specs to WooCommerce's `woocommerce_admin_styles`. Neither is dequeued on the screens today: wp-admin prints `common` on every screen, and WooCommerce registers its admin styles and enqueues them on its own screens, the product screen among them (WooCommerce 11.3.1, `includes/admin/class-wc-admin-assets.php:102` and `:149`). But each prints only while another enqueues it, and the Part specs test had to register WooCommerce's handle itself before its rules could be added. A plugin that trims WooCommerce's admin styles, or a WooCommerce that moves them, would take the rules with it, as Kadence and Storefront took My builds'.
+
+**Decision:** each screen adds its rules to a handle of its own with no file, `cbuild-check`, `cbuild-import`, `cbuild-spec-tables`, `cbuild-build-tab` and `cbuild-part-specs`, registered and enqueued where it was adding them, as D-450 does on the shop's side. The rules are unchanged. `ShowHooks`, `StartButton`, `TicketPage`, `BuildBox` and `PageHooks` already added theirs to the plugin's own handles. No `wp_add_inline_style()` in `src/` now names another's handle.
+
+**Red run.** `AdminStylesTest::test_a_screens_rules_print_on_its_own_handle`, a fresh `WP_Styles` with no handle enqueued, the screen's `styles()` called and the queue printed: each of the five failed, the Catalogue check with "Failed asserting that '' contains ".cbuild-scroll{overflow-x:auto"", the Build tab with the queue holding only the media modal's styles, and no `.cbuild-kit .cbuild-kit-group` rule.
+
+**Deliberate break.** With `wp_enqueue_style()` taken out of the five, all five failed again. Put back, they passed, with `SpecTablesScreenTest` and `PartSpecsPanelTest` reading the rules from the new handles.
+
+**Why:** as D-450: a rule the plugin needs is the plugin's to print.
 
 **Status:** Accepted.

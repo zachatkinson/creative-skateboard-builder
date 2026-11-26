@@ -42,6 +42,11 @@ final class SpecTablesScreen {
 	private const BLANK_ROWS = 3;
 
 	/**
+	 * The screen's style handle, the plugin's own (D-450).
+	 */
+	private const STYLE = 'cbuild-spec-tables';
+
+	/**
 	 * The screen's only styles: a row's fields sit side by side where there is room and wrap where there is not.
 	 */
 	private const STYLES = '.cbuild-field{display:inline-block;margin:0 16px 12px 0;vertical-align:top}.cbuild-chart-row{margin:0 0 16px;padding:0}.cbuild-chart-row legend{font-weight:600;padding:0 0 8px}';
@@ -89,7 +94,11 @@ final class SpecTablesScreen {
 	 * @since 0.3.0
 	 */
 	public function styles(): void {
-		wp_add_inline_style( 'common', self::STYLES );
+		// A handle of the plugin's own with no file, not one another enqueues: WordPress prints what is added to it
+		// and asks for nothing (D-450).
+		wp_register_style( self::STYLE, false, array(), CBUILD_VERSION );
+		wp_add_inline_style( self::STYLE, self::STYLES );
+		wp_enqueue_style( self::STYLE );
 	}
 
 	/**
