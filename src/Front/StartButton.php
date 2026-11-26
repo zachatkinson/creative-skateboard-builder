@@ -65,13 +65,14 @@ final class StartButton implements Hookable {
 	 * `--cbuild-start-words`, at three classes' weight, over a page builder's row that colours its links (#149, D-416).
 	 * The outline the button takes where the theme draws it as Add to cart's twin, in the colour the script below sets
 	 * as `--cbuild-start-ink`. Its weight outranks a theme's plain `.button:hover`. An inset ring, not a border, so its
-	 * height stays Add to cart's. Focused, the button is the theme's own, so the theme's focus mark shows whether it is
-	 * an outline, a shadow or a background (the auditor's third pass on M12). The paragraph keeps no inline padding: WooCommerce's add-to-cart form
+	 * height stays Add to cart's. Focused, it keeps the outline's ground and words, as a theme's focus fill would put
+	 * the twin's words on the theme's own (F34, D-514), and loses only its ring, so the theme's focus mark shows whether
+	 * it is an outline or a shadow (the auditor's third pass on M12). The paragraph keeps no inline padding: WooCommerce's add-to-cart form
 	 * block pads every child after its first by 4 px (`:where(.wp-block-woocommerce-add-to-cart-form>*+*)`, in
 	 * assets/client/blocks/wc-block-library-style.css, 11.3.1), which set the button 4 px in from the quantity and
 	 * Add to cart on a block theme.
 	 */
-	private const string STYLES = '.cbuild-start{padding-inline:0}:where(.cbuild-start__link){display:inline-block}.cbuild-start .cbuild-start__link.cbuild-start__link--words{color:var(--cbuild-start-words)}.cbuild-start .cbuild-start__link.cbuild-start__link--outline:not(:focus){background:transparent;color:var(--cbuild-start-ink);border-color:var(--cbuild-start-ink);box-shadow:inset 0 0 0 2px var(--cbuild-start-ink)}.cbuild-start .cbuild-start__link.cbuild-start__link--outline:not(:focus):hover{background:color-mix(in srgb,var(--cbuild-start-ink) 12%,transparent)}';
+	private const string STYLES = '.cbuild-start{padding-inline:0}:where(.cbuild-start__link){display:inline-block}.cbuild-start .cbuild-start__link.cbuild-start__link--words{color:var(--cbuild-start-words)}.cbuild-start .cbuild-start__link.cbuild-start__link--outline{background:transparent;color:var(--cbuild-start-ink);border-color:var(--cbuild-start-ink)}.cbuild-start .cbuild-start__link.cbuild-start__link--outline:not(:focus){box-shadow:inset 0 0 0 2px var(--cbuild-start-ink)}.cbuild-start .cbuild-start__link.cbuild-start__link--outline:not(:focus):hover{background:color-mix(in srgb,var(--cbuild-start-ink) 12%,transparent)}';
 
 	/**
 	 * Gives the button just printed Add to cart's font, weight and height as the page draws them (#133, D-377): a theme

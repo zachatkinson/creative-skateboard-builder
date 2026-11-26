@@ -59,18 +59,23 @@ final class SavedBuildHooks implements Hookable {
 	 * the region scrolls sideways, its focus ring drawn as the theme's text. A row that differs is tinted, and the
 	 * lowest total, beside the words that say each; the tint is mixed with transparency, so the theme's text keeps its
 	 * contrast on a light or a dark page. Under forced colours the tint is gone and the words and the mark's border stay.
+	 * Each row's header stays at the region's start as it scrolls, on the page's ground, so a row that differs is told
+	 * by its words at every build, not by its tint alone (F37, D-515). In a region under 30rem the header's inline padding is
+	 * halved, so beside a build's 14rem it covers no more than the column's own padding, in French too.
 	 */
 	private const string STYLES = '.cbuild-my-builds__build th img{display:block;margin:0 0 8px}'
 		// A phone's responsive table hides its row headers (WooCommerce's woocommerce-smallscreen.css), and the build's
 		// name is its row's header: shown, so each row says which build its controls are for (D-412).
 		. 'table.cbuild-my-builds.shop_table_responsive tbody tr th[scope=row]{display:block;text-align:start}'
 		. '.cbuild-my-builds__pick{display:flex;align-items:center;gap:.5em;margin-block-end:.5em}'
-		. '.cbuild-compare{overflow-x:auto;margin-block:1em}'
+		. '.cbuild-compare{overflow-x:auto;margin-block:1em;container-type:inline-size}'
 		. '.cbuild-compare:focus-visible{outline:2px solid currentColor;outline-offset:2px}'
 		. '.cbuild-compare__table{inline-size:auto;min-inline-size:100%;margin:0}'
 		. '.cbuild-compare__table caption{text-align:start;font-weight:600;padding-block:.5em}'
 		. '.cbuild-compare__table th,.cbuild-compare__table td{vertical-align:top;text-align:start}'
 		. '.cbuild-compare__build{min-width:14rem}'
+		. '.cbuild-compare__table tbody th[scope=row]{position:sticky;inset-inline-start:0;z-index:1;background-color:var(--wp--preset--color--base,Canvas)}'
+		. '@container (max-width:30rem){.cbuild-compare__table tbody th[scope=row]{padding-inline:.5em}}'
 		. '.cbuild-compare__part,.cbuild-compare__price,.cbuild-compare__note,.cbuild-compare__open,.cbuild-compare__name{display:block}'
 		. '.cbuild-compare__note{font-size:.875em;margin-block-start:.25em}'
 		. '.cbuild-compare__open{font-weight:400}'

@@ -9164,6 +9164,54 @@ test.describe( 'Compare saved builds (#136)', () => {
 					`build ${ at + 1 }'s column reached in the region, and never by scrolling the page`
 				).toEqual( { left: true, right: true, page: true } );
 			}
+			// Scrolled to the last build, every row still says what it is: the row headers stay at the region's start,
+			// on a ground of their own, and the build's words are beside them, not under them (F37, #160).
+			const rows = await page.evaluate( () => {
+				const box = document.querySelector( '.cbuild-compare' )!;
+				const outer = box.getBoundingClientRect();
+				const column = [
+					...document.querySelectorAll( '.cbuild-compare__build' ),
+				].at( -1 )!;
+				const last = column.getBoundingClientRect();
+				// The column's words start inside its padding: a header over the padding alone covers none of them.
+				const padding = parseFloat(
+					getComputedStyle( column ).paddingInlineStart
+				);
+				return [
+					...box.querySelectorAll( 'tbody th[scope="row"]' ),
+				].map( ( th ) => {
+					const cell = th.getBoundingClientRect();
+					const ground = getComputedStyle( th ).backgroundColor;
+					return {
+						name: ( th.textContent ?? '' ).trim().slice( 0, 24 ),
+						inView:
+							cell.left >= outer.left - 1 &&
+							cell.right <= outer.right + 1,
+						clear:
+							Math.min( cell.right, last.right ) -
+								Math.max( cell.left, last.left ) <=
+							padding + 1,
+						ground:
+							'transparent' !== ground &&
+							! /, 0\)$/.test( ground ),
+					};
+				} );
+			} );
+			expect(
+				rows.length,
+				'the compare has row headers'
+			).toBeGreaterThan( 3 );
+			for ( const row of rows ) {
+				expect(
+					row,
+					`"${ row.name }" with the last build in view`
+				).toEqual( {
+					...row,
+					inView: true,
+					clear: true,
+					ground: true,
+				} );
+			}
 			const differs = page
 				.locator( '.cbuild-compare__mark' )
 				.filter( { hasText: say( 'Differs', 'Diffère' ) } )
@@ -12772,6 +12820,7 @@ test.describe( 'A hostile theme', () => {
 			context,
 			baseURL,
 			javaScriptEnabled,
+			browserName,
 		} ) => {
 			test.skip(
 				! javaScriptEnabled,
@@ -12790,6 +12839,25 @@ test.describe( 'A hostile theme', () => {
 			await axe(
 				page,
 				'a deck page under the hostile theme',
+				'.cbuild-start'
+			);
+			// Tabbed to from Add to cart, under a theme whose focus is a dark fill eased in, and judged once it has
+			// eased: the outline keeps its words on its own ground (F34, #157).
+			await page.locator( '.single_add_to_cart_button' ).focus();
+			// WebKit tabs to a link with Option held, as Safari does with its setting off.
+			await page.keyboard.press(
+				'webkit' === browserName ? 'Alt+Tab' : 'Tab'
+			);
+			const start = page.locator( '.cbuild-start__link' );
+			await expect( start ).toBeFocused();
+			await expect
+				.poll( () =>
+					start.evaluate( ( link ) => link.getAnimations().length )
+				)
+				.toBe( 0 );
+			await axe(
+				page,
+				'a deck page under the hostile theme, its start button focused',
 				'.cbuild-start'
 			);
 		} );

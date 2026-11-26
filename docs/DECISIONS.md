@@ -286,6 +286,7 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-468 · A plugin blurs the 3D view by class, so a shopper's reveal can lift it](#d-468--a-plugin-blurs-the-3d-view-by-class-so-a-shoppers-reveal-can-lift-it--2026-11-26)
 - [D-469 · A landing skips its second /verify when the lane passed it on the same tree](#d-469--a-landing-skips-its-second-verify-when-the-lane-passed-it-on-the-same-tree--2026-11-26)
 - [D-432 · After a swap the notice says the swap and the status the build alone, so a screen reader hears it once](#d-432--after-a-swap-the-notice-says-the-swap-and-the-status-the-build-alone-so-a-screen-reader-hears-it-once--2026-11-25)
+- [D-514 · Focused, the start button keeps the outline's ground and words, and gives up only its ring](#d-514--focused-the-start-button-keeps-the-outlines-ground-and-words-and-gives-up-only-its-ring--2026-11-26)
 
 ### Motion
 
@@ -382,6 +383,7 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-411 · My builds compares up to three saved builds in one table, a column a build, by a query string on its own page](#d-411--my-builds-compares-up-to-three-saved-builds-in-one-table-a-column-a-build-by-a-query-string-on-its-own-page--2026-11-25)
 - [D-412 · My builds names each build on a phone too](#d-412--my-builds-names-each-build-on-a-phone-too--2026-11-25)
 - [D-450 · My builds' and an order page's rules print on a style handle of the plugin's own](#d-450--my-builds-and-an-order-pages-rules-print-on-a-style-handle-of-the-plugins-own--2026-11-26)
+- [D-515 · The compare's row headers stay at the region's start on a phone](#d-515--the-compares-row-headers-stay-at-the-regions-start-on-a-phone--2026-11-26)
 
 ### SEO and sharing
 
@@ -7057,5 +7059,34 @@ The Build tab's description beside "Offer smart swaps" has no « échange » and
 
 - **Red run.** `ListWordsTest::test_two_and_three_items_are_joined_in_the_plugins_french_not_cores`, expecting the new wording against the old .po: expected 'Remplacement : roues et quincaillerie.', got 'Échangé : roues et quincaillerie.' (ListWordsTest.php:59). french.spec.ts "says what a swap changed as French joins a list" on fr-ca: expected "Remplacement : wheels et hardware.", received "Échangé : wheels et hardware." (french.spec.ts:83).
 - **After.** Both pass with the .po changed and compiled, and french.spec.ts passes 4 of 4 on fr-ca.
+
+**Status:** Accepted.
+
+### D-514 · Focused, the start button keeps the outline's ground and words, and gives up only its ring · 2026-11-26
+
+Cowork's review of 1.3.0, F34 (#157). On the demo's deck pages, the start button tabbed to showed #121212 words on Kadence's #121212 focus fill, 1.00:1, once the theme's 0.2 s transition ended. The outline's rule was `:not(:focus)` (D-416, so a theme's focus mark drawn as a shadow or a background showed), so in focus the button went back to the theme's `.button:focus` fill, while D-416's `--cbuild-start-words` kept Add to cart's dark words on it.
+
+**Decision:** the outline's ground, words and border hold in every state. Only its inset ring is `:not(:focus)`, so a theme's focus outline or shadow still shows in focus. A theme whose focus mark is a fill alone loses it on the outline, and keeps the browser's outline where it doesn't take that away. That's the choice: readable words over the theme's fill, which here was the mark that hid them.
+
+**Tests.** The hostile fixture gains Kadence's focus: a dark fill and light words, eased in over 0.2 s. "keeps a deck page's start button readable under the hostile theme" (D-466, three themes) now also tabs to the button from Add to cart (Option-Tab in WebKit), waits for its transitions to end, and runs axe on it.
+
+- **Red run** on chromium-desktop: on Storefront and Kadence, "Element has insufficient color contrast of 1.12 (foreground color: #000000, background color: #121212 …)" (builder.spec.ts:12798). Twenty Twenty-Five passed, as its button takes no outline.
+- **After:** 9 of 9 on chromium, webkit and firefox desktops; with webkit-phone, firefox-phone and no-js, 12 passed and 3 skipped. D-416's "shows a theme's focus mark drawn as a shadow when tabbed to" and the three themes' focus tests pass.
+
+**Status:** Accepted.
+
+### D-515 · The compare's row headers stay at the region's start on a phone · 2026-11-26
+
+Cowork's review of 1.3.0, F37 (#160). On a phone the compare's row headers scrolled away with the builds, so at the third build "Assembly", "Total today" and every "Differs" were out of view, and a differing row was told only by its tint.
+
+**Decision:**
+
+- **Sticky headers.** `tbody th[scope=row]` is `position: sticky` at the region's inline start, over a ground of its own: `var(--wp--preset--color--base, Canvas)`, the page's base colour on a block theme, and the browser's canvas elsewhere. The tint is on the cells (`td.cbuild-compare__differs`), so the header covers no tint.
+- **Room beside a build.** A build's column stays at least 14rem (D-411). In Kadence's 326 px region at 390 px, the French header ("Total aujourd’hui") is 116 px against the 102 px a 14rem column leaves. The region is a size container, and under 30rem the header's inline padding is halved. It then covers no more than the column's own padding, so none of the build's words.
+
+**Tests.** "every build's column is reached in the compare's region on a phone" (Kadence and Storefront) now scrolls to the last build and checks each row header: in the region, on an opaque ground, and over no more than the column's padding.
+
+- **Red run** on chromium-phone and rtl: "\"Deck … Differs\" with the last build in view": `inView` false, and on Kadence `ground` false (builder.spec.ts:9205). Before the padding, fr-ca still failed `clear`, by 14 px, against 12 px of padding.
+- **After:** 30 of 30 with "three builds compared by keyboard" on chromium-phone, rtl, webkit-phone, firefox-phone, chromium-desktop and fr-ca. The 14rem check passes on each.
 
 **Status:** Accepted.
