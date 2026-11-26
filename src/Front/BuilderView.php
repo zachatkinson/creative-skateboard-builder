@@ -472,7 +472,7 @@ final class BuilderView {
 					}
 					$notes[ $slot ] = array( 'text' => null === $code ? Cast::str( $problem['message'] ?? null ) : Words::named( $code, $label( $slot ), Cast::str( $problem['name'] ?? null ) ) );
 				}
-				$tiles[] = self::tile( $state, new BuildLink( $picks, null, State::REVIEW, null, $at ), $preset['image'] ?? null, Cast::str( $preset['name'] ?? null ), Cast::str( $preset['description'] ?? null ), $whole ? Cast::str( Cast::map( $preset['total'] ?? null )['text'] ?? null ) : '', array_values( $notes ) );
+				$tiles[] = self::tile( $state, new BuildLink( $picks, null, State::REVIEW, null, $at ), $preset['image'] ?? null, Cast::str( $preset['name'] ?? null ), Cast::str( $preset['description'] ?? null ), $whole ? Cast::str( Cast::map( $preset['total'] ?? null )['text'] ?? null ) : '', array_values( $notes ), Cast::bool( $preset['drawn'] ?? null ) );
 			}
 		}
 		return array(
@@ -624,8 +624,10 @@ final class BuilderView {
 				: __( 'Every build here is within your budget.', 'creative-skateboard-builder' );
 		}
 		if ( array() !== $builds ) {
+			// Over the budget the closest is shown alone; the count is still of every build that fits (F40, #163).
+			$fit = Cast::bool( $recommended['over'] ?? null ) ? max( count( $builds ), Cast::int( $recommended['fit'] ?? null ) ) : count( $builds );
 			/* translators: %s: how many builds, such as 3. */
-			$reasons[] = sprintf( _n( '%s build fits and is in stock.', '%s builds fit and are in stock.', count( $builds ), 'creative-skateboard-builder' ), number_format_i18n( count( $builds ) ) );
+			$reasons[] = sprintf( _n( '%s build fits and is in stock.', '%s builds fit and are in stock.', $fit, 'creative-skateboard-builder' ), number_format_i18n( $fit ) );
 		}
 		$tiles = array();
 		foreach ( $builds as $build ) {
@@ -1471,18 +1473,36 @@ final class BuilderView {
 
 	/**
 	 * The width the deck step's shelf lists, as the `width` argument names it, or empty: the one asked, or the one
-	 * of the deck the build holds.
+	 * of the deck the build holds. Its `text` field is the width as its button says it (F36).
 	 *
 	 * @param array<string, mixed> $shelf The answer's shelf.
+	 * @param string               $field `value`, as the argument names it, or `text`, as its button says it.
 	 */
-	private static function shown( array $shelf ): string {
+	private static function shown( array $shelf, string $field = 'value' ): string {
 		foreach ( Cast::items( $shelf['widths'] ?? null ) as $width ) {
 			$width = Cast::map( $width );
 			if ( Cast::bool( $width['selected'] ?? null ) ) {
-				return Cast::str( $width['value'] ?? null );
+				return Cast::str( $width[ $field ] ?? null );
 			}
 		}
 		return '';
+	}
+
+	/**
+	 * Why a step lists nothing: the filters a shopper set, the deck width chosen where no deck in it is in stock (F36,
+	 * #159), or the parts before it.
+	 *
+	 * @param BuildLink $link  The address.
+	 * @param string    $width The deck width chosen, as the step's width buttons say it, or empty.
+	 */
+	private static function nothing( BuildLink $link, string $width ): string {
+		if ( '' !== $link->brand || '' !== $link->size || array() !== $link->shelf->chips ) {
+			return __( 'No part matches these filters.', 'creative-skateboard-builder' );
+		}
+		return '' === $width
+			? __( 'Nothing the shop has fits the parts before this step.', 'creative-skateboard-builder' )
+			/* translators: %s: a deck width, such as 8.25″. */
+			: sprintf( __( 'No %s deck is in stock right now.', 'creative-skateboard-builder' ), $width );
 	}
 
 	/**
@@ -1912,9 +1932,7 @@ final class BuilderView {
 			// The deck step asking its width lists nothing yet, and says nothing is missing; a search that lists nothing
 			// says so itself, so the fit rule is not given as the reason (#83).
 			'empty'     => array() === $options && ! ( null !== $shelf && SlotKey::DECK === $slot && '' === $link->shelf->width ) && true !== $found['shown'],
-			'emptyText' => '' === $link->brand && '' === $link->size && array() === $link->shelf->chips
-				? __( 'Nothing the shop has fits the parts before this step.', 'creative-skateboard-builder' )
-				: __( 'No part matches these filters.', 'creative-skateboard-builder' ),
+			'emptyText' => self::nothing( $link, SlotKey::DECK === $slot ? self::shown( $shelf ?? array(), 'text' ) : '' ),
 			'found'     => $found,
 			'leave'     => array(
 				'shown'   => ! $required,

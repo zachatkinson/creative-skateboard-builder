@@ -5,9 +5,9 @@ import { test, expect, Page, SITE } from './support/test';
 
 /**
  * Milestone 14: the 3D view's canvas at its fixed places, top, underside, three-quarter and the graphic close-up; on the
- * dark scheme; and with a kickflip held in the air. Each is the scene contract's fixture with its graphic and grip
- * (tests/e2e/mu-plugins/cbuild-e2e-scene.php). Reduced motion puts
- * the camera there at once. Only `bash tools/visual.sh` runs these, in Playwright's Linux container, where Chromium
+ * dark scheme; and with a kickflip held in the air. Each is the scene contract's fixture with its graphic and grip,
+ * pinned through `cbuild_scene` (tests/e2e/mu-plugins/cbuild-e2e-scene.php). Reduced motion puts the camera there at
+ * once. Only `bash tools/visual.sh` runs these, in Playwright's Linux container, where Chromium
  * draws WebGL in software (SwiftShader): the same pixels on every run there, and pictures a Mac's GPU would not match.
  *
  * Tolerance: 1 % of the pixels, each by Playwright's default colour threshold. Antialiased edges move by a pixel between
@@ -64,7 +64,7 @@ async function opened(
 	scheme: 'light' | 'dark' = 'light'
 ) {
 	await context.addCookies( [
-		{ name: 'cbuild_e2e_scene', value: 'fixture', url: SITE },
+		{ name: 'cbuild_e2e_scene', value: 'pinned', url: SITE },
 		{ name: 'cbuild_e2e_scheme', value: scheme, url: SITE },
 	] );
 	await page.addInitScript( () => {

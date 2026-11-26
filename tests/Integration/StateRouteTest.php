@@ -1720,6 +1720,53 @@ final class StateRouteTest extends IntegrationTestCase {
 		}
 	}
 
+	// #139, D-470: the view carries the 3D view's scene only where the kit's 3D view is on, measured by the domain from
+	// a deck whose specs no deck has, and held to the schema's limits; a plugin's answer that is no scene is passed over.
+	public function test_the_view_carries_the_scene_only_where_the_kits_3d_view_is_on_and_a_hostile_deck_is_held_to_its_limits(): void {
+		$scene = function ( ?array $settings, ?int $deck = null ): array {
+			$whole     = $this->whole( null, null, $settings );
+			$this->kit = $whole['kit'];
+			$picks     = array( 'step' => 'review' ) + array_map( 'strval', ( null === $deck ? array() : array( 'deck' => $deck ) ) + $whole['picks'] );
+			return $this->answer( array( 'cbuild' => $picks ) )['view'];
+		};
+		foreach ( array(
+			'a kit saved before 1.4.0' => null,
+			'1.3.0\'s settings'        => array( 'schema_version' => 1, 'ratings' => true ),
+			'the 3D view said off'     => array( 'schema_version' => 1, 'view_3d' => false ),
+		) as $case => $settings ) {
+			self::assertArrayNotHasKey( 'scene', $scene( $settings ), $case );
+		}
+
+		$hostile = $this->part(
+			'Deck with specs no deck has',
+			'60',
+			array(
+				'deck_width'    => '8.0000',
+				'deck_length'   => '20.0000',
+				'wheelbase'     => '14.0000',
+				'nose_length'   => '40.0000',
+				'concave_depth' => '9.0000',
+				'kick_angle'    => '900',
+			),
+			$this->categories['deck']
+		);
+		$on   = array( 'schema_version' => 1, 'view_3d' => true );
+		$deck = $scene( $on, $hostile )['scene']['deck'];
+		$span = $deck['holes']['points'][0][0] - $deck['holes']['points'][7][0];
+		self::assertSame( array( $hostile, 508000 ), array( $deck['part'], $deck['length'] ) );
+		self::assertSame( $deck['length'], $deck['nose'] + $deck['tail'] + $span, 'no nose or tail past what the length leaves' );
+		self::assertSame( array( 0, 450 ), array( $deck['tail'], $deck['kick'] ), 'the nose takes what is left; the kick held at 45°' );
+		self::assertSame( intdiv( $deck['width'], 4 ), $deck['concave'], 'the concave held at a quarter of the width' );
+
+		$view = $scene( $on );
+		self::assertSame( $this->parts['deck 8.0'], $view['scene']['deck']['part'] );
+		self::assertSame( -( 11000 + $view['scene']['trucks']['height'] ), $view['scene']['wheels']['places'][0][2], 'no risers: the axle under the deck' );
+		self::assertContains( 'nose_length', $view['scene']['assumed'] );
+		add_filter( 'cbuild_scene', static fn(): string => 'no scene' );
+		$kept = $scene( $on )['scene'];
+		self::assertSame( array( $view['scene']['deck'], $view['scene']['trucks'] ), array( $kept['deck'], $kept['trucks'] ), 'the domain\'s kept' );
+	}
+
 	/**
 	 * A set of wheels in the whole kit's wheels category, indexed.
 	 *

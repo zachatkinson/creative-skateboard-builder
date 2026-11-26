@@ -76,6 +76,30 @@ final class KitSettingsTest extends TestCase {
 		self::assertFalse( $kit->settings->guided );
 	}
 
+	// #139, D-474: the 3D view is off unless the kit turns it on, so an update changes no builder; its trick buttons are
+	// on unless the kit turns them off. A kit saved before 1.4.0 has neither key.
+	public function test_the_3d_view_is_off_and_its_tricks_on_unless_the_kit_says_otherwise(): void {
+		foreach ( array(
+			'a kit with no settings'      => null,
+			'settings saved before 1.4.0' => array( 'schema_version' => 1, 'guide' => false, 'swaps' => true ),
+		) as $case => $document ) {
+			$settings = KitSettings::fromDocument( $document );
+			self::assertSame( array( false, true ), array( $settings->view3d, $settings->tricks ), $case );
+		}
+		foreach ( array(
+			'the 3D view on'          => array( array( 'view_3d' => true ), array( true, true ) ),
+			'the 3D view said off'    => array( array( 'view_3d' => false ), array( false, true ) ),
+			'on, with no tricks'      => array( array( 'view_3d' => true, 'tricks' => false ), array( true, false ) ),
+			'tricks said on, 3D off'  => array( array( 'tricks' => true ), array( false, true ) ),
+		) as $case => [ $keys, $expected ] ) {
+			$settings = KitSettings::fromDocument( array( 'schema_version' => 1 ) + $keys );
+			self::assertSame( $expected, array( $settings->view3d, $settings->tricks ), $case );
+			self::assertSame( array( true, true, true, true ), array( $settings->swaps, $settings->guided, $settings->cardPicks, $settings->cardRatings ), $case . ', and nothing else changes' );
+		}
+		$kit = Kit::fromDocuments( KitDocuments::slots(), KitDocuments::rules(), KitDocuments::presets(), KitDocuments::assembly(), null, null, array( 'schema_version' => 1, 'view_3d' => true ) );
+		self::assertTrue( $kit->settings->view3d );
+	}
+
 	// #113: the Builder page, a page's ID, or none for the kit's own page. A kit saved before 1.2.0 has none.
 	public function test_smart_swaps_are_offered_unless_the_kit_turns_them_off(): void {
 		self::assertTrue( KitSettings::fromDocument( null )->swaps, 'a kit with no settings, as before 1.2.0' );
@@ -225,6 +249,8 @@ final class KitSettingsTest extends TestCase {
 		yield 'Help me choose as text' => array( array( 'schema_version' => 1, 'guide' => 'on' ), 'document_wrong_type' );
 		yield 'the cards\' picks as a number' => array( array( 'schema_version' => 1, 'picks' => 0 ), 'document_wrong_type' );
 		yield 'the cards\' ratings as text' => array( array( 'schema_version' => 1, 'ratings' => '' ), 'document_wrong_type' );
+		yield 'the 3D view as text' => array( array( 'schema_version' => 1, 'view_3d' => 'on' ), 'document_wrong_type' );
+		yield 'the tricks as a number' => array( array( 'schema_version' => 1, 'tricks' => 1 ), 'document_wrong_type' );
 		yield 'a builder page of none' => array( array( 'schema_version' => 1, 'builder_page' => 0 ), 'document_out_of_range' );
 		yield 'a builder page below none' => array( array( 'schema_version' => 1, 'builder_page' => -3 ), 'document_out_of_range' );
 		yield 'a builder page as text' => array( array( 'schema_version' => 1, 'builder_page' => '42' ), 'document_wrong_type' );

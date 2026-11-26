@@ -1,81 +1,39 @@
 /**
  * The scene the server measured for a build (M14, the scene's contract): every length in whole micrometres, every
- * angle in tenths of a degree, the origin at the centre of the deck's top face, +x toward the nose, +y across the
- * width and +z up. A slot with nothing in it is null, and its part is left out. The browser draws these sizes and
- * decides none of them.
+ * angle in tenths of a degree, the origin on the deck's top face midway between the trucks, +x toward the nose, +y
+ * across the width and +z up. A slot with nothing in it is null, and its part is left out. The browser draws these
+ * sizes and decides none of them.
  */
 
+import type { CbuildState, ScenePoint } from '../../types/state';
+
 /** A point on the deck's top face: x and y, in micrometres. */
-export type Flat = readonly number[];
+export type Flat = Readonly< ScenePoint >;
+
+/** The scene as `schema/state.json` gives `view.scene`, and `npm run types` writes it. */
+type Measured = NonNullable< NonNullable< CbuildState[ 'view' ] >[ 'scene' ] >;
+
+/** The slots a scene may leave out: the server gives each, as null when empty, but `cbuild_scene` may drop one. */
+type Optional = 'assumed' | 'trucks' | 'wheels' | 'risers' | 'bolts' | 'grip';
+
+/**
+ * The scene the view draws: the server's own shape, so the view and the route can't drift apart, with a slot a
+ * plugin's answer left out read as an empty one.
+ */
+export type Scene = Omit< Measured, Optional > &
+	Partial< Pick< Measured, Optional > >;
 
 /** A point in the scene: x, y and z, in micrometres. */
-export type Spot = readonly number[];
+export type Spot = Readonly<
+	NonNullable< Measured[ 'wheels' ] >[ 'places' ][ number ]
+>;
 
-export interface Deck {
-	part: number;
-	width: number;
-	length: number;
-	wheelbase: number;
-	nose: number;
-	tail: number;
-	concave: number;
-	kick: number;
-	thickness: number;
-	plies: number;
-	holes: {
-		pattern: string;
-		spacing: number;
-		columns: number;
-		points: readonly Flat[];
-	};
-	texture: { top: string | null; bottom: string | null };
-}
-
-export interface Trucks {
-	part: number;
-	axle: number;
-	height: number;
-	hanger: number;
-	baseplate: { length: number; width: number };
-	holes: readonly Flat[];
-	color: string | null;
-}
-
-export interface Wheels {
-	part: number;
-	diameter: number;
-	width: number;
-	contact: number;
-	texture: string | null;
-	color: string | null;
-	places: readonly Spot[];
-}
-
-export interface Risers {
-	part: number;
-	thickness: number;
-}
-
-export interface Bolts {
-	part: number;
-	length: number;
-	points: readonly Flat[];
-}
-
-export interface Grip {
-	part: number;
-	texture: string | null;
-}
-
-export interface Scene {
-	assumed?: readonly string[];
-	deck: Deck;
-	trucks?: Trucks | null;
-	wheels?: Wheels | null;
-	risers?: Risers | null;
-	bolts?: Bolts | null;
-	grip?: Grip | null;
-}
+export type Deck = Scene[ 'deck' ];
+export type Trucks = NonNullable< Scene[ 'trucks' ] >;
+export type Wheels = NonNullable< Scene[ 'wheels' ] >;
+export type Risers = NonNullable< Scene[ 'risers' ] >;
+export type Bolts = NonNullable< Scene[ 'bolts' ] >;
+export type Grip = NonNullable< Scene[ 'grip' ] >;
 
 /** The scene's parts, each drawn as a group of its own, so a change to one swaps that group alone. */
 export const SLOTS = [ 'deck', 'trucks', 'wheels', 'risers', 'bolts' ] as const;

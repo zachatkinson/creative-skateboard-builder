@@ -44,6 +44,11 @@ final class SpecKeyTest extends TestCase {
 		'grip_width'       => array( 'measure', 'in' ),
 		'grip_length'      => array( 'measure', 'in' ),
 		'set_size'         => array( 'count', null ),
+		'nose_length'      => array( 'measure', 'in' ),
+		'tail_length'      => array( 'measure', 'in' ),
+		'concave_depth'    => array( 'measure', 'in' ),
+		'kick_angle'       => array( 'count', null ),
+		'wheel_width'      => array( 'measure', 'mm' ),
 	);
 
 	public function test_every_key_has_the_kind_and_unit_the_spec_gives_it(): void {

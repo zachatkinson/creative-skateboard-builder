@@ -259,15 +259,14 @@ test.describe( '3D view (milestone 14)', () => {
 
 	test( 'a part changed swaps that part’s group alone', async ( {
 		page,
-		context,
 	} ) => {
 		await open( page );
 		const was = ( await probe( page ) )?.groups ?? {};
+		// The server's own scene of the build at its step (lane 1): the deck, trucks and wheels picked, no hardware yet.
 		expect( Object.keys( was ).sort() ).toEqual(
-			[ 'bolts', 'deck', 'trucks', 'wheels' ].sort()
+			[ 'deck', 'trucks', 'wheels' ].sort()
 		);
-		// The next answer's scene has other wheels, and the same deck, trucks and bolts.
-		await scene( context, 'wheels' );
+		// Other wheels picked: the next answer's scene has their sizes, and the same deck and trucks.
 		await page
 			.getByRole( 'radio', { name: 'Choose Builder test wheels 54' } )
 			.check();
@@ -277,7 +276,6 @@ test.describe( '3D view (milestone 14)', () => {
 		const now = ( await probe( page ) )?.groups ?? {};
 		expect( now.deck ).toBe( was.deck );
 		expect( now.trucks ).toBe( was.trucks );
-		expect( now.bolts ).toBe( was.bolts );
 	} );
 
 	test( 'closing gives back every geometry and texture', async ( {

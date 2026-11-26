@@ -38,15 +38,18 @@ final class WpComposedLayers implements ComposedLayers {
 		 * Filter how a part's layer is drawn in a build's composed picture: as it is, blurred so its artwork can't be
 		 * made out and its shape stays, or left out. Each use is asked on its own, so a plugin can blur a part on the
 		 * share card a link preview shows to anyone and leave the shopper's own cart and emails as they are. The answer
-		 * is in the picture's name: a change draws a new picture, and the one drawn before is no longer shown.
+		 * is in the picture's name: a change draws a new picture, and the one drawn before is no longer shown. For the
+		 * 3D view (`3d`), `blurred` and `left_out` leave the part with no texture for that page view (D-475): a plugin
+		 * whose shopper can reveal the artwork answers `as_is` and blurs `.cbuild-3d__canvas` by its classes (D-468).
 		 *
 		 * @since 1.1.0
+		 * @since 1.4.0 The use `3d`.
 		 *
 		 * @param string $answer `as_is`, `blurred` or `left_out`: `as_is`.
 		 * @param int    $part   The part's ID: a product's or a variation's.
 		 * @param string $slot   The slot's key, such as deck.
 		 * @param int    $kit    The kit product's ID.
-		 * @param string $purpose  The picture's use: `cart`, `share` or `email`.
+		 * @param string $purpose  The picture's use: `cart`, `share` or `email`, or from 1.4.0 `3d`, the 3D view's textures.
 		 */
 		$answer = apply_filters( 'cbuild_composed_layer', self::AS_IS, $part, $slot, $kit, $purpose );
 		// Handed on as it is: `ComposedPictures::answer()` alone reads it, and draws any other answer as it is.

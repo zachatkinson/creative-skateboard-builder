@@ -234,6 +234,14 @@ final class Options {
 	public const CLASS_ABOVE_CARDS = 'cbuild-step__above-cards';
 
 	/**
+	 * The place just above the guide's builds, which the builder renders empty for another plugin's own element
+	 * (F41, #164).
+	 *
+	 * @since 1.4.0
+	 */
+	public const CLASS_ABOVE_BUILDS = 'cbuild-guide__above-builds';
+
+	/**
 	 * A ready build's tile picture when it is the deck's layer image rather than its photo, as a build Help me choose
 	 * recommends shows its deck's card picture (D-408).
 	 *
@@ -546,6 +554,7 @@ final class Options {
 			self::CLASS_REVIEW_PHOTO,
 			self::CLASS_REVIEW_DRAWN,
 			self::CLASS_ABOVE_CARDS,
+			self::CLASS_ABOVE_BUILDS,
 			self::CLASS_PRESET_DRAWN,
 			self::CLASS_THREE_OPEN,
 			self::CLASS_THREE_STAGE,

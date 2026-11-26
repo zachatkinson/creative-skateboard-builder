@@ -81,6 +81,8 @@ final class ContainerTest extends TestCase {
 				array( \CreativeBranding\SkateboardBuilder\Front\Builder::class, 'guided', \CreativeBranding\SkateboardBuilder\Front\GuidedStart::class ),
 				array( \CreativeBranding\SkateboardBuilder\Front\StateAnswer::class, 'swaps', \CreativeBranding\SkateboardBuilder\Service\BuildSwaps::class ),
 				array( \CreativeBranding\SkateboardBuilder\Front\SavedBuildHooks::class, 'compare', \Closure::class ),
+				// 1.4.0's: the 3D view's scene.
+				array( \CreativeBranding\SkateboardBuilder\Front\Builder::class, 'scene', \CreativeBranding\SkateboardBuilder\Front\SceneView::class ),
 			) as [ $id, $property, $type ]
 		) {
 			$service = $container->get( $id );
@@ -114,6 +116,8 @@ final class ContainerTest extends TestCase {
 				// 1.3.0's: the guided start's builds, the smart swaps and My builds' compare.
 				array( \CreativeBranding\SkateboardBuilder\Front\Builder::class, 'guided', static fn( object $earlier ): object => $earlier->withGuide( $container->get( \CreativeBranding\SkateboardBuilder\Front\GuidedStart::class ) ) ),
 				array( \CreativeBranding\SkateboardBuilder\Front\StateAnswer::class, 'swaps', static fn( object $earlier ): object => $earlier->withSwaps( $container->get( \CreativeBranding\SkateboardBuilder\Service\BuildSwaps::class ) ) ),
+				// 1.4.0's: the 3D view's scene.
+				array( \CreativeBranding\SkateboardBuilder\Front\Builder::class, 'scene', static fn( object $earlier ): object => $earlier->withScene( $container->get( \CreativeBranding\SkateboardBuilder\Front\SceneView::class ) ) ),
 				array( \CreativeBranding\SkateboardBuilder\Front\SavedBuildHooks::class, 'compare', static fn( object $earlier ): object => $earlier->withCompare( static fn(): object => $container->get( \CreativeBranding\SkateboardBuilder\Front\CompareView::class ) ) ),
 			) as [ $class, $property, $with ]
 		) {

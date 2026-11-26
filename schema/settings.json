@@ -48,7 +48,12 @@
 							"spacers_built_in",
 							"grip_width",
 							"grip_length",
-							"set_size"
+							"set_size",
+							"nose_length",
+							"tail_length",
+							"concave_depth",
+							"kick_angle",
+							"wheel_width"
 						]
 					},
 					"unit": {

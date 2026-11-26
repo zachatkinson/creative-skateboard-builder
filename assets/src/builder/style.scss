@@ -989,9 +989,10 @@
 	box-shadow: 0 0 0 4px var(--cbuild-focus-contrast);
 }
 
-/* The place above the cards for another plugin's element (#151): out of the layout while it holds nothing, so a shop
-   with no such plugin sees no gap. */
-:where(.cbuild-step__above-cards:empty) {
+/* The places above the cards and above the guide's builds for another plugin's element (#151, F41): out of the
+   layout while they hold nothing, so a shop with no such plugin sees no gap. */
+:where(.cbuild-step__above-cards:empty),
+:where(.cbuild-guide__above-builds:empty) {
 	display: none;
 }
 

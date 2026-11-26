@@ -15,6 +15,7 @@
         "cbuild_part_rank",
         "cbuild_preset_label",
         "cbuild_price_context",
+        "cbuild_scene",
         "cbuild_slot_label",
         "cbuild_start_button",
         "cbuild_summary_notes",
@@ -199,6 +200,7 @@
         "cbuild-chips__more--idle",
         "cbuild-chips__options--row",
         "cbuild-edit",
+        "cbuild-guide__above-builds",
         "cbuild-kit",
         "cbuild-part",
         "cbuild-part__slot",
@@ -301,7 +303,12 @@
         "spacers_built_in",
         "grip_width",
         "grip_length",
-        "set_size"
+        "set_size",
+        "nose_length",
+        "tail_length",
+        "concave_depth",
+        "kick_angle",
+        "wheel_width"
     ],
     "ability_schemas": {
         "creative-skateboard-builder/catalogue-check": "3419ea03a7f81096029e2247d2914dc5a7132729e9c34b442d4e911a49e15c32",
@@ -326,11 +333,11 @@
         "schema/kit-picture.json": "f5a644b1f0082bd93867dbc8ac74342730c47a8008128c32380a80485f9ef939",
         "schema/kit-presets.json": "fa1447fe7d550c544db2236d898f02ca63e5966023a875f73bbbd90dba4f66c3",
         "schema/kit-rules.json": "79f9a5c998a63c1ceee8ec7877096515dabd9e75c6116257874e1d4418242c45",
-        "schema/kit-settings.json": "28c9e14fe51c6c16f806c7ba5b89143494732dc526a098403cfe5733977ba4be",
+        "schema/kit-settings.json": "5955360566d26a5e9bff0a51ad3a878fd1a16e60dc931a8e07b3c649efa64d87",
         "schema/kit-slots.json": "7c383e3f551b517328d9d195c01e15f9f5dad1a1263a20fa4ff2188592bb820c",
         "schema/order-snapshot.json": "22d23b0213b466dfd4092e7e40ec09574bb4eaed6e99347bd166dadc86c441bb",
-        "schema/settings.json": "c6ce801eae753f4d85734fdf81489cc91a4e2db8adf318aa2da21832d7ef9df4",
-        "schema/state.json": "a5d602bf4b944e9ae06c2f8a0af466246b79d30d62d6667b253e7cf8e42f5bf7"
+        "schema/settings.json": "b1d0f645f11ca978b3a12cba411f8328d636a5e2a242db01451282bc6adc88b5",
+        "schema/state.json": "720828942805c1359477d1a676da94a9eca411a5d2901d72888ce6cc30888814"
     },
     "spec_keys": [
         "deck_width",
@@ -353,7 +360,12 @@
         "spacers_built_in",
         "grip_width",
         "grip_length",
-        "set_size"
+        "set_size",
+        "nose_length",
+        "tail_length",
+        "concave_depth",
+        "kick_angle",
+        "wheel_width"
     ],
     "spec_kinds": {
         "deck_width": "measure in",
@@ -376,7 +388,12 @@
         "spacers_built_in": "flag",
         "grip_width": "measure in",
         "grip_length": "measure in",
-        "set_size": "count"
+        "set_size": "count",
+        "nose_length": "measure in",
+        "tail_length": "measure in",
+        "concave_depth": "measure in",
+        "kick_angle": "count",
+        "wheel_width": "measure mm"
     },
     "index_sources": [
         "field",

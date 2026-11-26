@@ -6,6 +6,7 @@ import {
 	mkdtempSync,
 	readFileSync,
 	rmSync,
+	utimesSync,
 	writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -103,6 +104,10 @@ describe( 'the lock around wp-env', () => {
 			path.join( dir, 'lock', 'owner' ),
 			`${ process.ppid } token`
 		);
+		// A second old: made in the same millisecond as the check, a lock is no older than a limit of 0, and the
+		// lock gave up at once on a busy machine.
+		const old = new Date( Date.now() - 1000 );
+		utimesSync( path.join( dir, 'lock' ), old, old );
 
 		expect( withLock( path.join( dir, 'lock' ), () => 'ran', 0 ) ).toBe(
 			'ran'

@@ -16,7 +16,9 @@ use function array_column;
 /**
  * One measured fact about a part (spec: Vocabulary, Spec; Compatibility rules). The value is the key the specs index,
  * the part's meta and the imports use, so it is public API and never renamed in place. Each key has one kind, a
- * measure has one unit, and a choice has a fixed set of values.
+ * measure has one unit, and a choice has a fixed set of values. From 1.4.0 the 3D view's optional sizes: a deck's nose
+ * and tail lengths, its concave's depth and its kick's angle in whole degrees (a count), and a wheel's width (#139,
+ * D-472).
  */
 enum SpecKey: string {
 
@@ -41,6 +43,11 @@ enum SpecKey: string {
 	case GripWidth        = 'grip_width';
 	case GripLength       = 'grip_length';
 	case SetSize          = 'set_size';
+	case NoseLength       = 'nose_length';
+	case TailLength       = 'tail_length';
+	case ConcaveDepth     = 'concave_depth';
+	case KickAngle        = 'kick_angle';
+	case WheelWidth       = 'wheel_width';
 
 	/**
 	 * Each measure's unit. A key that is not here is not a measure.
@@ -61,6 +68,10 @@ enum SpecKey: string {
 		'bearing_bore'    => Unit::Millimetre,
 		'grip_width'      => Unit::Inch,
 		'grip_length'     => Unit::Inch,
+		'nose_length'     => Unit::Inch,
+		'tail_length'     => Unit::Inch,
+		'concave_depth'   => Unit::Inch,
+		'wheel_width'     => Unit::Millimetre,
 	);
 
 	/**
@@ -99,6 +110,11 @@ enum SpecKey: string {
 		'grip_width'        => SpecKind::Measure,
 		'grip_length'       => SpecKind::Measure,
 		'set_size'          => SpecKind::Count,
+		'nose_length'       => SpecKind::Measure,
+		'tail_length'       => SpecKind::Measure,
+		'concave_depth'     => SpecKind::Measure,
+		'kick_angle'        => SpecKind::Count,
+		'wheel_width'       => SpecKind::Measure,
 	);
 
 	/**

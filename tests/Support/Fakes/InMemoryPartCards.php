@@ -51,6 +51,13 @@ final class InMemoryPartCards implements PartCards {
 	 */
 	public array $rated = array();
 
+	/**
+	 * The parts whose card picture is their layer image, having no photo (D-282): a part here has no large photo.
+	 *
+	 * @var array<int, array{src: string, width: int, height: int, srcset: string, sizes: string}>
+	 */
+	public array $layered = array();
+
 	public function cards( array $ids ): array {
 		$this->asked[] = $ids;
 		$cards         = array();
@@ -58,6 +65,13 @@ final class InMemoryPartCards implements PartCards {
 			if ( ! in_array( $id, $this->missing, true ) ) {
 				$cards[ $id ]           = self::card( $id );
 				$cards[ $id ]['rating'] = $this->rated[ $id ] ?? null;
+				if ( isset( $this->layered[ $id ] ) ) {
+					$cards[ $id ] = array(
+						'image' => $this->layered[ $id ],
+						'photo' => false,
+						'large' => null,
+					) + $cards[ $id ];
+				}
 			}
 		}
 		return $cards;

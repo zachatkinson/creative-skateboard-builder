@@ -465,11 +465,20 @@ final class StateAnswerTest extends TestCase {
 			'the build\'s picture'
 		);
 		self::assertSame( array( self::PARK ), $asked, 'asked for the preset with no photo' );
+		// F41 (#164): the build's picture is drawn from the parts' layers, so it is marked drawn, as a card's layer image
+		// is; a rider photo is not.
+		self::assertSame( array( false, true ), array_column( $presets, 'drawn' ) );
 
 		unset( $this->cards->photos[81] );
 		$asked = array();
-		self::assertSame( InMemoryPartCards::card( 101 )['large'], $answer->of( $state )['presets'][0]['image'], 'a photo gone, the picture not made: the deck\'s photo' );
+		$presets = $answer->of( $state )['presets'];
+		self::assertSame( InMemoryPartCards::card( 101 )['large'], $presets[0]['image'], 'a photo gone, the picture not made: the deck\'s photo' );
+		self::assertFalse( $presets[0]['drawn'] );
 		self::assertSame( array( self::STREET, self::PARK ), $asked );
+		// A deck with no photo: its card picture is its layer image (D-282), marked drawn.
+		$this->cards->layered[101] = $photo;
+		self::assertSame( array( $photo, true ), array( $answer->of( $state )['presets'][0]['image'], $answer->of( $state )['presets'][0]['drawn'] ) );
+		$this->cards->layered = array();
 
 		$asked = array();
 		$on    = ( new BuildState( $this->kits, $this->settings, $this->logger ) )->of( self::KIT, array( SlotKey::DECK => 101 ), null, null, null );

@@ -296,6 +296,8 @@ final class GuidedStartTest extends IntegrationTestCase {
 		$over = $this->guide( array( 'shoe' => '3', 'style' => 'street', 'budget' => '150' ) );
 		self::assertSame( array( 'Budget build' ), array_keys( $this->builds( $over ) ), 'none within: the closest alone' );
 		self::assertContains( 'No build comes within your budget. The closest is ' . $totals[0] . '.', self::reasons( $over ) );
+		// F40 (#163): the count is of every build that fits, not of the closest one shown.
+		self::assertContains( sprintf( '%d builds fit and are in stock.', count( $totals ) ), self::reasons( $over ) );
 		self::assertSame( 'Over your budget by $22.00.', html_entity_decode( wp_strip_all_tags( (string) $over['tiles'][0]['notes'][0]['text'] ) ) );
 		self::assertSame( '150', $over['budget']['value'], 'the answer stays in its field' );
 	}
