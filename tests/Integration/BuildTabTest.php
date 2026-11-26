@@ -932,6 +932,39 @@ final class BuildTabTest extends IntegrationTestCase {
 		self::assertSame( array( false, true, false ), $on( $read() ) );
 	}
 
+	// #139, D-474: the 3D view, unticked on a kit saved before 1.4.0, so an update changes no builder; its trick buttons
+	// shown only once the 3D view is saved on, and ticked there. Each sends 0 unticked, so a form without it keeps the kit's.
+	public function test_the_3d_view_is_unticked_on_a_kit_saved_before_and_its_tricks_show_once_it_is_on(): void {
+		$this->as( 'shop_manager' );
+		$kit   = KitFactory::kit();
+		$panel = $this->panel( $kit );
+		$read  = fn(): ?\CreativeBranding\SkateboardBuilder\Domain\Kit\KitSettings => $this->service( \CreativeBranding\SkateboardBuilder\Port\Kits::class )->kit( $kit->get_id() )?->settings;
+		$on    = static fn( ?\CreativeBranding\SkateboardBuilder\Domain\Kit\KitSettings $settings ): array => array( $settings?->view3d, $settings?->tricks );
+		self::assertMatchesRegularExpression( '#<legend id="cbuild-kit-layout-shown-legend">Shown in the builder</legend>.*?<input\s+type="hidden"\s+name="cbuild_kit\[settings\]\[view_3d\]"\s+value="0"\s*/>\s*<input\s+type="checkbox"[^>]*id="cbuild-kit-settings-view_3d"#s', $panel, 'in Shown in the builder, its unticked value before it' );
+		self::assertDoesNotMatchRegularExpression( '/id="cbuild-kit-settings-view_3d"[^>]*checked/', $panel, 'unticked on a kit saved before 1.4.0' );
+		self::assertMatchesRegularExpression( '#<label for="cbuild-kit-settings-view_3d">3D view</label>#', $panel );
+		self::assertStringNotContainsString( 'cbuild_kit[settings][tricks]', $panel, 'no trick buttons without the 3D view' );
+		self::assertSame( array( false, true ), $on( $read() ) );
+
+		$sent                        = self::form();
+		$sent['settings']['view_3d'] = '1';
+		$this->send( $kit, $sent );
+		self::assertSame( array(), self::notices() );
+		self::assertTrue( self::stored( $kit->get_id() )[ Options::META_KIT_SETTINGS ]['view_3d'], 'ticked, stored as true' );
+		self::assertSame( array( true, true ), $on( $read() ) );
+		$panel = $this->panel( $kit );
+		self::assertMatchesRegularExpression( '/id="cbuild-kit-settings-view_3d"[^>]*checked/', $panel );
+		self::assertMatchesRegularExpression( '#<input\s+type="hidden"\s+name="cbuild_kit\[settings\]\[tricks\]"\s+value="0"\s*/>\s*<input\s+type="checkbox"[^>]*id="cbuild-kit-settings-tricks"[^>]*checked#', $panel, 'the trick buttons, ticked, once the 3D view is on' );
+		self::assertMatchesRegularExpression( '#<label for="cbuild-kit-settings-tricks">Trick buttons</label>#', $panel );
+
+		$sent['settings']['tricks'] = '0';
+		$this->send( $kit, $sent );
+		self::assertSame( array( true, false ), $on( $read() ), 'the tricks off, and the 3D view kept' );
+		unset( $sent['settings']['view_3d'], $sent['settings']['tricks'] );
+		$this->send( $kit, $sent );
+		self::assertSame( array( true, false ), $on( $read() ), 'a form without the fields keeps them' );
+	}
+
 	// #115: Show on its parts' pages, in the Layout section and kept in `_cbuild_settings` (D-354). Ticked on a kit
 	// saved before 1.2.0; unticked, the kit places no "Build a complete with this deck". Saved by who may manage the
 	// shop alone, through WooCommerce's product save, from wp-admin with no WP-CLI.

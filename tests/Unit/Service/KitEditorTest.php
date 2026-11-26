@@ -559,13 +559,14 @@ final class KitEditorTest extends TestCase {
 	}
 
 	// D-409: Help me choose, the cards' ready-build picks and their ratings each send 0 unticked, so each is stored where
-	// sent and kept as the kit has it where not; one never stored and never sent is left out, on.
-	public function test_the_three_switches_are_stored_as_sent_and_kept_as_the_kit_has_them_where_not(): void {
+	// sent and kept as the kit has it where not; one never stored and never sent is left out, at its default. From 1.4.0
+	// the 3D view and its tricks the same (D-474).
+	public function test_the_shown_switches_are_stored_as_sent_and_kept_as_the_kit_has_them_where_not(): void {
 		$sent             = self::sent();
 		$sent['settings'] = array( 'start_button' => '1' );
 		$draft            = $this->editor->draft( $sent, self::stored() );
 		self::assertSame( array( 'schema_version' => 1, 'start_button' => true ), $draft->documents[ KitEditor::SETTINGS ], 'none stored and none sent: left out, on' );
-		foreach ( array( 'guide', 'picks', 'ratings' ) as $key ) {
+		foreach ( array( 'guide', 'picks', 'ratings', 'view_3d', 'tricks' ) as $key ) {
 			foreach ( array( '0' => false, '1' => true, '' => false, 'yes' => true ) as $box => $on ) {
 				$with                    = $sent;
 				$with['settings'][ $key ] = (string) $box;

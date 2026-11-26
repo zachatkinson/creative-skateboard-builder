@@ -139,6 +139,7 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-385 · A wrong field of the kit's settings is refused alone, and the rest is saved](#d-385--a-wrong-field-of-the-kits-settings-is-refused-alone-and-the-rest-is-saved--2026-11-24)
 - [D-389 · No word joins the assembly time's range, in any language](#d-389--no-word-joins-the-assembly-times-range-in-any-language--2026-11-25)
 - [D-409 · Three switches in the Build tab: Help me choose, the cards' ready-build picks and their ratings](#d-409--three-switches-in-the-build-tab-help-me-choose-the-cards-ready-build-picks-and-their-ratings--2026-11-25)
+- [D-474 · The 3D view is off until a kit turns it on, and its trick buttons show only then](#d-474--the-3d-view-is-off-until-a-kit-turns-it-on-and-its-trick-buttons-show-only-then--2026-11-26)
 
 ### The state route and the public API
 
@@ -6828,6 +6829,7 @@ Its first run found 10 findings:
 **Tests.** With `|| exit 1` taken off `tools/integration-yoast.sh`'s `cd`, the gate fails on SC2164 at line 5. Put back, all 52 scripts are clean.
 
 **Status:** Accepted.
+
 ### D-468 · A plugin blurs the 3D view by class, so a shopper's reveal can lift it · 2026-11-26
 
 Asked by Claude in Cowork, for Mature Content, while #139 was being built. On the page, Mature Content blurs a flagged picture with CSS, and lifts the blur when the shopper chooses to see the artwork (`html.mcw-revealed`, and an `mcw:revealed` event on `document`). It blurs a composed picture on the server only where the picture is kept for others, such as the share card. The 3D view draws the deck's graphic as a WebGL texture, so an answer of `blurred` to `cbuild_composed_layer`'s new `3d` use would be baked into it, and no reveal could lift it. Cowork offered two ways:
@@ -6899,5 +6901,17 @@ A deck or truck without one of the scene's sizes still has to be drawn.
 - **A deck** is seven plies and 11 mm thick, which no spec gives.
 
 The scene's `assumed` names each spec it stood in for, and the Catalogue check lists a deck or wheel that lacks one of the scene's own sizes on a kit whose 3D view is on.
+
+**Status:** Accepted.
+
+### D-474 · The 3D view is off until a kit turns it on, and its trick buttons show only then · 2026-11-26
+
+The 3D view (#139) is two switches on the Build tab, as every optional shopper feature is (D-409).
+
+**Decision:**
+
+- **`view_3d` is off where a kit has none.** D-409's switches are on by default because they show what 1.2.0 already showed. The 3D view is new and loads a script of its own when pressed, so an update changes no builder until the shop ticks it.
+- **`tricks` is on where a kit has none**, as D-409's are, and the Build tab shows its box only once the kit is saved with the 3D view on. A box that does nothing while unticked would only be noise. A form without it keeps what the kit has, as each switch's does.
+- **Both are in `_cbuild_settings`**, so a rollback to 1.3.0 still reads the kit (D-354), and each is a boolean that the schema refuses as anything else.
 
 **Status:** Accepted.

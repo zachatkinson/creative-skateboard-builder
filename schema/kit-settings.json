@@ -45,6 +45,14 @@
 			"description": "Whether the builder offers smart swaps, from 1.3.0 (#135): on the review and on the picked card, a part for less and a better one that fit the build. Off, the state route's answer has none and the builder shows no swap control. The default is true.",
 			"type": "boolean"
 		},
+		"tricks": {
+			"description": "Whether the 3D view offers its trick buttons, from 1.4.0 (#139, D-474): ollie, kickflip, heelflip, pop shove-it and 360 flip. It matters only where view_3d is on, and the Build tab shows it only then. The default is true.",
+			"type": "boolean"
+		},
+		"view_3d": {
+			"description": "Whether the builder offers \"View in 3D\", from 1.4.0 (#139, D-474): a 3D view of the build drawn from its parts' sizes, loaded only when pressed. Off, the page draws no 3D button and the builder's view has no scene. The default is false, so an update changes no builder.",
+			"type": "boolean"
+		},
 		"width_guide": {
 			"description": "\"Not sure of your width?\" under the deck step's width question. Left out, the guide is shown with the plugin's rows, by US shoe size.",
 			"type": "object",
