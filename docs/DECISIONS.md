@@ -251,6 +251,7 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-433 · Help me choose reads a budget as shoppers type one, and says so when it can't](#d-433--help-me-choose-reads-a-budget-as-shoppers-type-one-and-says-so-when-it-cant--2026-11-26)
 - [D-435 · A rating's average takes the language's decimal separator, not the shop's for prices](#d-435--a-ratings-average-takes-the-languages-decimal-separator-not-the-shops-for-prices--2026-11-26)
 - [D-436 · A deck card's height limit sets a long name's lines past two apart, so it holds in every engine's fonts](#d-436--a-deck-cards-height-limit-sets-a-long-names-lines-past-two-apart-so-it-holds-in-every-engines-fonts--2026-11-26)
+- [D-510 · On a phone the bar's buttons stay beside the total, Next's words breaking inside it](#d-510--on-a-phone-the-bars-buttons-stay-beside-the-total-nexts-words-breaking-inside-it--2026-11-26)
 
 ### Accessibility
 
@@ -6744,5 +6745,35 @@ The ready builds' tiles share `templates/builder/tile.php` and the same risk: a 
 - **Red run.** guide.spec.ts "A build's tile shows its whole picture" on twentytwentyfive and on kadence, chromium-desktop: "builder-test-deck-8-25-photo-324x324.png keeps its file's shape", the shape against the file's 2.93 apart, where 0.03 is allowed (guide.spec.ts:639). `WooPartCardsTest::test_a_card_is_the_parts_name_page_price_stock_and_photo_as_the_shop_shows_them`: "a tile's picture whole, not the shop's square thumbnail", `canola-88-300x300.jpg` where `canola-88-600x450.jpg` was expected (WooPartCardsTest.php:102).
 - **After.** Both pass. Five unit assertions on a preset tile's fallback picture (`StateAnswerTest`, `StateAnswerDetailTest`) expect the first part's `large`.
 - **Deliberate break.** The guide build's image back to its card's `image`: the browser test fails again on `-324x324.png`, 2.93 (guide.spec.ts:639).
+
+**Status:** Accepted.
+
+### D-510 · On a phone the bar's buttons stay beside the total, Next's words breaking inside it · 2026-11-26
+
+Issue #153, from milestone 13's walkthrough. On a phone, in the theme's content width, Back and Next took a row of their own under the total wherever the two at their widest did not fit beside its 7.5rem column. It was within the stated limit (the total on its own row where the buttons don't fit, D-374), but it happened on the trucks step in English on Twenty Twenty-Five and Storefront and always in French, and the bar stood up to 199 px. Measured at 390 by 844 on chromium-phone, Twenty Twenty-Five had 330 px inside its padding, and the trucks step's row asked for 337 in English (the 120 px total, Back at 65, Next at 132, two 10 px gaps) and 376 in French ("Retour" at 79, "Suivant : Wheels" at 157).
+
+The issue proposed a max inline size of about 9rem on Next. That leaves French short on Twenty Twenty-Five (120 + 10 + 79 + 10 + 144 = 363 against 330), and any fixed width is a guess at a shop's words.
+
+**Decision:** the bar's actions take the room their narrowest needs, then grow back to their widest before the total takes the rest. `.cbuild-bar__actions` is `flex: 1000 1 0` with `min-inline-size: min-content` and `max-inline-size: max-content`. A flex line breaks on an item's hypothetical size, which is now the actions' narrowest, so they stay on the total's line wherever that fits. The flexible lengths then give them nearly all the free space until their widest stops them, and the total takes what is left, at least its 7.5rem. Next is `flex: 0 1 auto`, and its words break between them, `white-space: normal` at two classes' weight over a theme's `nowrap`, balanced and centred. A word is never broken, and the button keeps `--cbuild-target`. Where even their narrowest doesn't fit, they still take the row under the total, as before. On a desktop the bar has room, so nothing changes.
+
+**The stated limit:** at 390 px, on the kit's own page on Twenty Twenty-Five, Kadence and Storefront, in English and in French, on the trucks step, at the review and at the review with its delivery lines, Back and Next sit beside the total, clear of its words, uncut, on the screen and at least 44 px.
+
+| Bar height, px, 390 by 844 | Step EN | Step FR | Review EN | Review FR | Review + delivery EN | Review + delivery FR |
+| --- | --- | --- | --- | --- | --- | --- |
+| Twenty Twenty-Five, before | 157 | 157 | 96 | 150 | 143 | 197 |
+| Twenty Twenty-Five, after | 121 | 138 | 96 | 96 | 143 | 143 |
+| Kadence, before | 115 | 150 | 90 | 141 | 139 | 190 |
+| Kadence, after | 115 | 131 | 90 | 90 | 139 | 139 |
+| Storefront, before | 156 | 156 | 93 | 146 | 147 | 199 |
+| Storefront, after | 121 | 121 | 93 | 94 | 147 | 147 |
+
+"Before" is the issue's table. French on the trucks step stays 17 px taller than English on Twenty Twenty-Five and Kadence: in the narrower total the estimate, "Planche complète dès environ …", takes three lines.
+
+**The visual baselines:** none changes. The visual project, run in Playwright's Linux container on this tree, passed all 32: its phone shots are the start, the review and the estimate in English, where the buttons were already beside the total, and at their widest they still are.
+
+**Tests.**
+
+- **Red run.** builder.spec.ts "The bar on a phone (#153)", "keeps Back and Next beside the total at 390 px on twentytwentyfive in English", chromium-phone: "Back on the trucks step, in a bar 157 px high: beside the total", expected true, received false. Five of the six failed so; Storefront in English passed.
+- **After.** All six pass on chromium-phone, webkit-phone and firefox-phone (18).
 
 **Status:** Accepted.

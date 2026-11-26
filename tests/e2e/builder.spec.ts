@@ -12229,6 +12229,170 @@ test.describe( 'Smart swaps (#135)', () => {
 	} );
 } );
 
+// #153 (D-510): on a phone, in the theme's content width, the bar's buttons took a row of their own under the total:
+// on the trucks step in English on Twenty Twenty-Five and Storefront, and at the review in French on every theme, up to
+// 199 px of bar. Next's and Add to cart's words now break inside the button, so the row stays beside the total: the
+// stated limit is the buttons beside the total at 390 px, in English and French, on the three themes, with each
+// button at least the 44 px target and no word cut.
+test.describe( 'The bar on a phone (#153)', () => {
+	const builds = {
+		step: {
+			deck: 'builder-test-deck-8-0',
+			step: 'trucks',
+		},
+		review: {
+			deck: 'builder-test-deck-8-0',
+			trucks: 'builder-test-trucks-139',
+			wheels: 'builder-test-wheels-54',
+			bearings: 'builder-test-bearings',
+			hardware: 'builder-test-bolts-1-25',
+			grip: 'builder-test-grip',
+			step: 'review',
+		},
+	};
+	const places: [ string, keyof typeof builds, boolean ][] = [
+		[ 'the trucks step', 'step', false ],
+		[ 'the review', 'review', false ],
+		[ 'the review with its delivery lines', 'review', true ],
+	];
+	for ( const theme of [ 'twentytwentyfive', 'kadence', 'storefront' ] ) {
+		for ( const french of [ false, true ] ) {
+			const language = french ? 'French' : 'English';
+			test( `keeps Back and Next beside the total at 390 px on ${ theme } in ${ language }`, async ( {
+				page,
+				context,
+				baseURL,
+			} ) => {
+				const url = baseURL || SITE;
+				if ( french ) {
+					await page.setExtraHTTPHeaders( {
+						'x-cbuild-e2e-locale': 'fr_CA',
+						'x-cbuild-e2e-translated': '1',
+					} );
+				}
+				await page.setViewportSize( { width: 390, height: 844 } );
+				for ( const [ name, where, delivery ] of places ) {
+					await context.clearCookies();
+					await context.addCookies( [
+						{ name: 'cbuild_e2e_theme', value: theme, url },
+						...( delivery
+							? [
+									{
+										name: 'cbuild_e2e_delivery',
+										value: '1',
+										url,
+									},
+								]
+							: [] ),
+					] );
+					// On the kit's own page, in the theme's content width.
+					const kit = new URL( '/product/builder-test-kit/', url );
+					for ( const [ key, value ] of Object.entries(
+						builds[ where ]
+					) ) {
+						kit.searchParams.set(
+							`cbuild[${ key }]`,
+							'step' === key ? value : String( id( value ) )
+						);
+					}
+					await page.goto( kit.toString() );
+					const bar = page.locator( '.cbuild-bar' );
+					await expect( bar.locator( 'summary' ) ).toBeVisible();
+					if ( delivery ) {
+						await expect(
+							bar.locator( '.cbuild-bar__ships' )
+						).toBeVisible();
+					}
+					const measured = await bar.evaluate( ( shown ) => {
+						const total = shown
+							.querySelector( '.cbuild-bar__parts' )!
+							.getBoundingClientRect();
+						const buttons = [
+							...shown.querySelectorAll< HTMLElement >(
+								'.cbuild-bar__actions .cbuild-button'
+							),
+						].filter( ( button ) => button.checkVisibility() );
+						// The total's own words, by their text, not their boxes: an unbroken line wider than the total's
+						// column runs out of it.
+						const words = [
+							'.cbuild-bar__label',
+							'.cbuild-bar__amount > :first-child',
+							'.cbuild-bar__estimate',
+							'.cbuild-bar__more--show',
+						].flatMap( ( selector ) => {
+							const element =
+								shown.querySelector< HTMLElement >( selector );
+							if ( ! element?.checkVisibility() ) {
+								return [];
+							}
+							const range = document.createRange();
+							range.selectNodeContents( element );
+							return [ range.getBoundingClientRect() ];
+						} );
+						return {
+							height: Math.round(
+								shown.getBoundingClientRect().height
+							),
+							buttons: buttons.map( ( button ) => {
+								const box = button.getBoundingClientRect();
+								return {
+									name: button.textContent?.trim() ?? '',
+									over: words.some(
+										( word ) =>
+											word.left < box.right - 1 &&
+											word.right > box.left + 1 &&
+											word.top < box.bottom - 1 &&
+											word.bottom > box.top + 1
+									),
+									beside:
+										box.top < total.bottom - 1 &&
+										box.bottom > total.top + 1 &&
+										( box.left >= total.right - 1 ||
+											box.right <= total.left + 1 ),
+									width: box.width,
+									height: box.height,
+									cut:
+										button.scrollWidth >
+											button.clientWidth + 1 ||
+										button.scrollHeight >
+											button.clientHeight + 1,
+									inside: box.right <= 390 && box.left >= 0,
+								};
+							} ),
+						};
+					} );
+					expect(
+						measured.buttons.length,
+						`Back and Next on ${ name }`
+					).toBe( 2 );
+					for ( const button of measured.buttons ) {
+						const said = `${ button.name } on ${ name }, in a bar ${ measured.height } px high`;
+						expect(
+							button.beside,
+							`${ said }: beside the total`
+						).toBe( true );
+						expect( button.cut, `${ said }: no word cut` ).toBe(
+							false
+						);
+						expect(
+							button.over,
+							`${ said }: clear of the total's words`
+						).toBe( false );
+						expect(
+							button.inside,
+							`${ said }: on the screen`
+						).toBe( true );
+						expect(
+							Math.min( button.width, button.height ),
+							`${ said }: the 44 px target`
+						).toBeGreaterThanOrEqual( 44 );
+					}
+				}
+			} );
+		}
+	}
+} );
+
 // A theme's rules that outrank the builder's own (Cowork's review of 1.2.0, F32 and F33, D-416): the hostile theme
 // fixture (tests/e2e/mu-plugins/cbuild-e2e-hostile.php) prints, after every stylesheet, a row's link colour, a
 // paragraph's and a heading's margins at a class and an element, and every button in its own padding and colours.

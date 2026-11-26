@@ -2527,10 +2527,16 @@
 	overflow-wrap: normal;
 }
 
+/* Back and Next beside the total wherever their narrowest fits there (#153, D-510). The line is broken at their
+   narrowest, Next's words each on a line of their own, and they grow back to their widest before the total takes the
+   rest: on a phone in the theme's content width, and in French at the review, their widest had put them on a row of
+   their own under the total, up to 199 px of bar. Where even their narrowest does not fit, they still take that row. */
 :where(.cbuild-bar__actions) {
 	display: flex;
-	flex: none;
+	flex: 1000 1 0;
 	gap: var(--cbuild-gap-small);
+	min-inline-size: min-content;
+	max-inline-size: max-content;
 	margin-inline-start: auto;
 }
 
@@ -2627,6 +2633,17 @@
 	flex: none;
 	padding-inline: 0.875rem;
 	font-size: 1rem;
+}
+
+/* Next's and Add to cart's words break between them inside the button, as evenly as they can, where the bar is short
+   of room (#153, D-510): never inside a word, and the button keeps the 44 px target. A theme's `nowrap` for a button
+   is set aside at the same two classes' weight. */
+.cbuild.cbuild :where(.cbuild-bar__next) {
+	flex: 0 1 auto;
+	text-align: center;
+	text-wrap: balance;
+	white-space: normal;
+	overflow-wrap: normal;
 }
 
 :where(.cbuild-bar__back) {
