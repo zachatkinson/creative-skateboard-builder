@@ -62,7 +62,7 @@ defined( 'ABSPATH' ) || exit;
 			</template>
 		</ul>
 		<p class="cbuild-guide__actions">
-			<a class="cbuild-guide__width" data-wp-bind--hidden="!state.view.guide.width.shown" data-wp-bind--href="state.view.guide.width.url" data-wp-on--click="actions.follow" data-wp-text="state.view.guide.width.text"></a>
+			<a class="cbuild-guide__width" rel="nofollow" data-wp-bind--hidden="!state.view.guide.width.shown" data-wp-bind--href="state.view.guide.width.url" data-wp-on--click="actions.follow" data-wp-text="state.view.guide.width.text"></a>
 			<a class="cbuild-guide__skip" data-wp-bind--href="state.view.guide.skip.url" data-wp-on--click="actions.follow" data-wp-text="state.view.guide.skip.text"></a>
 		</p>
 	</div>

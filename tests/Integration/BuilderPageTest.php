@@ -903,18 +903,69 @@ final class BuilderPageTest extends IntegrationTestCase {
 	}
 
 	public function test_every_link_into_a_state_carries_nofollow_on_every_state(): void {
+		// The kit's deck and trucks alone required, so a build of the two reaches the review; and a truck for less that
+		// fits the 8.0 deck as the 139 does, so the review offers a swap (#135).
+		$category = static fn( int $part ): int => (int) wp_get_object_terms( $part, 'product_cat', array( 'fields' => 'ids' ) )[0];
+		$slots    = KitDocuments::slots();
+		foreach ( $slots['slots'] as $at => $slot ) {
+			$slots['slots'][ $at ]['required'] = $at < 2;
+		}
+		$slots['slots'][0]['sources'] = array( 'categories' => array( $category( $this->parts['deck 8.0'] ) ) );
+		$slots['slots'][1]['sources'] = array( 'categories' => array( $category( $this->parts['truck 139'] ) ) );
+		$this->kit                    = KitFactory::kit( 'Complete', array( Options::META_KIT_SLOTS => $slots ) )->get_id();
+		$less   = $this->part(
+			'Truck 139 for less',
+			'20',
+			array(
+				'axle_width'    => '8.0000',
+				'deck_min'      => '7.8000',
+				'deck_max'      => '8.2000',
+				'baseplate'     => 'new_school',
+				'max_wheel'     => '56.0000',
+				'axle_diameter' => '8.0000',
+				'set_size'      => '2',
+			),
+			$category( $this->parts['truck 139'] )
+		);
+		$swaps  = array(
+			'deck'   => (string) $this->parts['deck 8.0'],
+			'trucks' => (string) $this->parts['truck 139'],
+			'step'   => 'review',
+		);
 		$states = array(
-			'the blank start'   => array(),
-			'a step'            => array( 'deck' => (string) $this->parts['deck 8.5'] ),
-			'the error summary' => array( 'step' => 'review' ),
-			'the review'        => array(
+			'the blank start'                    => array(),
+			'a step'                             => array( 'deck' => (string) $this->parts['deck 8.5'] ),
+			'the error summary'                  => array( 'step' => 'review' ),
+			'the review'                         => array(
 				'deck' => (string) $this->parts['deck 8.5'],
 				'step' => 'review',
 			),
+			// The guided start with its answers sent: its builds, and "Build your own at" a width (#134).
+			'a guided start with answers'        => array(
+				'_guide' => array(
+					'shoe'  => '2',
+					'asked' => '1',
+				),
+			),
+			'a review with swaps'                => $swaps,
+			// After a swap: its notice and Undo, a link back to the picks before it.
+			'a page after a swap'                => array(
+				'trucks' => (string) $less,
+				'_undo'  => array( 'trucks' => (string) $this->parts['truck 139'] ),
+			) + $swaps,
+		);
+		$expect = array(
+			'a guided start with answers' => 'cbuild-guide__width',
+			'a review with swaps'         => 'cbuild-swap',
+			'a page after a swap'         => 'cbuild-swapped__undo',
 		);
 		foreach ( $states as $state => $build ) {
-			$links = self::dom( $this->kitPage( $build ) )->query( '//div[contains(concat(" ",@class," ")," cbuild ")]//a[contains(@href,"cbuild%5B") or contains(@href,"cbuild[")]' );
+			$dom   = self::dom( $this->kitPage( $build ) );
+			$links = $dom->query( '//div[contains(concat(" ",@class," ")," cbuild ")]//a[contains(@href,"cbuild%5B") or contains(@href,"cbuild[")]' );
 			self::assertGreaterThan( 0, $links->length, $state . ' has links into states to check.' );
+			if ( isset( $expect[ $state ] ) ) {
+				self::assertGreaterThan( 0, $dom->query( '//div[contains(concat(" ",@class," ")," cbuild ")]//a[contains(concat(" ",@class," ")," ' . $expect[ $state ] . ' ")][contains(@href,"cbuild%5B") or contains(@href,"cbuild[")]' )->length, $state . ': its own link, ' . $expect[ $state ] . ', is among them.' );
+			}
 			foreach ( $links as $link ) {
 				self::assertSame( 'nofollow', $link->getAttribute( 'rel' ), $state . ': ' . trim( $link->textContent ) . ' leads into a state, so crawlers are asked not to follow it (spec: SEO and sharing).' );
 			}
