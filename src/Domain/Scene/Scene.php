@@ -140,7 +140,11 @@ final class Scene {
 		$risers = $picks->part( SlotKey::RISERS );
 		$riser  = null === $risers ? 0 : self::size( $risers->specs, SpecKey::RiserThickness, self::USUAL_RISER, $assumed );
 		$bolts  = $picks->part( SlotKey::HARDWARE );
-		$long   = null === $bolts ? 0 : self::size( $bolts->specs, SpecKey::BoltLength, self::USUAL_BOLT, $assumed );
+		$fixed  = null === $bolts ? null : array(
+			'part'   => $bolts->id,
+			'length' => self::size( $bolts->specs, SpecKey::BoltLength, self::USUAL_BOLT, $assumed ),
+			'points' => $holes,
+		);
 		$grip   = $picks->part( SlotKey::GRIP );
 		$axle   = self::um( $board->axle );
 		$wide   = self::um( $board->wheelWidth );
@@ -167,17 +171,13 @@ final class Scene {
 				'contact'  => intdiv( $wide, 2 ),
 				'texture'  => null,
 				'color'    => null,
-				'places'   => self::places( self::um( $board->out ), Rounding::halfUp( max( 0, $axle - $wide ), 2 ), $under ),
+				'places'   => self::places( self::um( $board->out ), Rounding::halfUp( max( $axle, $wide ) - $wide, 2 ), $under ),
 			),
 			'risers'  => null === $risers ? null : array(
 				'part'      => $risers->id,
 				'thickness' => $riser,
 			),
-			'bolts'   => null === $bolts ? null : array(
-				'part'   => $bolts->id,
-				'length' => $long,
-				'points' => $holes,
-			),
+			'bolts'   => $fixed,
 			'grip'    => null === $grip ? null : array(
 				'part'    => $grip->id,
 				'texture' => null,
@@ -209,9 +209,9 @@ final class Scene {
 	/**
 	 * The deck: its sizes, its outline's nose and tail, its concave and kick, and its holes.
 	 *
-	 * @param Board                 $board   The board.
-	 * @param list<array{int, int}> $holes   The holes, in micrometres.
-	 * @param list<SpecKey>         $assumed The specs assumed so far, to add to.
+	 * @param Board                           $board   The board.
+	 * @param non-empty-list<array{int, int}> $holes   The holes, in micrometres.
+	 * @param list<SpecKey>                   $assumed The specs assumed so far, to add to.
 	 * @return array{part: int, width: int, length: int, wheelbase: int, nose: int, tail: int, concave: int, kick: int, thickness: int, plies: int, holes: array{pattern: string, spacing: int, columns: int, points: list<array{int, int}>}, texture: array{top: null, bottom: null}}
 	 */
 	private static function deck( Board $board, array $holes, array &$assumed ): array {
@@ -219,9 +219,10 @@ final class Scene {
 		$width  = self::um( $board->width );
 		$length = self::um( $board->length );
 		// The outer holes' span, nose row to tail row; the rest of the length is the nose and the tail.
-		$rest = max( 0, $length - ( $holes[0][0] - $holes[7][0] ) );
-		$nose = self::length( $specs->measure( SpecKey::NoseLength ) );
-		$tail = self::length( $specs->measure( SpecKey::TailLength ) );
+		$along = array_column( $holes, 0 );
+		$rest  = max( 0, $length - ( max( $along ) - min( $along ) ) );
+		$nose  = self::length( $specs->measure( SpecKey::NoseLength ) );
+		$tail  = self::length( $specs->measure( SpecKey::TailLength ) );
 		if ( null === $nose ) {
 			$assumed[] = SpecKey::NoseLength;
 		}
@@ -334,6 +335,6 @@ final class Scene {
 	 */
 	private static function um( int $tenThousandths ): int {
 		$um = Rounding::halfUp( abs( $tenThousandths ), 10 );
-		return $tenThousandths < 0 ? -$um : $um;
+		return abs( $tenThousandths ) === $tenThousandths ? $um : -$um;
 	}
 }

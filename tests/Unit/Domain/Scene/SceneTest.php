@@ -215,6 +215,12 @@ final class SceneTest extends TestCase {
 		self::assertSame( array( -20638, 20638, -20638, 20638, -20638, 20638, -20638, 20638 ), array_column( $holes['points'], 1 ), 'the columns are 1.625 in apart' );
 	}
 
+	// A deck drilled for both with no trucks picked yet is drawn with the usual new school holes.
+	public function test_a_deck_drilled_for_both_with_no_trucks_has_new_school_holes(): void {
+		$holes = self::holes( self::scene( Picks::none()->with( SlotKey::DECK, self::deck( array( 'hole_pattern' => 'both' ) ) ) ) );
+		self::assertSame( array( 'new_school', 53975 ), array( $holes['pattern'], $holes['spacing'] ) );
+	}
+
 	public function test_the_trucks_sit_on_the_holes_by_their_axle_and_height(): void {
 		self::assertSame(
 			array(

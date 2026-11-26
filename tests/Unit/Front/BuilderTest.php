@@ -21,6 +21,7 @@ use CreativeBranding\SkateboardBuilder\Domain\Kit\SlotKey;
 use CreativeBranding\SkateboardBuilder\Front\Builder;
 use CreativeBranding\SkateboardBuilder\Front\BuilderView;
 use CreativeBranding\SkateboardBuilder\Front\BuildLink;
+use CreativeBranding\SkateboardBuilder\Front\SceneView;
 use CreativeBranding\SkateboardBuilder\Front\Delivery;
 use CreativeBranding\SkateboardBuilder\Front\GuidedStart;
 use CreativeBranding\SkateboardBuilder\Front\ShippingWords;
@@ -30,6 +31,7 @@ use CreativeBranding\SkateboardBuilder\Service\BuildSwaps;
 use CreativeBranding\SkateboardBuilder\Port\PartRanks;
 use CreativeBranding\SkateboardBuilder\Service\State;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Domain\KitDocuments;
+use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\FakeComposedLayers;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Domain\Parts;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Domain\Shop;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\FakeLogger;
@@ -78,6 +80,19 @@ final class BuilderTest extends TestCase {
 			( new StateAnswer( new InMemoryPartCards(), new FakeMoney(), $this->kits, new Delivery( $this->kits, new FakeShippingZones(), new ShippingWords( new FakeMoney() ) ), new PageRenderer() ) )->withArtwork( new LayerArtwork( $this->layers, $this->renditions ) ),
 			new BuilderView()
 		);
+	}
+
+	// #139 (D-470): the view carries the 3D view's scene where the kit's 3D view is on and a deck is picked, and has no
+	// `scene` otherwise; the builder it was given on keeps none (D-208).
+	public function test_the_view_carries_the_scene_only_where_the_kits_3d_view_is_on(): void {
+		$scene = new SceneView( new LayerArtwork( $this->layers, $this->renditions ), new FakeComposedLayers() );
+		$link  = BuildLink::read( array( 'deck' => '102' ) );
+		self::assertArrayNotHasKey( 'scene', ( $this->builder()->withScene( $scene )->show( self::KIT, $link, self::BASE ) ?? array() )['view'] ?? array(), 'a kit saved before 1.4.0' );
+
+		$this->kits->add( self::KIT, Kit::fromDocuments( KitDocuments::slots(), KitDocuments::rules(), KitDocuments::presets(), KitDocuments::assembly(), null, null, array( 'schema_version' => 1, 'view_3d' => true ) ), Shop::parts() );
+		$view = ( $this->builder()->withScene( $scene )->show( self::KIT, $link, self::BASE ) ?? array() )['view'] ?? array();
+		self::assertSame( 102, $view['scene']['deck']['part'] ?? null );
+		self::assertArrayNotHasKey( 'scene', $this->show( $link )['view'], 'a builder given no scene' );
 	}
 
 	/**

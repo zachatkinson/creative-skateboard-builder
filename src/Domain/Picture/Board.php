@@ -184,7 +184,7 @@ final readonly class Board {
 	 *
 	 * @since 1.4.0
 	 *
-	 * @return list<array{int, int}>
+	 * @return non-empty-list<array{int, int}>
 	 */
 	public function holes(): array {
 		$half   = intdiv( $this->spacing, 2 );
