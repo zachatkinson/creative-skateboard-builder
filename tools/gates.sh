@@ -134,6 +134,7 @@ if [ "${#front[@]}" -gt 0 ]; then
 fi
 
 # 7. Nothing private of WooCommerce's (docs/STANDARDS.md: nothing private, internal or undocumented).
+# shellcheck disable=SC1003 # the backslashes are the regular expression's, not an escaped quote.
 hits="$(grep -rnE 'Automattic\\WooCommerce\\Internal\\' "${php_files[@]}" --include='*.php' | grep -vE '^[^:]+:[0-9]+:\s*(\*|//|#)' || true)"
 if [ -n "$hits" ]; then
 	echo "Gate 7: WooCommerce's Internal namespace:"; echo "$hits"; status=1

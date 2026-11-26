@@ -35,6 +35,7 @@ for built in $(grep -rhoE "'build/[a-z0-9/-]+'" src | tr -d "'" | sort -u); do
 	case "$built" in
 		*/)
 			files="${built}block.json"
+			# shellcheck disable=SC2013 # the grep matches [a-z0-9-]+ names only, so a word is a whole name.
 			for script in $(grep -oE '"file:\./[a-z0-9-]+\.js"' "assets/src/${built#build/}block.json" | sed -E 's/"file:\.\/([a-z0-9-]+)\.js"/\1/'); do
 				files="$files ${built}${script}.js ${built}${script}.asset.php"
 			done

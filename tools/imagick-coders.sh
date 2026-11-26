@@ -5,6 +5,7 @@
 # picture are tested with each library (docs/ROADMAP.md, Milestone 7), so the coders are added once a start, as root,
 # from Alpine's own packages: about a second (D-191). Run by .wp-env.tests.json's afterStart.
 set -euo pipefail
+# shellcheck source=tools/wp-env-site.sh
 source "$(dirname "$0")/wp-env-site.sh"
 project=""
 for container in $(docker ps -q --filter label=com.docker.compose.service=wordpress --filter "publish=$CBUILD_TESTS_PORT"); do

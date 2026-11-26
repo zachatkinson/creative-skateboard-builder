@@ -19,6 +19,7 @@ case "${CBUILD_COVERAGE_DRIVER:-}" in
 		exit 1
 		;;
 esac
+# shellcheck disable=SC2034 # lines is read by the script that sources this one (tools/coverage.sh).
 if [ "${CBUILD_COVERAGE_DRIVER:-}" = xdebug ]; then
 	lines=(-d pcov.enabled=0 -d xdebug.mode=coverage)
 elif has pcov; then
