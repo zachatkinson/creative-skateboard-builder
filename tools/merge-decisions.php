@@ -79,10 +79,12 @@ function cbuild_decision_settle( string $ours, string $base, string $theirs ): ?
 	if ( ! $entries ) {
 		return implode( '', $numbers );
 	}
-	// Each side's additions start with the blank line that ends the entry above them, which cutting them into entries
-	// drops: put it back, or the first settled entry runs on from the last one before it.
-	$lead = str_starts_with( $ours, "\n" ) || str_starts_with( $theirs, "\n" ) ? "\n" : '';
-	return $lead . implode( "\n", $numbers );
+	// The blank line between entries comes at a side's start or its end, as git's diff lines it up, and cutting the
+	// sides into entries drops it: put it back where it was, or a settled entry runs on from the one above it, or the
+	// entry after them from the last settled one.
+	$lead  = str_starts_with( $ours, "\n" ) || str_starts_with( $theirs, "\n" ) ? "\n" : '';
+	$trail = str_ends_with( $ours, "\n\n" ) || str_ends_with( $theirs, "\n\n" ) ? "\n" : '';
+	return $lead . implode( "\n", $numbers ) . $trail;
 }
 
 /**
