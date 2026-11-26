@@ -78,7 +78,7 @@ final readonly class GuideAnswers {
 	 */
 	public static function read( mixed $sent ): self {
 		$sent   = is_array( $sent ) ? $sent : array();
-		$shoe   = self::whole( $sent['shoe'] ?? null, 2 );
+		$shoe   = self::row( $sent['shoe'] ?? null );
 		$typed  = $sent['budget'] ?? null;
 		$budget = is_string( $typed ) ? self::amount( $typed ) : null;
 		$style  = $sent['style'] ?? null;
@@ -144,7 +144,7 @@ final readonly class GuideAnswers {
 		}
 		foreach ( array( '/\A([0-9]+)(?:[.,]([0-9]{1,2}))?\z/', '/\A([0-9]{1,3}(?:,[0-9]{3})+)(?:\.([0-9]{1,2}))?\z/', '/\A([0-9]{1,3}(?:\.[0-9]{3})+)(?:,([0-9]{1,2}))?\z/' ) as $pattern ) {
 			if ( 1 === preg_match( $pattern, $plain, $parts ) ) {
-				$whole = (int) str_replace( array( ',', '.' ), '', $parts[1] ) + ( (int) str_pad( $parts[2] ?? '', 2, '0' ) >= 50 ? 1 : 0 );
+				$whole = (int) str_replace( array( ',', '.' ), '', $parts[1] ) + ( str_pad( $parts[2] ?? '', 2, '0' ) >= '50' ? 1 : 0 );
 				return $whole <= self::MOST_BUDGET ? $whole : null;
 			}
 		}
@@ -152,12 +152,12 @@ final readonly class GuideAnswers {
 	}
 
 	/**
-	 * A whole number of at most so many digits, written as PHP writes one, or null.
+	 * A row's place, a whole number of one or two digits written as PHP writes one, or null. `read()` holds it below
+	 * `ROWS`.
 	 *
-	 * @param mixed $value  What was sent.
-	 * @param int   $digits The most digits.
+	 * @param mixed $value What was sent.
 	 */
-	private static function whole( mixed $value, int $digits ): ?int {
-		return is_string( $value ) && 1 === preg_match( '/\A(?:0|[1-9][0-9]{0,' . ( $digits - 1 ) . '})\z/', $value ) ? (int) $value : null;
+	private static function row( mixed $value ): ?int {
+		return is_string( $value ) && 1 === preg_match( '/\A(?:0|[1-9][0-9]?)\z/', $value ) ? (int) $value : null;
 	}
 }

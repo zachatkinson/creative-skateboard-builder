@@ -519,7 +519,7 @@ final class Words {
 	 * @param float $average The average rating, 0 to 5.
 	 */
 	private static function average( float $average ): string {
-		$tenths = (int) round( $average * 10 );
+		$tenths = round( $average * 10 );
 		return number_format_i18n( $tenths / 10, 0 === $tenths % 10 ? 0 : 1 );
 	}
 

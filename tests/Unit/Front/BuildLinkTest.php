@@ -509,6 +509,7 @@ final class BuildLinkTest extends TestCase {
 			'too much'              => array( '1000000' ),
 			'too much, rounded'     => array( '999,999.50' ),
 			'a sign alone'          => array( '$' ),
+			'a euro sign alone'     => array( '€' ),
 			'too long to be typed'  => array( str_repeat( '1', 40 ) ),
 		);
 	}
@@ -533,6 +534,27 @@ final class BuildLinkTest extends TestCase {
 			self::assertNull( $guide->budget, $typed );
 			self::assertFalse( $guide->budgetLeftOut, $typed );
 		}
+	}
+
+	// D-433: a budget of twenty characters is read, spaces and all; one longer is too long to be typed, whatever it holds.
+	public function test_a_budget_typed_in_twenty_characters_is_read_and_one_longer_is_left_out(): void {
+		$twenty = '$1,234.56' . str_repeat( ' ', 11 );
+		self::assertSame( 20, strlen( $twenty ) );
+		self::assertSame( 1235, GuideAnswers::read( array( 'budget' => $twenty ) )->budget );
+		$longer = GuideAnswers::read( array( 'budget' => $twenty . ' ' ) );
+		self::assertNull( $longer->budget );
+		self::assertTrue( $longer->budgetLeftOut );
+	}
+
+	// A budget that is not UTF-8 is no amount: the browser sends none such, and nothing of it is read.
+	public function test_a_budget_that_is_not_utf_8_is_no_budget(): void {
+		self::assertNull( GuideAnswers::read( array( 'budget' => "\xff150" ) )->budget );
+	}
+
+	// D-208, D-425: answers built with nothing given, as an earlier release's container builds them, leave no budget out.
+	public function test_answers_built_with_nothing_given_have_no_budget_left_out(): void {
+		self::assertFalse( ( new GuideAnswers() )->budgetLeftOut );
+		self::assertFalse( ( new GuideAnswers( 1, 'street', 100, true ) )->budgetLeftOut );
 	}
 
 	public function test_the_largest_answers_are_kept(): void {

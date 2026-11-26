@@ -10,6 +10,9 @@ declare( strict_types=1 );
 namespace CreativeBranding\SkateboardBuilder\Tests\Unit\Front;
 
 use CreativeBranding\SkateboardBuilder\Domain\Fit\Problem;
+use CreativeBranding\SkateboardBuilder\Domain\Guide\RidingStyle;
+use CreativeBranding\SkateboardBuilder\Domain\Guide\Span;
+use CreativeBranding\SkateboardBuilder\Domain\Guide\Tier;
 use CreativeBranding\SkateboardBuilder\Domain\Measure\Measure;
 use CreativeBranding\SkateboardBuilder\Domain\Rule\Finding;
 use CreativeBranding\SkateboardBuilder\Domain\Rule\MessageCode;
@@ -483,5 +486,40 @@ final class WordsTest extends TestCase {
 		self::assertSame( 'wheels, bearings and hardware', Words::joined( array( 'wheels', 'bearings', 'hardware' ) ) );
 		self::assertSame( 'deck, wheels, bearings and hardware', Words::joined( array( 'deck', 'wheels', 'bearings', 'hardware' ) ) );
 		self::assertSame( '8″, 8.5″ or 9″', Words::either( array( '8″', '8.5″', '9″' ) ), 'the choice takes the same separator' );
+	}
+
+	// #134: each build Help me choose recommends is named by its tier, with a line on how its parts were chosen.
+	public function test_each_tier_of_a_recommended_build_has_its_name_and_its_line(): void {
+		$words = array();
+		foreach ( Tier::cases() as $tier ) {
+			$words[ $tier->value ] = array( Words::tier( $tier ), Words::tierLine( $tier ) );
+		}
+		self::assertSame(
+			array(
+				'budget'  => array( 'Budget build', 'The lowest-priced part that fits in each slot.' ),
+				'mid'     => array( 'Mid-range build', 'A part from the middle of the prices in each slot.' ),
+				'premium' => array( 'High-end build', 'The highest-priced part that fits in each slot.' ),
+				'only'    => array( 'Ready build', 'The one build the shop can make from these answers.' ),
+			),
+			$words
+		);
+	}
+
+	// #134: the wheel sizes recommended are said with where they suit, for each style the guided start asks about.
+	public function test_the_wheels_recommended_are_said_with_where_they_suit(): void {
+		$span  = new Span( self::mm( '53' ), self::mm( '56' ) );
+		$words = array();
+		foreach ( RidingStyle::cases() as $style ) {
+			$words[ $style->value ] = Words::wheelsFor( $style, $span );
+		}
+		self::assertSame(
+			array(
+				'street'   => "Wheels of 53\u{00A0}mm to 56\u{00A0}mm suit street skating.",
+				'park'     => "Wheels of 53\u{00A0}mm to 56\u{00A0}mm suit a skatepark.",
+				'bowl'     => "Wheels of 53\u{00A0}mm to 56\u{00A0}mm suit bowls and transition.",
+				'cruising' => "Wheels of 53\u{00A0}mm to 56\u{00A0}mm suit cruising.",
+			),
+			$words
+		);
 	}
 }

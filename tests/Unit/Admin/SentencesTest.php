@@ -300,6 +300,7 @@ final class SentencesTest extends TestCase {
 			'layout_builder_page_not_offered' => 'The Trucks slot, Units per build: choose one of the pages listed, or the kit\'s own page. A page is listed when it is published and holds this kit\'s Builder block.',
 			'width_guide_width_range'     => 'The Trucks slot, Units per build: type a width from 5 to 12 in.',
 			'width_guide_shoe_twice'      => 'The Trucks slot, Units per build: the guide already has a row for this shoe size. Give each row its own.',
+			'wheel_guide_size_range'      => 'The Trucks slot, Units per build: type a size from 40 to 90 mm.',
 			'settings_lead_days_form'     => 'The Trucks slot, Units per build: type a number of business days, such as 2, or a range with the fewer first, such as 2-4.',
 			'settings_lead_days_range'    => 'The Trucks slot, Units per build: type business days from 0 to 60, such as 2 or 2-4.',
 			'preset_part_not_in_slot'     => 'The Trucks slot, Units per build: Indy 144 is not a part the Trucks slot takes, or it cannot be bought now.',
