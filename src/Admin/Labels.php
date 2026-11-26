@@ -59,6 +59,11 @@ final class Labels {
 			SpecKey::GripWidth->value        => __( 'Grip width', 'creative-skateboard-builder' ),
 			SpecKey::GripLength->value       => __( 'Grip length', 'creative-skateboard-builder' ),
 			SpecKey::SetSize->value          => __( 'Number in a set', 'creative-skateboard-builder' ),
+			SpecKey::NoseLength->value       => __( 'Nose length', 'creative-skateboard-builder' ),
+			SpecKey::TailLength->value       => __( 'Tail length', 'creative-skateboard-builder' ),
+			SpecKey::ConcaveDepth->value     => __( 'Concave depth', 'creative-skateboard-builder' ),
+			SpecKey::KickAngle->value        => __( 'Kick angle in degrees', 'creative-skateboard-builder' ),
+			SpecKey::WheelWidth->value       => __( 'Wheel width', 'creative-skateboard-builder' ),
 		);
 		return $labels[ $key->value ] ?? $key->value;
 	}

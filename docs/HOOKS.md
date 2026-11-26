@@ -200,6 +200,11 @@ The keys a part's specs are stored under: in the specs index (`cbuild_specs`), i
 | `grip_width` | 0.2.0 | Measure | in | A sheet of grip tape's width. |
 | `grip_length` | 0.2.0 | Measure | in | A sheet of grip tape's length. |
 | `set_size` | 0.2.0 | Count | | How many units one of the product holds: a pair of trucks is 2. Needed only in a slot that takes more than one unit. |
+| `nose_length` | 1.4.0 | Measure | in | A deck's nose, from the nose truck's outer holes to the tip. Optional: the 3D view alone reads it, and a deck without one gets the rest of its length past the holes, a quarter inch more than its tail (#139, D-473). |
+| `tail_length` | 1.4.0 | Measure | in | A deck's tail, from the tail truck's outer holes to the tip. Optional, as `nose_length`: a deck that gives one and not the other gets the rest of its length for the other. |
+| `concave_depth` | 1.4.0 | Measure | in | How deep a deck's concave is across its width. Optional: the 3D view alone reads it, 0.45 in where a deck gives none, and at most a quarter of the deck's width. |
+| `kick_angle` | 1.4.0 | Count | whole degrees | The angle of a deck's nose and tail. Optional: the 3D view alone reads it, 20 where a deck gives none, and at most 45. |
+| `wheel_width` | 1.4.0 | Measure | mm | A wheel's width. Optional: the picture and the 3D view read it, and a wheel without one is drawn three fifths as wide as its diameter, as before (D-471). |
 
 ### Findings and message codes
 

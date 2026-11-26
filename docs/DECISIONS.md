@@ -118,6 +118,8 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-189 · The seeded charts' baseplates, from the makers' own pages](#d-189--the-seeded-charts-baseplates-from-the-makers-own-pages--2026-11-14)
 - [D-281 · The Catalogue check says which variations share a card, in a list of its own, as information](#d-281--the-catalogue-check-says-which-variations-share-a-card-in-a-list-of-its-own-as-information--2026-11-19)
 - [D-287 · The specs CSV reads and writes a part's Layer image, by ID or file name, by the field's rules](#d-287--the-specs-csv-reads-and-writes-a-parts-layer-image-by-id-or-file-name-by-the-fields-rules--2026-11-19)
+- [D-472 · The 3D view's five optional specs, and a kick angle in whole degrees](#d-472--the-3d-views-five-optional-specs-and-a-kick-angle-in-whole-degrees--2026-11-26)
+- [D-473 · The 3D view's usual values, from published deck and truck specs](#d-473--the-3d-views-usual-values-from-published-deck-and-truck-specs--2026-11-26)
 
 ### Kits and their settings
 
@@ -325,6 +327,8 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-372 · Site Health names up to five parts whose layer images have no resized copies](#d-372--site-health-names-up-to-five-parts-whose-layer-images-have-no-resized-copies--2026-11-24)
 - [D-373 · The update to 1.2.0 queues the index job of each part whose layer image has no copies](#d-373--the-update-to-120-queues-the-index-job-of-each-part-whose-layer-image-has-no-copies--2026-11-24)
 - [D-378 · An update's index jobs are due five minutes on, past any runner the earlier release started](#d-378--an-updates-index-jobs-are-due-five-minutes-on-past-any-runner-the-earlier-release-started--2026-11-24)
+- [D-470 · The 3D scene is measured in the domain, on the 2D picture's own frame](#d-470--the-3d-scene-is-measured-in-the-domain-on-the-2d-pictures-own-frame--2026-11-26)
+- [D-471 · A wheel's width is its spec, or three fifths of its diameter](#d-471--a-wheels-width-is-its-spec-or-three-fifths-of-its-diameter--2026-11-26)
 
 ### Cart, checkout and orders
 
@@ -6799,5 +6803,60 @@ Milestone 14's pipeline. Every lane's `CHANGELOG.md` entry went under the same h
 - **A lane that touches layout** also runs the three tablet projects.
 - **Each lane takes a ten-minute walkthrough** of what it changed (`docs/reviews/M<n>/lanes/`), on Twenty Twenty-Five and Kadence, besides the full walkthrough at the end.
 - **The release's full local set** (`/audit-milestone`, step 1) gains the tablet projects and `infection:diff`.
+
+**Status:** Accepted.
+
+### D-470 · The 3D scene is measured in the domain, on the 2D picture's own frame · 2026-11-26
+
+Issue #139 asks for a 3D view whose sizes come from each part's specs, and the plan has the browser decide nothing. Lane 2's renderer needs one shape to draw against while this lane builds it.
+
+**Decision:**
+
+- **`Domain\Picture\Board`** holds the frame both views draw from: the deck's width, length and wheelbase, the hole pattern and spacing, each truck's middle, the axle and the wheels' size, with the usual values `Layout` had (32 in long, the wheelbase by width or 44.5 % of the length, 2.125 in and 2.5 in spacings, 1.625 in columns, a 54 mm wheel). `Layout` now reads it, so the 2D and 3D views can't drift apart. A unit test checks that they place the trucks and wheels alike.
+- **`Domain\Scene\Scene::of()`** gives the scene in whole micrometres and tenths of a degree, in the contract's shape (`schema/state.json`, `view.scene`). The origin is on the deck's top face midway between the trucks, with x toward the nose, y across and z up.
+- **Nose and tail** are measured from the outer holes to the tips, as decks are, and they and the outer holes' span always make the length. Both given and not matching: they're shared out in their proportion. One given: the other is the rest. Neither given: the nose gets a quarter inch more than the tail (D-473).
+- **A truck's height** runs from its baseplate's bottom to its axle's centre, as trucks are measured. The axle and the wheels' centres are at z = -(deck thickness + riser + truck height).
+- **A deck drilled for both** takes old school holes when the trucks' `baseplate` is `old_school`, and new school holes otherwise. The picture follows the same rule; before 1.4.0 it always drew new school holes on such a deck.
+- **Hostile sizes are held:** a concave to a quarter of the deck's width, a kick to 45°, and a nose or tail to what the deck's length leaves.
+- **Textures** are filled at the edge from the parts' layer renditions, after `cbuild_composed_layer` with the use `3d`.
+
+**Status:** Accepted.
+
+### D-471 · A wheel's width is its spec, or three fifths of its diameter · 2026-11-26
+
+The picture has always drawn a wheel three fifths as wide as its diameter, which is 32.4 mm at 54 mm. Retailers list Spitfire's Formula Four Classic 54 mm at 32.2 to 33.5 mm wide, with a contact patch of 16.5 to 22 mm ([skatedeluxe](https://www.skatedeluxe.com/en/p/spitfire-formula-four-classic-wheels-natural-grey-54-mm-97a-4-pack_p140381), [Black Sheep](https://blacksheepstore.co.uk/products/spitfire-formula-four-classics-skateboard-wheels-99du-white-silver-54mm), [Rollersnakes](https://rollersnakes.co.uk/products/spitfire-formula-four-og-classics-99du-skateboard-wheels-blue-54mm)).
+
+**Decision:** the new `wheel_width` sets a wheel's width in the picture and the 3D view. A wheel without one keeps the three fifths, so no picture already drawn changes. The scene's contact band is half the width, which falls inside the published range. The scene names `wheel_width` among what it assumed. The picture's `assumed` doesn't, since its three fifths was always a drawing rule.
+
+**Status:** Accepted.
+
+### D-472 · The 3D view's five optional specs, and a kick angle in whole degrees · 2026-11-26
+
+The scene needs sizes that no spec carried: a deck's nose and tail, its concave and kick, and a wheel's width.
+
+**Decision:**
+
+- **The new keys** are `nose_length`, `tail_length` and `concave_depth` (measures, in inches, as a deck's other sizes are), `wheel_width` (a measure, in millimetres, as wheels are sold), and `kick_angle`.
+- **`kick_angle` is a count of whole degrees.** The specs know lengths, choices, flags and counts. An angle unit would reach the parser, the index and every unit label for a value that makers publish in whole degrees. The scene sends it in tenths, as the contract's angles are.
+- **Each key goes through the paths every key does:** the import's and the export's columns, the specs index and the attribute map all list `SpecKey::cases()`. Part specs shows the deck's four under Deck and the width under Wheels.
+- **Nothing reads them but the scene and, for `wheel_width`, the picture.** No fit rule changes.
+
+**Status:** Accepted.
+
+### D-473 · The 3D view's usual values, from published deck and truck specs · 2026-11-26
+
+A deck or truck without one of the scene's sizes still has to be drawn.
+
+**Decision:**
+
+- **The kick** is 20°. Powell-Peralta, one of the few makers that publish angles, gives 18° to 23° across its molds: the 246 shape's K21 concave is 19° at the tail and 18° at the nose ([Tactics](https://www.tactics.com/powell-peralta/skull-sword-90-246-shape-skateboard-deck/yellow-fade)), and the K15 is 21° and 23°. Most other makers only say mellow, medium or steep ([RippedLaces](https://rippedlaces.com/?p=1146)).
+- **The concave** is 0.45 in deep, Powell-Peralta's published depth for its K15 mold (SP2: 0.46 in).
+- **The nose** is a quarter inch longer than the tail. Listings put both between 6.5 and 7 in on a standard deck, with the nose the longer: 6.75 and 6.55 in on one example, and 7.0 and 6.5 in on Element's 32 in decks.
+- **The truck height** comes from the class: 49 mm low, 52 mm mid and 55 mm high. Independent's Stage 11 standard is 55 mm and its lows 49 mm ([CCS](https://shop.ccs.com/products/independent-stage-11-standard-skateboard-trucks-black-silver-144mm), [Stoked](https://stokedskateboards.com/blogs/stoked-school/low-trucks)), and its Mid Inverted Kingpin is 52 mm ([Tactics](https://www.tactics.com/independent/mid-inverted-kingpin-skateboard-trucks/polished-139)).
+- **A riser** is 1/8 in and **a bolt** 1 in, the smallest riser sold and the usual bolt.
+- **A hanger** is two thirds of its axle, as Independent's sizes are named (the 144 on an 8.25 in axle).
+- **A deck** is seven plies and 11 mm thick, which no spec gives.
+
+The scene's `assumed` names each spec it stood in for, and the Catalogue check lists a deck or wheel that lacks one of the scene's own sizes on a kit whose 3D view is on.
 
 **Status:** Accepted.

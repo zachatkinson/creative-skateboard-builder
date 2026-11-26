@@ -38,7 +38,12 @@ export interface CbuildSettings {
 			| 'spacers_built_in'
 			| 'grip_width'
 			| 'grip_length'
-			| 'set_size';
+			| 'set_size'
+			| 'nose_length'
+			| 'tail_length'
+			| 'concave_depth'
+			| 'kick_angle'
+			| 'wheel_width';
 		/**
 		 * The unit an unmarked value is in, for a measure. Empty is the spec's own.
 		 */
