@@ -83,7 +83,7 @@ Taken on 26 November 2026 on lane 3 on `m13-walk2`: the audit-fixed tree `2cd0cc
 | Open, with its questions, and the whole page | `desktop-guide-open-light-en`, `desktop-guide-open-full-light-en` | `phone-guide-open-light-en`, `phone-guide-open-full-light-en` |
 | Answered: Street, a budget of 250, no shoe size | `desktop-guide-answers-light-en` | `phone-guide-answers-light-en` |
 | The three builds, each with why, and the whole page | `desktop-guide-builds-light-en`, `desktop-guide-builds-full-light-en` | `phone-guide-builds-light-en`, `phone-guide-builds-full-light-en` |
-| Answered with a shoe size of 9.5 and larger, a budget of 200: two builds | `desktop-guide-answers-shoe-light-en`, `desktop-guide-builds-shoe-light-en`, `desktop-guide-builds-shoe-full-light-en` | `phone-guide-answers-shoe-light-en`, `phone-guide-builds-shoe-light-en`, `phone-guide-builds-shoe-full-light-en` |
+| Answered with a shoe size of 9.5 and larger, Street, a budget of 250: two builds | `desktop-guide-answers-shoe-light-en`, `desktop-guide-builds-shoe-light-en`, `desktop-guide-builds-shoe-full-light-en` | `phone-guide-answers-shoe-light-en`, `phone-guide-builds-shoe-light-en`, `phone-guide-builds-shoe-full-light-en` |
 | A budget typed as "$150", read as 150 (D-433) | `desktop-guide-budget-dollar-light-en` | `phone-guide-budget-dollar-light-en` |
 | A budget typed as "abc", left out with a line that says so (D-433) | `desktop-guide-budget-unread-light-en` | `phone-guide-budget-unread-light-en` |
 | Turned off in the Build tab: the start without it (D-409) | `desktop-guide-off-light-en` | `phone-guide-off-light-en` |
@@ -102,3 +102,10 @@ Taken on 26 November 2026 on lane 3 on `m13-walk2`: the audit-fixed tree `2cd0cc
 | Help me choose answered | `desktop-guide-answers-dark-en`, `phone-guide-answers-dark-en` | `desktop-guide-answers-light-fr`, `phone-guide-answers-light-fr` |
 | Its builds | `desktop-guide-builds-dark-en`, `phone-guide-builds-dark-en`, `desktop-guide-builds-full-dark-en`, `phone-guide-builds-full-dark-en` | `desktop-guide-builds-light-fr`, `phone-guide-builds-light-fr`, `desktop-guide-builds-full-light-fr`, `phone-guide-builds-full-light-fr` |
 | The swap notice | `desktop-swap-notice-dark-en`, `phone-swap-notice-dark-en` | `desktop-swap-notice-light-fr`, `phone-swap-notice-light-fr` |
+
+## Retaken after the walkthrough's fixes
+
+The second pass found two defects, fixed by D-460 and D-461 (the review's walkthrough section). The pictures they changed were taken again on 26 November 2026 on lane 3, on the tree with both fixes (`4fc1794`), by the same script:
+
+- **D-461, a ready build's tile cut to a square:** every `*-guide-builds-*` picture, the shoe size's too. The Mid-range build's 8.25″ deck now shows whole.
+- **D-460, "et ." in a French list:** `desktop-swap-notice-light-fr` and `phone-swap-notice-light-fr`, which now read "Échangé : wheels et hardware."

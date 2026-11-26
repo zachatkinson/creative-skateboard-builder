@@ -2,7 +2,7 @@
 
 All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html). One entry per milestone; `v1.0.0` closes milestone 10 (D-236).
 
-## [Unreleased]
+## [1.3.0] - 2026-11-26
 
 ### Added
 
@@ -933,7 +933,7 @@ Milestone 1, the foundation. Nothing a shopper or shop owner sees yet: the skele
   - A weekly canary on WordPress trunk and WooCommerce's pre-release, the release workflow with CycloneDX SBOMs, and Dependabot.
 - Docs: `HOOKS.md`, `SETTINGS.md`, `SECURITY.md`, `PRIVACY.md`, `A11Y.md`, `BENCHMARK.md`, `DECISIONS.md` (D-020 to D-048), `reviews/M1.md`, `README.md` and `readme.txt`; the POT file.
 
-[Unreleased]: https://github.com/zachatkinson/creative-skateboard-builder/compare/v1.2.0...HEAD
+[1.3.0]: https://github.com/zachatkinson/creative-skateboard-builder/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/zachatkinson/creative-skateboard-builder/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/zachatkinson/creative-skateboard-builder/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/zachatkinson/creative-skateboard-builder/compare/v0.9.0...v1.0.0
