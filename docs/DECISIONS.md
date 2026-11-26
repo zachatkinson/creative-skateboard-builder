@@ -281,6 +281,7 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-464 · A lane's changelog entry is a fragment, put together at release](#d-464--a-lanes-changelog-entry-is-a-fragment-put-together-at-release--2026-11-26)
 - [D-465 · A lane lands only after CI's own checks on its changed lines and a walkthrough of them](#d-465--a-lane-lands-only-after-cis-own-checks-on-its-changed-lines-and-a-walkthrough-of-them--2026-11-26)
 - [D-467 · ShellCheck holds every shell script, pinned as actionlint and zizmor are](#d-467--shellcheck-holds-every-shell-script-pinned-as-actionlint-and-zizmor-are--2026-11-26)
+- [D-468 · A plugin blurs the 3D view by class, so a shopper's reveal can lift it](#d-468--a-plugin-blurs-the-3d-view-by-class-so-a-shoppers-reveal-can-lift-it--2026-11-26)
 - [D-432 · After a swap the notice says the swap and the status the build alone, so a screen reader hears it once](#d-432--after-a-swap-the-notice-says-the-swap-and-the-status-the-build-alone-so-a-screen-reader-hears-it-once--2026-11-25)
 
 ### Motion
@@ -6831,6 +6832,24 @@ Its first run found 10 findings:
 - **Not npm's `shellcheck` wrapper,** which fetches the binary at run time with no checksum.
 
 **Tests.** With `|| exit 1` taken off `tools/integration-yoast.sh`'s `cd`, the gate fails on SC2164 at line 5. Put back, all 52 scripts are clean.
+
+**Status:** Accepted.
+### D-468 · A plugin blurs the 3D view by class, so a shopper's reveal can lift it · 2026-11-26
+
+Asked by Claude in Cowork, for Mature Content, while #139 was being built. On the page, Mature Content blurs a flagged picture with CSS, and lifts the blur when the shopper chooses to see the artwork (`html.mcw-revealed`, and an `mcw:revealed` event on `document`). It blurs a composed picture on the server only where the picture is kept for others, such as the share card. The 3D view draws the deck's graphic as a WebGL texture, so an answer of `blurred` to `cbuild_composed_layer`'s new `3d` use would be baked into it, and no reveal could lift it. Cowork offered two ways:
+
+- **(a)** leave the texture as it is, and blur the view by its classes;
+- **(b)** blur on the server, and give the view a documented way to fetch its textures again after a reveal.
+
+**Decision:** (a). It is how a part's pictures already work on the page: the artwork reaches the page, and a class blurs it. (b) would need the server to know of a reveal that happens only in the browser.
+
+- **The canvas's classes:** `.cbuild-3d__canvas` carries the deck's `cbuild_part_classes` through every redraw and part change.
+- **The veil's place:** `.cbuild-3d__frame` is a promised place for a plugin's veil, as `.cbuild__stage` is. It is never replaced once the view opens, and an element put there survives part changes, steps and reopening.
+- **The `3d` use stays:** `cbuild_composed_layer` keeps it, with all three answers honoured. HOOKS.md says that for `3d`, `blurred` and `left_out` are fixed for that page view, and that a picture a shopper may reveal should be answered `as_is` and blurred by class.
+
+The cost is that the CSS blur covers the whole view, trucks and wheels too, not the deck's graphic alone. Cowork said either way works for Mature Content once HOOKS.md says which.
+
+**Tests:** a browser test adds `is-flagged` through `cbuild_part_classes` and a veil to `.cbuild-3d__frame`, then checks the class on the canvas and the veil after a part change and a reopen (lane 2).
 
 **Status:** Accepted.
 
