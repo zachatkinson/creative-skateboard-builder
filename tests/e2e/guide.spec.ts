@@ -1,8 +1,8 @@
-import { execSync } from 'node:child_process';
 import { readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { test, expect, answered, inLocale, Page, SITE } from './support/test';
 import { axe } from './support/axe';
+import { wp } from './support/cli';
 
 /*
  * #134, the guided start: "Help me choose" at the builder's start, optional questions in one GET form, the builds they
@@ -348,7 +348,9 @@ test.describe( 'Help me choose', () => {
  * @param on True or false, or null to take the setting off.
  */
 const helpMeChoose = ( on: boolean | null ): void => {
-	const file = path.join( process.cwd(), 'tmp', 'e2e-eval.php' );
+	// A file per worker, as builder.spec's runPhp() (D-422).
+	const name = `e2e-eval-${ process.pid }.php`;
+	const file = path.join( process.cwd(), 'tmp', name );
 	writeFileSync(
 		file,
 		`<?php\n$k = wc_get_product( ${
@@ -364,9 +366,8 @@ const helpMeChoose = ( on: boolean | null ): void => {
 			on
 		) }; } $k->setDocument( '_cbuild_settings', $d ); $k->save();\n`
 	);
-	execSync(
-		'npx wp-env run cli -- wp eval-file wp-content/plugins/creative-skateboard-builder/tmp/e2e-eval.php',
-		{ stdio: [ 'ignore', 'pipe', 'ignore' ] }
+	wp(
+		`eval-file wp-content/plugins/creative-skateboard-builder/tmp/${ name }`
 	);
 };
 
