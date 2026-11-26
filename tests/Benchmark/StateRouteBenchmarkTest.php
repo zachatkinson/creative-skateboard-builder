@@ -54,6 +54,12 @@ final class StateRouteBenchmarkTest extends IntegrationTestCase {
 	);
 
 	/**
+	 * The queries the review with every slot picked may ask beyond a step's: measured at 21 warm against a step's 20,
+	 * and 44 cold as a step's (D-434). Its swaps ask none of their own: each part carries its rank.
+	 */
+	private const REVIEW_QUERIES = 1;
+
+	/**
 	 * The time a request is held to here: the budget, scaled by the runner's speed on a shared runner (D-124, D-171).
 	 */
 	private static function limit(): float {
@@ -211,25 +217,43 @@ final class StateRouteBenchmarkTest extends IntegrationTestCase {
 			'chips' => array( 'brand' => array( 'bench-brand-1' ) ),
 			'sort'  => 'price-asc',
 		);
-		$ask      = static function ( int $deck, bool $move = false, bool $narrow = false ) use ( $kit, $narrowed ): array {
+		// Smart swaps (#135, the auditor's 1.3.0 should-fix 2): a review with every slot but the deck picked, each at a
+		// middling price, so each has parts for less and dearer to try; and the trucks step with a truck picked.
+		$picked = array();
+		foreach ( $ids as $slot => $parts ) {
+			if ( 'deck' !== $slot ) {
+				$picked[ $slot ] = $parts[30];
+			}
+		}
+		$swapping = array(
+			'review' => array( $picked, 'review' ),
+			'truck'  => array( array( 'trucks' => $ids['trucks'][30] ), 'trucks' ),
+		);
+		$ask      = static function ( int $deck, bool $move = false, bool $narrow = false, string $swap = '' ) use ( $kit, $narrowed, $swapping ): array {
 			$request = new WP_REST_Request( 'GET', "/cbuild/v1/kits/{$kit}/state" );
-			$request->set_query_params(
-				( $move ? array(
-					'cbuild' => array(
-						'deck' => (string) $deck,
-						'step' => 'trucks',
-					),
-					'page'   => $kit,
-				) : array(
-					'picks' => array( 'deck' => $deck ),
-					'step'  => 'trucks',
-				) ) + ( $narrow ? $narrowed : array() )
-			);
+			[ $more, $step ] = $swapping[ $swap ] ?? array( array(), '' );
+			if ( '' !== $swap ) {
+				// As a swap's link or the review's own reaches the route: the build's own fields, every pick and the step.
+				$request->set_query_params( array( 'cbuild' => array_map( 'strval', array( 'deck' => $deck ) + $more ) + array( 'step' => $step ) ) );
+			} else {
+				$request->set_query_params(
+					( $move ? array(
+						'cbuild' => array(
+							'deck' => (string) $deck,
+							'step' => 'trucks',
+						),
+						'page'   => $kit,
+					) : array(
+						'picks' => array( 'deck' => $deck ),
+						'step'  => 'trucks',
+					) ) + ( $narrow ? $narrowed : array() )
+				);
+			}
 			$queries  = get_num_queries();
 			$start    = hrtime( true );
 			$response = rest_get_server()->dispatch( $request );
 			$took     = ( hrtime( true ) - $start ) / 1e6;
-			self::assertSame( 200, $response->get_status() );
+			self::assertSame( 200, $response->get_status(), (string) wp_json_encode( $response->get_data() ) );
 			return array( $took, get_num_queries() - $queries, $response->get_data() );
 		};
 
@@ -272,14 +296,31 @@ final class StateRouteBenchmarkTest extends IntegrationTestCase {
 		self::assertSame( 'price-asc', $found['shelf']['sort'] ?? null );
 		self::assertGreaterThan( 0, $found['shelf']['matching'] ?? 0, 'it finds trucks of the brand chosen' );
 		self::assertLessThan( $first['shelf']['matching'] ?? 0, $found['shelf']['matching'] ?? 0, 'fewer than the step lists without it' );
-		foreach ( array( 'plain' => array( false, false ), 'move' => array( true, false ), 'narrowed' => array( false, true ) ) as $shape => [ $move, $narrow ] ) {
+		$review = $ask( $ids['deck'][0], false, false, 'review' )[2];
+		self::assertSame( 'review', $review['step'] ?? null, 'the review is the step answered' );
+		self::assertNotSame( array(), $review['swaps'], 'the review offers swaps' );
+		self::assertNotSame( array(), $ask( $ids['deck'][0], false, false, 'truck' )[2]['swaps'], 'the picked truck offers its swaps' );
+		$shapes = array(
+			'plain'    => array( false, false, '' ),
+			'move'     => array( true, false, '' ),
+			'narrowed' => array( false, true, '' ),
+			'review'   => array( false, false, 'review' ),
+			'truck'    => array( false, false, 'truck' ),
+		);
+		foreach ( $shapes as $shape => [ $move, $narrow, $swap ] ) {
 			// Each shape from an address of its own: the runs are as many requests as one address may make in a minute.
-			$_SERVER['REMOTE_ADDR'] = array( 'plain' => '203.0.113.7', 'move' => '203.0.113.9', 'narrowed' => '203.0.113.11' )[ $shape ];
+			$_SERVER['REMOTE_ADDR'] = array(
+				'plain'    => '203.0.113.7',
+				'move'     => '203.0.113.9',
+				'narrowed' => '203.0.113.11',
+				'review'   => '203.0.113.13',
+				'truck'    => '203.0.113.15',
+			)[ $shape ];
 			// The parts table as a shop's is between changes: each deck's answer asked once, so its looks and cards are
 			// kept beside their facts, as the facts were by the first answer (D-289). "Cold" empties the object cache
 			// alone; the first request after a change is timed below.
 			foreach ( array_slice( $ids['deck'], 0, 7 ) as $deck ) {
-				$ask( $deck, $move, $narrow );
+				$ask( $deck, $move, $narrow, $swap );
 			}
 			foreach ( array( 'cold' => true, 'warm' => false ) as $run => $flush ) {
 				$times   = array();
@@ -289,15 +330,21 @@ final class StateRouteBenchmarkTest extends IntegrationTestCase {
 						// A request on a site with no persistent object cache starts with nothing kept.
 						wp_cache_flush();
 					}
-					[ $took, $asked ] = $ask( $ids['deck'][ $request % 7 ], $move, $narrow );
+					[ $took, $asked ] = $ask( $ids['deck'][ $request % 7 ], $move, $narrow, $swap );
 					$times[]          = $took;
 					$queries[]        = $asked;
 				}
 				$p95 = self::p95( $times );
 				sort( $times );
-				$name = array( 'plain' => '', 'move' => 'a move, ', 'narrowed' => 'a search with a chip and a sort, ' )[ $shape ] . $run;
+				$name = array(
+					'plain'    => '',
+					'move'     => 'a move, ',
+					'narrowed' => 'a search with a chip and a sort, ',
+					'review'   => 'the review with six slots picked and their swaps, ',
+					'truck'    => 'the trucks step with a truck picked and its swaps, ',
+				)[ $shape ] . $run;
 				self::say( sprintf( 'state route, %s, 500 candidates in the step, 2,000 parts in the kit: p95 %.1f ms, median %.1f ms, slowest %.1f ms, %d queries at most', $name, $p95, $times[ (int) ( count( $times ) / 2 ) ], max( $times ), max( $queries ) ) );
-				self::assertLessThanOrEqual( self::QUERIES[ $run ], max( $queries ), "The state route's queries, {$name}." );
+				self::assertLessThanOrEqual( self::QUERIES[ $run ] + ( 'review' === $shape ? self::REVIEW_QUERIES : 0 ), max( $queries ), "The state route's queries, {$name}." );
 				self::assertLessThan( self::limit(), $p95, "The state route, {$name}." );
 			}
 		}

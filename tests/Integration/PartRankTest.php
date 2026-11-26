@@ -18,7 +18,10 @@ use CreativeBranding\SkateboardBuilder\Port\SpecTables;
 use CreativeBranding\SkateboardBuilder\Service\SpecIndexer;
 use CreativeBranding\SkateboardBuilder\Service\SpecWriter;
 use CreativeBranding\SkateboardBuilder\Support\Options;
+use CreativeBranding\SkateboardBuilder\Support\Tables;
+use CreativeBranding\SkateboardBuilder\Tests\Support\Domain\KitDocuments;
 use CreativeBranding\SkateboardBuilder\Tests\Support\IntegrationTestCase;
+use CreativeBranding\SkateboardBuilder\Tests\Support\KitFactory;
 
 /**
  * #135: a part's rank in its slot, which smart swaps' "better" follows. A whole number on the part's Part specs, and
@@ -170,6 +173,80 @@ final class PartRankTest extends IntegrationTestCase {
 			),
 			$this->ranks( $first, $second, $plain->get_id() )
 		);
+	}
+
+	// The auditor's 1.3.0 should-fix 2 (D-434): every answer with swaps loaded each part tried, to read its rank. A kit's
+	// parts now carry the rank they were read with, kept beside their facts, so the ranks load no product.
+	public function test_a_kits_parts_carry_their_ranks_and_the_ranks_of_them_load_no_product(): void {
+		$ranked = self::part( '5' );
+		$plain  = self::part();
+		$parent = new \WC_Product_Variable();
+		$parent->set_name( 'Wheels in two colours' );
+		$parent->update_meta_data( Options::META_RANK, '3' );
+		$parent->save();
+		$variations = array();
+		foreach ( array( 'red', 'blue' ) as $colour ) {
+			$variation = new \WC_Product_Variation();
+			$variation->set_parent_id( $parent->get_id() );
+			$variation->set_attributes( array( 'colour' => $colour ) );
+			$variation->set_regular_price( '30' );
+			$variation->update_meta_data( Options::META_SPECS, array( 'wheel_diameter' => '52.0000' ) );
+			if ( 'blue' === $colour ) {
+				$variation->update_meta_data( Options::META_RANK, '8' );
+			}
+			$variation->save();
+			$variations[ $colour ] = $variation->get_id();
+		}
+		$slots                        = KitDocuments::slots();
+		$slots['slots'][2]['sources'] = array( 'products' => array( $ranked->get_id(), $plain->get_id(), $parent->get_id() ) );
+		$kit                          = KitFactory::kit( 'Complete', array( Options::META_KIT_SLOTS => $slots ) )->get_id();
+		$kits                         = $this->service( Kits::class );
+		$wheels                       = $kits->kit( $kit )?->slots->get( 'wheels' );
+		self::assertNotNull( $wheels );
+		$expected = array(
+			$ranked->get_id()     => 5,
+			$variations['red']  => 3,
+			$variations['blue'] => 8,
+		);
+		$carried  = static function ( array $parts ): array {
+			$ranks = array();
+			foreach ( $parts as $part ) {
+				if ( null !== $part->rank ) {
+					$ranks[ $part->id ] = $part->rank;
+				}
+			}
+			ksort( $ranks );
+			return $ranks;
+		};
+		ksort( $expected );
+		self::assertSame( $expected, $carried( $kits->offered( $kit, $wheels ) ), 'its own, a variation\'s own, its product\'s, and none' );
+
+		// A later request: the parts read from the parts table, and their ranks asked with no product loaded.
+		wp_cache_flush();
+		$parts  = $kits->offered( $kit, $wheels );
+		$loaded = array();
+		$count  = static function ( string $class, mixed $type = null, mixed $variation = null, mixed $id = 0 ) use ( &$loaded ): string {
+			$loaded[] = $id;
+			return $class;
+		};
+		add_filter( 'woocommerce_product_class', $count, 10, 4 );
+		$ranks = $this->service( PartRanks::class )->of( ...$parts );
+		remove_filter( 'woocommerce_product_class', $count, 10 );
+		ksort( $ranks );
+		self::assertSame( $expected, $ranks );
+		self::assertSame( array(), $loaded, 'no product loaded for the ranks' );
+
+		add_filter( 'cbuild_part_rank', static fn( ?int $rank, int $id ): ?int => $id === $plain->get_id() ? 1 : $rank, 10, 2 );
+		self::assertSame( 1, $this->service( PartRanks::class )->of( ...$parts )[ $plain->get_id() ] ?? null, 'another plugin answers last' );
+		remove_all_filters( 'cbuild_part_rank' );
+
+		// A row kept before 1.3.0 holds no rank: it is read from the shop again, with its rank.
+		global $wpdb;
+		$wpdb->query( $wpdb->prepare( 'UPDATE %i SET specs = %s', Tables::parts(), '{"wheel_diameter":"52.0000"}' ) );
+		wp_cache_flush();
+		self::assertSame( $expected, $carried( $kits->offered( $kit, $wheels ) ), 'read again, with the ranks' );
+		$kept = (string) $wpdb->get_var( $wpdb->prepare( 'SELECT specs FROM %i WHERE part_id = %d', Tables::parts(), $ranked->get_id() ) );
+		self::assertStringContainsString( '"_rank":"5"', $kept, 'and kept with them' );
 	}
 
 	public function test_who_cannot_edit_products_saves_no_rank(): void {

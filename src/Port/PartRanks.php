@@ -9,6 +9,8 @@ declare( strict_types=1 );
 
 namespace CreativeBranding\SkateboardBuilder\Port;
 
+use CreativeBranding\SkateboardBuilder\Domain\Kit\Part;
+
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
@@ -30,4 +32,15 @@ interface PartRanks {
 	 * @return array<int, int>
 	 */
 	public function ranks( int ...$parts ): array;
+
+	/**
+	 * The rank of each of these parts that has one, by ID, as `ranks()` gives it, from the rank each part was read with
+	 * (`Part::$rank`): no product is loaded for it (D-434). A part with none is left out.
+	 *
+	 * @since 1.3.0
+	 *
+	 * @param Part ...$parts The parts, as the shop's kits read them.
+	 * @return array<int, int>
+	 */
+	public function of( Part ...$parts ): array;
 }

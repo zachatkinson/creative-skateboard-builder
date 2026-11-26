@@ -401,6 +401,7 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-357 · The pressed deck's board is drawn at the press, once decoded, and the answer confirms it or puts it back](#d-357--the-pressed-decks-board-is-drawn-at-the-press-once-decoded-and-the-answer-confirms-it-or-puts-it-back--2026-11-24)
 - [D-365 · The state route's Server-Timing names the shelf, the cards and the decks' boards](#d-365--the-state-routes-server-timing-names-the-shelf-the-cards-and-the-decks-boards--2026-11-24)
 - [D-405 · A width's press takes the lead and the guided start away, and the brand row keeps its line until it is laid out again](#d-405--a-widths-press-takes-the-lead-and-the-guided-start-away-and-the-brand-row-keeps-its-line-until-it-is-laid-out-again--2026-11-25)
+- [D-434 · A part's rank is kept beside its facts and carried by the part, so smart swaps load no product](#d-434--a-parts-rank-is-kept-beside-its-facts-and-carried-by-the-part-so-smart-swaps-load-no-product--2026-11-26)
 
 ### Compatibility, upgrades and uninstall
 
@@ -5864,7 +5865,7 @@ Issue #135: "better" follows the shop's rank, "a number on the part's Part specs
 - **A group of its own on the panel, "Rank", closed and its field disabled where the part has none,** as every group is, so a page of fifteen variations adds nothing to the product's form (issue #23's `max_input_vars`). It is drawn wherever the panel has fields, and on a part no kit takes where it has a rank, so it can be cleared.
 - **A variation with none takes its product's,** as its specs and layer image do, so a shop ranks a variable product once.
 - **`cbuild_part_rank` answers last,** with the stored rank (or the product's) as its first value, as `cbuild_part_available` does for "Not offered". Anything but a whole number is none. A filter adds a part's rank to the choice but never a swap: every swap is still the fit engine's, so no answer can offer a part that does not fit or is not in stock. The plan's `cbuild_swaps` filter is not added, since it could put an unchecked swap in front of a shopper.
-- **Read through WooCommerce's CRUD after one priming query** (`ProductMeta::primeWithParents()`, D-202), and only for the slots whose swaps are worked out (D-396), on each request. Nothing is kept: a part's rank changes only with a product save, and the parts are loaded in the same request anyway.
+- **Read through WooCommerce's CRUD after one priming query** (`ProductMeta::primeWithParents()`, D-202), and only for the slots whose swaps are worked out (D-396), on each request. Nothing is kept: a part's rank changes only with a product save, and the parts are loaded in the same request anyway. (Replaced by D-434: the products were not loaded in the same request, and the rank is now kept with the part's facts.)
 
 **Tests.** `PartRankTest`: the field, open and enabled with a rank, closed and disabled without; saved, refused (`-1`, `2.5`, `top`, `07`, `1000000000`, `1e3`), kept when not sent, cleared when empty, and not saved by a customer; a variation's own and its product's; the filter last. `PartSpecsPanelTest`'s counts of groups gain the Rank group. `StateRouteTest`: the next rank up, not the top or the next price; a plugin's rank; no rank, the next dearer.
 
@@ -6551,3 +6552,24 @@ The auditor's 1.3.0 should-fix 3. After a swap the store focuses the notice (`.c
 - **Deliberate break.** The swap's words put back before the status: the unit case fails as in the red run, and the browser test fails with `expect(locator).not.toContainText` "Swapped: wheels and hardware." (builder.spec.ts:11989).
 
 **Status:** Accepted.
+
+### D-434 · A part's rank is kept beside its facts and carried by the part, so smart swaps load no product · 2026-11-26
+
+The auditor's 1.3.0 should-fix 2. `BuildSwaps::of()` asked `PartRanks::ranks()` for every part each slot tries, and `WooPartRanks` primed their meta and loaded every one of them through WooCommerce on every answer, the facts kept or not (D-395: "Nothing is kept"). On the review with six slots picked that was 1,750 products at 2,000 parts. `StateRouteBenchmarkTest`, extended with that review and with the trucks step with a truck picked, among 500 trucks: the review's p95 was 620 ms cold and 306 ms warm, the trucks step's 262 ms and 141 ms, against the 80 ms budget.
+
+**Decision:**
+
+- **The rank is read with the part's other facts** (`WooKits::shopSays()`, which has the part and its product loaded already): its own `_cbuild_rank`, or its product's for a variation with none, as D-395 has it. `PartFact` and the domain's `Part` carry it, each as a new last constructor argument that defaults to none.
+- **It is kept in the parts table without a new column:** in the row's `specs` JSON under `_rank`, a key no spec has (no `SpecKey` starts with an underscore), so `Specs::fromIndex()` reads past it and the repository takes it out on the way. No table changes. A row kept by 1.2.0 has no `_rank`, so it is read as stale and read again from the shop on its next use, as a row an hour old is: the update needs no step.
+- **`PartRanks::of( Part ...$parts )`**, a new method beside `ranks()`, answers from the rank each part carries and asks `cbuild_part_rank` for each, as `ranks()` does: the filter is still last, and still on every request. `BuildSwaps` asks it. `ranks()` stays, for a caller with IDs alone.
+- **The validator is not changed.** `Swapper::first()` checks the build once a part tried, but stops at the first that passes; measured, the products were the cost, not the checks.
+
+**Numbers** (lane 1, 2,000 parts, 500 trucks, p95 of 40 requests): the review with every slot picked, cold 620.1 ms and 49 queries before, 66.4 ms and 44 after; warm 305.9 ms and 20 queries before, 54.0 ms and 21 after. The trucks step with a truck picked, cold 261.7 ms before and 75.6 ms after; warm 140.5 ms and 60.3 ms. In `docs/BENCHMARK.md`, v1.3.0.
+
+**Tests.**
+
+- **Red run.** `StateRouteBenchmarkTest`, the review shape: "Failed asserting that 49 is equal to 45 or is less than 45" (StateRouteBenchmarkTest.php:341), at p95 928.6 ms cold. `PartRankTest::test_a_kits_parts_carry_their_ranks_and_the_ranks_of_them_load_no_product`: "Undefined property: Part::$rank" (PartRankTest.php:214).
+- **After.** Both pass. `PartRankTest`'s case: a part's own rank, a variation's own and its product's, none; `of()` loads no product (`woocommerce_product_class` never asked) and the filter answers last; a row with no `_rank` is read again and kept with it. `StateRouteTest::test_the_route_asks_the_same_number_of_queries_however_many_parts_a_step_has` adds the review with every slot picked at 4, 16 and 46 wheels, some ranked: the same count warm and cold at each. It passed before the fix too (the products were loaded in two queries); it holds the count.
+- **Deliberate break.** `BuildSwaps` asking `ranks()` by ID again: the benchmark fails at the review, cold, p95 581.3 ms, "Failed asserting that 49 is equal to 46 or is less than 46" (StateRouteBenchmarkTest.php:347).
+
+**Status:** Accepted. Replaces in part D-395's last point: the rank is kept with the part's facts, and read with them.

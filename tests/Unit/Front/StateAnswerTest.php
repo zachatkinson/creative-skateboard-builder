@@ -1670,6 +1670,10 @@ final class StateAnswerTest extends TestCase {
 				$this->asked[] = $parts;
 				return array_intersect_key( $this->ranks, array_flip( $parts ) );
 			}
+
+			public function of( Part ...$parts ): array {
+				return $this->ranks( ...array_map( static fn( Part $part ): int => $part->id, $parts ) );
+			}
 		};
 		$answer = ( new StateAnswer( $this->cards, new FakeMoney(), $this->kits, new Delivery( $this->kits, new FakeShippingZones(), new ShippingWords( new FakeMoney() ) ), new PageRenderer() ) )->withSwaps( new BuildSwaps( $ranked ) );
 		$of     = $answer->of( $state, null );

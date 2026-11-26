@@ -2053,6 +2053,10 @@ final class BuilderTest extends TestCase {
 			public function ranks( int ...$parts ): array {
 				return array();
 			}
+
+			public function of( Part ...$parts ): array {
+				return array();
+			}
 		};
 		return new Builder(
 			new BuildState( $this->kits, new InMemoryShopSettings(), new FakeLogger() ),

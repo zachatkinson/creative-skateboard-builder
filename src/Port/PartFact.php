@@ -25,6 +25,7 @@ final readonly class PartFact {
 	 * Constructor.
 	 *
 	 * @since 0.4.0
+	 * @since 1.3.0 The rank.
 	 *
 	 * @param int                   $id         The product's or the variation's ID.
 	 * @param int                   $of         A variation's parent, 0 for a product.
@@ -37,6 +38,8 @@ final readonly class PartFact {
 	 * @param array<string, string> $attributes A variation's own attribute values, by taxonomy.
 	 * @param array<string, string> $specs      Its specs as the index held them when it was read, by key.
 	 * @param int                   $readAt     When it was read from the shop, a UTC timestamp.
+	 * @param int|null              $rank       Its rank in its slot from its Part specs, its product's for a variation
+	 *                                          with none, or null; before `cbuild_part_rank` answers (#135, D-434).
 	 */
 	public function __construct(
 		public int $id,
@@ -48,6 +51,7 @@ final readonly class PartFact {
 		public ?int $stock,
 		public array $attributes,
 		public array $specs,
-		public int $readAt
+		public int $readAt,
+		public ?int $rank = null
 	) {}
 }

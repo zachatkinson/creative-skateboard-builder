@@ -93,13 +93,12 @@ final class BuildSwaps {
 			}
 		}
 		$review = State::REVIEW === $state->step;
-		$ids    = array();
+		$asked  = array();
 		foreach ( $slots as $slot ) {
-			foreach ( $candidates[ $slot ] as $part ) {
-				$ids[] = $part->id;
-			}
+			array_push( $asked, ...$candidates[ $slot ] );
 		}
-		$ranks   = $this->ranks->ranks( ...$ids );
+		// Each part carries the rank it was read with, so no product is loaded for the ranks (D-434).
+		$ranks   = $this->ranks->of( ...$asked );
 		$swapper = new Swapper( FitEngine::standard() );
 		$board   = $review ? $swapper->board( $state->kit, $build, $candidates ) : null;
 		$swaps   = null === $board ? array() : array( $board );

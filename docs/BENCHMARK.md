@@ -17,6 +17,8 @@ The spec's budgets are tests: a build fails when one is missed. The numbers from
 - [v1.1.0](#v110)
 - [v1.2.0](#v120)
   - [A press with its answer held back (#118, #121)](#a-press-with-its-answer-held-back-118-121)
+- [v1.3.0](#v130)
+  - [Smart swaps on the state route (#135, D-434)](#smart-swaps-on-the-state-route-135-d-434)
 
 ## Budgets (spec: Quality bar, Performance)
 
@@ -402,3 +404,17 @@ The route held back 800 ms after the request, as a slow host answers (Cowork's r
 Next is measured pressed a second after the pick's answer, once the answer asked ahead is in (D-355). The phone's stage still starts to stick at the answer (D-303): made to stick from the press, it measured the same 0.000 (D-356). Pressed straight after the pick's answer, before the one asked ahead is in, it still shifted 0.021 on the desktop and 0.046 on the phone: the press waits for the rest of that answer, as any press waits for its own.
 
 The store's script is 7,604 B compressed (7,133 B in 1.1.0), and 7,760 B with the deck drawn at its press (D-357, #121).
+
+## v1.3.0
+
+### Smart swaps on the state route (#135, D-434)
+
+`StateRouteBenchmarkTest` asks two more shapes since milestone 13's audit: the review with every slot but the deck picked, each at a middling price so each slot has parts for less and dearer to try, and the trucks step with a truck picked, among 500 trucks at 2,000 parts. Before D-434 each answer loaded every part tried, to read its rank; now each part carries the rank it was read with. Lane 1, Xdebug off, p95 of 40 requests, with the queries at most.
+
+| Answer | Before, cold | After, cold | Before, warm | After, warm |
+| --- | --- | --- | --- | --- |
+| The review, six slots picked, with its swaps | 620.1 ms, 49 queries | 66.4 ms, 44 queries | 305.9 ms, 20 queries | 54.0 ms, 21 queries |
+| The trucks step, a truck picked, with its swaps | 261.7 ms, 49 queries | 75.6 ms, 44 queries | 140.5 ms, 19 queries | 60.3 ms, 20 queries |
+| The trucks step, nothing picked (the budget's own) | 82.4 ms, 44 queries | 75.0 ms, 44 queries | 64.2 ms, 20 queries | 64.4 ms, 20 queries |
+
+The "before" run's own shape was over its budget too, at 82.4 ms: the machine was busier then, and the same shape measured 68.3 ms in a quieter run that day. Broken on purpose, with `BuildSwaps` asking the ranks by ID again, the review measured 581.3 ms cold and 49 queries, and the benchmark failed.

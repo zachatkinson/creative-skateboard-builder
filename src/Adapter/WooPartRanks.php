@@ -9,6 +9,7 @@ declare( strict_types=1 );
 
 namespace CreativeBranding\SkateboardBuilder\Adapter;
 
+use CreativeBranding\SkateboardBuilder\Domain\Kit\Part;
 use CreativeBranding\SkateboardBuilder\Port\PartRanks;
 use CreativeBranding\SkateboardBuilder\Port\ProductMeta;
 use CreativeBranding\SkateboardBuilder\Support\PartRank;
@@ -20,7 +21,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * A part's rank is its `_cbuild_rank` meta, as its Part specs panel writes it, read through the product's CRUD; a
  * variation with none takes its product's, as its other Part specs do. Each is then the answer to `cbuild_part_rank`.
- * The parts' meta and their products' are read in one query (D-202), and the products in one more.
+ * The parts' meta and their products' are read in one query (D-202), and the products in one more. A part read with
+ * its kit's parts carries its rank already, kept beside its facts (D-434), and `of()` asks the filter alone.
  *
  * @since 1.3.0
  */
@@ -59,21 +61,51 @@ final class WooPartRanks implements PartRanks {
 				$parent = $parents[ $product->get_parent_id() ] ?? null;
 				$rank   = null === $parent ? null : PartRank::own( $parent );
 			}
-			/**
-			 * Filters a part's rank in its slot, for smart swaps' "better" (#135): a whole number, higher being better,
-			 * or null for none. A slot where no part has one ranks its parts by price.
-			 *
-			 * @since 1.3.0
-			 *
-			 * @param int|null $rank The part's rank from its Part specs, its product's for a variation with none, or
-			 *                       null.
-			 * @param int      $id   The product's or variation's ID.
-			 */
-			$rank = apply_filters( 'cbuild_part_rank', $rank, $id );
-			if ( is_int( $rank ) ) {
+			$rank = self::answered( $rank, $id );
+			if ( null !== $rank ) {
 				$ranks[ $id ] = $rank;
 			}
 		}
 		return $ranks;
+	}
+
+	/**
+	 * The rank of each of these parts that has one, by ID, from the rank each was read with: no product is loaded.
+	 *
+	 * @since 1.3.0
+	 *
+	 * @param Part ...$parts The parts, as the shop's kits read them.
+	 * @return array<int, int>
+	 */
+	public function of( Part ...$parts ): array {
+		$ranks = array();
+		foreach ( $parts as $part ) {
+			$rank = self::answered( $part->rank, $part->id );
+			if ( null !== $rank ) {
+				$ranks[ $part->id ] = $rank;
+			}
+		}
+		return $ranks;
+	}
+
+	/**
+	 * A part's rank after another plugin's answer: a whole number, or null for none.
+	 *
+	 * @param int|null $rank The part's own rank, or its product's.
+	 * @param int      $id   The product's or variation's ID.
+	 */
+	private static function answered( ?int $rank, int $id ): ?int {
+		/**
+		 * Filters a part's rank in its slot, for smart swaps' "better" (#135): a whole number, higher being better,
+		 * or null for none. A slot where no part has one ranks its parts by price.
+		 *
+		 * @since 1.3.0
+		 *
+		 * @param int|null $rank The part's rank from its Part specs, its product's for a variation with none, or
+		 *                       null.
+		 * @param int      $id   The product's or variation's ID.
+		 */
+		$said = apply_filters( 'cbuild_part_rank', $rank, $id );
+		return is_int( $said ) ? $said : null;
 	}
 }

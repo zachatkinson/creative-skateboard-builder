@@ -1104,6 +1104,38 @@ final class StateRouteTest extends IntegrationTestCase {
 		self::assertLessThanOrEqual( 60, $cold, 'cold' );
 		self::assertLessThanOrEqual( 15, $movedWarm, 'a move, warm' );
 		self::assertLessThanOrEqual( 60, $movedCold, 'a move, cold' );
+
+		// The review with every slot picked, where smart swaps are worked out (the auditor's 1.3.0 should-fix 2 and 7):
+		// the wheels' parts to try grow, some ranked, and the review asks as many queries at each size, warm and cold.
+		$whole     = $this->whole();
+		$this->kit = $whole['kit'];
+		$review    = array( 'cbuild' => array_map( 'strval', $whole['picks'] ) + array( 'step' => 'review' ) );
+		// Each size asked once before it is counted: the parts just saved move WooCommerce's term counts, whose transient
+		// the first cold request after writes with its timeout, two queries that are WooCommerce's and not the review's.
+		$reviewed  = function ( bool $cold ) use ( $count, $review ): int {
+			$count( $cold, $review );
+			return $count( $cold, $review );
+		};
+		$added     = 0;
+		$wheels    = function ( int $upTo ) use ( &$added, $settled ): void {
+			for ( ; $added < $upTo; $added++ ) {
+				// For less and dearer than the 10 picked, every third ranked.
+				$wheel = $this->wheels( 'Wheels ' . $added, 0 === $added % 2 ? '8' : '12' );
+				if ( 0 === $added % 3 ) {
+					$product = wc_get_product( $wheel );
+					$product->update_meta_data( Options::META_RANK, (string) ( $added + 1 ) );
+					$product->save();
+				}
+			}
+			$settled();
+		};
+		$wheels( 3 );
+		self::assertNotSame( array(), $this->answer( $review )['swaps'], 'the review offers swaps' );
+		$sizes = array( $reviewed( false ), $reviewed( true ) );
+		$wheels( 15 );
+		self::assertSame( $sizes, array( $reviewed( false ), $reviewed( true ) ), 'the review, 4 wheels or 16' );
+		$wheels( 45 );
+		self::assertSame( $sizes, array( $reviewed( false ), $reviewed( true ) ), 'the review, 4 wheels or 46' );
 	}
 
 	/**
