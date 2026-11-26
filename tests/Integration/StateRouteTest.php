@@ -1864,6 +1864,47 @@ final class StateRouteTest extends IntegrationTestCase {
 		self::assertSame( array(), $at( 'deck' )['swaps'], 'the deck is never swapped' );
 	}
 
+	// The auditor's 1.3.0 minor: a swap followed after its part sold out, between the offer and the press. The link is
+	// no promise: the build is checked again as it arrives, keeps the picks it asks for, names the part, and is not
+	// ready, as any build link with a part sold out is.
+	public function test_a_swap_whose_part_sold_out_since_it_was_offered_keeps_its_picks_names_the_part_and_is_not_ready(): void {
+		$whole     = $this->whole();
+		$this->kit = $whole['kit'];
+		$cheaper   = $this->wheels( 'Wheels for less', '7' );
+		$picks     = array_map( 'strval', $whole['picks'] );
+		$review    = $this->answer( array( 'cbuild' => $picks + array( 'step' => 'review' ) ) );
+		self::assertContains( array( 'less', array( 'wheels' => $cheaper ) ), self::swaps( $review ), 'offered while in stock' );
+
+		$product = wc_get_product( $cheaper );
+		$product->set_stock_status( 'outofstock' );
+		$product->save();
+		$swapped = array( 'wheels' => (string) $cheaper ) + $picks;
+		$after   = $this->answer(
+			array(
+				'cbuild' => $swapped + array(
+					'_undo' => array( 'wheels' => $picks['wheels'] ),
+					'step'  => 'review',
+				),
+			)
+		);
+		$picked  = array_column( $after['steps'], 'picked', 'slot' );
+		foreach ( $swapped as $slot => $part ) {
+			self::assertSame( (int) $part, $picked[ $slot ] ?? null, $slot . ': the picks the link asks for, kept' );
+		}
+		self::assertFalse( $after['ready'], 'not ready with a part sold out' );
+		self::assertSame(
+			array(
+				array(
+					'code' => 'part_sold_out',
+					'slot' => 'wheels',
+					'part' => $cheaper,
+				),
+			),
+			array_map( static fn( array $problem ): array => array_intersect_key( $problem, array_flip( array( 'code', 'slot', 'part' ) ) ), $after['problems'] ),
+			'the part sold out named, in its slot'
+		);
+	}
+
 	public function test_a_kit_with_smart_swaps_off_offers_none_and_one_saved_without_the_setting_offers_them(): void {
 		$offered = function ( ?array $settings ): array {
 			$whole     = $this->whole( null, null, $settings );
