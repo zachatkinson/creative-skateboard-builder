@@ -10,7 +10,8 @@ description: Close a milestone. Run the full gates, have the spec-reviewer and a
    - `composer test:benchmark:integration`, which holds the state route to its 80 ms budget on this machine; CI holds it to its query counts and the budget scaled by the runner's speed (D-124, D-171)
    - the integration variants: `composer test:integration:hpos-off`, `:hpos-sync`, `:multisite` and `:object-cache`
    - the oldest leg: `npm run env:oldest`, the integration and browser suites, then `npm run env:newest`
-   - `npm run test:e2e -- --project=chromium-desktop --project=chromium-phone --project=webkit-desktop --project=webkit-phone --project=firefox-desktop --project=firefox-phone --project=no-js --project=fr-ca --project=rtl` (everything but `visual`, which runs in CI only)
+   - `npm run test:e2e -- --project=chromium-desktop --project=chromium-phone --project=chromium-tablet --project=webkit-desktop --project=webkit-phone --project=webkit-tablet --project=firefox-desktop --project=firefox-phone --project=firefox-tablet --project=no-js --project=fr-ca --project=rtl` (everything but `visual`, which runs in its Linux container through `bash tools/visual.sh`)
+   - `composer infection:diff`, CI's own run on the lines the pull request changes (D-465)
    - `composer i18n:check`
    - `npm run lhci`
    - `composer audit:deps`
