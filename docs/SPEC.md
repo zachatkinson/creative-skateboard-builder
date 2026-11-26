@@ -112,7 +112,7 @@ The kit model underneath (slots, parts, rules) isn't tied to skateboards, so ano
 
 **Requirements.** PHP 8.5 or later, WordPress 7.0 or later and WooCommerce 11.2 or later (open question 8: Creative Search moved to the same PHP and WordPress floors on 21 Oct, and WooCommerce 11.2 brought the Store API validation filters the cart relies on), and MySQL 8.0 or MariaDB 10.6 or later, as WordPress itself asks. Tested against the oldest pair, WordPress 7.0 with WooCommerce 11.2.0, and the newest, pinned in `.wp-env.json`: WordPress 7.1.4 with WooCommerce 11.2.2, as on the demo on 6 Nov, all on PHP 8.5, on MySQL 8.4 and MariaDB 10.11. No external service, no API key, and no outbound request but the agency's update check.
 
-**Non-goals for 1.0.** No 3D view (the layered 2D picture is in 1.0; a 3D view that loads on a tap is a module after it); no graphics uploaded by shoppers (a module after 1.0, once the owner answers the questions in `docs/UX-RESEARCH.md`); no quantity choices inside a slot (one part per slot, in the set the shop sells); no dealer pricing (Phase 4 adds it through hooks); no builds made of other builds; no editing a build inside the cart (the cart links back to the builder instead); no theme template overrides. Nothing that only Skatehouse needs: Skatehouse's rules and copy go in Skatehouse Core 2.x and the kit's settings.
+**Non-goals for 1.0.** No 3D view (the layered 2D picture is in 1.0; a 3D view that loads on a tap came in 1.4.0, generated from each part's sizes, `docs/reviews/M14.md`); no graphics uploaded by shoppers (a module after 1.0, once the owner answers the questions in `docs/UX-RESEARCH.md`); no quantity choices inside a slot (one part per slot, in the set the shop sells); no dealer pricing (Phase 4 adds it through hooks); no builds made of other builds; no editing a build inside the cart (the cart links back to the builder instead); no theme template overrides. Nothing that only Skatehouse needs: Skatehouse's rules and copy go in Skatehouse Core 2.x and the kit's settings.
 
 ### Working with Claude Code
 
@@ -477,7 +477,7 @@ The board as it's built (P6). It heads every step and the review, and is redrawn
 - **Who ships what.** Milestone 6 ships the labelled layout, and milestone 7 adds the layers. Skatehouse's deck cut-outs come from today's photos. Trucks, wheels, risers and grip are shot to the template in `docs/PICTURE.md` as they arrive.
 - **A written description.** The board has one written description in the page's language ("An 8.25″ Rascals deck with Independent 149 trucks, 54 mm Retna wheels and black grip"). It changes with the build, and the status region announces the change once.
 - **The largest paint.** The deck layer is the page's largest paint: an explicit size, `fetchpriority="high"`, and AVIF or WebP at the size shown. A pick swaps one layer in place.
-- **Ready for 3D.** Both renderers sit behind one interface, so a 3D view that loads on a tap can be added as a module after 1.0 (`docs/ROADMAP.md`).
+- **Ready for 3D.** Both renderers sit behind one interface, so a 3D view that loads on a tap can be added after 1.0. It came in 1.4.0 (milestone 14), drawn with three.js from the sizes the domain gives each part, with no model files (`docs/research/plan-after-1-2.md`).
 
 ### Review and add to cart
 
@@ -877,7 +877,7 @@ Each suggestion is written into `docs/DECISIONS.md` as a proposed decision, so C
 | 6 | Load WooCommerce's checkout script on every page, so the Mini-Cart can indent a build's parts and hide their Remove links | No: it adds about 140 kB compressed to every page. Item data and CSS group the parts, and removing any part removes the whole build (D-010) |
 | 7 | Dealer accounts (Phase 4): does a signed-in dealer see the builder, and at which prices? | Retail prices only in 1.0, with a line telling a signed-in dealer the builder is for retail orders. Revisit with the owner's trade terms (D-011) |
 | 8 | The floors: PHP 8.5, WordPress 7.0 and WooCommerce 11.2 | Yes. The PHP and WordPress floors match Creative Search's D-023, Zach's call on 21 Oct: the agency's shops run WordPress 7 on PHP 8.5, and the current test tools need PHP 8.4 or later. WooCommerce 11.2 is the first release with the Store API filters that refuse a part's quantity changed on its own and validate a build's first add; the demo runs 11.2.2 (D-004) |
-| 9 | The picture in 1.0; 3D and shoppers' own graphics after | Yes: the layered 2D picture in 1.0. 3D on a tap comes once trucks are stocked and the owner pays for models, and graphics once the owner answers the seven questions in `docs/UX-RESEARCH.md` (D-006, D-007) |
+| 9 | The picture in 1.0; 3D and shoppers' own graphics after | Yes: the layered 2D picture in 1.0. 3D on a tap was to wait on trucks being stocked and models the owner paid for. It came in 1.4.0 instead, generated from each part's sizes, with no models to buy (Zach, 24 Nov 2026). Graphics come once the owner answers the seven questions in `docs/UX-RESEARCH.md` (D-006, D-007) |
 
 **For the owner**, already in [Skatehouse: questions for the owner](https://claude.ai/artifact/NtszoXMTEDsu9GRekKyGbH):
 
