@@ -390,6 +390,7 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-234 · The fr-ca project keeps the plugin in English, and one spec walks it in French](#d-234--the-fr-ca-project-keeps-the-plugin-in-english-and-one-spec-walks-it-in-french--2026-11-18)
 - [D-260 · French isn't read by a person before 1.0.0](#d-260--french-isnt-read-by-a-person-before-100--2026-11-18)
 - [D-460 · A list is joined in the plugin's own words, never WordPress's translation of them](#d-460--a-list-is-joined-in-the-plugins-own-words-never-wordpresss-translation-of-them--2026-11-26)
+- [D-513 · In French a smart swap is a remplacement, not an échange](#d-513--in-french-a-smart-swap-is-a-remplacement-not-an-échange--2026-11-26)
 
 ### Performance
 
@@ -6941,5 +6942,24 @@ Milestone 14's pipeline, the real-theme runs (Zach, 26 November). In 1.3.0 four 
 - **The bar (F33):** "keeps the bar no taller at the review on a phone under a theme's paragraph margin (#150)". #153's "The bar on a phone" covers the three themes in English and French (D-510).
 
 **Red run.** With D-450's handle change reverted (`SavedBuildHooks::styles()` adding its rules to `woocommerce-general` again), on chromium-desktop and chromium-phone: the looped compare failed on Kadence and on Storefront, on the desktop "a build a column, at least 14rem" (builder.spec.ts:9021) and on the phone "the row says which build it is" (builder.spec.ts:8917). Twenty Twenty-Five passed, as it did in 1.3.0. The save test passed on all three, since its page needs none of those rules. Put back, all passed.
+
+**Status:** Accepted.
+
+### D-513 · In French a smart swap is a remplacement, not an échange · 2026-11-26
+
+Cowork's note on 1.3.0's French, approved by Zach. In Quebec retail, « échange » is the word for returns, exchanges and trade-ins: Best Buy's fr-ca site has « Politique de retours et échanges » and « Programme d'échange ». A store's own swap of one product for another is a « substitution », as IGA, Metro and Maxi call it in their online grocery. « Remplacer » is the plain verb for a part put in another's place.
+
+**Decision:** three msgstr in `languages/creative-skateboard-builder-fr_CA.po` change:
+
+- "Offer smart swaps": « Proposer des remplacements futés »;
+- "Undo swap": « Annuler le remplacement »;
+- "Swapped: %s.": « Remplacement : %s. », a noun, so no participle has to agree with the parts listed. It keeps the no-break space before the colon.
+
+The Build tab's description beside "Offer smart swaps" has no « échange » and is unchanged. A French Canadian reader may still overrule the wording.
+
+**Tests.**
+
+- **Red run.** `ListWordsTest::test_two_and_three_items_are_joined_in_the_plugins_french_not_cores`, expecting the new wording against the old .po: expected 'Remplacement : roues et quincaillerie.', got 'Échangé : roues et quincaillerie.' (ListWordsTest.php:59). french.spec.ts "says what a swap changed as French joins a list" on fr-ca: expected "Remplacement : wheels et hardware.", received "Échangé : wheels et hardware." (french.spec.ts:83).
+- **After.** Both pass with the .po changed and compiled, and french.spec.ts passes 4 of 4 on fr-ca.
 
 **Status:** Accepted.

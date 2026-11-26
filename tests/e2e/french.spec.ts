@@ -80,7 +80,9 @@ test.describe( 'The builder in French', () => {
 		await page.goto( url.toString() );
 		await page.locator( '#cbuild-swap-board' ).click();
 		const said = page.locator( '.cbuild-swapped__text' );
-		await expect( said ).toHaveText( 'Échangé\u00A0: wheels et hardware.' );
+		await expect( said ).toHaveText(
+			'Remplacement\u00A0: wheels et hardware.'
+		);
 		await expect( said ).not.toContainText( ' et .' );
 	} );
 

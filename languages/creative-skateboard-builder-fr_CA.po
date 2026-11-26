@@ -5204,7 +5204,7 @@ msgstr "Rang"
 #: src/Admin/BuildTab.php:1046
 #: src/Admin/BuildTab.php:1496
 msgid "Offer smart swaps"
-msgstr "Proposer des échanges futés"
+msgstr "Proposer des remplacements futés"
 
 #: src/Admin/BuildTab.php:1050
 msgid "On the review and on the chosen card, offers the same board for less and a part for less or a better one in each slot, each checked to fit the build. Off, the builder offers none."
@@ -5212,7 +5212,7 @@ msgstr "Sur le récapitulatif et sur la carte choisie, propose la même planche 
 
 #: src/Front/BuilderView.php:2426
 msgid "Undo swap"
-msgstr "Annuler l’échange"
+msgstr "Annuler le remplacement"
 
 #. translators: %s: an amount of money, such as $3.00.
 #: src/Front/Words.php:672
@@ -5248,7 +5248,7 @@ msgstr "Un cran au-dessus : %s, même prix"
 #: src/Front/Words.php:699
 #, php-format
 msgid "Swapped: %s."
-msgstr "Échangé : %s."
+msgstr "Remplacement : %s."
 
 #. translators: %s: how many other widths a deck is made in, such as 6.
 #: src/Front/Words.php:442

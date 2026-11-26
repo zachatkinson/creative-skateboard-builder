@@ -5,5 +5,6 @@
 
 ### Changed
 
+- In French, a smart swap is now « remplacement », the word for a part put in another's place: « Proposer des remplacements futés », « Annuler le remplacement » and « Remplacement : … ». In Quebec stores « échange » means returns and trade-ins (D-513).
 - **Development:** the browser tests' lock around wp-env reads the clock once to judge a lock and to give up on it. Read twice, a lock made within the millisecond the wait began could be given up on as still held, and its test failed now and then under load (#155, D-511).
 - **Development:** the browser tests of My builds, the saved builds' compare, the deck page's start button under the hostile theme and the bar's height at the review also run on Kadence and Storefront, where 1.3.0's compare lost its rules and the tests on Twenty Twenty-Five passed (D-466).

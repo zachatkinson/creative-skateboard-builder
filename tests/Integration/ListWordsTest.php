@@ -56,7 +56,7 @@ final class ListWordsTest extends IntegrationTestCase {
 			remove_filter( 'gettext', $core );
 		}
 		// French puts a no-break space before its colon.
-		self::assertSame( "Échangé\u{00A0}: roues et quincaillerie.", $two, 'no full stop inside the list' );
-		self::assertSame( "Échangé\u{00A0}: roues, roulements et quincaillerie.", $three, 'no comma before "et"' );
+		self::assertSame( "Remplacement\u{00A0}: roues et quincaillerie.", $two, 'no full stop inside the list' );
+		self::assertSame( "Remplacement\u{00A0}: roues, roulements et quincaillerie.", $three, 'no comma before "et"' );
 	}
 }
