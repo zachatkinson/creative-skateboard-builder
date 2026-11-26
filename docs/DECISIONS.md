@@ -507,6 +507,7 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-428 · The integration variants' plugins pinned to the hashes of the releases D-420 named](#d-428--the-integration-variants-plugins-pinned-to-the-hashes-of-the-releases-d-420-named--2026-11-25)
 - [D-430 · The swaps-off test measures its own plain card, so it holds when it runs alone](#d-430--the-swaps-off-test-measures-its-own-plain-card-so-it-holds-when-it-runs-alone--2026-11-25)
 - [D-431 · Every browser test passes when it runs alone](#d-431--every-browser-test-passes-when-it-runs-alone--2026-11-25)
+- [D-511 · The browser tests' lock reads the clock once to judge a lock and to give up on it](#d-511--the-browser-tests-lock-reads-the-clock-once-to-judge-a-lock-and-to-give-up-on-it--2026-11-26)
 
 ### Releases and the repository
 
@@ -6830,5 +6831,18 @@ The issue proposed a max inline size of about 9rem on Next. That leaves French s
 
 - **Red run.** builder.spec.ts "The bar on a phone (#153)", "keeps Back and Next beside the total at 390 px on twentytwentyfive in English", chromium-phone: "Back on the trucks step, in a bar 157 px high: beside the total", expected true, received false. Five of the six failed so; Storefront in English passed.
 - **After.** All six pass on chromium-phone, webkit-phone and firefox-phone (18).
+
+**Status:** Accepted.
+
+### D-511 · The browser tests' lock reads the clock once to judge a lock and to give up on it · 2026-11-26
+
+Issue #155. Vitest's "takes a lock older than its limit from a holder still running" (`tests/js/e2e-lock.test.ts`) failed once under load. The cause is in `withLock()` (`tests/e2e/support/lock.ts`, D-422), not the test. Each pass of its loop read the clock twice. `abandoned()` judged the lock's age with one `Date.now()`, and the loop gave up with another. A lock's time has a fraction of a millisecond, as APFS and ext4 keep it, and `Date.now()` has none. A lock made within the millisecond the wait began was judged at that millisecond as not yet older than the limit: the test's limit is 0, and the age was below 0. If the clock then crossed into the next millisecond before the second reading, the wait was over, and `withLock()` threw "The lock … is still held". Under load, more time passes between the two readings, which is why it showed only then. With the default limit of five minutes the same race costs at most a millisecond, but it is the same defect.
+
+**Decision:** one reading per pass. `abandoned()` takes the time it judges at, and the loop gives up by that same reading. Once the wait is over, the lock is older than the limit by that reading, so it is taken, not given up on.
+
+**Tests.**
+
+- **Red run.** A new case, "takes a lock older than its limit when the clock crosses a millisecond between judging it and giving up", sets the lock's time to a fraction past a millisecond and the clock to read that millisecond twice and then the next. Before the fix it failed every time: "The lock …/lock is still held by … token." (`lock.ts:138`, from `e2e-lock.test.ts:134`).
+- **After.** It passes, and the file's six tests passed 15 runs out of 15.
 
 **Status:** Accepted.

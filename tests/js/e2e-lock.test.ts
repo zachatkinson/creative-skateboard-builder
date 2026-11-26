@@ -6,12 +6,13 @@ import {
 	mkdtempSync,
 	readFileSync,
 	rmSync,
+	utimesSync,
 	writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { withLock } from '../e2e/support/lock';
 
 /**
@@ -107,6 +108,35 @@ describe( 'the lock around wp-env', () => {
 		expect( withLock( path.join( dir, 'lock' ), () => 'ran', 0 ) ).toBe(
 			'ran'
 		);
+	} );
+
+	// #155: under load the test above failed now and then. A lock's age was read at one millisecond and the wait given
+	// up at the next, so a lock made within the millisecond the wait began (its time has a fraction, the clock's
+	// reading none) was judged too young, then the wait was over. The clock is set here to cross that millisecond
+	// between the two readings.
+	it( 'takes a lock older than its limit when the clock crosses a millisecond between judging it and giving up', () => {
+		mkdirSync( path.join( dir, 'lock' ) );
+		writeFileSync(
+			path.join( dir, 'lock', 'owner' ),
+			`${ process.ppid } token`
+		);
+		const at = Math.floor( Date.now() ) + 5000;
+		utimesSync(
+			path.join( dir, 'lock' ),
+			( at + 0.7 ) / 1000,
+			( at + 0.7 ) / 1000
+		);
+		const readings = [ at, at ];
+		const clock = vi
+			.spyOn( Date, 'now' )
+			.mockImplementation( () => readings.shift() ?? at + 1 );
+		try {
+			expect( withLock( path.join( dir, 'lock' ), () => 'ran', 0 ) ).toBe(
+				'ran'
+			);
+		} finally {
+			clock.mockRestore();
+		}
 	} );
 
 	it( 'waits while a holder still running has it', () => {

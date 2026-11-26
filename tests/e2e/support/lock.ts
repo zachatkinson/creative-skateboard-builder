@@ -64,11 +64,16 @@ function alive( pid: number ): boolean {
  *
  * @param dir        The lock's directory.
  * @param staleAfter How old a lock may be before it is taken, in milliseconds.
+ * @param now        The time it is judged at: the same reading the caller gives up by (#155).
  */
-function abandoned( dir: string, staleAfter: number ): string | undefined {
+function abandoned(
+	dir: string,
+	staleAfter: number,
+	now: number
+): string | undefined {
 	let age: number;
 	try {
-		age = Date.now() - statSync( dir ).mtimeMs;
+		age = now - statSync( dir ).mtimeMs;
 	} catch {
 		return undefined;
 	}
@@ -129,12 +134,15 @@ export function withLock< T >(
 				throw error;
 			}
 		}
-		const seen = abandoned( dir, staleAfter );
+		// One reading of the clock for both: judged at one millisecond and given up at the next, a lock made in the
+		// millisecond the wait began was never old enough, yet the wait was over (#155, D-511).
+		const now = Date.now();
+		const seen = abandoned( dir, staleAfter, now );
 		if ( undefined !== seen ) {
 			clear( dir, seen );
 			continue;
 		}
-		if ( Date.now() > giveUp ) {
+		if ( now > giveUp ) {
 			throw new Error(
 				`The lock ${ dir } is still held by ${ holder( dir ) }.`
 			);
