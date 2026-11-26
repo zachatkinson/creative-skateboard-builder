@@ -422,6 +422,7 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-232 · The update is tested from every published release, with that release's own data on it](#d-232--the-update-is-tested-from-every-published-release-with-that-releases-own-data-on-it--2026-11-18)
 - [D-332 · The newest leg moves to WooCommerce 11.3.1, with its one PHP 8.5 deprecation let through in one test](#d-332--the-newest-leg-moves-to-woocommerce-1131-with-its-one-php-85-deprecation-let-through-in-one-test--2026-11-23)
 - [D-414 · CI updates from every release from 1.0.0 on, and from 0.1.0 and 0.9.0](#d-414--ci-updates-from-every-release-from-100-on-and-from-010-and-090--2026-11-25)
+- [D-425 · The guide's answers take the riding style as its value, so an earlier release's container builds the build's link](#d-425--the-guides-answers-take-the-riding-style-as-its-value-so-an-earlier-releases-container-builds-the-builds-link--2026-11-25)
 
 ### Tooling, CI and tests
 
@@ -6502,5 +6503,21 @@ D-430 found a browser test that compared against a variable only the test before
 - **Red run.** Alone, chromium-desktop, 2 of 20: "the review's layout shift, Expected: 0, Received: 0.000994065284729004".
 - **After.** Alone, 20 times each on chromium-desktop, chromium-phone, fr-ca, webkit-desktop, webkit-phone and firefox-desktop: every run passed.
 - **Deliberate break.** The thumbnail's square taken away (`aspect-ratio: 1` off `.cbuild-review__thumb` and `.cbuild-review__photo`, and the `width` and `height` binds off the image in `templates/builder/review.php`): it failed on chromium-desktop and webkit-desktop with "the list as tall as before, Expected: 865.53125, Received: 2462.703125". With that check made soft for the run, the shift check failed too: "Expected: 0, Received: 0.013692148407300314".
+
+**Status:** Accepted.
+
+### D-425 · The guide's answers take the riding style as its value, so an earlier release's container builds the build's link · 2026-11-25
+
+`npm run upgrade:all` on the combined tree failed from 0.6.0, and from 0.9.0 run alone: "`Front\BuildLink` is not built: Service `Domain\Guide\RidingStyle` is not instantiable and has no binding", in an admin request.
+
+**Cause.** The update check asks the previous release's container for every class of its `src/` that it could build (D-208). `BuildLink` is one: every parameter of its constructor has a default. Every release's container builds a parameter typed with a class by building that class and ignores its default (`Container::resolve()`, src/Container.php:722-728, and v0.6.0's at 515-528). #134 added `GuideAnswers $guide = new GuideAnswers()` to the link, and `GuideAnswers` took `?RidingStyle $style`, an enum, which no container can build. The CI sample (D-414) holds 0.9.0, so CI's update check would have failed too.
+
+**Decision:** `GuideAnswers`' constructor takes the style as its value, a string or null, and sets its `style` property, still a `RidingStyle` or null, with `RidingStyle::tryFrom()`. `read()` passes the string it was sent. A value that isn't a style is no answer, as before. Nothing else built one with an enum, and the class is not in the public API.
+
+**Tests.**
+
+- **Red run.** `ContainerTest::test_the_build_link_and_its_guide_answers_build_as_an_earlier_release_built_them`: "PluginException: Service CreativeBranding\SkateboardBuilder\Domain\Guide\RidingStyle is not instantiable and has no binding."
+- **After.** It passes, with the unit suite. `tools/upgrade.sh` from 0.6.0 and from 0.9.0 passes: "its container fits 1.3.0's files". Then the full `npm run upgrade:all` passes.
+- **Deliberate break.** The constructor's `?string $style` put back as `?RidingStyle $style`: the test fails with the red run's message.
 
 **Status:** Accepted.

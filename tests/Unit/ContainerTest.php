@@ -86,6 +86,16 @@ final class ContainerTest extends TestCase {
 		self::assertNull( ( new \ReflectionProperty( \CreativeBranding\SkateboardBuilder\Front\StateAnswer::class, 'artwork' ) )->getValue( ( new \ReflectionClass( \CreativeBranding\SkateboardBuilder\Front\StateAnswer::class ) )->newInstanceWithoutConstructor() ), 'none without the container' );
 	}
 
+	// D-425: an earlier release's container builds each class of src/ it can, the build's link among them, and resolves
+	// a parameter typed with a class by building that class, its default aside. So the link's guide answers must be
+	// buildable that way too: no enum in their constructor.
+	public function test_the_build_link_and_its_guide_answers_build_as_an_earlier_release_built_them(): void {
+		$container = new Container();
+		$link      = $container->get( \CreativeBranding\SkateboardBuilder\Front\BuildLink::class );
+		self::assertTrue( $link->guide->isEmpty(), 'the link built with no guide answers' );
+		self::assertTrue( $container->get( \CreativeBranding\SkateboardBuilder\Front\GuideAnswers::class )->isEmpty(), 'the answers built empty' );
+	}
+
 	// D-208: what 1.2.0 adds is given to a copy, so the object it was called on is still what an earlier release's
 	// container built: My builds' Open and the start button go to the kit's own page, and My builds reads its parts'
 	// meta a part at a time, as 1.1.0 did.

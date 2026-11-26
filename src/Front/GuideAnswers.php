@@ -33,16 +33,28 @@ final readonly class GuideAnswers {
 	public const int ROWS = 12;
 
 	/**
-	 * Constructor.
+	 * Where they skate, or null.
 	 *
 	 * @since 1.3.0
 	 *
-	 * @param int|null         $shoe   The width guide's row, counted from 0, or null where not answered.
-	 * @param RidingStyle|null $style  Where they skate, or null.
-	 * @param int|null         $budget The budget, a whole amount of the shop's currency above nothing, or null.
-	 * @param bool             $asked  Whether the form was sent.
+	 * @var RidingStyle|null
 	 */
-	public function __construct( public ?int $shoe = null, public ?RidingStyle $style = null, public ?int $budget = null, public bool $asked = false ) {}
+	public ?RidingStyle $style;
+
+	/**
+	 * Constructor. Where they skate comes as the style's value, not the enum: an earlier release's container builds the
+	 * build's link, and this with it, by building each class its constructor names, and an enum can't be (D-425).
+	 *
+	 * @since 1.3.0
+	 *
+	 * @param int|null    $shoe   The width guide's row, counted from 0, or null where not answered.
+	 * @param string|null $style  Where they skate, a `RidingStyle` value, or null. Any other is no answer.
+	 * @param int|null    $budget The budget, a whole amount of the shop's currency above nothing, or null.
+	 * @param bool        $asked  Whether the form was sent.
+	 */
+	public function __construct( public ?int $shoe = null, ?string $style = null, public ?int $budget = null, public bool $asked = false ) {
+		$this->style = null === $style ? null : RidingStyle::tryFrom( $style );
+	}
 
 	/**
 	 * Read what a request sent under `cbuild[_guide]`.
@@ -58,7 +70,7 @@ final readonly class GuideAnswers {
 		$style  = $sent['style'] ?? null;
 		return new self(
 			null !== $shoe && $shoe < self::ROWS ? $shoe : null,
-			is_string( $style ) ? RidingStyle::tryFrom( $style ) : null,
+			is_string( $style ) ? $style : null,
 			0 === $budget ? null : $budget,
 			isset( $sent['asked'] ) && '1' === $sent['asked']
 		);
