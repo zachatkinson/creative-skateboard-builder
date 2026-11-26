@@ -4076,11 +4076,11 @@ msgstr "%s de moins"
 msgid "Also in %s"
 msgstr "Aussi en %s"
 
-#: src/Front/PageHooks.php:327
+#: src/Front/PageHooks.php:329
 msgid "Skateboard kit"
 msgstr "Planche en kit"
 
-#: src/Front/PageHooks.php:328
+#: src/Front/PageHooks.php:330
 msgid "A kit product: its builder at the page's width, then its description, specs and reviews."
 msgstr "Un produit en kit : son configurateur sur toute la largeur de la page, puis sa description, ses caractéristiques et ses avis."
 
