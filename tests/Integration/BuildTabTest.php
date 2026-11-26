@@ -932,6 +932,37 @@ final class BuildTabTest extends IntegrationTestCase {
 		self::assertSame( array( false, true, false ), $on( $read() ) );
 	}
 
+	// Zach, 26 Nov, "On for new kits" (D-476): a kit never saved as a kit, with none of its documents stored, opens its
+	// Build tab with the 3D view ticked and its trick buttons shown, and its first save stores both on. A kit saved
+	// before 1.4.0, with its slots stored and no settings at all, stays unticked, so an update changes no live page.
+	public function test_a_new_kit_has_the_3d_view_ticked_and_one_saved_before_has_it_unticked(): void {
+		$this->as( 'shop_manager' );
+		$new   = KitFactory::kit(
+			'New kit',
+			array(
+				Options::META_KIT_SLOTS    => null,
+				Options::META_KIT_RULES    => null,
+				Options::META_KIT_PRESETS  => null,
+				Options::META_KIT_ASSEMBLY => null,
+			)
+		);
+		$panel = $this->panel( $new );
+		self::assertMatchesRegularExpression( '/id="cbuild-kit-settings-view_3d"[^>]*checked/', $panel, 'a new kit: ticked' );
+		self::assertMatchesRegularExpression( '/id="cbuild-kit-settings-tricks"[^>]*checked/', $panel, 'and its trick buttons shown, ticked' );
+		$sent                        = self::form();
+		$sent['settings']['view_3d'] = '1';
+		$sent['settings']['tricks']  = '1';
+		$this->send( $new, $sent );
+		self::assertSame( array(), self::notices() );
+		$read = $this->service( \CreativeBranding\SkateboardBuilder\Port\Kits::class )->kit( $new->get_id() )?->settings;
+		self::assertSame( array( true, true ), array( $read?->view3d, $read?->tricks ), 'its first save stores both on' );
+
+		$old   = KitFactory::kit( 'Saved before 1.4.0', array( Options::META_KIT_SETTINGS => null ) );
+		$panel = $this->panel( $old );
+		self::assertDoesNotMatchRegularExpression( '/id="cbuild-kit-settings-view_3d"[^>]*checked/', $panel, 'a kit saved before, with no settings: unticked' );
+		self::assertFalse( $this->service( \CreativeBranding\SkateboardBuilder\Port\Kits::class )->kit( $old->get_id() )?->settings->view3d );
+	}
+
 	// #139, D-474: the 3D view, unticked on a kit saved before 1.4.0, so an update changes no builder; its trick buttons
 	// shown only once the 3D view is saved on, and ticked there. Each sends 0 unticked, so a form without it keeps the kit's.
 	public function test_the_3d_view_is_unticked_on_a_kit_saved_before_and_its_tricks_show_once_it_is_on(): void {

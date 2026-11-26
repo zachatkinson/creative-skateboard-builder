@@ -41,7 +41,7 @@ export interface CbuildSettings {
 	 */
 	tricks?: boolean;
 	/**
-	 * Whether the builder offers "View in 3D", from 1.4.0 (#139, D-474): a 3D view of the build drawn from its parts' sizes, loaded only when pressed. Off, the page draws no 3D button and the builder's view has no scene. The default is false, so an update changes no builder.
+	 * Whether the builder offers "View in 3D", from 1.4.0 (#139, D-474): a 3D view of the build drawn from its parts' sizes, loaded only when pressed. Off, the page draws no 3D button and the builder's view has no scene. Left out, as in every kit saved before 1.4.0, it is false, so an update changes no builder; a new kit's first Build tab save stores it true (D-476).
 	 */
 	view_3d?: boolean;
 	/**

@@ -140,6 +140,7 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-389 · No word joins the assembly time's range, in any language](#d-389--no-word-joins-the-assembly-times-range-in-any-language--2026-11-25)
 - [D-409 · Three switches in the Build tab: Help me choose, the cards' ready-build picks and their ratings](#d-409--three-switches-in-the-build-tab-help-me-choose-the-cards-ready-build-picks-and-their-ratings--2026-11-25)
 - [D-474 · The 3D view is off until a kit turns it on, and its trick buttons show only then](#d-474--the-3d-view-is-off-until-a-kit-turns-it-on-and-its-trick-buttons-show-only-then--2026-11-26)
+- [D-476 · The 3D view is on for a new kit, and off for a kit saved before 1.4.0](#d-476--the-3d-view-is-on-for-a-new-kit-and-off-for-a-kit-saved-before-140--2026-11-26)
 
 ### The state route and the public API
 
@@ -7013,5 +7014,18 @@ A browser test reads the frames and the memory through a probe the page exposes 
 ### D-499 · The 3D view's pictures are SwiftShader's, at 1 % tolerance · 2026-11-26
 
 **Decision:** `tests/e2e/3d-visual.spec.ts` pictures the canvas at its four places, with reduced motion so the camera is there at once, in the visual project alone. Playwright's Linux container draws WebGL in software (SwiftShader), the same pixels on each run there; a Mac's GPU would not match them. A picture may differ by 1 % of its pixels, each by Playwright's default colour threshold: an antialiased edge moves by a pixel between SwiftShader builds, a part drawn wrong or a camera out of place by far more. The baselines were made with `bash tools/visual.sh --update-snapshots` on this machine, and a second run matched them.
+
+**Status:** Accepted.
+
+### D-476 · The 3D view is on for a new kit, and off for a kit saved before 1.4.0 · 2026-11-26
+
+Zach, 26 Nov: "On for new kits." Every optional shopper feature is a Build tab checkbox, on by default (D-409), but no update may change a live shop's page by itself. It amends D-474's first point: the 3D view stays off for a kit saved before 1.4.0, and is on for a new one.
+
+**Decision:**
+
+- **The seam is the Build tab's defaults for a new kit**, the values it fills in for documents not yet stored (`fresh()`). A kit with none of its Build tab saved, no slots stored, opens with **3D view** ticked and its trick buttons shown, and its first save stores `view_3d` true. The read is unchanged: a stored `_cbuild_settings` without `view_3d`, or none at all, is off.
+- **"New" is "no slots stored".** Every kit a shop sells has its slots stored, since a kit without them doesn't read. So a kit saved before 1.4.0 with no settings row, as every kit saved before 1.2.0 is, keeps its slots and reads as off, and its Build tab shows the box unticked.
+- **A kit made outside the Build tab**, by an import or a plugin writing its documents, has the 3D view off until its Build tab turns it on. Nothing but the Build tab decides a default for the shop.
+- **The upgrade test holds it:** after `npm run upgrade`, none of the old release's kits has the 3D view on.
 
 **Status:** Accepted.

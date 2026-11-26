@@ -411,10 +411,13 @@ final class BuildTab {
 			}
 		}
 
-		$shown = array();
+		// A kit never saved as one, with no slots stored, is new: its 3D view starts ticked (D-476). Every kit a shop sells
+		// has its slots stored, so one saved before 1.4.0 keeps the 3D view off, settings row or none.
+		$unsaved = ! isset( $stored[ KitEditor::SLOTS ] );
+		$shown   = array();
 		foreach ( array_keys( Options::kitDocumentNames() ) as $name ) {
 			$typed          = $refused[ $name ] ?? null;
-			$shown[ $name ] = is_array( $typed ) ? $typed : ( $stored[ $name ] ?? $this->fresh( $name ) );
+			$shown[ $name ] = is_array( $typed ) ? $typed : ( $stored[ $name ] ?? $this->fresh( $name, $unsaved ) );
 		}
 		$known = array_column( self::rows( $stored[ KitEditor::SLOTS ] ?? null, 'slots' ), 'key' );
 
@@ -1402,17 +1405,25 @@ final class BuildTab {
 
 	/**
 	 * What a new kit's tab starts from: the seven parts of a complete, the rules as seeded, no presets, and assembly
-	 * as the shop's settings have it for a new kit.
+	 * as the shop's settings have it for a new kit, and from 1.4.0 the 3D view on where the kit is new (D-476).
 	 *
-	 * @param string $name The document's name.
+	 * @param string $name    The document's name.
+	 * @param bool   $unsaved Whether the kit has none of its tab saved: no slots stored.
 	 * @return array<string, mixed>
 	 */
-	private function fresh( string $name ): array {
+	private function fresh( string $name, bool $unsaved = false ): array {
 		if ( KitEditor::RULES === $name ) {
 			return RuleSettings::DEFAULTS;
 		}
 		if ( KitEditor::ASSEMBLY === $name ) {
 			return $this->settings->terms()->assembly;
+		}
+		if ( KitEditor::SETTINGS === $name && $unsaved ) {
+			// On for new kits, Zach said on 26 Nov (D-476).
+			return array(
+				'schema_version' => 1,
+				'view_3d'        => true,
+			);
 		}
 		if ( KitEditor::PICTURE === $name || KitEditor::LAYOUT === $name || KitEditor::SETTINGS === $name ) {
 			return array( 'schema_version' => 1 );

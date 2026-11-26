@@ -215,6 +215,8 @@ kitsread="$(sed -n 's/.*; kits \([0-9]*\) of [0-9]*,.*/\1/p' <<<"$read")"
 [ "$kitsread" = "$kits" ] || fail "after the update, $kitsread kits read where $from read $kits: $read"
 presets="$(sed -n 's/.*presets \([0-9]*\) of \([0-9]*\) priced.*/\1 \2/p' <<<"$read")"
 [ "${presets% *}" = "${presets#* }" ] || fail "after the update, not every preset was priced: $read"
+# A kit saved before 1.4.0 keeps the 3D view off (D-476).
+case "$read" in *"kits with 3D on 0;"*) ;; *) fail "after the update, a kit $from saved has the 3D view on: $read" ;; esac
 [ "$user" = 0 ] || case "$read" in *"saved builds 1"*) ;; *) fail "after the update, $from's saved build was not listed: $read" ;; esac
 # A build saved before 1.0.0 kept no prices; one saved by 1.0.0 or later kept them, and shows the total it kept (D-254).
 if [ "$(printf '%s\n' 1.0.0 "$from" | sort -V | head -n 1)" = 1.0.0 ]; then
