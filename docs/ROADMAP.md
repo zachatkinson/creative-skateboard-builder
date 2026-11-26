@@ -558,6 +558,22 @@ Each is a small release of its own, once the hooks it needs are in a tagged buil
 
 Creative Schema needs no release: a kit prints no product markup, and from 1.3.0 a browser test holds the kit's page to carrying none, so Schema's markup can't reach it unnoticed.
 
+### The siblings' admins, after milestone 15
+
+Once milestone 15 has rebuilt the builder's admin on DataForm and DataViews, each sibling plugin gets the same treatment in a release of its own (Zach, 26 Nov 2026). They run in their own lanes beside later milestones, as Tracking's and Reviews' companion releases did. Each needs Zach's OK before it starts, since it changes a sibling repository.
+
+- **What carries over from milestone 15:** the field descriptions, the server form underneath for no JavaScript, the server checking every save, the test helpers and the admin budget line. Milestone 15 keeps these apart from the builder's own code, so a sibling copies them rather than starting again.
+- **Each release starts with an options audit,** as milestone 15's did: what a shop might want to change, benchmarked against the leading plugins of its kind, sorted into setting, CSS property, hook or kept fixed.
+- **Order, by payoff:**
+
+  | Plugin | Why |
+  | --- | --- |
+  | Creative Search | Synonyms, Boosts and Rules are lists of rules, a DataViews list with "Add a rule" each; Analytics is a table |
+  | Creative Shipment Tracking | Ship orders and the carriers list suit DataViews; the carriers settings are already the most modern of the three |
+  | Creative Reviews | The Reviews list and the waiting days per category |
+
+- **The cost:** each plugin loads its own copy of DataViews on its admin screens, about 160 to 240 kB compressed per screen. It's admin only and never reaches the shop's pages. If WordPress ships DataViews as a script of its own, each sibling moves to it.
+
 ### Skatehouse's setup
 
 Following What Skatehouse needs in the spec:
