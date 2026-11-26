@@ -989,9 +989,10 @@
 	box-shadow: 0 0 0 4px var(--cbuild-focus-contrast);
 }
 
-/* The place above the cards for another plugin's element (#151): out of the layout while it holds nothing, so a shop
-   with no such plugin sees no gap. */
-:where(.cbuild-step__above-cards:empty) {
+/* The places above the cards and above the guide's builds for another plugin's element (#151, F41): out of the
+   layout while they hold nothing, so a shop with no such plugin sees no gap. */
+:where(.cbuild-step__above-cards:empty),
+:where(.cbuild-guide__above-builds:empty) {
 	display: none;
 }
 
@@ -3054,7 +3055,7 @@
    and the canvas ran past the edge of a phone's screen. */
 :where(.cbuild-3d__stage:not([hidden])) {
 	display: grid;
-	grid-template-rows: minmax(0, 1fr) auto auto auto;
+	grid-template-rows: minmax(0, 1fr) auto auto auto auto;
 	gap: var(--cbuild-gap-small);
 	min-block-size: 0;
 	min-inline-size: 0;
@@ -3067,9 +3068,13 @@
 	margin-block: var(--cbuild-gap-small);
 }
 
+/* The canvas is clear, so the frame's ground is the 3D view's: the builder's own, which follows the theme and its dark
+   scheme, or a theme's own for the view alone (D-500). */
 :where(.cbuild-3d__frame) {
 	position: relative;
 	min-block-size: 16rem;
+	border-radius: 0.25rem;
+	background: var(--cbuild-3d-ground, var(--cbuild-ground));
 }
 
 :where(.cbuild-3d__canvas) {
@@ -3102,15 +3107,34 @@
 	font-weight: 600;
 }
 
-:where(.cbuild-3d__places) {
+:where(.cbuild-3d__places, .cbuild-3d__tricks) {
 	display: flex;
 	flex-wrap: wrap;
 	gap: 0.25rem;
 }
 
-.cbuild.cbuild .cbuild-3d__places .cbuild-button {
+.cbuild.cbuild .cbuild-3d__places .cbuild-button,
+.cbuild.cbuild .cbuild-3d__tricks .cbuild-button {
 	padding-inline: 0.625rem;
 	font-weight: 400;
+}
+
+/* While a trick plays the trick buttons say they are disabled, and still take focus, so it stays where it was. */
+.cbuild.cbuild .cbuild-3d__tricks .cbuild-button[aria-disabled="true"] {
+	color: var(--cbuild-muted);
+	cursor: not-allowed;
+}
+
+/* With reduced motion, or the kit's Motion subtle, no trick is offered: a button that did nothing would say less than
+   none (D-503). */
+@media (prefers-reduced-motion: reduce) {
+	.cbuild.cbuild .cbuild-3d__tricks {
+		display: none;
+	}
+}
+
+.cbuild.cbuild--subtle .cbuild-3d__tricks {
+	display: none;
 }
 
 /* Stacked, on a tablet or a phone, the open 3D view takes the room it needs: the stage stops sticking and grows to the

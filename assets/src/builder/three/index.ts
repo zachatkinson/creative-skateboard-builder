@@ -16,6 +16,9 @@ import {
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import type { Renderer } from '../picture';
 import { stage, type Drawing } from './stage';
+import { TRICKS } from './tricks';
+
+export { TRICKS as tricks };
 
 /** What the store gives the view. */
 export interface Opening {
@@ -56,8 +59,11 @@ export function open( opening: Opening ): Renderer {
 	const renderer = new WebGLRenderer( {
 		canvas,
 		antialias: true,
+		// Transparent, so the frame's ground shows through: the builder's own colour, which a theme sets (D-500).
+		alpha: true,
 		powerPreference: 'low-power',
 	} );
+	renderer.setClearColor( 0x000000, 0 );
 	renderer.outputColorSpace = SRGBColorSpace;
 	// Khronos's neutral tone mapping keeps a graphic's colours as they are, where a filmic one would shift them.
 	renderer.toneMapping = NeutralToneMapping;
@@ -98,7 +104,8 @@ export function open( opening: Opening ): Renderer {
 	if (
 		canvas.ownerDocument.documentElement.hasAttribute( 'data-cbuild-probe' )
 	) {
-		( view as Window & { cbuildProbe?: unknown } ).cbuildProbe = shown;
+		( view as Window & { cbuildProbe?: unknown } ).cbuildProbe =
+			Object.assign( shown, { tricks: TRICKS } );
 	}
 	return shown;
 }

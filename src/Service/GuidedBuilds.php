@@ -79,7 +79,7 @@ final readonly class GuidedBuilds {
 	}
 
 	/**
-	 * The ready builds at a width and wheel sizes, within a budget where there is one, or the closest.
+	 * The ready builds at a width and wheel sizes, within a budget where there is one, or the closest, and how many fit.
 	 *
 	 * @since 1.3.0
 	 *
@@ -87,7 +87,7 @@ final readonly class GuidedBuilds {
 	 * @param Measure|null $width  The deck width, or null for any.
 	 * @param Span|null    $wheels The wheel sizes, or null for any.
 	 * @param int|null     $budget A whole amount of the shop's currency, or null for none.
-	 * @return array{budget: int|null, over: bool, builds: list<array{tier: Tier, picks: array<string, int>, total: string, amount: int, over: string, image: mixed, drawn: bool, deck: int}>}
+	 * @return array{budget: int|null, over: bool, fit: int, builds: list<array{tier: Tier, picks: array<string, int>, total: string, amount: int, over: string, image: mixed, drawn: bool, deck: int}>}
 	 * @throws InvalidMoney When a build cannot be priced in the shop's currency settings.
 	 */
 	public function of( State $state, ?Measure $width, ?Span $wheels, ?int $budget ): array {
@@ -142,6 +142,8 @@ final readonly class GuidedBuilds {
 		return array(
 			'budget' => $budget,
 			'over'   => $over,
+			// How many builds fit and are in stock, before the budget: over it, the closest is shown alone (F40, #163).
+			'fit'    => count( $made ),
 			'builds' => $builds,
 		);
 	}

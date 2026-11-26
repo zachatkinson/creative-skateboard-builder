@@ -17,6 +17,7 @@ use CreativeBranding\SkateboardBuilder\Domain\Kit\Picks;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\SlotKey;
 use CreativeBranding\SkateboardBuilder\Domain\Rule\MessageCode;
 use CreativeBranding\SkateboardBuilder\Domain\Picture\Layout;
+use CreativeBranding\SkateboardBuilder\Domain\Scene\Scene;
 use CreativeBranding\SkateboardBuilder\Port\ImportStore;
 use CreativeBranding\SkateboardBuilder\Port\Kits;
 use CreativeBranding\SkateboardBuilder\Port\LayerImages;
@@ -57,7 +58,7 @@ final class CatalogueCheck {
 
 	/**
 	 * What it finds in a kit: settings that do not read (since 0.4.0), a slot with no parts or none in stock, a part that lacks a spec a rule needs, a part
-	 * a rule had to assume something of, and a preset that can no longer be bought as it is.
+	 * a rule had to assume something of (from 1.4.0, or the 3D view), and a preset that can no longer be bought as it is.
 	 */
 	public const KIT_UNREAD    = 'kit_unread';
 	public const SLOT_EMPTY    = 'slot_empty';
@@ -83,6 +84,12 @@ final class CatalogueCheck {
 	 */
 	public const NOT_OFFERED = 'part_not_offered';
 
+
+	/**
+	 * The note on a deck or wheel the 3D view assumes a usual size for, where the kit's 3D view is on (1.4.0, #139,
+	 * D-473): its nose, tail, concave or kick, or its width. Said, not a fix: the part is offered and drawn.
+	 */
+	public const SCENE_ASSUMED = 'scene_assumed';
 
 	/**
 	 * The engine's notes that mean a rule went without a spec and assumed the usual, each with the spec to fill in.
@@ -336,6 +343,11 @@ final class CatalogueCheck {
 					$found[] = MessageCode::SpecMissing === $finding->code
 						? new CheckFinding( self::SPEC_MISSING, $part->id, $id, $slot->key, $spec, array( 'rule' => $finding->rule->value ) )
 						: new CheckFinding( self::ASSUMED, $part->id, $id, $slot->key, $spec, array( 'note' => $finding->code->value ) );
+				}
+				// The 3D view's own sizes, which no rule reads: listed only where the kit's 3D view is on, so a shop that
+				// keeps it off is told nothing new (D-473).
+				foreach ( $kit->settings->view3d ? Scene::assumes( $slot->key, $part->specs ) : array() as $spec ) {
+					$found[] = new CheckFinding( self::ASSUMED, $part->id, $id, $slot->key, $spec->value, array( 'note' => self::SCENE_ASSUMED ) );
 				}
 			}
 			if ( array() === $candidates ) {

@@ -180,6 +180,38 @@ if ( array() === $cbuild_zone->get_shipping_methods() ) {
 }
 
 wp_mkdir_p( CBUILD_PATH . 'tmp' );
+// The 3D kit with its Trick buttons off (1.4.0): the same parts, View in 3D on, and no trick offered.
+$cbuild_post      = get_page_by_path( 'three-quiet-kit', OBJECT, 'product' );
+$cbuild_quiet_kit = new CreativeBranding\SkateboardBuilder\Adapter\KitProduct( $cbuild_post instanceof WP_Post ? $cbuild_post->ID : 0 );
+$cbuild_quiet_kit->set_name( '3D test kit without tricks' );
+$cbuild_quiet_kit->set_slug( 'three-quiet-kit' );
+$cbuild_quiet_kit->set_status( 'publish' );
+foreach ( $cbuild_kit->documents() as $cbuild_key => $cbuild_document ) {
+	if ( is_array( $cbuild_document ) ) {
+		$cbuild_quiet_kit->setDocument( $cbuild_key, $cbuild_document );
+	}
+}
+$cbuild_quiet_kit->setDocument(
+	'_cbuild_settings',
+	array(
+		'schema_version' => 1,
+		'view_3d'        => true,
+		'tricks'         => false,
+	)
+);
+$cbuild_quiet_kit->save();
+$cbuild_quiet_page = get_page_by_path( 'three-quiet-page' );
+$cbuild_quiet_page = (int) wp_insert_post(
+	array(
+		'ID'           => $cbuild_quiet_page instanceof WP_Post ? $cbuild_quiet_page->ID : 0,
+		'post_type'    => 'page',
+		'post_status'  => 'publish',
+		'post_name'    => 'three-quiet-page',
+		'post_title'   => 'Build a complete without tricks',
+		'post_content' => '<!-- wp:creative-skateboard-builder/builder {"kit":' . $cbuild_quiet_kit->get_id() . '} /-->',
+	)
+);
+
 // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents -- a test fixture, writing where the tests read.
 file_put_contents(
 	CBUILD_PATH . 'tmp/e2e-cart.json',
@@ -662,6 +694,38 @@ $cbuild_three_page = (int) wp_insert_post(
 	)
 );
 
+// The 3D kit with its Trick buttons off (1.4.0): the same parts, View in 3D on, and no trick offered.
+$cbuild_post      = get_page_by_path( 'three-quiet-kit', OBJECT, 'product' );
+$cbuild_quiet_kit = new CreativeBranding\SkateboardBuilder\Adapter\KitProduct( $cbuild_post instanceof WP_Post ? $cbuild_post->ID : 0 );
+$cbuild_quiet_kit->set_name( '3D test kit without tricks' );
+$cbuild_quiet_kit->set_slug( 'three-quiet-kit' );
+$cbuild_quiet_kit->set_status( 'publish' );
+foreach ( $cbuild_kit->documents() as $cbuild_key => $cbuild_document ) {
+	if ( is_array( $cbuild_document ) ) {
+		$cbuild_quiet_kit->setDocument( $cbuild_key, $cbuild_document );
+	}
+}
+$cbuild_quiet_kit->setDocument(
+	'_cbuild_settings',
+	array(
+		'schema_version' => 1,
+		'view_3d'        => true,
+		'tricks'         => false,
+	)
+);
+$cbuild_quiet_kit->save();
+$cbuild_quiet_page = get_page_by_path( 'three-quiet-page' );
+$cbuild_quiet_page = (int) wp_insert_post(
+	array(
+		'ID'           => $cbuild_quiet_page instanceof WP_Post ? $cbuild_quiet_page->ID : 0,
+		'post_type'    => 'page',
+		'post_status'  => 'publish',
+		'post_name'    => 'three-quiet-page',
+		'post_title'   => 'Build a complete without tricks',
+		'post_content' => '<!-- wp:creative-skateboard-builder/builder {"kit":' . $cbuild_quiet_kit->get_id() . '} /-->',
+	)
+);
+
 // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents -- a test fixture, writing where the tests read.
 file_put_contents(
 	CBUILD_PATH . 'tmp/e2e-builder.json',
@@ -682,8 +746,9 @@ file_put_contents(
 				'decks' => $cbuild_widths,
 			),
 			'three'  => array(
-				'kit'  => $cbuild_three_kit->get_id(),
-				'page' => (string) get_permalink( $cbuild_three_page ),
+				'kit'   => $cbuild_three_kit->get_id(),
+				'page'  => (string) get_permalink( $cbuild_three_page ),
+				'quiet' => (string) get_permalink( $cbuild_quiet_page ),
 			),
 		)
 	)

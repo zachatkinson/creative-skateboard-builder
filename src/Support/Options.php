@@ -234,6 +234,14 @@ final class Options {
 	public const CLASS_ABOVE_CARDS = 'cbuild-step__above-cards';
 
 	/**
+	 * The place just above the guide's builds, which the builder renders empty for another plugin's own element
+	 * (F41, #164).
+	 *
+	 * @since 1.4.0
+	 */
+	public const CLASS_ABOVE_BUILDS = 'cbuild-guide__above-builds';
+
+	/**
 	 * A ready build's tile picture when it is the deck's layer image rather than its photo, as a build Help me choose
 	 * recommends shows its deck's card picture (D-408).
 	 *
@@ -243,7 +251,7 @@ final class Options {
 
 	/**
 	 * The 3D view's classes, which docs/HOOKS.md offers a theme (#139, D-495): View in 3D, the open view, the canvas's
-	 * box, the canvas, the camera's buttons and the message where it can't be shown.
+	 * box, the canvas, the camera's buttons, the trick buttons and the message where it can't be shown.
 	 *
 	 * @since 1.4.0
 	 */
@@ -252,6 +260,7 @@ final class Options {
 	public const CLASS_THREE_FRAME  = 'cbuild-3d__frame';
 	public const CLASS_THREE_CANVAS = 'cbuild-3d__canvas';
 	public const CLASS_THREE_PLACES = 'cbuild-3d__places';
+	public const CLASS_THREE_TRICKS = 'cbuild-3d__tricks';
 	public const CLASS_THREE_FAILED = 'cbuild-3d__failed';
 
 	/**
@@ -545,12 +554,14 @@ final class Options {
 			self::CLASS_REVIEW_PHOTO,
 			self::CLASS_REVIEW_DRAWN,
 			self::CLASS_ABOVE_CARDS,
+			self::CLASS_ABOVE_BUILDS,
 			self::CLASS_PRESET_DRAWN,
 			self::CLASS_THREE_OPEN,
 			self::CLASS_THREE_STAGE,
 			self::CLASS_THREE_FRAME,
 			self::CLASS_THREE_CANVAS,
 			self::CLASS_THREE_PLACES,
+			self::CLASS_THREE_TRICKS,
 			self::CLASS_THREE_FAILED,
 		);
 	}

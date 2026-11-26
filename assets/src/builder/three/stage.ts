@@ -10,12 +10,13 @@
  * - **Lighting:** two plain lights for the first frame, then the room's environment once it has been drawn.
  * - **The camera** turns to each step's side; drag, the arrow keys, + and −, and the buttons move it.
  * - **Reduced motion:** the camera goes straight to where it is sent, and no trick plays.
+ * - **During a trick** the camera holds still: a drag or a key turns nothing, and a camera button waits until the
+ *   board lands. A trick lands at rest at once when the canvas leaves the screen, the tab hides or the view closes.
  * - **Closed,** every geometry, material and texture is given back, and the renderer with them.
  * - **A failure** (a lost context, or anything thrown while drawing) closes the stage and says so, so the 2D board
  *   comes back.
  */
 import {
-	Color,
 	DirectionalLight,
 	Group,
 	HemisphereLight,
@@ -176,13 +177,19 @@ export function stage( needs: Needs ): Renderer & {
 		textures: number;
 		groups: Partial< Record< Slot, string > >;
 		closed: boolean;
+		/** Whether a trick plays. */
+		playing: boolean;
+		/** The board's position, in millimetres, and its turns about x, y and z, in radians, in the scene's axes. */
+		board: number[];
 	};
+	/** For a test's picture: the board held at a moment of a trick, or at rest. */
+	hold: ( trick: Trick | null, progress: number ) => void;
 } {
 	const { renderer, reduced } = needs;
 	const canvas = renderer.domElement;
 	const view = canvas.ownerDocument.defaultView ?? window;
+	// No ground of its own: the canvas is clear, and the frame's ground, the builder's, shows through it.
 	const world = new World();
-	world.background = new Color( '#f3f1ec' );
 	const camera = new PerspectiveCamera( FOV, 1, 10, 20000 );
 	// The key light follows the camera, so the side looked at is lit.
 	const key = new DirectionalLight( '#ffffff', 1.1 );
@@ -234,6 +241,8 @@ export function stage( needs: Needs ): Renderer & {
 	// Where the camera was last sent, and whether the shopper has moved it since.
 	let sentTo: Place = 'reset';
 	let touched = false;
+	// A camera button pressed while a trick plays, which goes once the board lands.
+	let held: Place | undefined;
 
 	/**
 	 * Close everything, and say so where it failed.
@@ -258,6 +267,7 @@ export function stage( needs: Needs ): Renderer & {
 		}
 		if ( ! visible || view.document.hidden ) {
 			waiting = true;
+			land();
 			return;
 		}
 		if ( 0 === frame ) {
@@ -335,10 +345,7 @@ export function stage( needs: Needs ): Renderer & {
 			);
 			trick.trick.pose( board, Math.max( t, 0 ) );
 			if ( t >= 1 ) {
-				rest();
-				const { done } = trick;
-				trick = undefined;
-				done( true );
+				land();
 			} else {
 				more = true;
 			}
@@ -352,6 +359,26 @@ export function stage( needs: Needs ): Renderer & {
 	const rest = (): void => {
 		board.position.set( 0, 0, 0 );
 		board.rotation.set( 0, 0, 0 );
+	};
+
+	/**
+	 * End the trick that is playing, if one is: the board at rest, the camera free again, and sent where a button
+	 * pressed meanwhile asked.
+	 */
+	const land = (): void => {
+		if ( ! trick ) {
+			return;
+		}
+		rest();
+		const { done } = trick;
+		trick = undefined;
+		controls.enabled = true;
+		done( true );
+		const place = held;
+		held = undefined;
+		if ( place ) {
+			go( place );
+		}
 	};
 
 	/**
@@ -443,6 +470,10 @@ export function stage( needs: Needs ): Renderer & {
 			return;
 		}
 		event.preventDefault();
+		// The camera holds still while a trick plays.
+		if ( trick ) {
+			return;
+		}
 		move = undefined;
 		touched = true;
 		moved();
@@ -454,7 +485,15 @@ export function stage( needs: Needs ): Renderer & {
 	};
 
 	const shows = (): void => {
-		if ( waiting && visible && ! view.document.hidden ) {
+		if ( ! visible || view.document.hidden ) {
+			// A trick landed out of sight is drawn at rest once the canvas shows again.
+			if ( trick ) {
+				land();
+				waiting = true;
+			}
+			return;
+		}
+		if ( waiting ) {
 			waiting = false;
 			invalidate();
 		}
@@ -559,9 +598,14 @@ export function stage( needs: Needs ): Renderer & {
 			}
 		},
 		look( place ) {
-			if ( ! closed ) {
-				go( place );
+			if ( closed ) {
+				return;
 			}
+			if ( trick ) {
+				held = place;
+				return;
+			}
+			go( place );
 		},
 		play( played ) {
 			if ( closed || reduced() ) {
@@ -579,6 +623,8 @@ export function stage( needs: Needs ): Renderer & {
 							trick: played,
 							done,
 						};
+						// The shopper's drag waits for the board to land, as a camera button does.
+						controls.enabled = false;
 						invalidate();
 					} )
 			);
@@ -586,6 +632,17 @@ export function stage( needs: Needs ): Renderer & {
 			return next;
 		},
 		close,
+		hold( pinned, progress ) {
+			if ( closed || trick ) {
+				return;
+			}
+			if ( pinned ) {
+				pinned.pose( board, progress );
+			} else {
+				rest();
+			}
+			invalidate();
+		},
 		probe() {
 			const groups: Partial< Record< Slot, string > > = {};
 			for ( const [ slot, { group } ] of drawn ) {
@@ -599,6 +656,13 @@ export function stage( needs: Needs ): Renderer & {
 				textures: renderer.info.memory.textures,
 				groups,
 				closed,
+				playing: undefined !== trick,
+				board: [
+					...board.position.toArray(),
+					board.rotation.x,
+					board.rotation.y,
+					board.rotation.z,
+				],
 			};
 		},
 	};

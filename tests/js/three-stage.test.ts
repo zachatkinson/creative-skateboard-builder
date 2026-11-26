@@ -13,6 +13,7 @@ import {
 	Texture,
 	Vector3,
 	type Object3D,
+	type Scene as World,
 } from 'three';
 import {
 	FOV,
@@ -259,6 +260,13 @@ describe( 'release', () => {
 } );
 
 describe( 'stage', () => {
+	it( 'paints no ground of its own: the frame’s shows through', () => {
+		const { shown, renderer } = open();
+		shown.show( scene(), false );
+		frame();
+		expect( ( renderer.last!.world as World ).background ).toBeNull();
+	} );
+
 	it( 'draws one frame for a scene, and none at rest', () => {
 		const { shown, frames } = open();
 		expect( frames() ).toBe( 0 );
@@ -762,7 +770,36 @@ describe( 'stage', () => {
 			textures: 3,
 			groups: {},
 			closed: false,
+			playing: false,
+			board: [ 0, 0, 0, 0, 0, 0 ],
 		} );
+	} );
+
+	it( 'reads the board’s pose and whether a trick plays', async () => {
+		const { shown } = open();
+		shown.show( scene(), false );
+		frame();
+		const played = shown.play( {
+			duration: 100,
+			pose: ( board: Object3D, progress: number ) => {
+				board.position.set( 1, 2, 3 * progress );
+				board.rotation.set( 0.5, 0.25, progress );
+			},
+		} );
+		await Promise.resolve();
+		await Promise.resolve();
+		expect( shown.probe().playing ).toBe( true );
+		vi.advanceTimersByTime( 50 );
+		frame();
+		const [ x, y, z, roll, pitch, yaw ] = shown.probe().board;
+		expect( [ x, y, roll, pitch ] ).toEqual( [ 1, 2, 0.5, 0.25 ] );
+		expect( z ).toBeGreaterThan( 0 );
+		expect( yaw ).toBeGreaterThan( 0 );
+		vi.advanceTimersByTime( 100 );
+		frame();
+		await played;
+		expect( shown.probe().playing ).toBe( false );
+		expect( shown.probe().board ).toEqual( [ 0, 0, 0, 0, 0, 0 ] );
 	} );
 
 	it( 'works without the observers', () => {
@@ -880,5 +917,243 @@ describe( 'play', () => {
 		fresh.reduce( true );
 		await first;
 		await expect( later ).resolves.toBe( false );
+	} );
+
+	/**
+	 * Start a trick and let its first frame draw.
+	 *
+	 * @param shown    The stage.
+	 * @param duration How long it lasts.
+	 */
+	const started = async (
+		shown: ReturnType< typeof open >[ 'shown' ],
+		duration = 900
+	) => {
+		const played = shown.play( trick( duration ).trick );
+		await Promise.resolve();
+		await Promise.resolve();
+		frame();
+		// Wrapped, or the async function would wait for the trick itself.
+		return { played };
+	};
+
+	it( 'holds a camera button pressed during a trick until the board lands, then goes', async () => {
+		const { shown, camera, reduce } = open();
+		shown.show( scene(), false );
+		frame();
+		const before = camera();
+		const { played } = await started( shown );
+		reduce( true );
+		shown.look( 'top' );
+		frame();
+		expect( camera().distanceTo( before ) ).toBeLessThan( 1e-6 );
+		reduce( false );
+		vi.advanceTimersByTime( 900 );
+		frame();
+		await expect( played ).resolves.toBe( true );
+		vi.advanceTimersByTime( MOVE );
+		frame();
+		frame();
+		expect( camera().y ).toBeGreaterThan( 1000 );
+	} );
+
+	it( 'goes to the last camera button pressed during a trick', async () => {
+		const { shown, camera, reduce } = open();
+		reduce( false );
+		shown.show( scene(), false );
+		frame();
+		const { played } = await started( shown, 100 );
+		shown.look( 'top' );
+		shown.look( 'under' );
+		reduce( true );
+		vi.advanceTimersByTime( 100 );
+		frame();
+		await played;
+		frame();
+		expect( camera().y ).toBeLessThan( -1000 );
+	} );
+
+	it( 'turns nothing by drag or key while a trick plays, and lets the camera’s move finish', async () => {
+		const { shown, camera, renderer } = open();
+		shown.show( scene(), false );
+		frame();
+		shown.look( 'top' );
+		frame();
+		const { played } = await started( shown, 2 * MOVE );
+		const canvas = renderer.domElement as HTMLCanvasElement & {
+			setPointerCapture: () => void;
+			releasePointerCapture: () => void;
+		};
+		canvas.setPointerCapture = () => undefined;
+		canvas.releasePointerCapture = () => undefined;
+		canvas.dispatchEvent(
+			new PointerEvent( 'pointerdown', {
+				pointerId: 1,
+				button: 0,
+				clientX: 10,
+				clientY: 10,
+				pointerType: 'mouse',
+			} )
+		);
+		const key = new KeyboardEvent( 'keydown', {
+			key: 'ArrowLeft',
+			cancelable: true,
+		} );
+		canvas.dispatchEvent( key );
+		// The key is the canvas's still, so the page does not scroll under it.
+		expect( key.defaultPrevented ).toBe( true );
+		vi.advanceTimersByTime( MOVE );
+		frame();
+		frame();
+		// The camera's move went on to the top: neither the drag nor the key took it.
+		expect( camera().y ).toBeGreaterThan( 1000 );
+		expect( Math.abs( camera().x ) ).toBeLessThan( 1 );
+		vi.advanceTimersByTime( 2 * MOVE );
+		frame();
+		await expect( played ).resolves.toBe( true );
+		// Landed, the keys turn the camera again.
+		const landed = camera();
+		canvas.dispatchEvent(
+			new KeyboardEvent( 'keydown', { key: 'ArrowDown' } )
+		);
+		frame();
+		expect( camera().distanceTo( landed ) ).toBeGreaterThan( 1 );
+	} );
+
+	it( 'lets a drag turn the camera again once the board has landed', async () => {
+		const { shown, camera, renderer } = open();
+		shown.show( scene(), false );
+		frame();
+		const { played } = await started( shown, 100 );
+		vi.advanceTimersByTime( 100 );
+		frame();
+		await played;
+		shown.look( 'top' );
+		frame();
+		const canvas = renderer.domElement as HTMLCanvasElement & {
+			setPointerCapture: () => void;
+		};
+		canvas.setPointerCapture = () => undefined;
+		canvas.dispatchEvent(
+			new PointerEvent( 'pointerdown', {
+				pointerId: 1,
+				button: 0,
+				clientX: 10,
+				clientY: 10,
+				pointerType: 'mouse',
+			} )
+		);
+		// The drag took the camera, so its move to the top stopped where it was.
+		const held = camera();
+		vi.advanceTimersByTime( MOVE );
+		frame();
+		expect( camera().distanceTo( held ) ).toBeLessThan( 1e-6 );
+		expect( camera().y ).toBeLessThan( 1000 );
+	} );
+
+	it( 'lands a trick at rest once the canvas leaves the screen, and draws no more', async () => {
+		const { shown, frames, board } = open();
+		shown.show( scene(), false );
+		frame();
+		const { played } = await started( shown );
+		vi.advanceTimersByTime( 300 );
+		frame();
+		expect( board().position.z ).toBeGreaterThan( 0 );
+		seen!( [ { isIntersecting: false } ] );
+		await expect( played ).resolves.toBe( true );
+		expect( board().position.toArray() ).toEqual( [ 0, 0, 0 ] );
+		const off = frames();
+		vi.advanceTimersByTime( 1000 );
+		frame();
+		frame();
+		expect( frames() ).toBeLessThanOrEqual( off + 1 );
+		const last = frames();
+		frame();
+		expect( frames() ).toBe( last );
+		seen!( [ { isIntersecting: true } ] );
+		frame();
+		expect( frames() ).toBe( last + 1 );
+	} );
+
+	it( 'draws nothing again for leaving the screen and coming back with nothing changed', () => {
+		const { shown, frames } = open();
+		shown.show( scene(), false );
+		frame();
+		const drawn = frames();
+		seen!( [ { isIntersecting: false } ] );
+		seen!( [ { isIntersecting: true } ] );
+		frame();
+		expect( frames() ).toBe( drawn );
+	} );
+
+	it( 'sends the camera nowhere once closed', () => {
+		const { shown, camera, reduce } = open();
+		shown.show( scene(), false );
+		frame();
+		const was = camera();
+		shown.close();
+		// Reduced, a camera that moved would be there at once.
+		reduce( true );
+		shown.look( 'top' );
+		expect( camera().distanceTo( was ) ).toBeLessThan( 1e-6 );
+	} );
+
+	it( 'lands a trick at rest once the tab hides', async () => {
+		const { shown, board } = open();
+		shown.show( scene(), false );
+		frame();
+		const { played } = await started( shown );
+		vi.advanceTimersByTime( 300 );
+		frame();
+		Object.defineProperty( document, 'hidden', {
+			configurable: true,
+			get: () => true,
+		} );
+		document.dispatchEvent( new Event( 'visibilitychange' ) );
+		await expect( played ).resolves.toBe( true );
+		expect( board().position.toArray() ).toEqual( [ 0, 0, 0 ] );
+		expect( board().rotation.x ).toBe( 0 );
+	} );
+
+	it( 'lands a trick at rest where a frame finds the canvas gone', async () => {
+		const { shown, board } = open();
+		shown.show( scene(), false );
+		frame();
+		const { played } = await started( shown );
+		vi.advanceTimersByTime( 300 );
+		// Seen already, but no observer has said so before the frame asks for the next.
+		Object.defineProperty( document, 'hidden', {
+			configurable: true,
+			get: () => true,
+		} );
+		frame();
+		await expect( played ).resolves.toBe( true );
+		expect( board().position.toArray() ).toEqual( [ 0, 0, 0 ] );
+	} );
+
+	it( 'holds a trick’s pose for a test’s picture, and puts the board back', async () => {
+		const { shown, board, frames } = open();
+		shown.show( scene(), false );
+		frame();
+		const { trick: ollie, poses } = trick();
+		shown.hold( ollie, 0.5 );
+		frame();
+		expect( poses ).toEqual( [ 0.5 ] );
+		expect( board().position.z ).toBe( 50 );
+		expect( frames() ).toBe( 2 );
+		shown.hold( null, 0 );
+		frame();
+		expect( board().position.toArray() ).toEqual( [ 0, 0, 0 ] );
+		expect( frames() ).toBe( 3 );
+		// While a trick plays, or once closed, nothing is held.
+		const { played } = await started( shown, 100 );
+		shown.hold( ollie, 0.25 );
+		expect( poses ).toEqual( [ 0.5 ] );
+		vi.advanceTimersByTime( 100 );
+		frame();
+		await played;
+		shown.close();
+		shown.hold( ollie, 0.25 );
+		expect( poses ).toEqual( [ 0.5 ] );
 	} );
 } );

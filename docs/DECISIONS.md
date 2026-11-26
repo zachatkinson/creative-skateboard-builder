@@ -118,6 +118,8 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-189 · The seeded charts' baseplates, from the makers' own pages](#d-189--the-seeded-charts-baseplates-from-the-makers-own-pages--2026-11-14)
 - [D-281 · The Catalogue check says which variations share a card, in a list of its own, as information](#d-281--the-catalogue-check-says-which-variations-share-a-card-in-a-list-of-its-own-as-information--2026-11-19)
 - [D-287 · The specs CSV reads and writes a part's Layer image, by ID or file name, by the field's rules](#d-287--the-specs-csv-reads-and-writes-a-parts-layer-image-by-id-or-file-name-by-the-fields-rules--2026-11-19)
+- [D-472 · The 3D view's five optional specs, and a kick angle in whole degrees](#d-472--the-3d-views-five-optional-specs-and-a-kick-angle-in-whole-degrees--2026-11-26)
+- [D-473 · The 3D view's usual values, from published deck and truck specs](#d-473--the-3d-views-usual-values-from-published-deck-and-truck-specs--2026-11-26)
 
 ### Kits and their settings
 
@@ -137,6 +139,8 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-385 · A wrong field of the kit's settings is refused alone, and the rest is saved](#d-385--a-wrong-field-of-the-kits-settings-is-refused-alone-and-the-rest-is-saved--2026-11-24)
 - [D-389 · No word joins the assembly time's range, in any language](#d-389--no-word-joins-the-assembly-times-range-in-any-language--2026-11-25)
 - [D-409 · Three switches in the Build tab: Help me choose, the cards' ready-build picks and their ratings](#d-409--three-switches-in-the-build-tab-help-me-choose-the-cards-ready-build-picks-and-their-ratings--2026-11-25)
+- [D-474 · The 3D view is off until a kit turns it on, and its trick buttons show only then](#d-474--the-3d-view-is-off-until-a-kit-turns-it-on-and-its-trick-buttons-show-only-then--2026-11-26)
+- [D-476 · The 3D view is on for a new kit, and off for a kit saved before 1.4.0](#d-476--the-3d-view-is-on-for-a-new-kit-and-off-for-a-kit-saved-before-140--2026-11-26)
 
 ### The state route and the public API
 
@@ -157,6 +161,7 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-336 · The state route lists every ready build again, each saying whether it is shown](#d-336--the-state-route-lists-every-ready-build-again-each-saying-whether-it-is-shown--2026-11-23)
 - [D-376 · A rendered event and five builder classes for other plugins](#d-376--a-rendered-event-and-five-builder-classes-for-other-plugins--2026-11-24)
 - [D-407 · A place just above the step's cards for another plugin's element](#d-407--a-place-just-above-the-steps-cards-for-another-plugins-element--2026-11-25)
+- [D-478 · A ready build drawn from the layers is marked drawn, and Help me choose's builds get a place](#d-478--a-ready-build-drawn-from-the-layers-is-marked-drawn-and-help-me-chooses-builds-get-a-place--2026-11-26)
 - [D-517 · cbuild:rendered is sent in the task that draws the answer, not a frame later](#d-517--cbuildrendered-is-sent-in-the-task-that-draws-the-answer-not-a-frame-later--2026-11-26)
 
 ### The builder page
@@ -252,6 +257,7 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-433 · Help me choose reads a budget as shoppers type one, and says so when it can't](#d-433--help-me-choose-reads-a-budget-as-shoppers-type-one-and-says-so-when-it-cant--2026-11-26)
 - [D-435 · A rating's average takes the language's decimal separator, not the shop's for prices](#d-435--a-ratings-average-takes-the-languages-decimal-separator-not-the-shops-for-prices--2026-11-26)
 - [D-436 · A deck card's height limit sets a long name's lines past two apart, so it holds in every engine's fonts](#d-436--a-deck-cards-height-limit-sets-a-long-names-lines-past-two-apart-so-it-holds-in-every-engines-fonts--2026-11-26)
+- [D-477 · The kit page carries every other argument of the request, by a name a tag's would be](#d-477--the-kit-page-carries-every-other-argument-of-the-request-by-a-name-a-tags-would-be--2026-11-26)
 - [D-510 · On a phone the bar's buttons stay beside the total, Next's words breaking inside it](#d-510--on-a-phone-the-bars-buttons-stay-beside-the-total-nexts-words-breaking-inside-it--2026-11-26)
 - [D-512 · Next's press shows what its answer will: the deck step's width line goes, and the first step's bar takes the next step's Back](#d-512--nexts-press-shows-what-its-answer-will-the-deck-steps-width-line-goes-and-the-first-steps-bar-takes-the-next-steps-back--2026-11-26)
 
@@ -289,6 +295,7 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-432 · After a swap the notice says the swap and the status the build alone, so a screen reader hears it once](#d-432--after-a-swap-the-notice-says-the-swap-and-the-status-the-build-alone-so-a-screen-reader-hears-it-once--2026-11-25)
 - [D-514 · Focused, the start button keeps the outline's ground and words, and gives up only its ring](#d-514--focused-the-start-button-keeps-the-outlines-ground-and-words-and-gives-up-only-its-ring--2026-11-26)
 - [D-516 · Show builds takes focus to the builds, and Skip shuts the questions and takes it to the step](#d-516--show-builds-takes-focus-to-the-builds-and-skip-shuts-the-questions-and-takes-it-to-the-step--2026-11-26)
+- [D-388 · Focus is kept clear of what the bar says over itself, in Firefox too](#d-388--focus-is-kept-clear-of-what-the-bar-says-over-itself-in-firefox-too--2026-11-24)
 
 ### Motion
 
@@ -333,6 +340,9 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-372 · Site Health names up to five parts whose layer images have no resized copies](#d-372--site-health-names-up-to-five-parts-whose-layer-images-have-no-resized-copies--2026-11-24)
 - [D-373 · The update to 1.2.0 queues the index job of each part whose layer image has no copies](#d-373--the-update-to-120-queues-the-index-job-of-each-part-whose-layer-image-has-no-copies--2026-11-24)
 - [D-378 · An update's index jobs are due five minutes on, past any runner the earlier release started](#d-378--an-updates-index-jobs-are-due-five-minutes-on-past-any-runner-the-earlier-release-started--2026-11-24)
+- [D-470 · The 3D scene is measured in the domain, on the 2D picture's own frame](#d-470--the-3d-scene-is-measured-in-the-domain-on-the-2d-pictures-own-frame--2026-11-26)
+- [D-471 · A wheel's width is its spec, or three fifths of its diameter](#d-471--a-wheels-width-is-its-spec-or-three-fifths-of-its-diameter--2026-11-26)
+- [D-475 · The 3D view's textures are the plugin's own renditions, and only a part drawn as it is has one](#d-475--the-3d-views-textures-are-the-plugins-own-renditions-and-only-a-part-drawn-as-it-is-has-one--2026-11-26)
 - [D-490 · three.js is a chunk of its own, loaded on the press, and budgeted gzipped](#d-490--threejs-is-a-chunk-of-its-own-loaded-on-the-press-and-budgeted-gzipped--2026-11-26)
 - [D-491 · The board is drawn from the scene's sizes, in millimetres, its shapes generated](#d-491--the-board-is-drawn-from-the-scenes-sizes-in-millimetres-its-shapes-generated--2026-11-26)
 - [D-492 · The 3D view draws only when something changed, and never off the screen](#d-492--the-3d-view-draws-only-when-something-changed-and-never-off-the-screen--2026-11-26)
@@ -343,6 +353,11 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-497 · `view.three` says whether the view is offered, and the scene stays lane 1's](#d-497--viewthree-says-whether-the-view-is-offered-and-the-scene-stays-lane-1s--2026-11-26)
 - [D-498 · The browser tests read frames, and compare the page with the view on and off](#d-498--the-browser-tests-read-frames-and-compare-the-page-with-the-view-on-and-off--2026-11-26)
 - [D-499 · The 3D view's pictures are SwiftShader's, at 1 % tolerance](#d-499--the-3d-views-pictures-are-swiftshaders-at-1--tolerance--2026-11-26)
+- [D-500 · The 3D view's ground is the builder's, and a theme can set its own](#d-500--the-3d-views-ground-is-the-builders-and-a-theme-can-set-its-own--2026-11-26)
+- [D-501 · The tricks are keyframed poses of the whole board, timed from the teardown](#d-501--the-tricks-are-keyframed-poses-of-the-whole-board-timed-from-the-teardown--2026-11-26)
+- [D-502 · The trick buttons are the server's, play on a press alone, and wait for each other](#d-502--the-trick-buttons-are-the-servers-play-on-a-press-alone-and-wait-for-each-other--2026-11-26)
+- [D-503 · With reduced motion no trick is offered](#d-503--with-reduced-motion-no-trick-is-offered--2026-11-26)
+- [D-504 · During a trick the camera waits](#d-504--during-a-trick-the-camera-waits--2026-11-26)
 
 ### Cart, checkout and orders
 
@@ -6886,6 +6901,87 @@ The second run had the same tree on the same lane's sites, so it couldn't find w
 
 **Status:** Accepted.
 
+### D-470 · The 3D scene is measured in the domain, on the 2D picture's own frame · 2026-11-26
+
+Issue #139 asks for a 3D view whose sizes come from each part's specs, and the plan has the browser decide nothing. Lane 2's renderer needs one shape to draw against while this lane builds it.
+
+**Decision:**
+
+- **`Domain\Picture\Board`** holds the frame both views draw from: the deck's width, length and wheelbase, the hole pattern and spacing, each truck's middle, the axle and the wheels' size, with the usual values `Layout` had (32 in long, the wheelbase by width or 44.5 % of the length, 2.125 in and 2.5 in spacings, 1.625 in columns, a 54 mm wheel). `Layout` now reads it, so the 2D and 3D views can't drift apart. A unit test checks that they place the trucks and wheels alike.
+- **`Domain\Scene\Scene::of()`** gives the scene in whole micrometres and tenths of a degree, in the contract's shape (`schema/state.json`, `view.scene`). The origin is on the deck's top face midway between the trucks, with x toward the nose, y across and z up.
+- **Nose and tail** are measured from the outer holes to the tips, as decks are, and they and the outer holes' span always make the length. Both given and not matching: they're shared out in their proportion. One given: the other is the rest. Neither given: the nose gets a quarter inch more than the tail (D-473).
+- **A truck's height** runs from its baseplate's bottom to its axle's centre, as trucks are measured. The axle and the wheels' centres are at z = -(deck thickness + riser + truck height).
+- **A deck drilled for both** takes old school holes when the trucks' `baseplate` is `old_school`, and new school holes otherwise. The picture follows the same rule; before 1.4.0 it always drew new school holes on such a deck.
+- **Hostile sizes are held:** a concave to a quarter of the deck's width, a kick to 45°, and a nose or tail to what the deck's length leaves.
+- **Textures** are filled at the edge from the parts' layer renditions, after `cbuild_composed_layer` with the use `3d`.
+
+**Status:** Accepted.
+
+### D-471 · A wheel's width is its spec, or three fifths of its diameter · 2026-11-26
+
+The picture has always drawn a wheel three fifths as wide as its diameter, which is 32.4 mm at 54 mm. Retailers list Spitfire's Formula Four Classic 54 mm at 32.2 to 33.5 mm wide, with a contact patch of 16.5 to 22 mm ([skatedeluxe](https://www.skatedeluxe.com/en/p/spitfire-formula-four-classic-wheels-natural-grey-54-mm-97a-4-pack_p140381), [Black Sheep](https://blacksheepstore.co.uk/products/spitfire-formula-four-classics-skateboard-wheels-99du-white-silver-54mm), [Rollersnakes](https://rollersnakes.co.uk/products/spitfire-formula-four-og-classics-99du-skateboard-wheels-blue-54mm)).
+
+**Decision:** the new `wheel_width` sets a wheel's width in the picture and the 3D view. A wheel without one keeps the three fifths, so no picture already drawn changes. The scene's contact band is half the width, which falls inside the published range. The scene names `wheel_width` among what it assumed. The picture's `assumed` doesn't, since its three fifths was always a drawing rule.
+
+**Status:** Accepted.
+
+### D-472 · The 3D view's five optional specs, and a kick angle in whole degrees · 2026-11-26
+
+The scene needs sizes that no spec carried: a deck's nose and tail, its concave and kick, and a wheel's width.
+
+**Decision:**
+
+- **The new keys** are `nose_length`, `tail_length` and `concave_depth` (measures, in inches, as a deck's other sizes are), `wheel_width` (a measure, in millimetres, as wheels are sold), and `kick_angle`.
+- **`kick_angle` is a count of whole degrees.** The specs know lengths, choices, flags and counts. An angle unit would reach the parser, the index and every unit label for a value that makers publish in whole degrees. The scene sends it in tenths, as the contract's angles are.
+- **Each key goes through the paths every key does:** the import's and the export's columns, the specs index and the attribute map all list `SpecKey::cases()`. Part specs shows the deck's four under Deck and the width under Wheels.
+- **Nothing reads them but the scene and, for `wheel_width`, the picture.** No fit rule changes.
+
+**Status:** Accepted.
+
+### D-473 · The 3D view's usual values, from published deck and truck specs · 2026-11-26
+
+A deck or truck without one of the scene's sizes still has to be drawn.
+
+**Decision:**
+
+- **The kick** is 20°. Powell-Peralta, one of the few makers that publish angles, gives 18° to 23° across its molds: the 246 shape's K21 concave is 19° at the tail and 18° at the nose ([Tactics](https://www.tactics.com/powell-peralta/skull-sword-90-246-shape-skateboard-deck/yellow-fade)), and the K15 is 21° and 23°. Most other makers only say mellow, medium or steep ([RippedLaces](https://rippedlaces.com/?p=1146)).
+- **The concave** is 0.45 in deep, Powell-Peralta's published depth for its K15 mold (SP2: 0.46 in).
+- **The nose** is a quarter inch longer than the tail. Listings put both between 6.5 and 7 in on a standard deck, with the nose the longer: 6.75 and 6.55 in on one example, and 7.0 and 6.5 in on Element's 32 in decks.
+- **The truck height** comes from the class: 49 mm low, 52 mm mid and 55 mm high. Independent's Stage 11 standard is 55 mm and its lows 49 mm ([CCS](https://shop.ccs.com/products/independent-stage-11-standard-skateboard-trucks-black-silver-144mm), [Stoked](https://stokedskateboards.com/blogs/stoked-school/low-trucks)), and its Mid Inverted Kingpin is 52 mm ([Tactics](https://www.tactics.com/independent/mid-inverted-kingpin-skateboard-trucks/polished-139)).
+- **A riser** is 1/8 in and **a bolt** 1 in, the smallest riser sold and the usual bolt.
+- **A hanger** is two thirds of its axle, as Independent's sizes are named (the 144 on an 8.25 in axle).
+- **A deck** is seven plies and 11 mm thick, which no spec gives.
+
+The scene's `assumed` names each spec it stood in for, and the Catalogue check lists a deck or wheel that lacks one of the scene's own sizes on a kit whose 3D view is on.
+
+**Status:** Accepted.
+
+### D-474 · The 3D view is off until a kit turns it on, and its trick buttons show only then · 2026-11-26
+
+The 3D view (#139) is two switches on the Build tab, as every optional shopper feature is (D-409).
+
+**Decision:**
+
+- **`view_3d` is off where a kit has none.** D-409's switches are on by default because they show what 1.2.0 already showed. The 3D view is new and loads a script of its own when pressed, so an update changes no builder until the shop ticks it.
+- **`tricks` is on where a kit has none**, as D-409's are, and the Build tab shows its box only once the kit is saved with the 3D view on. A box that does nothing while unticked would only be noise. A form without it keeps what the kit has, as each switch's does.
+- **Both are in `_cbuild_settings`**, so a rollback to 1.3.0 still reads the kit (D-354), and each is a boolean that the schema refuses as anything else.
+
+**Status:** Accepted.
+
+### D-475 · The 3D view's textures are the plugin's own renditions, and only a part drawn as it is has one · 2026-11-26
+
+The scene (D-470) carries each drawn part's texture, which another plugin may want hidden (Mature Content, D-468).
+
+**Decision:**
+
+- **A texture is the part's layer image, as the picture draws it:** its largest WebP rendition (`LayerArtwork`, two pixels to the millimetre where the image has them), or the image's own file before its renditions are made. Same origin, so WebGL may read it.
+- **`cbuild_composed_layer` is asked with the use `3d`**, for each drawn part with a layer image, each time the view carries a scene. Only `as_is` gives a texture. `blurred` and `left_out` give none, and the part is drawn in its colour: no blurred rendition exists, and a sharp one would show what the answer hid. The answer is baked into that page view, so a plugin that lets a shopper reveal the artwork answers `as_is` and blurs `.cbuild-3d__canvas` by its classes (D-468).
+- **The deck's top and the grip share the grip's texture**, and the bottom is the deck's.
+- **`cbuild_scene` answers last.** An answer that is no array with a `deck` is passed over, and the domain's scene kept, so a broken plugin can't take the deck away.
+- **The scene is in the view only where the kit's 3D view is on** (D-474) and a deck with a width is picked; otherwise `view.scene` is absent, and nothing is asked of another plugin.
+
+**Status:** Accepted.
+
 ### D-490 · three.js is a chunk of its own, loaded on the press, and budgeted gzipped · 2026-11-26
 
 Milestone 14 (#139). three.js 0.187.0 is the approved run-time dependency, pinned exactly, with `@types/three` 0.187.0 for the types. Loaded with the builder's script it would multiply `view.js` many times over its 15 kB budget.
@@ -6958,6 +7054,94 @@ A browser test reads the frames and the memory through a probe the page exposes 
 ### D-499 · The 3D view's pictures are SwiftShader's, at 1 % tolerance · 2026-11-26
 
 **Decision:** `tests/e2e/3d-visual.spec.ts` pictures the canvas at its four places, with reduced motion so the camera is there at once, in the visual project alone. Playwright's Linux container draws WebGL in software (SwiftShader), the same pixels on each run there; a Mac's GPU would not match them. A picture may differ by 1 % of its pixels, each by Playwright's default colour threshold: an antialiased edge moves by a pixel between SwiftShader builds, a part drawn wrong or a camera out of place by far more. The baselines were made with `bash tools/visual.sh --update-snapshots` on this machine, and a second run matched them.
+
+**Status:** Accepted.
+
+### D-476 · The 3D view is on for a new kit, and off for a kit saved before 1.4.0 · 2026-11-26
+
+Zach, 26 Nov: "On for new kits." Every optional shopper feature is a Build tab checkbox, on by default (D-409), but no update may change a live shop's page by itself. It amends D-474's first point: the 3D view stays off for a kit saved before 1.4.0, and is on for a new one.
+
+**Decision:**
+
+- **The seam is the Build tab's defaults for a new kit**, the values it fills in for documents not yet stored (`fresh()`). A kit with none of its Build tab saved, no slots stored, opens with **3D view** ticked and its trick buttons shown, and its first save stores `view_3d` true. The read is unchanged: a stored `_cbuild_settings` without `view_3d`, or none at all, is off.
+- **"New" is "no slots stored".** Every kit a shop sells has its slots stored, since a kit without them doesn't read. So a kit saved before 1.4.0 with no settings row, as every kit saved before 1.2.0 is, keeps its slots and reads as off, and its Build tab shows the box unticked.
+- **A kit made outside the Build tab**, by an import or a plugin writing its documents, has the 3D view off until its Build tab turns it on. Nothing but the Build tab decides a default for the shop.
+- **The upgrade test holds it:** after `npm run upgrade`, none of the old release's kits has the 3D view on.
+
+**Status:** Accepted.
+
+### D-477 · The kit page carries every other argument of the request, by a name a tag's would be · 2026-11-26
+
+Cowork's 1.3.0 review, F38 (#161): the kit page's redirect to the Builder page kept the build and nothing else, so a newsletter's `utm_*` tags and an ad's `gclid` or `fbclid` were lost before an analytics script could read them. WordPress's own redirects keep the query string.
+
+**Decision:**
+
+- **Every other argument goes with the visitor**, not a list of known tags: a shop's own campaign tool may use any name, and an allowlist would lose it.
+- **Not the build's own, nor the kit page's query variables** (`$wp->query_vars`' keys, such as `product` or `p`), which found the kit and mean nothing on the Builder page. The build is added after them, as before.
+- **A name as tags and click IDs are written**, letters, digits, `_`, `.` and `-`, up to 64, and a value that is text, sanitised as text and encoded for the address. Anything else is left behind, so the redirect never carries markup or a nested array the Builder page would read as its own.
+
+**Status:** Accepted.
+
+### D-478 · A ready build drawn from the layers is marked drawn, and Help me choose's builds get a place · 2026-11-26
+
+Cowork's 1.3.0 review, F41 (#164): a shop's ready build's tile shows the build's composed picture, drawn from the parts' layers, unmarked, while Help me choose marks a tile showing a layer image (D-408). Mature Content couldn't tell it from a photo. Its notice for a guide tile also landed first in the step's form, 439 px below the tile.
+
+**Decision:**
+
+- **`presets[].drawn`** (1.4.0) says whether the tile's picture is drawn from the layers: the composed picture, or the first part's layer image where it has no photo (D-282). The tile's picture then carries `cbuild-preset__photo--drawn`, as the guide's does. A rider photo, or a part's photo, is not marked. It is a new field, so nothing a plugin reads changes.
+- **`.cbuild-guide__above-builds`** (1.4.0) is an empty `<div>` just above the guide's tiles, rendered by the server and never drawn into, promised as `.cbuild-step__above-cards` is (D-407). It is out of the layout while empty, and a browser test holds that an element put there stays, alone, through a new answer's builds.
+
+**Status:** Accepted.
+
+### D-500 · The 3D view's ground is the builder's, and a theme can set its own · 2026-11-26
+
+Zach asked whether the 3D view's background can be set. It could not: the stage painted `#f3f1ec` behind the board, a light box on a dark theme that no shop could change.
+
+**Decision:** the renderer is made with `alpha: true`, `premultipliedAlpha` left at its default, and clears to alpha 0; the scene has no background. `.cbuild-3d__frame` paints `var(--cbuild-3d-ground, var(--cbuild-ground))`, so by default the view's ground is the builder's own, which follows the theme's base colour and its dark scheme as the phone bar's does, and a theme sets `--cbuild-3d-ground` on `.cbuild` for the view alone. This is the colour properties' pattern from 0.6.0 (D-159, D-162): a documented custom property with a fallback, set on the root, never a setting. `--cbuild-3d-ground` is in HOOKS.md's table with `@since 1.4.0`.
+
+Looked at on Twenty Twenty-Five, Kadence and Storefront, light and dark: the board reads on each ground with the lights as they were, the deck's edge, its graphic and the white wheels standing out on Kadence's and Storefront's black, so no light or floor shadow was added. The four light pictures of `3d-visual.spec.ts` were retaken on the theme's ground, and `3d-dark.png` added.
+
+**Status:** Accepted.
+
+### D-501 · The tricks are keyframed poses of the whole board, timed from the teardown · 2026-11-26
+
+**Decision:** `assets/src/builder/three/tricks.ts` gives each trick keys of rise, roll, pitch and yaw in milliseconds, eased between with a smooth step, and poses the board's group from them in the scene's axes. The parts stay assembled; nothing is simulated.
+
+- **Times** are the teardown's (`docs/research/3d-teardown.md`, "Tricks and other motion"): an ollie 930 ms, a kickflip and a heelflip 1,200, a pop shove-it 1,130 and a 360 flip 1,470.
+- **Heights** are about two-thirds of the teardown's (200, 240, 200 and 280 mm), so the board stays inside the frame from the three-quarter view on a phone's 4 by 3 canvas.
+- **Each ends at the pose it started from.** A kickflip rolls one turn about the long axis, a heelflip one the other way, a 360 flip one roll with a full turn about the vertical. A pop shove-it turns 180° in the air, as the trick does, and would land with its nose where its tail was. So it reverts the other 180° on its wheels in 300 ms (1,430 ms in all), a move skaters do, and the graphic close-up still looks at the nose.
+- **The board turns about its middle,** 45 mm below the deck's top, about halfway to the axles, so a flip spins it in place and doesn't swing it about the deck's face. The Euler order is ZYX, so a roll is about the board's own long axis after it has turned.
+
+**Status:** Accepted.
+
+### D-502 · The trick buttons are the server's, play on a press alone, and wait for each other · 2026-11-26
+
+**Decision:** `templates/builder/three.php` renders `.cbuild-3d__tricks`, five real buttons in a group named "Tricks", after the camera's buttons, only where `view.three.tricks` is true. Each name is translatable, with the context "a skateboard trick"; fr_CA keeps the English names, as Quebec's skaters do, and names the group "Figures". A button's value names its trick, which the store passes to the renderer's `play()` (D-495), the tricks coming with the 3D chunk so `view.js` grows by the action alone.
+
+- **No trick plays on its own:** not on opening, a step or a part change.
+- **While one plays,** every trick button has `aria-disabled="true"` and a press does nothing. The buttons keep focus, which `disabled` would drop. The board ends at rest.
+- **The view's probe** (D-492) also holds a trick at a moment (`hold()`), so a picture of one mid-air is the same on every run.
+
+**Status:** Accepted.
+
+### D-503 · With reduced motion no trick is offered · 2026-11-26
+
+WCAG 2.2's 2.3.3 Animation from Interactions (AAA) asks that motion started by an interaction can be turned off unless it is essential. A trick is nothing but motion, and none of it is essential to buying the board. The two ways to meet it are no buttons, or buttons that do nothing. A button that does nothing tells a shopper something is broken.
+
+Sources:
+
+- W3C, Understanding SC 2.3.3: <https://www.w3.org/WAI/WCAG22/Understanding/animation-from-interactions.html>;
+- MDN, `prefers-reduced-motion`: <https://developer.mozilla.org/en-US/docs/Web/CSS/@media/prefers-reduced-motion>.
+
+**Decision:** with `prefers-reduced-motion: reduce`, or the kit's Motion subtle (`cbuild--subtle`), the stylesheet hides `.cbuild-3d__tricks`, so they leave the accessibility tree too and follow a change of the setting at once. `play()` still refuses under reduced motion (D-495) as a second guard, so the probe's count of frames stays at zero.
+
+**Status:** Accepted.
+
+### D-504 · During a trick the camera waits · 2026-11-26
+
+The brief allowed an orbit or a camera button during a trick to wait or to cancel it cleanly. A cancel would put the board back at rest in one frame, a jump in the middle of the air.
+
+**Decision:** while a trick plays, the camera holds still. OrbitControls is off, so a drag turns nothing. The arrow keys and + and − are taken, so the page doesn't scroll, but move nothing. A camera button pressed meanwhile goes once the board lands, the last one pressed if there were several. A camera move already under way goes on to its end. A trick lands at rest at once, its promise kept, where the canvas leaves the screen, the tab hides or the view closes, so no frame is drawn out of sight and the buttons are free again.
 
 **Status:** Accepted.
 

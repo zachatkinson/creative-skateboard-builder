@@ -55,7 +55,14 @@ import {
 	type Currency,
 } from './motion';
 import { add, body } from './cart';
-import { flat, placeOf, type Renderer } from './picture';
+import {
+	flat,
+	placeOf,
+	trickOf,
+	type Renderer,
+	type Trick,
+	type TrickName,
+} from './picture';
 import type { Scene } from './three/scene';
 import type { CbuildState } from '../types/state';
 
@@ -92,10 +99,15 @@ interface State {
 	/** Whether a phone's filters are folded behind the Filters button: only once the script runs, so they show without it. */
 	folded: boolean;
 	/**
-	 * The 3D view (1.4.0, #139): whether it is open, whether its script is on its way, and whether it failed, so the
-	 * board shows flat with the message under it.
+	 * The 3D view (1.4.0, #139): whether it is open, whether its script is on its way, whether it failed, so the
+	 * board shows flat with the message under it, and whether a trick plays, so its buttons say they are disabled.
 	 */
-	three: { open: boolean; loading: boolean; failed: boolean };
+	three: {
+		open: boolean;
+		loading: boolean;
+		failed: boolean;
+		playing: boolean;
+	};
 	/** Whether the picture is being drawn: a pick has kept the shopper SLOW, and its answer or image is on its way (D-308). */
 	drawing: boolean;
 	/** What the step's Next said is missing when it was pressed dimmed, in the server's words; empty otherwise (#100). */
@@ -1524,6 +1536,9 @@ function nav( state: State ): Navigator {
  */
 let renderer: Renderer = flat;
 
+/** The 3D view's tricks, from its script once it has loaded. */
+let tricks: Partial< Record< TrickName, Trick > > = {};
+
 /** Each press of View in 3D, so a press that closes it while its script is on its way leaves it closed. */
 let opening = 0;
 
@@ -1547,6 +1562,7 @@ function flatten( state: State ): void {
 	renderer = flat;
 	state.three.open = false;
 	state.three.loading = false;
+	state.three.playing = false;
 }
 
 /**
@@ -1578,9 +1594,11 @@ async function rise( state: State ): Promise< void > {
 	state.three.loading = true;
 	state.three.failed = false;
 	try {
-		const { open } = await import(
+		const chunk = await import(
 			/* webpackChunkName: "builder/three" */ './three/index'
 		);
+		const { open } = chunk;
+		tricks = chunk.tricks;
 		if ( ticket !== opening ) {
 			return;
 		}
@@ -1612,6 +1630,7 @@ export function reset(): void {
 	boards.clear();
 	renderer.close();
 	renderer = flat;
+	tricks = {};
 	opening = 0;
 	pressed = Number.NEGATIVE_INFINITY;
 	picking = false;
@@ -1744,7 +1763,12 @@ const { state } = store(
 			turning: false,
 			limited: '',
 			folded: false,
-			three: { open: false, loading: false, failed: false },
+			three: {
+				open: false,
+				loading: false,
+				failed: false,
+				playing: false,
+			},
 			missing: '',
 			get dimmed(): boolean {
 				return state.live && false === state.view.bar?.next.ready;
@@ -2139,6 +2163,26 @@ const { state } = store(
 				);
 				if ( where ) {
 					renderer.look( where );
+				}
+			},
+			/**
+			 * One of the 3D view's trick buttons (1.4.0, #139): the button's value names the trick. While one plays
+			 * the buttons say they are disabled, and a press does nothing; with reduced motion the view plays none.
+			 */
+			async trick(): Promise< void > {
+				const name = trickOf(
+					( getElement().ref as HTMLButtonElement | null )?.value
+				);
+				const played = name ? tricks[ name ] : undefined;
+				if ( ! played || ! state.three.open || state.three.playing ) {
+					return;
+				}
+				const playing = renderer;
+				state.three.playing = true;
+				await playing.play( played );
+				// Closed meanwhile, the view has freed its buttons already.
+				if ( playing === renderer ) {
+					state.three.playing = false;
 				}
 			},
 			/**

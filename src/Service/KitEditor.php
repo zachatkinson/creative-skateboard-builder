@@ -856,9 +856,10 @@ final class KitEditor {
 		} elseif ( null !== $swaps ) {
 			$document['swaps'] = '' !== $swaps && '0' !== $swaps;
 		}
-		// Help me choose and the cards' picks and ratings: each box sends 0 unticked, so a form without the field keeps the
-		// kit's, and one with none stored leaves it out, on (D-409).
-		foreach ( array( 'guide', 'picks', 'ratings' ) as $key ) {
+		// Help me choose, the cards' picks and ratings, and from 1.4.0 the 3D view and its tricks: each box sends 0
+		// unticked, so a form without the field keeps the kit's, and one with none stored leaves it out, at its default
+		// (D-409, D-474).
+		foreach ( array( 'guide', 'picks', 'ratings', 'view_3d', 'tricks' ) as $key ) {
 			$box = array_key_exists( $key, $sent ) ? self::text( $sent, $key ) : null;
 			if ( null === $box && isset( $stored[ $key ] ) ) {
 				$document[ $key ] = $stored[ $key ];

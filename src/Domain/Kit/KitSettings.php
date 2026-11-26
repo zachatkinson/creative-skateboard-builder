@@ -15,13 +15,15 @@ use CreativeBranding\SkateboardBuilder\Domain\Guide\WheelGuide;
  * The kit's settings that came after its layout (D-354): from 1.2.0 the page its builder is on (#113, D-348), whether
  * its parts' pages show "Build a complete with this deck" (#115, D-349), the width guide (#114, D-350) and the
  * assembly time in business days (#142, D-375); from 1.3.0 the wheel guide the guided start reads (#134), and whether
- * the builder shows "Help me choose", the cards' ready-build picks and their ratings (D-409). From the
+ * the builder shows "Help me choose", the cards' ready-build picks and their ratings (D-409); from 1.4.0 whether it
+ * offers the 3D view and, with it, the trick buttons (#139, D-474). From the
  * `_cbuild_settings` document (`schema/kit-settings.json`), which the release before never reads, so a rollback leaves
  * the kit readable; a kit with none has the defaults. A setting this release does not know is passed over, so a
  * later release can add one here.
  *
  * @since 1.2.0
  * @since 1.3.0 The wheel guide, and the switches for Help me choose and the cards' picks and ratings.
+ * @since 1.4.0 The 3D view and its trick buttons.
  */
 final readonly class KitSettings {
 
@@ -46,10 +48,12 @@ final readonly class KitSettings {
 	 * @param bool          $guided      Whether the builder offers "Help me choose" at its start (1.3.0, `guide`, D-409).
 	 * @param bool          $cardPicks   Whether a card says the ready builds that pick its part (1.3.0, `picks`, D-409).
 	 * @param bool          $cardRatings Whether a card shows its part's rating (1.3.0, `ratings`, D-409).
-	 * @param bool          $view3d      Whether the builder offers its 3D view (1.4.0, `view_3d`, #139). Off by default.
-	 * @param bool          $tricks      Whether the 3D view offers its trick buttons (1.4.0, `tricks`, #139). On by default.
+	 * @param bool          $view3d      Whether the builder offers "View in 3D" (1.4.0, `view_3d`, #139, D-474). Off by
+	 *                                   default, so an update changes no builder.
+	 * @param bool          $tricks      Whether the 3D view offers its trick buttons (1.4.0, `tricks`, D-474). On by
+	 *                                   default; it matters only with the 3D view on.
 	 */
-	private function __construct( public bool $startButton, public ?int $builderPage, public SizeGuide $guide, public ?LeadDays $leadDays, public WheelGuide $wheels, public bool $swaps, public bool $guided, public bool $cardPicks, public bool $cardRatings, public bool $view3d = false, public bool $tricks = true ) {}
+	private function __construct( public bool $startButton, public ?int $builderPage, public SizeGuide $guide, public ?LeadDays $leadDays, public WheelGuide $wheels, public bool $swaps, public bool $guided, public bool $cardPicks, public bool $cardRatings, public bool $view3d, public bool $tricks ) {}
 
 	/**
 	 * From the decoded document, or the defaults where there is none.
@@ -62,7 +66,7 @@ final readonly class KitSettings {
 	 */
 	public static function fromDocument( mixed $document ): self {
 		if ( null === $document ) {
-			return new self( true, null, SizeGuide::plugins(), null, WheelGuide::plugins(), true, true, true, true );
+			return new self( true, null, SizeGuide::plugins(), null, WheelGuide::plugins(), true, true, true, true, false, true );
 		}
 		$root = Fields::document( $document );
 		// A kit with no start_button shows the button on its parts' pages, as one saved before 1.2.0 did.
@@ -77,9 +81,10 @@ final readonly class KitSettings {
 		$swaps = ! $root->has( 'swaps' ) || $root->flag( 'swaps' );
 		// One with no guide, picks or ratings shows each, as one saved before 1.3.0 is read (D-409).
 		$shows = static fn( string $key ): bool => ! $root->has( $key ) || $root->flag( $key );
-		// One with no builder_page has its builder on the kit's own page.
-		// One with no view_3d has no 3D view, so the update to 1.4.0 changes nothing; one with no tricks offers them (#139).
+		// One with no view_3d, as every kit saved before 1.4.0, offers no 3D view; one with no tricks offers them with it
+		// (D-474).
 		$view3d = $root->has( 'view_3d' ) && $root->flag( 'view_3d' );
+		// One with no builder_page has its builder on the kit's own page.
 		return new self( $starts, $root->idOrNull( 'builder_page' ), $guide, $days, $wheels, $swaps, $shows( 'guide' ), $shows( 'picks' ), $shows( 'ratings' ), $view3d, $shows( 'tricks' ) );
 	}
 }

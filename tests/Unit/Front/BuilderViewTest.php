@@ -344,6 +344,15 @@ final class BuilderViewTest extends TestCase {
 		);
 	}
 
+	// F41 (#164): a shop's ready build whose picture is drawn from the parts' layers is marked drawn, as a guide's tile
+	// with its deck's layer image is; one with a photo is not.
+	public function test_a_ready_build_tile_drawn_from_the_layers_is_marked_drawn(): void {
+		$drawn          = self::preset( array() );
+		$drawn['drawn'] = true;
+		$tiles          = $this->view( array( 'presets' => array( $drawn, self::preset( array() ) ) ), SlotKey::DECK )['presets']['tiles'];
+		self::assertSame( array( 'cbuild-preset__photo cbuild-preset__photo--drawn', 'cbuild-preset__photo' ), array_column( $tiles, 'photoClasses' ) );
+	}
+
 	// The auditor's 1.1.0 should-fix 2: the answer lists every ready build, each saying whether it is shown, and the
 	// page makes a tile for those shown alone, each opening its own place among the kit's.
 	public function test_a_ready_build_the_answer_does_not_show_has_no_tile(): void {
@@ -1012,15 +1021,17 @@ final class BuilderViewTest extends TestCase {
 				'wheels' => new Span( Measure::millimetres( 530000 ), Measure::millimetres( 560000 ) ),
 				'budget' => 100,
 				'over'   => true,
+				'fit'    => 3,
 				'builds' => array( self::recommendedBuild( Tier::Only, array( SlotKey::DECK => 101 ), '$140.00', '$40.00' ) ),
 			)
 		);
+		// F40 (#163): over the budget the closest is shown alone, and the count is of the builds that fit, not of it.
 		self::assertSame(
 			array(
 				array( 'text' => 'No deck for shoe size 9.5 and larger is in stock right now, so the builds take any width.' ),
 				array( 'text' => "Wheels of 53\u{00A0}mm to 56\u{00A0}mm." ),
 				array( 'text' => 'No build comes within your budget. The closest is $140.00.' ),
-				array( 'text' => '1 build fits and is in stock.' ),
+				array( 'text' => '3 builds fit and are in stock.' ),
 			),
 			$guide['reasons']
 		);

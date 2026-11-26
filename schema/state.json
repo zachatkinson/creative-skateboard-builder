@@ -139,7 +139,8 @@
 					"total",
 					"ready",
 					"problems",
-					"image"
+					"image",
+					"drawn"
 				],
 				"properties": {
 					"at": {
@@ -188,6 +189,10 @@
 								"type": "null"
 							}
 						]
+					},
+					"drawn": {
+						"description": "From 1.4.0: whether its picture is drawn from the parts' layers rather than a photo: the build's composed picture, or its first part's layer image where that part has no photo, marked as a card's layer image is (F41, #164).",
+						"type": "boolean"
 					},
 					"total": {
 						"description": "What the build it starts costs, at the kit's own assembly setting. From 0.6.0.",
@@ -862,6 +867,132 @@
 						"currency": { "description": "The answer's `currency`, as it is.", "type": "object", "additionalProperties": true }
 					}
 				},
+				"scene": {
+					"description": "From 1.4.0 (#139, D-470): the board in three dimensions, for the 3D view to draw, as `Domain\\Scene\\Scene` measures it from the picks' specs and `cbuild_scene` answers. Present only where the kit's 3D view is on (`view_3d` in `_cbuild_settings`), and null before a deck with a width is picked. Every length is a whole micrometre and every angle a tenth of a degree. The origin is on the deck's top face midway between the trucks; x runs toward the nose, y across and z up. An empty slot's part is null.",
+					"oneOf": [
+						{ "type": "null" },
+						{
+							"type": "object",
+							"required": ["assumed", "deck", "trucks", "wheels", "risers", "bolts", "grip"],
+							"properties": {
+								"assumed": { "description": "The spec keys a usual value stood in for, in the order they were assumed.", "type": "array", "items": { "type": "string" } },
+								"deck": {
+									"type": "object",
+									"required": ["part", "width", "length", "wheelbase", "nose", "tail", "concave", "kick", "thickness", "plies", "holes", "texture"],
+									"properties": {
+										"part": { "description": "The deck's part ID.", "type": "integer" },
+										"width": { "type": "integer", "minimum": 0 },
+										"length": { "description": "Nose tip to tail tip.", "type": "integer", "minimum": 0 },
+										"wheelbase": { "description": "Between the trucks' inner holes.", "type": "integer", "minimum": 0 },
+										"nose": { "description": "From the nose truck's outer holes to the nose's tip. The nose, the tail and the outer holes' span make the length.", "type": "integer", "minimum": 0 },
+										"tail": { "description": "From the tail truck's outer holes to the tail's tip.", "type": "integer", "minimum": 0 },
+										"concave": { "description": "The concave's depth across the deck, at most a quarter of its width.", "type": "integer", "minimum": 0 },
+										"kick": { "description": "The nose's and the tail's kick, in tenths of a degree, at most 450.", "type": "integer", "minimum": 0, "maximum": 450 },
+										"thickness": { "type": "integer", "minimum": 0 },
+										"plies": { "type": "integer", "minimum": 1 },
+										"holes": {
+											"type": "object",
+											"required": ["pattern", "spacing", "columns", "points"],
+											"properties": {
+												"pattern": { "description": "The pattern the trucks are bolted through: a deck drilled for both takes old school trucks on its old school holes.", "type": "string", "enum": ["new_school", "old_school"] },
+												"spacing": { "description": "Between a truck's two rows of holes.", "type": "integer", "minimum": 0 },
+												"columns": { "description": "Between a truck's two columns of holes.", "type": "integer", "minimum": 0 },
+												"points": { "description": "The eight holes on the deck's top face, x then y: from the nose, its truck's outer row, its inner row, the tail truck's inner row and its outer row, each row's left first.", "type": "array", "items": { "$ref": "#/definitions/scenePoint" } }
+											}
+										},
+										"texture": {
+											"description": "Same-origin rendition URLs of the plugin's own layer images, each after `cbuild_composed_layer` with the use `3d`: null where the part has none, or the answer is other than `as_is`. The top is the grip's.",
+											"type": "object",
+											"required": ["top", "bottom"],
+											"properties": {
+												"top": { "type": ["string", "null"] },
+												"bottom": { "type": ["string", "null"] }
+											}
+										}
+									}
+								},
+								"trucks": {
+									"oneOf": [
+										{ "type": "null" },
+										{
+											"type": "object",
+											"required": ["part", "axle", "height", "hanger", "baseplate", "holes", "color"],
+											"properties": {
+												"part": { "type": "integer" },
+												"axle": { "description": "The axle's width, end to end.", "type": "integer", "minimum": 0 },
+												"height": { "description": "From the baseplate's bottom to the axle's centre. The axle is at z = -(deck.thickness + risers.thickness + height).", "type": "integer", "minimum": 0 },
+												"hanger": { "type": "integer", "minimum": 0 },
+												"baseplate": {
+													"type": "object",
+													"required": ["length", "width"],
+													"properties": { "length": { "type": "integer", "minimum": 0 }, "width": { "type": "integer", "minimum": 0 } }
+												},
+												"holes": { "description": "The deck's eight holes, the same points.", "type": "array", "items": { "$ref": "#/definitions/scenePoint" } },
+												"color": { "type": ["string", "null"] }
+											}
+										}
+									]
+								},
+								"wheels": {
+									"oneOf": [
+										{ "type": "null" },
+										{
+											"type": "object",
+											"required": ["part", "diameter", "width", "contact", "texture", "color", "places"],
+											"properties": {
+												"part": { "type": "integer" },
+												"diameter": { "type": "integer", "minimum": 0 },
+												"width": { "type": "integer", "minimum": 0 },
+												"contact": { "description": "The contact band's width.", "type": "integer", "minimum": 0 },
+												"texture": { "description": "As the deck's.", "type": ["string", "null"] },
+												"color": { "type": ["string", "null"] },
+												"places": {
+													"description": "The four wheels' centres, x, y and z: the nose's pair first, each pair's left first. Each outer face is at its axle's end, and z is the axle's.",
+													"type": "array",
+													"items": { "type": "array", "items": { "type": "integer" }, "minItems": 3, "maxItems": 3 }
+												}
+											}
+										}
+									]
+								},
+								"risers": {
+									"oneOf": [
+										{ "type": "null" },
+										{
+											"type": "object",
+											"required": ["part", "thickness"],
+											"properties": { "part": { "type": "integer" }, "thickness": { "type": "integer", "minimum": 0 } }
+										}
+									]
+								},
+								"bolts": {
+									"oneOf": [
+										{ "type": "null" },
+										{
+											"type": "object",
+											"required": ["part", "length", "points"],
+											"properties": {
+												"part": { "type": "integer" },
+												"length": { "type": "integer", "minimum": 0 },
+												"points": { "description": "A bolt in each of the deck's holes.", "type": "array", "items": { "$ref": "#/definitions/scenePoint" } }
+											}
+										}
+									]
+								},
+								"grip": {
+									"oneOf": [
+										{ "type": "null" },
+										{
+											"type": "object",
+											"required": ["part", "texture"],
+											"properties": { "part": { "type": "integer" }, "texture": { "description": "As the deck's.", "type": ["string", "null"] } }
+										}
+									]
+								}
+							}
+						}
+					]
+				},
 				"three": {
 					"description": "From 1.4.0: the 3D view (#139). Whether the kit offers it (`view_3d`) and its trick buttons (`tricks`), and the canvas's classes, with the deck's `cbuild_part_classes` after its own.",
 					"type": "object",
@@ -877,6 +1008,13 @@
 		}
 	},
 	"definitions": {
+		"scenePoint": {
+			"description": "A place on the deck's top face, in micrometres: along the deck toward the nose, and across it.",
+			"type": "array",
+			"items": { "type": "integer" },
+			"minItems": 2,
+			"maxItems": 2
+		},
 		"drawn": {
 			"type": "object",
 			"required": ["layers"],

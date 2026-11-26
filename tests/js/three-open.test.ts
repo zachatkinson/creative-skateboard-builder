@@ -42,6 +42,10 @@ vi.mock( 'three', async ( original ) => {
 			made.ratios.push( ratio );
 		}
 		setSize() {}
+		cleared: [ unknown, number ] | undefined;
+		setClearColor( color: unknown, alpha: number ) {
+			this.cleared = [ color, alpha ];
+		}
 		dispose() {}
 	}
 	class PMREMGenerator {
@@ -78,7 +82,8 @@ vi.mock( 'three/addons/environments/RoomEnvironment.js', async () => {
 	};
 } );
 
-const { open } = await import( '../../assets/src/builder/three/index' );
+const { open, tricks: TRICKS } =
+	await import( '../../assets/src/builder/three/index' );
 
 beforeEach( () => {
 	made.renderers.length = 0;
@@ -123,10 +128,17 @@ describe( 'open', () => {
 		expect( renderer!.options ).toEqual( {
 			canvas,
 			antialias: true,
+			alpha: true,
 			powerPreference: 'low-power',
 		} );
 		expect( renderer!.outputColorSpace ).toBe( SRGBColorSpace );
 		expect( renderer!.toneMapping ).toBe( NeutralToneMapping );
+	} );
+
+	it( 'clears to nothing, so the frame’s ground shows through the canvas', () => {
+		opened();
+		const [ renderer ] = made.renderers;
+		expect( renderer!.cleared ).toEqual( [ 0x000000, 0 ] );
 	} );
 
 	it( 'lights the room through PMREM after the first frame, and gives it back on close', () => {
@@ -206,5 +218,14 @@ describe( 'open', () => {
 			( window as Window & { cbuildProbe?: unknown } ).cbuildProbe
 		).toBe( probed.view );
 		expect( probed.view ).not.toBe( view );
+		// With the tricks, so a test can hold one at a moment.
+		expect(
+			(
+				( window as Window & { cbuildProbe?: unknown } )
+					.cbuildProbe as {
+					tricks: Record< string, unknown >;
+				}
+			 ).tricks
+		).toBe( TRICKS );
 	} );
 } );

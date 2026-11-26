@@ -143,4 +143,33 @@ final class ThreeViewTest extends IntegrationTestCase {
 		}
 		self::assertStringContainsString( 'The 3D view can’t be shown here, so the board is drawn flat.', $html );
 	}
+
+	public function test_the_template_renders_the_trick_buttons_only_with_the_kits_trick_buttons_on(): void {
+		$html = self::rendered( $this->view( array( 'view_3d' => true ) ) );
+		self::assertStringContainsString( 'class="cbuild-3d__tricks" role="group" aria-label="Tricks"', $html );
+		$names = array(
+			'ollie'        => 'Ollie',
+			'kickflip'     => 'Kickflip',
+			'heelflip'     => 'Heelflip',
+			'pop-shove-it' => 'Pop shove-it',
+			'360-flip'     => '360 flip',
+		);
+		foreach ( $names as $value => $name ) {
+			self::assertMatchesRegularExpression( '~<button class="cbuild-button" type="button" value="' . $value . '" data-wp-bind--aria-disabled="state\.three\.playing" data-wp-on--click="actions\.trick">' . preg_quote( $name, '~' ) . '</button>~', $html );
+		}
+		// In the server's order, the order the view's tricks are in.
+		self::assertSame( 5, preg_match_all( '~value="(' . implode( '|', array_keys( $names ) ) . ')"~', $html, $found ) );
+		self::assertSame( array_keys( $names ), $found[1] );
+		$off = self::rendered(
+			$this->view(
+				array(
+					'view_3d' => true,
+					'tricks'  => false,
+				)
+			)
+		);
+		self::assertStringContainsString( '>View in 3D</button>', $off );
+		self::assertStringNotContainsString( 'cbuild-3d__tricks', $off );
+		self::assertStringNotContainsString( 'actions.trick', $off );
+	}
 }

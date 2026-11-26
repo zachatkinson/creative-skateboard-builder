@@ -1,7 +1,7 @@
 <?php
 /**
  * Plugin Name: Creative Skateboard Builder e2e scene
- * Description: Test fixture, mapped as a must-use plugin by .wp-env.json: with the cookie cbuild_e2e_scene, a builder view with no scene gets the scene contract's fixture (tests/e2e/fixtures/scene.json), with the deck's graphic and a printed grip from the layer images, so the 3D view's browser tests draw the same board on every run. The cookie's value `wheels` gives the fixture other wheels, 4 mm larger, for the test that a part's change swaps that part alone. Never shipped.
+ * Description: Test fixture, mapped as a must-use plugin by .wp-env.json: with the cookie cbuild_e2e_scene, a builder view with no scene gets the scene contract's fixture (tests/e2e/fixtures/scene.json), with the deck's graphic and a printed grip from the layer images, so the 3D view's browser tests draw the same board on every run. The cookie's value `pinned` answers `cbuild_scene` with the fixture, for the visual tests. The cookie's value `wheels` gives the fixture other wheels, 4 mm larger, for the test that a part's change swaps that part alone. Never shipped.
  *
  * @package CreativeBranding\SkateboardBuilder\Tests
  */
@@ -26,6 +26,11 @@ if ( isset( $_COOKIE['cbuild_e2e_scene'] ) ) {
 		}
 		return $scene;
 	};
+	if ( 'pinned' === $_COOKIE['cbuild_e2e_scene'] ) {
+		// The visual tests' board: the fixture in place of the server's scene, answered as a plugin would answer
+		// cbuild_scene, so their pictures stay the same whatever the kit's parts measure.
+		add_filter( 'cbuild_scene', $cbuild_e2e_scene, 99 );
+	}
 	add_filter(
 		'rest_post_dispatch',
 		static function ( $response ) use ( $cbuild_e2e_scene ) {

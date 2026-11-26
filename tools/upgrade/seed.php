@@ -34,6 +34,7 @@ if ( 'read' === ( $cbuild_args[0] ?? '' ) ) {
 	$states    = $container->get( CreativeBranding\SkateboardBuilder\Service\BuildState::class );
 	$stored    = wc_get_products( array( 'type' => 'cbuild_kit', 'limit' => 50, 'return' => 'ids', 'status' => array( 'publish', 'private', 'draft' ) ) );
 	$read      = 0;
+	$three     = 0;
 	$presets   = 0;
 	$priced    = 0;
 	foreach ( $stored as $id ) {
@@ -42,6 +43,8 @@ if ( 'read' === ( $cbuild_args[0] ?? '' ) ) {
 			continue;
 		}
 		++$read;
+		// No kit the old release made has the 3D view on after the update (D-476).
+		$three += $kit->settings->view3d ? 1 : 0;
 		foreach ( $kit->presets as $preset ) {
 			++$presets;
 			$priced += null !== $states->of( (int) $id, $preset->picks ) ? 1 : 0;
@@ -76,7 +79,7 @@ if ( 'read' === ( $cbuild_args[0] ?? '' ) ) {
 	$layer   = (int) ( $cbuild_args[3] ?? 0 );
 	$copies  = $layer > 0 ? count( (array) glob( wp_get_upload_dir()['basedir'] . '/creative-skateboard-builder/layers/' . $layer . '-*' ) ) : 0;
 	$missing = count( $container->get( CreativeBranding\SkateboardBuilder\Service\PartRenditions::class )->unrenderedParts() );
-	echo "read: order {$order->get_id()}, {$lines} lines, {$found} products, total {$order->get_total()}; kits " . $read . ' of ' . count( $stored ) . ", presets {$priced} of {$presets} priced; saved builds {$saved}, {$clean} reopened with no prices then, {$kept} with the prices kept; layer copies {$copies}, parts missing copies {$missing}\n";
+	echo "read: order {$order->get_id()}, {$lines} lines, {$found} products, total {$order->get_total()}; kits " . $read . ' of ' . count( $stored ) . ", presets {$priced} of {$presets} priced; kits with 3D on {$three}; saved builds {$saved}, {$clean} reopened with no prices then, {$kept} with the prices kept; layer copies {$copies}, parts missing copies {$missing}\n";
 	return;
 }
 

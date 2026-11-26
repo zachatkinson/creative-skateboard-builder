@@ -50,6 +50,11 @@ final class LabelsTest extends TestCase {
 			'grip_width'       => array( 'Grip width', 'Grip width (in)' ),
 			'grip_length'      => array( 'Grip length', 'Grip length (in)' ),
 			'set_size'         => array( 'Number in a set', 'Number in a set' ),
+			'nose_length'      => array( 'Nose length', 'Nose length (in)' ),
+			'tail_length'      => array( 'Tail length', 'Tail length (in)' ),
+			'concave_depth'    => array( 'Concave depth', 'Concave depth (in)' ),
+			'kick_angle'       => array( 'Kick angle in degrees', 'Kick angle in degrees' ),
+			'wheel_width'      => array( 'Wheel width', 'Wheel width (mm)' ),
 		);
 		self::assertSame( array_column( SpecKey::cases(), 'value' ), array_keys( $names ), 'every spec, and none twice' );
 		foreach ( SpecKey::cases() as $key ) {

@@ -13,6 +13,17 @@ export type Place = 'reset' | 'top' | 'under' | 'graphic';
 /** The places, as the server's buttons name them. */
 export const PLACES: readonly Place[] = [ 'reset', 'top', 'under', 'graphic' ];
 
+/** The tricks, as the server's buttons name them, in their order (1.4.0, #139). */
+export const TRICKS = [
+	'ollie',
+	'kickflip',
+	'heelflip',
+	'pop-shove-it',
+	'360-flip',
+] as const;
+
+export type TrickName = ( typeof TRICKS )[ number ];
+
 /**
  * A trick, as the tricks are given to `play()`: how long it lasts, in milliseconds, and the board's pose at each
  * moment of it, from 0 to 1. The pose moves the board's group from its rest, and the renderer puts it back when the
@@ -50,4 +61,13 @@ export const flat: Renderer = {
  */
 export function placeOf( value: string | undefined ): Place | null {
 	return PLACES.find( ( one ) => one === value ) ?? null;
+}
+
+/**
+ * Whether a button names one of the tricks.
+ *
+ * @param value The button's value.
+ */
+export function trickOf( value: string | undefined ): TrickName | null {
+	return TRICKS.find( ( one ) => one === value ) ?? null;
 }
