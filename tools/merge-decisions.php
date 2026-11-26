@@ -76,7 +76,13 @@ function cbuild_decision_settle( string $ours, string $base, string $theirs ): ?
 		return null;
 	}
 	ksort( $numbers );
-	return $entries ? implode( "\n", $numbers ) : implode( '', $numbers );
+	if ( ! $entries ) {
+		return implode( '', $numbers );
+	}
+	// Each side's additions start with the blank line that ends the entry above them, which cutting them into entries
+	// drops: put it back, or the first settled entry runs on from the last one before it.
+	$lead = str_starts_with( $ours, "\n" ) || str_starts_with( $theirs, "\n" ) ? "\n" : '';
+	return $lead . implode( "\n", $numbers );
 }
 
 /**

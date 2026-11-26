@@ -532,6 +532,18 @@ Planned as 1.0.0. On 18 November 2026 Zach moved 1.0.0 to milestone 10, the conf
 
 ## After 1.0
 
+### Milestones 12 to 16
+
+Each has its plan and review in `docs/reviews/M<n>.md`, with no entry of its own here (Zach, 24 Nov 2026):
+
+| Milestone | Release | What it builds |
+| --- | --- | --- |
+| 12 | 1.2.0 | Cowork's review of 1.1.0, every open issue, and Markdown lint |
+| 13 | 1.3.0 | Compact cards, review thumbnails, Help me choose, smart swaps, compare, ratings and the pick outline |
+| 14 | 1.4.0 | The 3D view from each part's sizes, on three.js, with tricks (#139). It replaces Module B |
+| 15 | 1.5.0 | The admin, on DataForm and DataViews, starting with an audit of what a shop can change (#156) |
+| 16 | 1.6.0 | At real size: AR from the 3D scene (#140) |
+
 ### Companion releases
 
 Each is a small release of its own, once the hooks it needs are in a tagged build:
@@ -540,7 +552,7 @@ Each is a small release of its own, once the hooks it needs are in a tagged buil
 | --- | --- | --- |
 | Creative Checkout | Claude in Cowork | Answers `cbuild_arrival_estimate` and `cbuild_delivery_line`; adds the assembly lead time wherever a cart or order holds an assembled build, Apple Pay's and Google Pay's sheets included; adds an assembly step to "What happens next" |
 | Mature Content | Claude in Cowork | Blurs a flagged part on its card, in the picture's layers and in the review, through `cbuild_part_classes` and `mcw_image_selectors`; from 1.3.0 that includes the review's thumbnails (#132) |
-| Creative Shipment Tracking | Claude Code | Shows a build under the kit's name in "In this parcel" |
+| Creative Shipment Tracking | Claude Code | **Done (26 Nov 2026).** 1.13.0 shows a build under the kit's name with its parts beneath, in "In this parcel", the emails, My Account and Ship orders, reading `_cbuild_id` and `_cbuild_role` only. 1.13.1 groups the order box's "Items in this parcel" the same way, with a "Whole build" box. 1.14.0 lists a theme's outdated copies of its templates on WooCommerce > Status. 1.14.1 reports them in Site Health, as WooCommerce now does, in place of a notice |
 | Creative Reviews | Claude Code | Leaves the kit out of review requests. Its `creviews_should_send_request` (1.0.3) decides per order, so this needs a per-line filter in a Reviews release. The ratings shown in each step (#137) need nothing from it: its reviews are WooCommerce's own, read through the product |
 | Creative Loyalty | Claude Code, from its own brief (Phase 3) | Points per part line; a points line under the builder's total through `cbuild_summary_notes` |
 

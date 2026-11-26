@@ -46,8 +46,10 @@ final readonly class KitSettings {
 	 * @param bool          $guided      Whether the builder offers "Help me choose" at its start (1.3.0, `guide`, D-409).
 	 * @param bool          $cardPicks   Whether a card says the ready builds that pick its part (1.3.0, `picks`, D-409).
 	 * @param bool          $cardRatings Whether a card shows its part's rating (1.3.0, `ratings`, D-409).
+	 * @param bool          $view3d      Whether the builder offers its 3D view (1.4.0, `view_3d`, #139). Off by default.
+	 * @param bool          $tricks      Whether the 3D view offers its trick buttons (1.4.0, `tricks`, #139). On by default.
 	 */
-	private function __construct( public bool $startButton, public ?int $builderPage, public SizeGuide $guide, public ?LeadDays $leadDays, public WheelGuide $wheels, public bool $swaps, public bool $guided, public bool $cardPicks, public bool $cardRatings ) {}
+	private function __construct( public bool $startButton, public ?int $builderPage, public SizeGuide $guide, public ?LeadDays $leadDays, public WheelGuide $wheels, public bool $swaps, public bool $guided, public bool $cardPicks, public bool $cardRatings, public bool $view3d = false, public bool $tricks = true ) {}
 
 	/**
 	 * From the decoded document, or the defaults where there is none.
@@ -76,6 +78,8 @@ final readonly class KitSettings {
 		// One with no guide, picks or ratings shows each, as one saved before 1.3.0 is read (D-409).
 		$shows = static fn( string $key ): bool => ! $root->has( $key ) || $root->flag( $key );
 		// One with no builder_page has its builder on the kit's own page.
-		return new self( $starts, $root->idOrNull( 'builder_page' ), $guide, $days, $wheels, $swaps, $shows( 'guide' ), $shows( 'picks' ), $shows( 'ratings' ) );
+		// One with no view_3d has no 3D view, so the update to 1.4.0 changes nothing; one with no tricks offers them (#139).
+		$view3d = $root->has( 'view_3d' ) && $root->flag( 'view_3d' );
+		return new self( $starts, $root->idOrNull( 'builder_page' ), $guide, $days, $wheels, $swaps, $shows( 'guide' ), $shows( 'picks' ), $shows( 'ratings' ), $view3d, $shows( 'tricks' ) );
 	}
 }

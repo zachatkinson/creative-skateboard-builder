@@ -63,6 +63,7 @@ Everything another plugin, a theme or a shop's own code may rely on, added as it
   - [The state route and the price ability](#the-state-route-and-the-price-ability)
   - [Saved builds and My builds](#saved-builds-and-my-builds)
   - [Styling the board's top](#styling-the-boards-top)
+  - [Styling the 3D view](#styling-the-3d-view)
   - [The workshop: the Build box, the assembly ticket and the orders list](#the-workshop-the-build-box-the-assembly-ticket-and-the-orders-list)
   - [Privacy tools and orders](#privacy-tools-and-orders)
 
@@ -995,6 +996,23 @@ Each of the top's layers is a `span.cbuild-board__layer` placed by the four `--c
 | `--cbuild-mask` | 0.8.0 | On the top's deck and grip layers: the deck's layer image, as a `url()`, whose transparency is their outline (`mask-image`). A layer image served from another origin needs `Access-Control-Allow-Origin` for the browser to use it as a mask |
 
 The buttons by the board, `.cbuild-picture__turn .cbuild-button`, have `aria-pressed` true while the top is shown. From 1.2.0 there are two, Underside and Top, in `.cbuild-picture__sides`, and each has `aria-pressed` true while its own side is shown (#128, D-369).
+
+### Styling the 3D view
+
+From 1.4.0, where a kit's View in 3D is on, the picture holds the 3D view (#139, D-495): `.cbuild-3d`, hidden until the build has a deck. A theme styles it by these classes, and the state route's view says whether it is offered, as `view.three`: `shown` (the kit's View in 3D), `tricks` (shown, and the kit's Trick buttons on) and `canvas` (the canvas's classes) (`@since 1.4.0`).
+
+| Class | Since | What it is |
+| --- | --- | --- |
+| `cbuild-3d__open` | 1.4.0 | View in 3D, with `aria-pressed` true while the view is open |
+| `cbuild-3d__stage` | 1.4.0 | The open view: the canvas, its notes and the camera's buttons |
+| `cbuild-3d__frame` | 1.4.0 | The canvas's box, `position: relative`, and a plugin's place for a veil over the view, as `.cbuild__stage` is over the board. Once the view opens it is never replaced: an element a plugin puts in it stays through a part's change, a step's and the view closed and opened again, and it covers the canvas alone, never the camera's buttons. On a tablet and a phone it is 4 by 3; a theme may set its `aspect-ratio` or height |
+| `cbuild-3d__canvas` | 1.4.0 | The canvas, with the classes `cbuild_part_classes` gives the deck picked after its own, as the board's layers have them. They stay through every redraw and part change |
+| `cbuild-3d__places` | 1.4.0 | The camera's buttons: Reset view, Top, Underside and Graphic close-up |
+| `cbuild-3d__failed` | 1.4.0 | The message shown where the view can't be drawn, with the board back |
+
+While the view is open the picture has `cbuild-picture--3d`, and the board and the parts' photos are not drawn.
+
+A picture the shopper may reveal, such as one Mature Content blurs, is blurred in the 3D view by these classes, with CSS on `.cbuild-3d__canvas` and a veil in `.cbuild-3d__frame`, so the plugin's own reveal can lift it on the page (D-468). Answering `cbuild_composed_layer` for `'3d'` with `blurred` or `left_out` bakes the change into the texture the view draws, and nothing on the page can lift it.
 
 ### The workshop: the Build box, the assembly ticket and the orders list
 

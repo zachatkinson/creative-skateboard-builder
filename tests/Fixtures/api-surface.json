@@ -179,6 +179,12 @@
         "creative-skateboard-builder"
     ],
     "css_classes": [
+        "cbuild-3d__canvas",
+        "cbuild-3d__failed",
+        "cbuild-3d__frame",
+        "cbuild-3d__open",
+        "cbuild-3d__places",
+        "cbuild-3d__stage",
         "cbuild-assembly",
         "cbuild-bar__photo",
         "cbuild-board__layer",
@@ -322,7 +328,7 @@
         "schema/kit-slots.json": "7c383e3f551b517328d9d195c01e15f9f5dad1a1263a20fa4ff2188592bb820c",
         "schema/order-snapshot.json": "22d23b0213b466dfd4092e7e40ec09574bb4eaed6e99347bd166dadc86c441bb",
         "schema/settings.json": "c6ce801eae753f4d85734fdf81489cc91a4e2db8adf318aa2da21832d7ef9df4",
-        "schema/state.json": "2bff59515fa1c0eef4a410f6d19f622c25b6289cc508e076e9b1a1f88b5a0a38"
+        "schema/state.json": "ed1f4885aa2e5ffe1ea056090e1d2ca31b8f2400e1be96a56b46349a1cf274e9"
     },
     "spec_keys": [
         "deck_width",

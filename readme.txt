@@ -4,7 +4,7 @@ Tags: woocommerce, skateboard, product builder, configurator, bundle
 Requires at least: 7.0
 Tested up to: 7.1
 Requires PHP: 8.5
-Stable tag: 1.3.0
+Stable tag: 1.4.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -16,7 +16,7 @@ Creative Skateboard Builder lets a shopper put a complete skateboard together fr
 
 = Features =
 
-This is version 1.3.0.
+This is version 1.4.0.
 
 * **The builder page.** A kit's page is the builder: the board on one side, the steps on the other, and the total at the foot. The Builder block puts it on any other page.
 * **One step a slot.** The shopper goes one step a slot, picks a deck by the width they ride, and sees one card a look with only the parts that fit what they picked.
@@ -103,6 +103,9 @@ Kadence can't pick products by type, so add each new kit the same way, or give y
 Yes. Its hooks, REST routes, block attributes, settings keys, order item keys, CSS custom properties and DOM events are listed with the version each arrived in. From 1.0.0 they follow Semantic Versioning: no minor or patch release removes or renames one, and a deprecation comes first.
 
 == Changelog ==
+
+= 1.4.0 =
+* View in 3D: where a kit turns it on, the shopper turns and zooms the build in 3D, drawn to scale from the parts' sizes. Where the browser can't show it, the board is drawn flat as before.
 
 = 1.3.0 =
 * My builds compares up to three saved builds side by side, at today's prices. The parts that differ and the gap between the totals are said in words, and a part changed since the save is named.
@@ -261,6 +264,9 @@ Yes. Its hooks, REST routes, block attributes, settings keys, order item keys, C
 * Foundation: the plugin skeleton, the two tables, the upgrade steps, uninstall, the update check, the test harness and the CI gates. Nothing a shopper or shop owner sees yet.
 
 == Upgrade Notice ==
+
+= 1.4.0 =
+Update from the updater or by uploading the zip; no step is needed.
 
 = 1.3.0 =
 Update from the updater or by uploading the zip; no step is needed. A kit saved before 1.3.0 has the builder's wheel sizes, and offers smart swaps, Help me choose, and the cards' picks and ratings, until its Build tab turns them off.

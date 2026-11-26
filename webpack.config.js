@@ -2,7 +2,8 @@
  * @wordpress/scripts' own configuration, with the admin's scripts added to its classic-script build (D-086).
  * wp-scripts finds a block's scripts from its block.json; a script for a wp-admin screen belongs to no block, so it
  * is named here. With `--experimental-modules` the default export is two configurations: scripts, then script
- * modules. The builder's store is a script module and arrives through its block.json in milestone 6.
+ * modules. The builder's store is a script module and arrives through its block.json in milestone 6; from 1.4.0 it
+ * imports the 3D view's chunk when the shopper asks for it (#139).
  */
 const fs = require( 'node:fs' );
 const path = require( 'node:path' );
@@ -37,5 +38,19 @@ module.exports = [
 			...ADMIN,
 		} ),
 	},
-	modules,
+	{
+		...modules,
+		optimization: {
+			...modules.optimization,
+			splitChunks: {
+				...modules.optimization.splitChunks,
+				cacheGroups: {
+					...modules.optimization.splitChunks.cacheGroups,
+					// The 3D view's chunk, build/builder/three.js, holds three.js too (1.4.0, #139): one file loaded on
+					// the press of View in 3D, with a budget of its own, and nothing split out of it to load besides.
+					defaultVendors: false,
+				},
+			},
+		},
+	},
 ];

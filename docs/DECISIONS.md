@@ -284,6 +284,7 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-465 · A lane lands only after CI's own checks on its changed lines and a walkthrough of them](#d-465--a-lane-lands-only-after-cis-own-checks-on-its-changed-lines-and-a-walkthrough-of-them--2026-11-26)
 - [D-467 · ShellCheck holds every shell script, pinned as actionlint and zizmor are](#d-467--shellcheck-holds-every-shell-script-pinned-as-actionlint-and-zizmor-are--2026-11-26)
 - [D-468 · A plugin blurs the 3D view by class, so a shopper's reveal can lift it](#d-468--a-plugin-blurs-the-3d-view-by-class-so-a-shoppers-reveal-can-lift-it--2026-11-26)
+- [D-469 · A landing skips its second /verify when the lane passed it on the same tree](#d-469--a-landing-skips-its-second-verify-when-the-lane-passed-it-on-the-same-tree--2026-11-26)
 - [D-432 · After a swap the notice says the swap and the status the build alone, so a screen reader hears it once](#d-432--after-a-swap-the-notice-says-the-swap-and-the-status-the-build-alone-so-a-screen-reader-hears-it-once--2026-11-25)
 
 ### Motion
@@ -329,6 +330,16 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-372 · Site Health names up to five parts whose layer images have no resized copies](#d-372--site-health-names-up-to-five-parts-whose-layer-images-have-no-resized-copies--2026-11-24)
 - [D-373 · The update to 1.2.0 queues the index job of each part whose layer image has no copies](#d-373--the-update-to-120-queues-the-index-job-of-each-part-whose-layer-image-has-no-copies--2026-11-24)
 - [D-378 · An update's index jobs are due five minutes on, past any runner the earlier release started](#d-378--an-updates-index-jobs-are-due-five-minutes-on-past-any-runner-the-earlier-release-started--2026-11-24)
+- [D-490 · three.js is a chunk of its own, loaded on the press, and budgeted gzipped](#d-490--threejs-is-a-chunk-of-its-own-loaded-on-the-press-and-budgeted-gzipped--2026-11-26)
+- [D-491 · The board is drawn from the scene's sizes, in millimetres, its shapes generated](#d-491--the-board-is-drawn-from-the-scenes-sizes-in-millimetres-its-shapes-generated--2026-11-26)
+- [D-492 · The 3D view draws only when something changed, and never off the screen](#d-492--the-3d-view-draws-only-when-something-changed-and-never-off-the-screen--2026-11-26)
+- [D-493 · The camera: OrbitControls, keys, four places, and the step's side](#d-493--the-camera-orbitcontrols-keys-four-places-and-the-steps-side--2026-11-26)
+- [D-494 · Any failure brings the board back, with one message](#d-494--any-failure-brings-the-board-back-with-one-message--2026-11-26)
+- [D-495 · The view's markup is the server's, and the canvas sits in a frame](#d-495--the-views-markup-is-the-servers-and-the-canvas-sits-in-a-frame--2026-11-26)
+- [D-496 · Textures come from the shop's own origin, drawn in neutral tone mapping](#d-496--textures-come-from-the-shops-own-origin-drawn-in-neutral-tone-mapping--2026-11-26)
+- [D-497 · `view.three` says whether the view is offered, and the scene stays lane 1's](#d-497--viewthree-says-whether-the-view-is-offered-and-the-scene-stays-lane-1s--2026-11-26)
+- [D-498 · The browser tests read frames, and compare the page with the view on and off](#d-498--the-browser-tests-read-frames-and-compare-the-page-with-the-view-on-and-off--2026-11-26)
+- [D-499 · The 3D view's pictures are SwiftShader's, at 1 % tolerance](#d-499--the-3d-views-pictures-are-swiftshaders-at-1--tolerance--2026-11-26)
 
 ### Cart, checkout and orders
 
@@ -6849,6 +6860,103 @@ The cost is that the CSS blur covers the whole view, trucks and wheels too, not 
 
 **Status:** Accepted.
 
+### D-466 · My builds, the deck page's start button and the bar run their key browser tests on Kadence and Storefront too · 2026-11-26
+
+Milestone 14's pipeline, the real-theme runs (Zach, 26 November). In 1.3.0 four defects passed every test on Twenty Twenty-Five and broke on a real theme: the compare's lost rules (D-450), and F31 to F33. The key browser tests of three areas now run on each of the three themes, through the e2e theme fixture's cookie, as shelf.spec.ts and the bar's tests already do: `for ( const theme of [ 'twentytwentyfive', 'storefront', 'kadence' ] )`.
+
+- **My builds:** "a customer saves, opens, saves over and deletes a build under My builds" and "three builds compared by keyboard in a table that says what differs in words". "Every build's column is reached in the compare's region on a phone" already ran on Kadence and Storefront.
+- **The deck page's start button (F32):** "keeps a deck page's start button readable under the hostile theme", axe's contrast with the hostile fixture on. "The start button on a theme (#133)" already looped the three themes.
+- **The bar (F33):** "keeps the bar no taller at the review on a phone under a theme's paragraph margin (#150)". #153's "The bar on a phone" covers the three themes in English and French (D-510).
+
+**Red run.** With D-450's handle change reverted (`SavedBuildHooks::styles()` adding its rules to `woocommerce-general` again), on chromium-desktop and chromium-phone: the looped compare failed on Kadence and on Storefront, on the desktop "a build a column, at least 14rem" (builder.spec.ts:9021) and on the phone "the row says which build it is" (builder.spec.ts:8917). Twenty Twenty-Five passed, as it did in 1.3.0. The save test passed on all three, since its page needs none of those rules. Put back, all passed.
+
+**Status:** Accepted.
+
+### D-469 · A landing skips its second /verify when the lane passed it on the same tree · 2026-11-26
+
+Lane 2's landing (D-465) took 41 minutes, 40 of them a /verify that repeated the run the lane had just passed. Each landing paid for it, and two lanes ready together waited on each other.
+
+**Decision:** the handoff's verify.sh writes a receipt when every step passed on a clean checkout that didn't change while it ran, with wp-env up. Its key is the tree (`git ls-tree -r HEAD`, with `languages/` left out, since a landing remakes its made files). land.sh skips its full /verify when the merged tree has a receipt. It then runs `i18n:check` on the remade files, and `composer infection:diff` as before. `CBUILD_FULL_VERIFY=1` forces the full run. A lane earns a receipt by merging the newest milestone branch, committing, and running verify.sh last.
+
+The second run had the same tree on the same lane's sites, so it couldn't find what the first missed. Any change after the lane's run gives a new key and the full run. The rule "/verify before every commit" is kept: the landing's commit holds only the made files, which `i18n:check` checks.
+
+**Status:** Accepted.
+
+### D-490 · three.js is a chunk of its own, loaded on the press, and budgeted gzipped · 2026-11-26
+
+Milestone 14 (#139). three.js 0.187.0 is the approved run-time dependency, pinned exactly, with `@types/three` 0.187.0 for the types. Loaded with the builder's script it would multiply `view.js` many times over its 15 kB budget.
+
+**Decision:** the 3D view's code, three.js with it, is `build/builder/three.js`, which the store imports dynamically only when "View in 3D" is pressed. webpack's vendor split is off for the script-module build (`webpack.config.js`), so the chunk is one file with a stable name, not a numbered vendor file. `tools/budget.mjs` holds it to 200 kB gzipped, measured with gzip, as a server without Brotli sends it, beside the Brotli budgets, which do not move. It measures 142 kB gzipped and 117 kB with Brotli; `view.js` stays at 9.4 kB.
+
+`composer i18n:pot` leaves the chunk out: it holds no string of the plugin's, and WP-CLI's JavaScript parser ran out of its 128 MB on it.
+
+**Status:** Accepted.
+
+### D-491 · The board is drawn from the scene's sizes, in millimetres, its shapes generated · 2026-11-26
+
+The scene contract gives micrometres and tenths of a degree, +x to the nose, +y across, +z up; three.js is y up.
+
+**Decision:** the parts are built in the scene's own axes, in millimetres, inside one group turned a quarter turn about x into three's. No model file is loaded. The deck is its outline from width, length, nose and tail (ends as quarter ellipses), its top bent by the concave across and the kick past the outer holes, its edge striped a band a ply. The wheels are a lathe of their own profile, with the contact band flat; trucks, risers and bolts are boxes and cylinders at the scene's places. The copy under the canvas says so: sizes true to scale, shapes simplified.
+
+**Status:** Accepted.
+
+### D-492 · The 3D view draws only when something changed, and never off the screen · 2026-11-26
+
+Spec: Ready for 3D asks for no frame at rest.
+
+**Decision:** a frame is asked for by a change alone (a scene, a move, a key, a resize, a texture's arrival) and drawn once; a camera move or a trick asks for the next while it plays. Off the screen (IntersectionObserver) or with the tab hidden a change waits, and is drawn once it shows. The pixel ratio is the device's up to 2, or 1.5 with 4 GB of memory or less. Closing disposes every geometry, material, texture, the room's lighting and the renderer. The room's lighting (RoomEnvironment through PMREM) is made after the first frame, on a task of its own, so the board shows at once.
+
+A browser test reads the frames and the memory through a probe the page exposes only with `data-cbuild-probe` on its root element, which no shop's page has.
+
+**Status:** Accepted.
+
+### D-493 · The camera: OrbitControls, keys, four places, and the step's side · 2026-11-26
+
+**Decision:**
+
+- **Drag, the arrow keys and + and −** turn and zoom (OrbitControls; its `dollyOut` brings the camera in, so + calls it). Pan is off; the distance is held between 15 cm and 4 m.
+- **Four buttons** send the camera to the three-quarter view, the top, the underside and the graphic close-up. A step drawn from the board's other side (grip) turns the camera to it.
+- **A vertical swipe on a touch screen scrolls the page:** the canvas's `touch-action` is `pan-y`, where OrbitControls sets `none`.
+- **With reduced motion, or the kit's Motion subtle,** the camera goes to a place at once, and nothing moves that the shopper did not move.
+
+**Status:** Accepted.
+
+### D-494 · Any failure brings the board back, with one message · 2026-11-26
+
+**Decision:** no WebGL 2, a lost context (`webglcontextlost`), the chunk failing to load or anything thrown while drawing closes the view, gives back what it holds and shows the 2D board, with "The 3D view can’t be shown here, so the board is drawn flat." under it, said once in the status region. Nothing else on the page changes, and Add to cart goes on working. The words, like every word of the view, are the server's, through the text domain.
+
+**Status:** Accepted.
+
+### D-495 · The view's markup is the server's, and the canvas sits in a frame · 2026-11-26
+
+**Decision:** `templates/builder/three.php` renders the button, the canvas, its notes, the camera's buttons and the message, only where the kit's View in 3D is on (`view.three.shown`, from `KitSettings::$view3d`), and hidden until the view has a scene. The store binds them; no markup is made in JavaScript. The button keeps its place, hidden, until the store runs, so the page does not shift when it shows. The canvas is placed inside `.cbuild-3d__frame`, absolutely, so the size it is drawn at never changes the layout, which had grown it a pixel a frame. Open, the view takes the picture's whole width; stacked on a tablet or a phone the stage stops sticking and the frame is 4 by 3, so the page scrolls past it. Trick buttons will sit after the camera's (lane 3), each through the view's `play()`, which reduced motion refuses.
+
+**Status:** Accepted.
+
+### D-496 · Textures come from the shop's own origin, drawn in neutral tone mapping · 2026-11-26
+
+**Decision:** a scene's texture address on another origin is not loaded, and its part draws its colour, as a part with no texture does. The scene's textures are the plugin's renditions, on the shop's origin, and a cross-origin image would need CORS to be drawn at all. Colours go out in sRGB with Khronos's neutral tone mapping, which keeps a graphic's colours as printed where a filmic curve shifts them.
+
+**Status:** Accepted.
+
+### D-497 · `view.three` says whether the view is offered, and the scene stays lane 1's · 2026-11-26
+
+**Decision:** the state route's view gains `three`: `shown` (the kit's View in 3D), `tricks` (shown and the kit's Trick buttons) and `canvas` (the canvas's classes, with any part classes the deck's flags add, as the board's). The view reads its scene at `view.scene`, which the server gives (scene contract, "Where it lives"). Until lane 1 lands, this lane's tree adds `KitSettings::$view3d` (default off, `view_3d`) and `$tricks` (default on, `tricks`) in the least form, to merge with lane 1's, and the browser tests give the view the contract's fixture through a must-use plugin, by cookie, on a 3D test kit of their own.
+
+**Status:** Accepted.
+
+### D-498 · The browser tests read frames, and compare the page with the view on and off · 2026-11-26
+
+**Decision:** `tests/e2e/3d.spec.ts` reads three.js's own count of frames drawn. "With 3D on, before the press, the page matches 3D off" is read as: the same files at the same sizes, three.js not among them; the page's HTML larger only by the scene and the view's elements (under 6 kB); the same LCP element; and no more layout shift. LCP's time is left out, since it varies by more between two loads of one page than any difference made here.
+
+**Status:** Accepted.
+
+### D-499 · The 3D view's pictures are SwiftShader's, at 1 % tolerance · 2026-11-26
+
+**Decision:** `tests/e2e/3d-visual.spec.ts` pictures the canvas at its four places, with reduced motion so the camera is there at once, in the visual project alone. Playwright's Linux container draws WebGL in software (SwiftShader), the same pixels on each run there; a Mac's GPU would not match them. A picture may differ by 1 % of its pixels, each by Playwright's default colour threshold: an antialiased edge moves by a pixel between SwiftShader builds, a part drawn wrong or a camera out of place by far more. The baselines were made with `bash tools/visual.sh --update-snapshots` on this machine, and a second run matched them.
+
+**Status:** Accepted.
+
 ### D-510 · On a phone the bar's buttons stay beside the total, Next's words breaking inside it · 2026-11-26
 
 Issue #153, from milestone 13's walkthrough. On a phone, in the theme's content width, Back and Next took a row of their own under the total wherever the two at their widest did not fit beside its 7.5rem column. It was within the stated limit (the total on its own row where the buttons don't fit, D-374), but it happened on the trucks step in English on Twenty Twenty-Five and Storefront and always in French, and the bar stood up to 199 px. Measured at 390 by 844 on chromium-phone, Twenty Twenty-Five had 330 px inside its padding, and the trucks step's row asked for 337 in English (the 120 px total, Back at 65, Next at 132, two 10 px gaps) and 376 in French ("Retour" at 79, "Suivant : Wheels" at 157).
@@ -6930,18 +7038,6 @@ A gate can't land red, and fixing those moments is beyond #152, so the test keep
 
 - **Red runs.** The held Next test, now counting the bar too ("… moves nothing of the step or the bar …"), on the patch alone, chromium-phone: "at the press: the builder's layout shift: 0.004 … [cbuild-bar__actions 766→783; cbuild-bar__more 792→809]". The store test "shows the next step's Back at the press of the first step's Next, and hides it again at a limit" failed with `onward()`'s Back part taken out (store.test.ts:4076). The step fix's own red runs are D-408's, in the M13 handoff's patch: 0.021, and 0.020 to 0.046.
 - **After.** As in the table, A's row. `BuilderViewTest::test_the_first_step_gives_the_next_steps_back_for_nexts_press` covers the server's `ahead`. Two store tests cover the press and the cases that leave Back alone, and the patch's two store tests cover the width line.
-
-**Status:** Accepted.
-
-### D-466 · My builds, the deck page's start button and the bar run their key browser tests on Kadence and Storefront too · 2026-11-26
-
-Milestone 14's pipeline, the real-theme runs (Zach, 26 November). In 1.3.0 four defects passed every test on Twenty Twenty-Five and broke on a real theme: the compare's lost rules (D-450), and F31 to F33. The key browser tests of three areas now run on each of the three themes, through the e2e theme fixture's cookie, as shelf.spec.ts and the bar's tests already do: `for ( const theme of [ 'twentytwentyfive', 'storefront', 'kadence' ] )`.
-
-- **My builds:** "a customer saves, opens, saves over and deletes a build under My builds" and "three builds compared by keyboard in a table that says what differs in words". "Every build's column is reached in the compare's region on a phone" already ran on Kadence and Storefront.
-- **The deck page's start button (F32):** "keeps a deck page's start button readable under the hostile theme", axe's contrast with the hostile fixture on. "The start button on a theme (#133)" already looped the three themes.
-- **The bar (F33):** "keeps the bar no taller at the review on a phone under a theme's paragraph margin (#150)". #153's "The bar on a phone" covers the three themes in English and French (D-510).
-
-**Red run.** With D-450's handle change reverted (`SavedBuildHooks::styles()` adding its rules to `woocommerce-general` again), on chromium-desktop and chromium-phone: the looped compare failed on Kadence and on Storefront, on the desktop "a build a column, at least 14rem" (builder.spec.ts:9021) and on the phone "the row says which build it is" (builder.spec.ts:8917). Twenty Twenty-Five passed, as it did in 1.3.0. The save test passed on all three, since its page needs none of those rules. Put back, all passed.
 
 **Status:** Accepted.
 

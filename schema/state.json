@@ -861,6 +861,16 @@
 						"amount": { "description": "The total in whole minor units.", "type": "integer" },
 						"currency": { "description": "The answer's `currency`, as it is.", "type": "object", "additionalProperties": true }
 					}
+				},
+				"three": {
+					"description": "From 1.4.0: the 3D view (#139). Whether the kit offers it (`view_3d`) and its trick buttons (`tricks`), and the canvas's classes, with the deck's `cbuild_part_classes` after its own.",
+					"type": "object",
+					"required": ["shown", "tricks", "canvas"],
+					"properties": {
+						"shown": { "description": "Whether the kit offers the 3D view.", "type": "boolean" },
+						"tricks": { "description": "Whether the 3D view offers its trick buttons: only with the view.", "type": "boolean" },
+						"canvas": { "description": "The canvas's classes.", "type": "string" }
+					}
 				}
 			},
 			"additionalProperties": true

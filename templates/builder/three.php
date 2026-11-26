@@ -1,0 +1,41 @@
+<?php
+/**
+ * The 3D view (1.4.0, #139): "View in 3D" by the board, and, once pressed, the canvas in the board's place with the
+ * camera's buttons under it. Only where the kit turns the view on; until a deck is picked there is no scene, and none
+ * of it shows. The store loads the 3D script on the press alone, so until then the page is the page without it.
+ *
+ * The canvas is named with the build's sentence, as the board's caption says it, and described by how to move it.
+ * The camera's buttons are real buttons, each named here. Where the 3D view can't be shown, or stops, the board
+ * comes back with the message under it, and nothing else on the page changes.
+ *
+ * The words never change with the build, so they are written here; the store shows and hides them.
+ *
+ * @package CreativeBranding\SkateboardBuilder
+ */
+
+defined( 'ABSPATH' ) || exit;
+
+if ( true !== ( $shown['view']['three']['shown'] ?? false ) ) {
+	return;
+}
+?>
+<div class="cbuild-3d" data-wp-bind--hidden="!state.view.scene" data-wp-watch="callbacks.scene">
+	<?php // Without the script the button does nothing, so it shows once the store runs; its place is kept until then. ?>
+	<button class="cbuild-button cbuild-3d__open" type="button" data-wp-class--cbuild-3d__open--waiting="!state.live" data-wp-bind--aria-pressed="state.three.open" data-wp-bind--aria-busy="state.three.loading" data-wp-on--click="actions.three"><?php esc_html_e( 'View in 3D', 'creative-skateboard-builder' ); ?></button>
+	<div class="cbuild-3d__stage" data-wp-bind--hidden="!state.three.open">
+		<?php // The frame holds the canvas's place, so the size the canvas is drawn at never changes the page's layout. ?>
+		<div class="cbuild-3d__frame">
+			<canvas class="cbuild-3d__canvas" tabindex="0" role="img" aria-describedby="cbuild-3d-keys cbuild-3d-scale" data-wp-bind--class="state.view.three.canvas" data-wp-bind--aria-label="state.view.picture.description"></canvas>
+		</div>
+		<p class="cbuild-3d__note" id="cbuild-3d-scale"><?php esc_html_e( 'Sizes true to scale, shapes simplified.', 'creative-skateboard-builder' ); ?></p>
+		<p class="cbuild-3d__keys" id="cbuild-3d-keys"><?php esc_html_e( 'Drag or use the arrow keys to turn the board, and + and − to zoom.', 'creative-skateboard-builder' ); ?></p>
+		<div class="cbuild-3d__places" role="group" aria-label="<?php esc_attr_e( 'Views of the board', 'creative-skateboard-builder' ); ?>">
+			<button class="cbuild-button" type="button" value="reset" data-wp-on--click="actions.look"><?php esc_html_e( 'Reset view', 'creative-skateboard-builder' ); ?></button>
+			<button class="cbuild-button" type="button" value="top" data-wp-on--click="actions.look"><?php echo esc_html_x( 'Top', 'a view of the board in 3D', 'creative-skateboard-builder' ); ?></button>
+			<button class="cbuild-button" type="button" value="under" data-wp-on--click="actions.look"><?php echo esc_html_x( 'Underside', 'a view of the board in 3D', 'creative-skateboard-builder' ); ?></button>
+			<button class="cbuild-button" type="button" value="graphic" data-wp-on--click="actions.look"><?php esc_html_e( 'Graphic close-up', 'creative-skateboard-builder' ); ?></button>
+		</div>
+		<?php // The trick buttons go here, with the kit's Trick buttons on (`state.view.three.tricks`); each plays through the view's play(). ?>
+	</div>
+	<p class="cbuild-3d__failed" data-wp-bind--hidden="!state.three.failed"><?php esc_html_e( 'The 3D view can’t be shown here, so the board is drawn flat.', 'creative-skateboard-builder' ); ?></p>
+</div>

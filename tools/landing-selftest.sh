@@ -67,6 +67,7 @@ git switch -q one
 check "two lanes' decisions and translations merge with no conflict" "git merge -q --no-edit two >/dev/null 2>&1"
 check "the index lines are in number order" "grep -A2 '^- \[D-1 ' docs/DECISIONS.md | tr '\n' ' ' | grep -q 'D-1 .*D-470 .*D-490'"
 check "the entries are in number order" "[ \"\$(grep -o '^### D-[0-9]*' docs/DECISIONS.md | tr '\n' ' ')\" = '### D-1 ### D-470 ### D-490 ' ]"
+check "every entry has a blank line before it" "[ \"\$(grep -c -B1 '^### D-' docs/DECISIONS.md | head -1)\" ] && ! grep -B1 '^### D-' docs/DECISIONS.md | grep -v '^### D-' | grep -v '^--$' | grep -q ."
 check "no conflict marker is left" "! grep -q '^<<<<<<<\|^>>>>>>>' docs/DECISIONS.md languages/fr.po"
 check "both lanes' translations are kept" "grep -q 'msgstr \"Trucks\"' languages/fr.po && grep -q 'msgstr \"Roues\"' languages/fr.po"
 check "the base's translation is kept once" "[ \"\$(grep -c 'msgid \"Deck\"' languages/fr.po)\" = 1 ]"

@@ -1179,4 +1179,62 @@ final class BuilderViewTest extends TestCase {
 		self::assertSame( array( array( 'text' => 'Indy 149: $54.00 when you saved, $59.00 now' ) ), $view['changes']['prices'] );
 		self::assertTrue( $view['changes']['hasPrices'] );
 	}
+
+	// Milestone 14 (#139, D-497): the view says whether the kit offers the 3D view, the trick buttons only with it, and
+	// the canvas's classes, with what a plugin gives the deck picked, as the board's layers have them.
+	public function test_the_3d_view_is_offered_by_the_kits_switches_and_its_canvas_takes_the_decks_classes(): void {
+		$three = function ( ?array $settings, BuildLink $link ): array {
+			$slots = KitDocuments::slots();
+			$kit   = Kit::fromDocuments( $slots, KitDocuments::rules(), KitDocuments::presets(), KitDocuments::assembly(), null, null, null === $settings ? null : array( 'schema_version' => 1 ) + $settings );
+			$this->kits->add( self::KIT, $kit, Shop::parts() );
+			$state = ( new BuildState( $this->kits, new InMemoryShopSettings(), new FakeLogger() ) )->of( self::KIT, $link->picks, null, (string) $link->step );
+			self::assertNotNull( $state );
+			// The answer's total counts the deck picked, as the route's does.
+			$lines = array();
+			foreach ( $link->picks as $slot => $part ) {
+				$lines[] = array(
+					'slot' => $slot,
+					'part' => $part,
+				);
+			}
+			$view = ( new BuilderView() )->of( $state, array( 'total' => array( 'lines' => $lines ) ), $link, self::BASE, $state->kit->slots->keys(), null );
+			self::assertIsArray( $view['three'] );
+			return $view['three'];
+		};
+		$start = new BuildLink( array(), null, SlotKey::DECK );
+		foreach ( array(
+			'no settings'    => array( null, false, false ),
+			'off'            => array( array( 'view_3d' => false ), false, false ),
+			'off, tricks on' => array(
+				array(
+					'view_3d' => false,
+					'tricks'  => true,
+				),
+				false,
+				false,
+			),
+			'on'             => array( array( 'view_3d' => true ), true, true ),
+			'on, tricks off' => array(
+				array(
+					'view_3d' => true,
+					'tricks'  => false,
+				),
+				true,
+				false,
+			),
+		) as $case => [ $settings, $shown, $tricks ] ) {
+			self::assertSame(
+				array(
+					'shown'  => $shown,
+					'tricks' => $tricks,
+					'canvas' => 'cbuild-3d__canvas',
+				),
+				$three( $settings, $start ),
+				$case
+			);
+		}
+		$GLOBALS['cbuild_test_filters']['cbuild_part_classes'] = static fn( array $classes, int $part, string $slot ): array => 102 === $part && SlotKey::DECK === $slot ? array( 'is-flagged' ) : $classes;
+		self::assertSame( 'cbuild-3d__canvas is-flagged', $three( array( 'view_3d' => true ), new BuildLink( array( SlotKey::DECK => 102 ), null, SlotKey::TRUCKS ) )['canvas'] );
+		self::assertSame( 'cbuild-3d__canvas', $three( array( 'view_3d' => true ), new BuildLink( array( SlotKey::DECK => 101 ), null, SlotKey::TRUCKS ) )['canvas'] );
+	}
 }

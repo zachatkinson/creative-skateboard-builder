@@ -32,8 +32,8 @@
 			"combine": "merge"
 		},
 		{
-			// A changelog fragment (D-464) is bullets under Keep a Changelog's headings and nothing before them: it is put
-			// into CHANGELOG.md under the release's own heading.
+			// A lane's changelog fragment is a piece of the release's entry: its headings are the entry's own, from
+			// `### Added` down, and `tools/changelog.php` checks its shape (D-464).
 			"filter": ["changelog.d/*.md"],
 			"config": { "MD041": false },
 			"combine": "merge"
