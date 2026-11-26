@@ -15,7 +15,7 @@ defined( 'ABSPATH' ) || exit;
 ?>
 <p class="cbuild-compare__back"><a href="<?php echo esc_url( $back ); ?>"><?php esc_html_e( 'Back to My builds', 'creative-skateboard-builder' ); ?></a></p>
 <?php if ( $table['more'] ) : ?>
-	<p class="cbuild-compare__said" role="status"><?php esc_html_e( 'Up to three builds are compared at once. These are the first three you chose.', 'creative-skateboard-builder' ); ?></p>
+	<p class="cbuild-compare__said"><?php esc_html_e( 'Up to three builds are compared at once. These are the first three you chose.', 'creative-skateboard-builder' ); ?></p>
 <?php endif; ?>
 <div class="cbuild-compare" role="region" aria-labelledby="cbuild-compare-caption" tabindex="0">
 	<table class="cbuild-compare__table shop_table">

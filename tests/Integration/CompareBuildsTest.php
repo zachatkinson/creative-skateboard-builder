@@ -238,6 +238,12 @@ final class CompareBuildsTest extends CartTestCase {
 		$heads = array_map( static fn( \DOMNode $th ): string => self::text( $th ), iterator_to_array( $dom->query( '//thead/tr/th[@scope="col"]' ) ) );
 		self::assertSame( array( 'Part', 'One Open', 'Two Open', 'Three Open' ), $heads );
 		self::assertStringContainsString( 'Up to three builds are compared at once. These are the first three you chose.', self::text( $dom->query( '//*[contains(@class,"cbuild-compare__said")]' )->item( 0 ) ) );
+		// Written with the page, so no live region (the auditor's 1.3.0 minor): a status on load is read out of turn by
+		// some screen readers and by none in others, and the paragraph is read in its place with the rest.
+		self::assertSame( 0, $dom->query( '//*[contains(@class,"cbuild-compare__said")][@role]' )->length, 'the compare\'s note has no role' );
+		$asked = self::dom( $this->compare( array( $uuids[0] ) ) );
+		self::assertSame( 1, $asked->query( '//*[contains(@class,"cbuild-compare__said")]' )->length, 'one build asked for: My builds says why' );
+		self::assertSame( 0, $asked->query( '//*[contains(@class,"cbuild-compare__said")][@role]' )->length, 'My builds\' note has no role' );
 		// One asked twice, or a UUID that is no UUID, is not a build.
 		$dom = self::dom( $this->compare( array( $uuids[0], $uuids[0], 'not-a-uuid', $uuids[1] ) ) );
 		self::assertSame( 3, $dom->query( '//thead/tr/th[@scope="col"]' )->length );

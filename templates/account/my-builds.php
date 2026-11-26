@@ -22,7 +22,7 @@ use CreativeBranding\SkateboardBuilder\Front\SavedBuildHooks;
 $cbuild_compare = null !== $compare && count( $rows ) > 1;
 ?>
 <?php if ( null !== $said ) : ?>
-	<p class="cbuild-compare__said" role="status"><?php echo esc_html( $said ); ?></p>
+	<p class="cbuild-compare__said"><?php echo esc_html( $said ); ?></p>
 <?php endif; ?>
 <?php if ( null !== $undo ) : ?>
 	<?php /* A form that puts the build back, without JavaScript, for UNDO_MINUTES after the Delete. It names the build; the build itself is the session's copy (Cowork's 0.8.0 review, F3; D-231, D-275). */ ?>
