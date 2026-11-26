@@ -369,6 +369,87 @@ test.describe( '3D view (milestone 14)', () => {
 		).toBe( 'pan-y' );
 	} );
 
+	// D-468: a plugin blurs the view by class, the deck's from cbuild_part_classes, and puts its veil in the frame,
+	// which the view never replaces: the veil stays through a part's change, a step's and a close and reopen.
+	test( 'a plugin’s class stays on the canvas and its veil in the frame through every change', async ( {
+		page,
+		context,
+	} ) => {
+		await context.addCookies( [
+			{
+				name: 'cbuild_e2e_veil',
+				value: String( fixture().parts[ 'builder-test-deck-8-0' ] ),
+				url: SITE,
+			},
+		] );
+		await open( page );
+		const canvas = page.locator( '.cbuild-3d__canvas' );
+		const veil = page.locator( '.cbuild-3d__frame > .cbuild-e2e-veil' );
+		const marked = () =>
+			page
+				.locator( '.cbuild-3d__frame' )
+				.evaluate( ( frame ) =>
+					frame.setAttribute( 'data-e2e-frame', 'kept' )
+				);
+		await marked();
+		const kept = async ( when: string ) => {
+			await expect( canvas, when ).toHaveClass( /(^| )is-flagged( |$)/ );
+			await expect( canvas, when ).toHaveClass( /cbuild-3d__canvas/ );
+			await expect( veil, when ).toHaveCount( 1 );
+			await expect(
+				page.locator( '.cbuild-3d__frame[data-e2e-frame="kept"]' ),
+				when
+			).toHaveCount( 1 );
+			expect(
+				await page
+					.locator( '.cbuild-3d__frame' )
+					.evaluate(
+						( frame ) => getComputedStyle( frame ).position
+					),
+				when
+			).toBe( 'relative' );
+		};
+		await kept( 'open' );
+		// A redraw: the camera moved, from a button the veil must not cover.
+		const before = await frames( page );
+		await page
+			.getByRole( 'group', { name: 'Views of the board' } )
+			.getByRole( 'button', { name: 'Top', exact: true } )
+			.click();
+		await expect.poll( () => frames( page ) ).toBeGreaterThan( before );
+		await kept( 'after a redraw' );
+		await page
+			.getByRole( 'radio', { name: 'Choose Builder test wheels 54' } )
+			.check();
+		await expect( page.locator( '.cbuild' ) ).not.toHaveAttribute(
+			'aria-busy',
+			'true'
+		);
+		await kept( 'after a part change' );
+		await page.getByRole( 'button', { name: /^Next/ } ).click();
+		await expect( page.locator( '#cbuild-heading' ) ).toHaveText(
+			/bearings/i
+		);
+		await kept( 'after a step change' );
+		await page.getByRole( 'button', { name: 'View in 3D' } ).click();
+		await expect( page.locator( '.cbuild-3d__stage' ) ).toBeHidden();
+		await page.getByRole( 'button', { name: 'View in 3D' } ).click();
+		await expect( page.locator( '.cbuild-3d__stage' ) ).toBeVisible();
+		await kept( 'closed and opened again' );
+		// The plugin's reveal lifts its blur, by its own class on the page's root.
+		expect(
+			await canvas.evaluate(
+				( shown ) => getComputedStyle( shown ).filter
+			)
+		).toContain( 'blur' );
+		await page.getByRole( 'button', { name: 'Show', exact: true } ).click();
+		expect(
+			await canvas.evaluate(
+				( shown ) => getComputedStyle( shown ).filter
+			)
+		).toBe( 'none' );
+	} );
+
 	test( 'meets WCAG 2.2 AA open', async ( { page } ) => {
 		await open( page );
 		// On a phone the open view is taller than the screen: its controls are measured where a shopper sees them,

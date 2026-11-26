@@ -1005,12 +1005,14 @@ From 1.4.0, where a kit's View in 3D is on, the picture holds the 3D view (#139,
 | --- | --- | --- |
 | `cbuild-3d__open` | 1.4.0 | View in 3D, with `aria-pressed` true while the view is open |
 | `cbuild-3d__stage` | 1.4.0 | The open view: the canvas, its notes and the camera's buttons |
-| `cbuild-3d__frame` | 1.4.0 | The canvas's box. On a tablet and a phone it is 4 by 3; a theme may set its `aspect-ratio` or height |
-| `cbuild-3d__canvas` | 1.4.0 | The canvas, with any classes `cbuild_part_classes` gives the deck, as the board's layers have them |
+| `cbuild-3d__frame` | 1.4.0 | The canvas's box, `position: relative`, and a plugin's place for a veil over the view, as `.cbuild__stage` is over the board. Once the view opens it is never replaced: an element a plugin puts in it stays through a part's change, a step's and the view closed and opened again, and it covers the canvas alone, never the camera's buttons. On a tablet and a phone it is 4 by 3; a theme may set its `aspect-ratio` or height |
+| `cbuild-3d__canvas` | 1.4.0 | The canvas, with the classes `cbuild_part_classes` gives the deck picked after its own, as the board's layers have them. They stay through every redraw and part change |
 | `cbuild-3d__places` | 1.4.0 | The camera's buttons: Reset view, Top, Underside and Graphic close-up |
 | `cbuild-3d__failed` | 1.4.0 | The message shown where the view can't be drawn, with the board back |
 
 While the view is open the picture has `cbuild-picture--3d`, and the board and the parts' photos are not drawn.
+
+A picture the shopper may reveal, such as one Mature Content blurs, is blurred in the 3D view by these classes, with CSS on `.cbuild-3d__canvas` and a veil in `.cbuild-3d__frame`, so the plugin's own reveal can lift it on the page (D-468). Answering `cbuild_composed_layer` for `'3d'` with `blurred` or `left_out` bakes the change into the texture the view draws, and nothing on the page can lift it.
 
 ### The workshop: the Build box, the assembly ticket and the orders list
 

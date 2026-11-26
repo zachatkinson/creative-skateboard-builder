@@ -6834,6 +6834,7 @@ Its first run found 10 findings:
 **Tests.** With `|| exit 1` taken off `tools/integration-yoast.sh`'s `cd`, the gate fails on SC2164 at line 5. Put back, all 52 scripts are clean.
 
 **Status:** Accepted.
+
 ### D-468 · A plugin blurs the 3D view by class, so a shopper's reveal can lift it · 2026-11-26
 
 Asked by Claude in Cowork, for Mature Content, while #139 was being built. On the page, Mature Content blurs a flagged picture with CSS, and lifts the blur when the shopper chooses to see the artwork (`html.mcw-revealed`, and an `mcw:revealed` event on `document`). It blurs a composed picture on the server only where the picture is kept for others, such as the share card. The 3D view draws the deck's graphic as a WebGL texture, so an answer of `blurred` to `cbuild_composed_layer`'s new `3d` use would be baked into it, and no reveal could lift it. Cowork offered two ways:
