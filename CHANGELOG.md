@@ -31,6 +31,10 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Fixed
 
+- Help me choose reads a budget as it is typed: "$150", "150.50", "1,000" and "1 000,50 $" are read, a decimal amount rounded to a whole one. A budget that is still no amount is left out and the builds say so: "Your budget was left out: type an amount, such as 150." It had been dropped with no word (D-433).
+- After a smart swap a screen reader hears what it swapped once, from the notice that takes focus; the status says the build and its total alone (D-432).
+- Smart swaps cost the state route no product loads: each part's rank is kept with what is kept of it, so the review with every slot picked answers in about 66 ms at 2,000 parts, where it took about 620 (D-434).
+- "Build your own at" a width, under Help me choose's builds, asks search engines not to follow it, as every link into a build does.
 - "Build a complete with this deck" reads on a theme whose row colours its links. In Add to cart's fill it takes the outline whatever its words, and words that read below 4.5:1 on its fill take Add to cart's, or black or white. On the demo it was cream on Add to cart's yellow, 1.20:1 (#149, D-416).
 - The bar's Back and Next keep their own padding and size under a theme's rule for every button, so on a phone they stay beside the total. Storefront's button padding put them under it, and the bar was 259 px tall at the review on an iPhone 13; it is 206 (D-417).
 - The bar's delivery and arrival lines at the review on a phone take no theme's paragraph margin. Kadence put 32 px under each, 64 px of a 198 px bar on an iPhone 13 (#150, D-417).

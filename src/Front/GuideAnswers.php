@@ -10,6 +10,7 @@ declare( strict_types=1 );
 namespace CreativeBranding\SkateboardBuilder\Front;
 
 use CreativeBranding\SkateboardBuilder\Domain\Guide\RidingStyle;
+use CreativeBranding\SkateboardBuilder\Domain\Kit\SizeGuide;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -18,19 +19,30 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * What a shopper answered "Help me choose" with (#134), as the build's link carries it under `cbuild[_guide]`, and
  * nowhere else (D-402): `shoe`, the row of the kit's width guide, counted from 0; `style`, where they skate; `budget`,
- * a whole amount of the shop's currency; and `asked`, `1` once the form is sent, so an answer of every question left
- * blank still shows the builds. Each answer may be left out. What is not one is left out too.
+ * a whole amount of the shop's currency, read from what was typed as forgivingly as it can be (D-433); and `asked`,
+ * `1` once the form is sent, so an answer of every question left blank still shows the builds. Each answer may be
+ * left out. What is not one is left out too, and a budget left out so is said to be.
  *
  * @since 1.3.0
  */
 final readonly class GuideAnswers {
 
 	/**
-	 * The most rows a width guide has (`WidthGuide`), so the most a shoe answer counts to.
+	 * The most rows a width guide has (`WidthGuide`), so the most a shoe answer counts to: the kit's own limit.
 	 *
 	 * @since 1.3.0
 	 */
-	public const int ROWS = 12;
+	public const int ROWS = SizeGuide::MAX_ROWS;
+
+	/**
+	 * The largest budget, six digits.
+	 */
+	private const int MOST_BUDGET = 999999;
+
+	/**
+	 * The most characters of a budget read: room for a sign, separators, decimals and spaces around six digits.
+	 */
+	private const int TYPED = 20;
 
 	/**
 	 * Where they skate, or null.
@@ -51,8 +63,9 @@ final readonly class GuideAnswers {
 	 * @param string|null $style  Where they skate, a `RidingStyle` value, or null. Any other is no answer.
 	 * @param int|null    $budget The budget, a whole amount of the shop's currency above nothing, or null.
 	 * @param bool        $asked  Whether the form was sent.
+	 * @param bool        $budgetLeftOut Whether a budget was typed that is no amount, so it was left out (D-433).
 	 */
-	public function __construct( public ?int $shoe = null, ?string $style = null, public ?int $budget = null, public bool $asked = false ) {
+	public function __construct( public ?int $shoe = null, ?string $style = null, public ?int $budget = null, public bool $asked = false, public bool $budgetLeftOut = false ) {
 		$this->style = null === $style ? null : RidingStyle::tryFrom( $style );
 	}
 
@@ -66,13 +79,16 @@ final readonly class GuideAnswers {
 	public static function read( mixed $sent ): self {
 		$sent   = is_array( $sent ) ? $sent : array();
 		$shoe   = self::whole( $sent['shoe'] ?? null, 2 );
-		$budget = self::whole( $sent['budget'] ?? null, 6 );
+		$typed  = $sent['budget'] ?? null;
+		$budget = is_string( $typed ) ? self::amount( $typed ) : null;
 		$style  = $sent['style'] ?? null;
 		return new self(
 			null !== $shoe && $shoe < self::ROWS ? $shoe : null,
 			is_string( $style ) ? $style : null,
 			0 === $budget ? null : $budget,
-			isset( $sent['asked'] ) && '1' === $sent['asked']
+			isset( $sent['asked'] ) && '1' === $sent['asked'],
+			// Something typed that is no amount: left out, and said so where the builds are shown.
+			is_string( $typed ) && null === $budget
 		);
 	}
 
@@ -107,6 +123,32 @@ final readonly class GuideAnswers {
 			$query['asked'] = '1';
 		}
 		return $query;
+	}
+
+	/**
+	 * A budget as a shopper types one, forgiven (D-433): any currency sign and any space are taken out, and so are
+	 * thousands separators, a comma or a point before each three digits; a comma or a point before one or two digits at
+	 * the end, the other one where thousands are separated, is the decimals, and the amount is rounded to a whole one,
+	 * half up. So "$150", "150.50", "1,000" and "1 000,50 $" all read. 0 where nothing is left, which is no budget; null
+	 * where what is left is no amount of at most six digits.
+	 *
+	 * @param string $typed What was typed.
+	 */
+	private static function amount( string $typed ): ?int {
+		if ( strlen( $typed ) > self::TYPED ) {
+			return null;
+		}
+		$plain = (string) preg_replace( '/[\p{Sc}\p{Z}\s]+/u', '', $typed );
+		if ( '' === $plain && 1 !== preg_match( '/\p{Sc}/u', $typed ) ) {
+			return 0;
+		}
+		foreach ( array( '/\A([0-9]+)(?:[.,]([0-9]{1,2}))?\z/', '/\A([0-9]{1,3}(?:,[0-9]{3})+)(?:\.([0-9]{1,2}))?\z/', '/\A([0-9]{1,3}(?:\.[0-9]{3})+)(?:,([0-9]{1,2}))?\z/' ) as $pattern ) {
+			if ( 1 === preg_match( $pattern, $plain, $parts ) ) {
+				$whole = (int) str_replace( array( ',', '.' ), '', $parts[1] ) + ( (int) str_pad( $parts[2] ?? '', 2, '0' ) >= 50 ? 1 : 0 );
+				return $whole <= self::MOST_BUDGET ? $whole : null;
+			}
+		}
+		return null;
 	}
 
 	/**

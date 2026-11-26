@@ -446,7 +446,6 @@ final class BuildLinkTest extends TestCase {
 			'a style in capitals' => array( array( 'style' => 'Street' ) ),
 			'a budget of none'   => array( array( 'budget' => '0' ) ),
 			'a budget too long'  => array( array( 'budget' => '1000000' ) ),
-			'a budget in cents'  => array( array( 'budget' => '12.50' ) ),
 			'a budget below'     => array( array( 'budget' => '-5' ) ),
 			'a budget as a list' => array( array( 'budget' => array( '5' ) ) ),
 			'asked as anything'  => array( array( 'asked' => 'yes' ) ),
@@ -460,6 +459,80 @@ final class BuildLinkTest extends TestCase {
 	public function test_what_is_no_answer_is_left_out( mixed $sent ): void {
 		self::assertTrue( BuildLink::read( array( '_guide' => $sent ) )->isClean() );
 		self::assertTrue( GuideAnswers::read( $sent )->isEmpty() );
+	}
+
+	/**
+	 * Budgets as a shopper types them, forgiven (the auditor's 1.3.0 should-fix 4, D-433).
+	 *
+	 * @return array<string, array{string, int}>
+	 */
+	public static function typedBudgets(): array {
+		return array(
+			'a decimal amount, rounded up'   => array( '150.50', 151 ),
+			'a decimal amount, rounded down' => array( '150.49', 150 ),
+			'one decimal'                    => array( '99.5', 100 ),
+			'a currency sign'                => array( '$150', 150 ),
+			'a sign after, with a space'     => array( '150 €', 150 ),
+			'a comma for thousands'          => array( '1,000', 1000 ),
+			'a point for thousands'          => array( '1.000', 1000 ),
+			'a space for thousands'          => array( '1 000', 1000 ),
+			'a no-break space for thousands' => array( "1\u{00A0}000", 1000 ),
+			'thousands and decimals'         => array( '$1,234.56', 1235 ),
+			'French thousands and decimals'  => array( '1 234,49 $', 1234 ),
+			'a decimal comma'                => array( '150,50', 151 ),
+			'spaces around'                  => array( ' 150 ', 150 ),
+			'a leading zero'                 => array( '0150', 150 ),
+			'the most'                       => array( '999,999.49', 999999 ),
+		);
+	}
+
+	#[DataProvider( 'typedBudgets' )]
+	public function test_a_budget_typed_with_a_sign_separators_or_decimals_is_read( string $typed, int $budget ): void {
+		$guide = GuideAnswers::read( array( 'budget' => $typed ) );
+		self::assertSame( $budget, $guide->budget );
+		self::assertFalse( $guide->budgetLeftOut );
+	}
+
+	/**
+	 * Budgets that are no amount, even forgiven.
+	 *
+	 * @return array<string, array{string}>
+	 */
+	public static function unreadBudgets(): array {
+		return array(
+			'words'                 => array( 'ten' ),
+			'below nothing'         => array( '-5' ),
+			'two decimal points'    => array( '1.2.3' ),
+			'three decimals'        => array( '12.345.6' ),
+			'thousands mixed'       => array( '1,000.000,5' ),
+			'a range'               => array( '100-200' ),
+			'too much'              => array( '1000000' ),
+			'too much, rounded'     => array( '999,999.50' ),
+			'a sign alone'          => array( '$' ),
+			'too long to be typed'  => array( str_repeat( '1', 40 ) ),
+		);
+	}
+
+	#[DataProvider( 'unreadBudgets' )]
+	public function test_a_budget_that_is_no_amount_is_left_out_and_said_so( string $typed ): void {
+		$guide = GuideAnswers::read(
+			array(
+				'budget' => $typed,
+				'asked'  => '1',
+			)
+		);
+		self::assertNull( $guide->budget );
+		self::assertTrue( $guide->budgetLeftOut );
+		self::assertSame( array( 'asked' => '1' ), $guide->query(), 'what is no amount is not carried in the link' );
+		self::assertTrue( GuideAnswers::read( array( 'budget' => $typed ) )->isEmpty(), 'and is no answer of its own' );
+	}
+
+	public function test_an_empty_budget_is_any_and_is_not_said_to_be_left_out(): void {
+		foreach ( array( '', ' ', '0' ) as $typed ) {
+			$guide = GuideAnswers::read( array( 'budget' => $typed ) );
+			self::assertNull( $guide->budget, $typed );
+			self::assertFalse( $guide->budgetLeftOut, $typed );
+		}
 	}
 
 	public function test_the_largest_answers_are_kept(): void {

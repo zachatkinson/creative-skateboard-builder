@@ -605,6 +605,12 @@ final class BuilderView {
 				? sprintf( __( 'Wheels of %s.', 'creative-skateboard-builder' ), Words::span( $wheels ) )
 				: Words::wheelsFor( $answers->style, $wheels );
 		}
+		if ( $answers->budgetLeftOut ) {
+			// What was typed is no amount even forgiven (D-433): said, with the fix, so the builds are not taken for
+			// builds within it.
+			/* translators: %s: an example amount, such as 150. */
+			$reasons[] = sprintf( __( 'Your budget was left out: type an amount, such as %s.', 'creative-skateboard-builder' ), number_format_i18n( 150 ) );
+		}
 		$builds = Cast::items( $recommended['builds'] ?? null );
 		$budget = $recommended['budget'] ?? null;
 		if ( is_int( $budget ) && array() !== $builds ) {

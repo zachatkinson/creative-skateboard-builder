@@ -300,6 +300,33 @@ final class GuidedStartTest extends IntegrationTestCase {
 		self::assertSame( '150', $over['budget']['value'], 'the answer stays in its field' );
 	}
 
+	// The auditor's 1.3.0 should-fix 4 (D-433): a budget typed as shoppers type amounts was dropped with no word.
+	public function test_a_budget_typed_with_a_sign_separators_or_cents_is_read_and_one_that_is_no_amount_says_so(): void {
+		$answers = array(
+			'shoe'  => '3',
+			'style' => 'street',
+		);
+		$plain   = $this->guide( $answers + array( 'budget' => '150' ) );
+		foreach ( array( '$150', '150.00', '149.50', ' 150 ' ) as $typed ) {
+			$guide = $this->guide( $answers + array( 'budget' => $typed ) );
+			self::assertSame( self::reasons( $plain ), self::reasons( $guide ), $typed . ' reads as 150' );
+			self::assertSame( '150', $guide['budget']['value'], $typed . ': the field shows the amount read' );
+		}
+		$thousand = $this->guide( $answers + array( 'budget' => '$1,000' ) );
+		self::assertContains( 'Every build here is within your budget.', self::reasons( $thousand ), 'a thousand, with its comma' );
+		self::assertSame( '1000', $thousand['budget']['value'] );
+		self::assertCount( 3, $thousand['tiles'] );
+
+		$all = $this->guide( $answers );
+		foreach ( array( 'about 150', '150-200', '1.2.3' ) as $typed ) {
+			$guide = $this->guide( $answers + array( 'budget' => $typed ) );
+			self::assertContains( 'Your budget was left out: type an amount, such as 150.', self::reasons( $guide ), $typed . ': said, with the fix' );
+			self::assertSame( array_column( $all['tiles'], 'name' ), array_column( $guide['tiles'], 'name' ), $typed . ': the builds of any budget' );
+			self::assertSame( '', $guide['budget']['value'], $typed );
+		}
+		self::assertNotContains( 'Your budget was left out: type an amount, such as 150.', self::reasons( $all ), 'none typed: nothing said' );
+	}
+
 	public function test_a_shoe_size_with_no_deck_in_stock_says_so_and_builds_at_any_width(): void {
 		$guide = $this->guide( array( 'shoe' => '0' ) );
 		self::assertSame( 'No deck for shoe size 6.5 or smaller is in stock right now, so the builds take any width.', self::reasons( $guide )[0] );

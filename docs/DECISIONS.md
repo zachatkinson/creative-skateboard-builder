@@ -246,6 +246,7 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-417 · The bar's Back and Next, and its delivery lines, hold their size and margins at two classes' weight](#d-417--the-bars-back-and-next-and-its-delivery-lines-hold-their-size-and-margins-at-two-classes-weight--2026-11-25)
 - [D-418 · The hostile theme sweep, and a ready build's lines at two classes' weight](#d-418--the-hostile-theme-sweep-and-a-ready-builds-lines-at-two-classes-weight--2026-11-25)
 - [D-419 · The block margins of the builder's paragraphs, headings and lists hold at two classes' weight, measured by a sweep of every text block](#d-419--the-block-margins-of-the-builders-paragraphs-headings-and-lists-hold-at-two-classes-weight-measured-by-a-sweep-of-every-text-block--2026-11-25)
+- [D-433 · Help me choose reads a budget as shoppers type one, and says so when it can't](#d-433--help-me-choose-reads-a-budget-as-shoppers-type-one-and-says-so-when-it-cant--2026-11-26)
 
 ### Accessibility
 
@@ -6573,3 +6574,23 @@ The auditor's 1.3.0 should-fix 2. `BuildSwaps::of()` asked `PartRanks::ranks()` 
 - **Deliberate break.** `BuildSwaps` asking `ranks()` by ID again: the benchmark fails at the review, cold, p95 581.3 ms, "Failed asserting that 49 is equal to 46 or is less than 46" (StateRouteBenchmarkTest.php:347).
 
 **Status:** Accepted. Replaces in part D-395's last point: the rank is kept with the part's facts, and read with them.
+
+### D-433 · Help me choose reads a budget as shoppers type one, and says so when it can't · 2026-11-26
+
+The auditor's 1.3.0 should-fix 4. The budget field took digits alone (`GuideAnswers::whole()`), so "150.50", "$150" or "1,000" were dropped with no word, and the builds shown looked like builds within a budget nobody had read.
+
+**Decision: be forgiving, then say what is wrong.** Postel's principle for input, and GOV.UK's and the Baymard Institute's advice for form fields: accept what people type for an amount rather than make them retype it in the system's format, and where it still can't be read, say what is wrong and how to fix it, beside it, in plain words.
+
+- **Taken out:** any currency sign (`\p{Sc}`) and any space, a no-break or thin space among them, as a shop may write thousands.
+- **Thousands and decimals by their shape, not the shop's locale,** since a shopper may type in their own: a comma or a point before each group of three digits is a thousands separator; a comma or a point before one or two digits at the end is the decimals, the other one of the two where thousands are separated. So "1,000", "1.000" and "1 000" are a thousand, "150,50" and "150.50" are 150.50, "1,234.56" and "1 234,56 $" are 1,234.56. A budget with three decimals is not a thing shoppers type, so "1.000" is never one.
+- **A decimal amount is rounded to a whole one, half up,** as the field asks for a whole amount: 150.50 is 151, 150.49 is 150. At most six digits after rounding, as before.
+- **What is still no amount** ("about 150", "-5", "100-200", "1.2.3", more than six digits) is left out, as before, and `GuideAnswers::$budgetLeftOut` says so. The builds' reasons then start their budget line with "Your budget was left out: type an amount, such as 150." The field is left empty. Nothing of what was typed travels in the link. Empty, spaces alone or 0 are no budget, and say nothing.
+- The field's `maxlength` goes from 6 to 20, room for a sign, separators, decimals and spaces around six digits; `GuideAnswers` reads 20 characters at most. Its hint still asks for a whole amount.
+
+**Tests.**
+
+- **Red run.** `BuildLinkTest::test_a_budget_typed_with_a_sign_separators_or_decimals_is_read` "a decimal amount, rounded up": "Failed asserting that null is identical to 151" (BuildLinkTest.php:492). `GuidedStartTest::test_a_budget_typed_with_a_sign_separators_or_cents_is_read_and_one_that_is_no_amount_says_so`: "$150 reads as 150", the reasons differ (GuidedStartTest.php:312).
+- **After.** Both pass, with `test_a_budget_that_is_no_amount_is_left_out_and_said_so` and `test_an_empty_budget_is_any_and_is_not_said_to_be_left_out`. BuildLinkTest's "a budget in cents" left the cases of no answer: it is one now.
+- **Deliberate break.** The reason line taken out: "about 150: said, with the fix", "Failed asserting that an array contains 'Your budget was left out: type an amount, such as 150.'" (GuidedStartTest.php:323).
+
+**Status:** Accepted.

@@ -39,7 +39,7 @@ defined( 'ABSPATH' ) || exit;
 			<p class="cbuild-guide__question">
 				<label for="cbuild-guide-budget" data-wp-text="state.view.guide.budget.label"></label>
 				<span class="cbuild-guide__hint" id="cbuild-guide-budget-hint" data-wp-text="state.view.guide.budget.hint"></span>
-				<input class="cbuild-guide__budget" id="cbuild-guide-budget" type="text" inputmode="numeric" spellcheck="false" maxlength="6" autocomplete="off" aria-describedby="cbuild-guide-budget-hint" data-wp-bind--name="state.view.guide.budget.name" data-wp-bind--value="state.view.guide.budget.value">
+				<input class="cbuild-guide__budget" id="cbuild-guide-budget" type="text" inputmode="numeric" spellcheck="false" maxlength="20" autocomplete="off" aria-describedby="cbuild-guide-budget-hint" data-wp-bind--name="state.view.guide.budget.name" data-wp-bind--value="state.view.guide.budget.value">
 			</p>
 			<input type="hidden" data-wp-bind--name="state.view.guide.asks.name" data-wp-bind--value="state.view.guide.asks.value">
 			<p class="cbuild-guide__actions">
