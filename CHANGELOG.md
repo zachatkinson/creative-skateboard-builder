@@ -27,6 +27,7 @@ All notable changes to this project are documented here. The format follows [Kee
   - The layout-shift browser tests can hold the state route's answer a second, as the demo's host takes, with a theme's header above the builder, and count the builder's own shifts (`tests/e2e/support/held.ts`, D-406).
   - CI's update job updates from every release from 1.0.0 on, and from 0.1.0 and 0.9.0, with `npm run upgrade:all -- --sample`: from every release it took 16 minutes (#144, D-414). `npm run upgrade:all` alone still updates from every release.
   - `npm run upgrade` and `upgrade:all` read an old release's own browser fixture from its tag file by file: from 1.2.0, `.gitattributes` keeps `tests/` out of `git archive`, so the update from 1.2.0 found no fixture and failed (D-414).
+  - `npm run upgrade` runs every waiting job after the update, once no queue runner holds a batch. On a loaded machine an earlier release's runner still held its batch, WP-CLI's runner would not start beside it, and the five jobs listed were that batch's, so the update's own job for the grip was never run and the run from 0.7.0 failed (D-427).
 - **Every step's cards put the part's picture beside its words,** in a square 5rem box, as the deck step's compact cards do: two to four times as many trucks, wheels, hardware and grip in a desktop's screen, and a phone's as before. The chosen card's tick sits on the picture's corner. The deck step's cards are as they were (#131, D-391).
 
 ### Fixed

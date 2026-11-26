@@ -82,7 +82,44 @@ trap restore EXIT
 # A PHP error naming the copy, counted in the site's debug log.
 errors() { wp eval '$log = WP_CONTENT_DIR . "/debug.log"; echo is_readable( $log ) ? preg_match_all( "#PHP (Fatal|Warning|Deprecated|Notice)[^\n]*cbuild-zip#", (string) file_get_contents( $log ) ) : 0;' | tail -n 1; }
 
+# No queue runner in the middle of a batch. Action Scheduler's WP-CLI runner will not start while another batch holds a
+# claim, of any group, one being the limit (WooCommerce 11.3.1, packages/action-scheduler/classes/WP_CLI/
+# ActionScheduler_WPCLI_QueueRunner.php:87 to :91, and classes/abstracts/ActionScheduler_Abstract_QueueRunner.php:298),
+# and the actions in that batch stay pending until it ends. A runner a page request started, an earlier release's above
+# all, is waited for, up to three minutes (D-427).
+settle() {
+	local claims='' tries=0
+	while :; do
+		claims="$(wp eval 'echo (int) ActionScheduler::store()->get_claim_count();' | tail -n 1)"
+		case "$claims" in '' | *[!0-9]*) fail "the queue's batches could not be counted: '$claims'" ;; esac
+		[ "$claims" = 0 ] && return 0
+		tries=$((tries + 1))
+		[ "$tries" -lt 90 ] || fail "a queue runner still held $claims batches after three minutes"
+		sleep 2
+	done
+}
+# The plugin's jobs, run as the queue runs them, until none is left: with `due`, those due now; with `all`, the waiting
+# ones too, as the queue will run them once they are due (D-378). Each round waits for a runner in the middle of a batch,
+# then runs every action listed: `action list` gives five unless asked for every one (as_get_scheduled_actions(),
+# packages/action-scheduler/functions.php:433), and a job can queue the next (D-427).
+jobs() {
+	local ids='' round=0
+	local when=()
+	[ "$1" = all ] || when=(--date=now --date_compare='<=')
+	while :; do
+		settle
+		ids="$(wp action-scheduler action list --group="$slug" --status=pending ${when[@]+"${when[@]}"} --per_page=-1 --field=id --format=ids | tail -n 1)"
+		case "$ids" in '') return 0 ;; *[!0-9\ ]*) fail "the plugin's waiting jobs could not be listed: '$ids'" ;; esac
+		round=$((round + 1))
+		[ "$round" -le 20 ] || fail "the plugin's jobs still queue more after 20 rounds: $ids"
+		# shellcheck disable=SC2086 # One ID a word.
+		wp action-scheduler action run $ids >/dev/null
+	done
+}
+
 echo "1. The site without the plugin's data, and $from from the releases repository."
+# A runner the run before this one left working ends first, so each release's run starts from a still queue (D-427).
+settle
 wp plugin deactivate "$slug" >/dev/null
 wp plugin uninstall "$slug" --skip-delete >/dev/null
 wp plugin install "$here/tmp/upgrade/old.zip" --force --activate >/dev/null
@@ -143,6 +180,8 @@ user="${saved#saved:}"; [ "$user" = none ] && user=0
 layer="$(wp eval-file "$here/tools/upgrade/seed.php" layer | tail -n 1)"
 case "$layer" in layer:*) ;; *) fail "the grip with a layer image was not made on $from: $layer" ;; esac
 layer="${layer#layer:}"; [ "$layer" = none ] && layer=0
+# The old release's jobs, not waited for: a runner a page request started may still be working through them when the
+# update comes, as on a shop, and the update must hold against it (D-378). WP-CLI's runner does nothing while it does.
 wp action-scheduler run --group=creative-skateboard-builder >/dev/null
 echo "   on $from: $seed; kits $from reads: $kits; $saved; layer image $layer"
 before="$(errors)"
@@ -154,7 +193,7 @@ case "$page" in *"Plugin updated successfully"*) ;; *) fail "the update page did
 [ "$(errors)" = "$before" ] || fail "the update logged a PHP error naming the plugin ($before before, $(errors) after)"
 if [ "$clean" = 0 ]; then
 	wp plugin activate "$copy" >/dev/null
-	wp action-scheduler run --group=creative-skateboard-builder >/dev/null
+	jobs due
 fi
 state="$(wp plugin get "$copy" --field=version | tail -n 1)|$(wp plugin get "$copy" --field=status | tail -n 1)|$(wp option get cbuild_db_version | tail -n 1)"
 [ "$state" = "$version|active|$schema" ] || fail "after the update: $state (version|status|schema)"
@@ -163,12 +202,10 @@ left="$(wp post list --post_type=attachment --post_mime_type=application/zip --f
 [ "$left" = "0|0" ] || fail "the uploaded zip was left behind: $left (attachments|files)"
 echo "   version|status|schema: $state; no zip left in uploads."
 # The release's own jobs after the update, then the data read by this release: the order with its lines, the old
-# release's kits and their presets, its saved build, and no failed job of the plugin's.
-wp action-scheduler run --group=creative-skateboard-builder >/dev/null
-# The update's own jobs are due a few minutes on, past any runner the old release started (D-378): run them as the
-# queue will once they are due.
-later="$(wp action-scheduler action list --group=creative-skateboard-builder --status=pending --field=id --format=ids | tail -n 1)"
-[ -z "$later" ] || wp action-scheduler action run $later >/dev/null
+# release's kits and their presets, its saved build, and no failed job of the plugin's. The update's own jobs are due a
+# few minutes on, past any runner the old release started (D-378), so every waiting job is run, as the queue will once
+# they are due, and only once the old release's runner has let go of its batch (D-427).
+jobs all
 read="$(wp eval-file "$here/tools/upgrade/seed.php" read "${seed#order:}" "$user" "$layer" | tail -n 1)"
 case "$read" in read:*) ;; *) fail "after the update, the shop's data did not read: $read" ;; esac
 # Every preset is priced, and the old release's saved build is listed.
@@ -187,7 +224,7 @@ fi
 # The update leaves no part without its resized copies, and the old release's grip has its own (#129, D-373).
 case "$read" in *"parts missing copies 0"*) ;; *) fail "after the update, a part has no resized copies of its layer image: $read" ;; esac
 [ "$layer" = 0 ] || case "$read" in *"layer copies 0,"*) fail "after the update, $from's grip has no resized copies: $read" ;; esac
-failed="$(wp action-scheduler action list --group=creative-skateboard-builder --status=failed --format=count 2>/dev/null | tail -n 1)"
+failed="$(wp action-scheduler action list --group=creative-skateboard-builder --status=failed --per_page=-1 --format=count 2>/dev/null | tail -n 1)"
 case "$failed" in ''|*[!0-9]*) fail "the plugin's failed jobs could not be counted: '$failed'" ;; esac
 [ "$failed" = 0 ] || fail "after the update, $failed of the plugin's jobs failed"
 [ "$(errors)" = "$before" ] || fail "the jobs after the update logged a PHP error naming the plugin"

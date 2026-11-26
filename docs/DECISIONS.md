@@ -429,6 +429,7 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-332 · The newest leg moves to WooCommerce 11.3.1, with its one PHP 8.5 deprecation let through in one test](#d-332--the-newest-leg-moves-to-woocommerce-1131-with-its-one-php-85-deprecation-let-through-in-one-test--2026-11-23)
 - [D-414 · CI updates from every release from 1.0.0 on, and from 0.1.0 and 0.9.0](#d-414--ci-updates-from-every-release-from-100-on-and-from-010-and-090--2026-11-25)
 - [D-425 · The guide's answers take the riding style as its value, so an earlier release's container builds the build's link](#d-425--the-guides-answers-take-the-riding-style-as-its-value-so-an-earlier-releases-container-builds-the-builds-link--2026-11-25)
+- [D-427 · The update check runs every waiting job, once no queue runner holds a batch](#d-427--the-update-check-runs-every-waiting-job-once-no-queue-runner-holds-a-batch--2026-11-25)
 
 ### Tooling, CI and tests
 
@@ -6544,6 +6545,31 @@ D-430 found a browser test that compared against a variable only the test before
 - **Red run.** `npm run mutate:js`: "An error occurred outside of a test run: …/tests/js/e2e-lock.test.ts: Cannot find module '../e2e/support/lock'", then "Something went wrong in the initial test run".
 - **After.** 97.41 % of all mutants (98.01 % of those covered), the admin's script 99.33 % and the builder's store 96.93 %, above the 95 % floor (D-379).
 - **Deliberate break.** Without `!tests/e2e/support/lock.ts` the run stops with the red run's message.
+
+**Status:** Accepted.
+
+### D-427 · The update check runs every waiting job, once no queue runner holds a batch · 2026-11-25
+
+`npm run upgrade:all` failed at 0.7.0 in three full runs out of three, each while other suites loaded the machine: "after the update, a part has no resized copies of its layer image: … layer copies 0, parts missing copies 1". 0.7.0 run alone passed five times out of five, and so did the shorter sequences before it.
+
+- **What a full run leaves.** Nothing that reaches the next release's run: each one starts by uninstalling the plugin, which deletes its actions, and ends by putting the site back. Two full runs and a run of 0.1.0 to 0.7.0 passed on a quiet lane 2, with a must-use probe logging each of the plugin's actions as it was stored and run, with the process, the release loaded and the request. In each failed run, the plugin's log shows the 1.2.0 step finding the grip and queuing its job ("Queued the index job of each part whose layer image has no resized copies", at 02:44:07, 02:55:36 and 03:39:00 UTC), and no index job throwing. The job was queued and not run.
+- **The cause, measured.** The probe then made 0.7.0's runner as slow as a loaded host: 0.4 s an action, in a runner a page request started. 0.7.0 alone failed with the same line. After the update the queue held 14 of 0.7.0's index jobs still in that runner's batch (claim 3149), their retries, the migration's and the reindex's jobs, and this release's job for the grip, due five minutes on (D-378). `tools/upgrade.sh` read the queue before that batch ended, in two ways:
+  - `wp action-scheduler run` does not start while another batch holds a claim, of any group, one being the limit (WooCommerce 11.3.1, `packages/action-scheduler/classes/WP_CLI/ActionScheduler_WPCLI_QueueRunner.php:87` to `:91`, and the filter `action_scheduler_queue_runner_concurrent_batches` at `classes/abstracts/ActionScheduler_Abstract_QueueRunner.php:298`). It stops with an error, which the script sent nowhere. A page request's runner claims 25 actions at a time (`classes/ActionScheduler_QueueRunner.php:183`), and they stay pending until it reaches each.
+  - `wp action-scheduler action list` gives five actions unless asked for more, the earliest first (`functions.php:433`, `classes/data-stores/ActionScheduler_DBStore.php:518`). The five were the runner's own, so the grip's job, due last, was not run.
+- **Not the plugin.** The 1.2.0 step queued the grip's job, due after the runner's time was up, as D-378 means it to, and a shop's next runner would have run it. The check did not wait for it. The old release's runner also ran 0.7.0's index jobs with this release's files in place. Those threw ("Undefined constant CreativeBranding\SkateboardBuilder\Support\Options::META_KIT_LAYOUT") and queued their retries a minute on, as `IndexJobs::indexPart()` does. This release's runner ran the retries, and no job failed: that is the update D-208 describes.
+- **The fix, in `tools/upgrade.sh`.**
+  - `settle()` waits until no batch holds a claim, `ActionScheduler::store()->get_claim_count()` being 0, for up to three minutes, and fails past that with the count.
+  - `jobs due` and `jobs all` run the plugin's waiting jobs. Each round waits for `settle()`, lists every job (`--per_page=-1`) due now or, with `all`, due at any time, runs them, and goes again until none waits. A job that queues the next, as the reindex does, is followed. Past 20 rounds it fails.
+  - After the update, `jobs all` replaces the run of the due jobs and the run of the five listed. A release before 0.6.0, activated after the update, gets `jobs due`. The failed jobs are counted with `--per_page=-1` too, where up to five were counted.
+  - Each release's run starts with `settle()`, so a runner the run before it started has ended first.
+  - The old release's jobs before the update are run as before, not waited for: a runner a page request started may still be at work when the update comes, as on a shop, and the update must hold against it (D-378).
+- **The check is as strict.** It still fails on a part missing copies, on the old release's grip with none, and on any failed job. It now reads once the jobs it waits for have run.
+
+**Red run.** 0.7.0 alone, with the runner slowed: "upgrade: after the update, a part has no resized copies of its layer image: read: order 3453, 6 lines, 6 products, total 135.00; kits 2 of 5, presets 2 of 2 priced; saved builds 0, 0 reopened with no prices then, 0 with the prices kept; layer copies 0, parts missing copies 1".
+
+**After.** The same run passed with "layer copies 2, parts missing copies 0". The probe showed 0.7.0's runner run 31 of its jobs after the update, and the grip's job run by WP-CLI once that batch was done. Two whole `npm run upgrade:all` runs then passed with no probe, with lane 2's WordPress container held to 0.4 of a CPU (`docker update --cpus 0.4`): "Upgrade: every one of the 12 releases below 1.3.0 updates to it with its data."
+
+**Deliberate break.** With `settle()` returning at once and `jobs` making one round of the five listed, as the script did before, the slowed run failed with the red run's line ("order 3534, … layer copies 0, parts missing copies 1"). Either half alone passed that run: waiting for the batch, or listing every job. Both stay, so the check neither runs a job beside the runner that holds it nor stops at five.
 
 **Status:** Accepted.
 
