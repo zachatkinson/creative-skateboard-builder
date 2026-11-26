@@ -259,6 +259,14 @@ test.describe( 'Help me choose', () => {
 		await expect( guide.locator( 'summary' ) ).toHaveText(
 			'Help me choose'
 		);
+		// The questions shut, as the page that answers without JavaScript has them, and with it focus goes to the
+		// step's heading, as a step's does (F35, #158).
+		await expect(
+			guide.locator( '.cbuild-guide__ask' )
+		).not.toHaveAttribute( 'open' );
+		if ( js ) {
+			await expect( page.locator( '.cbuild__heading' ) ).toBeFocused();
+		}
 
 		// From the builds.
 		await page.goto( asked( { style: 'street' } ) );
@@ -270,6 +278,9 @@ test.describe( 'Help me choose', () => {
 		);
 		await start();
 		await expect( page.locator( '.cbuild-guide__builds' ) ).toBeHidden();
+		if ( js ) {
+			await expect( page.locator( '.cbuild__heading' ) ).toBeFocused();
+		}
 
 		// By keyboard alone: the disclosure opens with Enter, and Skip is reached by Tab from the last question.
 		await page.goto( fixture().page );
@@ -287,6 +298,35 @@ test.describe( 'Help me choose', () => {
 		await expect( skip ).toBeFocused();
 		await follow( () => page.keyboard.press( 'Enter' ) );
 		await start();
+	} );
+
+	// F35 (#158): with the script, Show builds left focus on itself and the status said the empty build again, and Skip
+	// from the builds dropped focus to the page with the questions still open.
+	test( 'Show builds takes focus to the builds, and Skip from them shuts the questions and takes it to the step', async ( {
+		page,
+		javaScriptEnabled,
+	} ) => {
+		test.skip(
+			! javaScriptEnabled,
+			'Without the script each is a page load, which is right (Cowork, no-js-guide-and-swap.txt)'
+		);
+		await page.goto( fixture().page );
+		await page.locator( '.cbuild-guide summary' ).click();
+		await show( page, true );
+		await expect( page.locator( '.cbuild-guide__heading' ) ).toBeFocused();
+		await expect(
+			page.locator( '.cbuild__status' ),
+			'the status says no empty build over the heading'
+		).not.toContainText( 'Total' );
+		await page
+			.locator( '.cbuild-guide__builds' )
+			.getByRole( 'link', { name: 'Skip to the builder' } )
+			.click();
+		await expect( page.locator( '.cbuild-guide__builds' ) ).toBeHidden();
+		await expect( page.locator( '.cbuild__heading' ) ).toBeFocused();
+		await expect(
+			page.locator( '.cbuild-guide__ask' )
+		).not.toHaveAttribute( 'open' );
 	} );
 
 	test( 'passes axe with the questions open and with the builds', async ( {

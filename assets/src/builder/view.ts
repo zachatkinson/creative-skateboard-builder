@@ -374,6 +374,12 @@ const swapPress: { from: string; undo: boolean; pressed: boolean } = {
 };
 
 /**
+ * Help me choose's press (F35, D-516): Show builds, whose builds focus goes to by their heading, or Skip, which shuts
+ * the questions and takes focus to the step's heading, as the page that answers without the script has them.
+ */
+let guidePress: '' | 'show' | 'skip' = '';
+
+/**
  * What the shopper reads first after a step changes, by the template's classes.
  *
  * @param view The view now shown.
@@ -412,6 +418,27 @@ function say(
 		! before.isChanges &&
 		! view.errors.shown &&
 		view.step.slot === before.step.slot;
+	const guided = guidePress;
+	guidePress = '';
+	if ( '' !== guided ) {
+		// The heading is read as focus comes to it; the region would say the build and its total over it.
+		state.status = '';
+		if ( 'skip' === guided ) {
+			root?.querySelector( '.cbuild-guide__ask' )?.removeAttribute(
+				'open'
+			);
+		}
+		const asked =
+			true === ( view as { guide?: { asked?: boolean } } ).guide?.asked;
+		const target =
+			'show' === guided && asked && ! view.errors.shown
+				? '.cbuild-guide__heading'
+				: first( view );
+		window.requestAnimationFrame( () => {
+			root?.querySelector< HTMLElement >( target )?.focus();
+		} );
+		return;
+	}
 	// A swap stays on the step, and the control pressed may be gone: focus goes to the notice, which says the swap and
 	// holds Undo, and after Undo back to the control that made it (#135, D-397). The region says the build and total.
 	const swapped = swapPress.pressed;
@@ -783,9 +810,14 @@ function steady( change: () => void ): void {
 	}
 	window.requestAnimationFrame( () => {
 		// A control the view folds away, as a width once chosen is, hands focus to its fold's summary: the line that
-		// now says the width, with Change (the spec reviewer's M10 minor M1).
+		// now says the width, with Change (the spec reviewer's M10 minor M1). Not where the view has put focus elsewhere
+		// already, as Skip in Help me choose's questions does (F35, D-516).
+		const now = builder.ownerDocument.activeElement;
 		const fold =
-			anchor === focused ? anchor.closest( 'details:not([open])' ) : null;
+			anchor === focused &&
+			( now === anchor || now === builder.ownerDocument.body )
+				? anchor.closest( 'details:not([open])' )
+				: null;
 		const summary =
 			fold?.querySelector< HTMLElement >( ':scope > summary' );
 		if ( summary && ! summary.hidden ) {
@@ -1441,13 +1473,17 @@ function nav( state: State ): Navigator {
 					state.missing = '';
 					say( state, shown, turned, config, before );
 					priced( before, shown );
+					// The Interactivity API draws the view in a microtask queued as it is set, so one queued after it finds the
+					// view drawn, in the same task: what another plugin adds on the event is laid out with the answer, not a
+					// frame after it, where it would move the cards (F39, D-517).
+					void Promise.resolve()
+						.then( () => undefined )
+						.then( () => rendered( root, shown ) );
 					window.requestAnimationFrame( () => {
 						moments( before, shown, was );
 						if ( ahead ) {
 							foresee();
 						}
-						// The Interactivity API has drawn the view by this frame.
-						rendered( root, shown );
 					} );
 				};
 				// Only a new step crosses over (spec: Motion): a transition takes the screen's taps while it
@@ -1886,6 +1922,9 @@ const { state } = store(
 				}
 				// Next leaves the step, so nothing on it is held in place: the page's own scroll anchoring has the say.
 				onward( state.view, event.submitter )?.();
+				guidePress = form.classList.contains( 'cbuild-guide__form' )
+					? 'show'
+					: '';
 				const move: Move = {
 					fields: fields( form, event.submitter ),
 					history: 'push',
@@ -2157,6 +2196,9 @@ const { state } = store(
 				if ( link.classList.contains( 'cbuild-swap' ) ) {
 					swapPress.from = link.id;
 				}
+				guidePress = link.classList.contains( 'cbuild-guide__skip' )
+					? 'skip'
+					: '';
 				nav( state ).go( {
 					fields: [ ...url.searchParams ],
 					history: 'push',

@@ -157,6 +157,7 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-336 · The state route lists every ready build again, each saying whether it is shown](#d-336--the-state-route-lists-every-ready-build-again-each-saying-whether-it-is-shown--2026-11-23)
 - [D-376 · A rendered event and five builder classes for other plugins](#d-376--a-rendered-event-and-five-builder-classes-for-other-plugins--2026-11-24)
 - [D-407 · A place just above the step's cards for another plugin's element](#d-407--a-place-just-above-the-steps-cards-for-another-plugins-element--2026-11-25)
+- [D-517 · cbuild:rendered is sent in the task that draws the answer, not a frame later](#d-517--cbuildrendered-is-sent-in-the-task-that-draws-the-answer-not-a-frame-later--2026-11-26)
 
 ### The builder page
 
@@ -287,6 +288,7 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-469 · A landing skips its second /verify when the lane passed it on the same tree](#d-469--a-landing-skips-its-second-verify-when-the-lane-passed-it-on-the-same-tree--2026-11-26)
 - [D-432 · After a swap the notice says the swap and the status the build alone, so a screen reader hears it once](#d-432--after-a-swap-the-notice-says-the-swap-and-the-status-the-build-alone-so-a-screen-reader-hears-it-once--2026-11-25)
 - [D-514 · Focused, the start button keeps the outline's ground and words, and gives up only its ring](#d-514--focused-the-start-button-keeps-the-outlines-ground-and-words-and-gives-up-only-its-ring--2026-11-26)
+- [D-516 · Show builds takes focus to the builds, and Skip shuts the questions and takes it to the step](#d-516--show-builds-takes-focus-to-the-builds-and-skip-shuts-the-questions-and-takes-it-to-the-step--2026-11-26)
 
 ### Motion
 
@@ -7088,5 +7090,33 @@ Cowork's review of 1.3.0, F37 (#160). On a phone the compare's row headers scrol
 
 - **Red run** on chromium-phone and rtl: "\"Deck … Differs\" with the last build in view": `inView` false, and on Kadence `ground` false (builder.spec.ts:9205). Before the padding, fr-ca still failed `clear`, by 14 px, against 12 px of padding.
 - **After:** 30 of 30 with "three builds compared by keyboard" on chromium-phone, rtl, webkit-phone, firefox-phone, chromium-desktop and fr-ca. The 14rem check passes on each.
+
+**Status:** Accepted.
+
+### D-516 · Show builds takes focus to the builds, and Skip shuts the questions and takes it to the step · 2026-11-26
+
+Cowork's review of 1.3.0, F35 (#158). With the script, Show builds left focus on the button, and the status region said "Nothing is chosen yet. Total: $0.00." again. Skip from the builds dropped focus to the page and left the questions open, and Skip from the questions only cleared them. Without the script each is a page load, which was right.
+
+**Decision:** the store notes Help me choose's press as it notes a smart swap's (D-397). After Show builds, focus goes to the builds' heading, "Builds for you", which now has `tabindex="-1"`. The region is emptied, so the heading is what's read. Where the answer has errors, focus goes to the summary, as a step's does. After Skip, the questions' disclosure shuts and focus goes to the step's heading, as the page that answers without the script has them.
+
+**Found on the way.** Skip from the questions still ended on the disclosure's summary. `steady()` hands focus from a control its view folds away to its fold's summary (the spec reviewer's M10 minor M1), and the shut disclosure counted as that fold. The handoff now happens only where focus is still on the control or on the page, not where the view has put it elsewhere.
+
+**Tests.** In guide.spec.ts, a new "Show builds takes focus to the builds, and Skip from them shuts the questions and takes it to the step". "skips to the builder from the questions, from the builds, and by keyboard" now also checks the disclosure shut, on no-js too, and the heading focused with the script.
+
+- **Red runs** on chromium-desktop and chromium-phone: "expect(locator).toBeFocused() failed" for `.cbuild-guide__heading` (guide.spec.ts:316); "expect(locator).not.toHaveAttribute() failed" for the disclosure's `open` (guide.spec.ts:266). With the store's change alone, the summary took focus: `.cbuild__heading` focused at 641 ms, `cbuild-guide__summary` at 642 ms (guide.spec.ts:268).
+- **After:** Help me choose's tests on chromium-desktop, chromium-phone, webkit-phone, firefox-desktop and no-js pass, with the F39 and #143 tests: 47 passed and 18 skipped by design.
+
+**Status:** Accepted.
+
+### D-517 · cbuild:rendered is sent in the task that draws the answer, not a frame later · 2026-11-26
+
+Cowork's review of 1.3.0, F39 (#162). A 118 px element put in `.cbuild-step__above-cards` on `cbuild:rendered` shifted a width's late answer by 0.062 on an iPhone 13 and 0.015 at 1440 by 900. The same element added from a MutationObserver shifted nothing. The event was sent in the next animation frame, after the answer's cards were laid out and painted, so whatever a listener added moved them.
+
+**Decision:** the event is sent two microtasks after the view is set. The Interactivity API draws a view in a microtask that Preact queues as the view is set (`Promise.prototype.then`, its default `debounceRendering`: wp-includes/js/dist/script-modules/interactivity/debug.js, WordPress 7.1.5). So a microtask queued after it finds the view drawn, in the same task, before the browser lays it out. It is a promise chain, not `queueMicrotask`, because Vitest's fake timers take `queueMicrotask`. The moments and the look ahead stay on the frame. `docs/HOOKS.md` says when the event comes now. A listener still sees the answer drawn, which is what the event promises, so this changes no public API item. The store's tests that heard it at the frame now let its microtasks run.
+
+**Tests.** shelf.spec.ts, "An element added above the cards on cbuild:rendered (F39)": the shelf kit, Cowork's element added on each event after the first, a width pressed with its answer held a second (D-406), at 390 by 664 and 1440 by 900 on Chromium. The layout shift must be under 0.001, and the cards counted at the event must be the step's.
+
+- **Red run** on chromium-phone: "the answer's layout shift: 0.034 +1172 ms 0.034 [cbuild-cards 545→0]" (shelf.spec.ts:965). The desktop measured 0.000 here.
+- **After:** 0.000 on both, and the cards at the event are the answer's. The #143 tests and the F30 width tests pass.
 
 **Status:** Accepted.

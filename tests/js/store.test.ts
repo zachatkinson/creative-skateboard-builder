@@ -4633,7 +4633,7 @@ describe( 'the rendered event', () => {
 		expect( events[ 0 ]!.detail ).toEqual( { kit: 7, step: 'deck' } );
 	} );
 
-	it( 'is sent once after each answer is drawn, not at the pick, nor before the frame that draws it', async () => {
+	it( 'is sent once after each answer is drawn, in the task that draws it, not at the pick', async () => {
 		const { root, bar } = builder();
 		state.view = KIT;
 		hydrated( bar );
@@ -4650,6 +4650,7 @@ describe( 'the rendered event', () => {
 		expect( state.status ).toBe( 'A deck. Total: $70.00.' );
 		expect( events, 'not before the view is drawn' ).toHaveLength( 0 );
 		vi.advanceTimersToNextFrame();
+		await settle();
 		expect( events ).toHaveLength( 1 );
 		expect( events[ 0 ]!.target ).toBe( root );
 		expect( events[ 0 ]!.detail ).toEqual( { kit: 7, step: 'deck' } );
@@ -4660,6 +4661,7 @@ describe( 'the rendered event', () => {
 		await settle();
 		vi.advanceTimersToNextFrame();
 		vi.advanceTimersToNextFrame();
+		await settle();
 		stop();
 		expect( events ).toHaveLength( 2 );
 		expect( events[ 1 ]!.detail ).toEqual( { kit: 7, step: 'trucks' } );
@@ -4686,6 +4688,7 @@ describe( 'the rendered event', () => {
 		await settle();
 		vi.advanceTimersToNextFrame();
 		vi.advanceTimersToNextFrame();
+		await settle();
 		stop();
 		expect( fetched ).toHaveLength( 1 );
 		expect( events ).toHaveLength( 1 );
@@ -4707,6 +4710,7 @@ describe( 'the rendered event', () => {
 		actions.back();
 		await settle();
 		vi.advanceTimersToNextFrame();
+		await settle();
 		stop();
 		expect( events.map( ( event ) => event.detail ) ).toEqual( [
 			{ kit: 7, step: 'review' },
@@ -4872,6 +4876,8 @@ describe( 'what the stage plays as a view comes in', () => {
 	 * @param view The answer's view.
 	 */
 	async function shown( view: unknown ): Promise< void > {
+		// The last view's event, sent in the task that drew it, is heard before this one is asked.
+		await settle();
 		let told = 0;
 		const hear = () => told++;
 		document.addEventListener( 'cbuild:rendered', hear );
@@ -4879,6 +4885,7 @@ describe( 'what the stage plays as a view comes in', () => {
 		actions.back();
 		await settle();
 		vi.advanceTimersToNextFrame();
+		await settle();
 		document.removeEventListener( 'cbuild:rendered', hear );
 		expect( told, 'the view is drawn' ).toBe( 1 );
 	}

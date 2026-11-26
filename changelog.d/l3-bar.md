@@ -3,7 +3,9 @@
 - On a phone the bar's Back and Next, or Add to cart, stay beside the total: Next's words break inside the button where the bar is short of room, never inside a word, and the button keeps its 44 px target. In the theme's content width they had taken a row of their own under the total, on a step in English on Twenty Twenty-Five and Storefront and always in French, up to 199 px of bar; it is now 90 to 147 px (#153, D-510).
 - Next pressed on the first step no longer moves the step or the bar when its answer comes a second late, as on a real host: the deck step's width line and its count go at the press, as the answer takes them, and the bar's Back comes at the press too. On a phone the step had moved by up to 0.046 of layout shift and the bar by 0.004 (#152, D-512).
 - A deck page's start button, focused, keeps its outline's colours on a theme whose focus is a fill, as Kadence's is: its words had gone dark on Kadence's dark focus fill, 1.00:1 (F34, #157, D-514).
+- With the script, Show builds in Help me choose takes focus to the builds' heading and the status no longer repeats the empty build; Skip shuts the questions and takes focus to the step's heading, as the page without the script does (F35, #158, D-516).
 - On a phone, the saved builds' compare keeps each row's header in view as it scrolls, so a row that differs is told by its words at every build, not by its tint alone (F37, #160, D-515).
+- An element another plugin adds above the cards on `cbuild:rendered` no longer moves a width's late answer: the event comes in the task that draws the answer, not a frame later (F39, #162, D-517).
 
 ### Changed
 
