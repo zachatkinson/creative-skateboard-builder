@@ -10,7 +10,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 version=0.11.0
-sha256=8c3be12b05d5c177a04c29e3c78ce89ac86f1595681cab149b65b97c4e227198 # shellcheck-v0.11.0.linux.x86_64.tar.xz
+sha256=8c3be12b05d5c177a04c29e3c78ce89ac86f1595681cab149b65b97c4e227198 # the tarball shellcheck-v0.11.0.linux.x86_64.tar.xz
 
 shellcheck=""
 if command -v shellcheck > /dev/null && shellcheck --version | grep -qx "version: ${version}"; then
