@@ -468,7 +468,7 @@ final class StateAnswerTest extends TestCase {
 
 		unset( $this->cards->photos[81] );
 		$asked = array();
-		self::assertSame( InMemoryPartCards::card( 101 )['image'], $answer->of( $state )['presets'][0]['image'], 'a photo gone, the picture not made: the deck\'s photo' );
+		self::assertSame( InMemoryPartCards::card( 101 )['large'], $answer->of( $state )['presets'][0]['image'], 'a photo gone, the picture not made: the deck\'s photo' );
 		self::assertSame( array( self::STREET, self::PARK ), $asked );
 
 		$asked = array();
@@ -492,7 +492,7 @@ final class StateAnswerTest extends TestCase {
 		self::assertSame( $this->answer( self::STREET )['total']['total'], $street['total'], "the total of the build it starts, at the kit's own assembly setting" );
 		self::assertTrue( $street['ready'] );
 		self::assertSame( array(), $street['problems'] );
-		self::assertSame( InMemoryPartCards::card( 101 )['image'], $street['image'], "its picture, for now its deck's photo" );
+		self::assertSame( InMemoryPartCards::card( 101 )['large'], $street['image'], "its picture, for now its deck's photo" );
 		self::assertCount( 2, $answer['presets'], 'Park is listed, at its place' );
 		self::assertSame( array( true, false ), array_column( $answer['presets'], 'shown' ), 'and not shown' );
 		self::assertFalse( $answer['presets'][1]['ready'] );

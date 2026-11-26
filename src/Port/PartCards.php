@@ -58,7 +58,8 @@ interface PartCards {
 	public function forget( int ...$ids ): void;
 
 	/**
-	 * An image from the media library as a card's photo is, or null when it is none.
+	 * An image from the media library as a ready build's tile shows it, whole, never cropped (D-461), or null when it
+	 * is none.
 	 *
 	 * @since 1.0.0
 	 *

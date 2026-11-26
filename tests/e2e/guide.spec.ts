@@ -574,3 +574,70 @@ test.describe( "A flagged deck in the guide's builds", () => {
 		} );
 	}
 } );
+
+// Milestone 13's walkthrough (D-461): a tile shows its whole picture, as WordPress keeps the file, never a crop of it.
+// The 8.25 in deck's photo came in the shop's thumbnail size, which WooCommerce crops square, and its tile showed the
+// middle of a tall deck. Each tile's picture keeps its file's shape, and the tile fits it in whole, on a block theme
+// and on Kadence; the ready builds' tiles share the template and are held to the same.
+test.describe( "A build's tile shows its whole picture", () => {
+	for ( const theme of [ 'twentytwentyfive', 'kadence' ] as const ) {
+		test( `on ${ theme }, the guide's and the ready builds' tiles`, async ( {
+			page,
+			context,
+			baseURL,
+		}, info ) => {
+			test.skip(
+				'visual' === info.project.name,
+				'The visual project has its own spec'
+			);
+			await context.addCookies( [
+				{
+					name: 'cbuild_e2e_theme',
+					value: theme,
+					url: baseURL || SITE,
+				},
+			] );
+			await page.goto( asked( {} ) );
+			const guide = page.locator( '.cbuild-guide__tiles .cbuild-preset' );
+			await expect( guide ).toHaveCount( 3 );
+			const pictures = page.locator( '.cbuild-preset__photo:visible' );
+			await expect
+				.poll(
+					() => pictures.count(),
+					"the guide's three and the ready builds'"
+				)
+				.toBeGreaterThan( 3 );
+			// Each picture's shape against its file's as uploaded: WordPress names a size it makes "-<w>x<h>" after
+			// the file's name, so the name without it is the whole file.
+			const shapes = await pictures.evaluateAll( ( images ) =>
+				Promise.all(
+					( images as HTMLImageElement[] ).map( async ( image ) => {
+						image.loading = 'eager';
+						await image.decode().catch( () => undefined );
+						const whole = new Image();
+						whole.src = image.currentSrc.replace(
+							/-\d+x\d+(\.\w+)$/,
+							'$1'
+						);
+						await whole.decode().catch( () => undefined );
+						return {
+							src: image.currentSrc,
+							shown: image.naturalWidth / image.naturalHeight,
+							file: whole.naturalWidth / whole.naturalHeight,
+							fit: getComputedStyle( image ).objectFit,
+						};
+					} )
+				)
+			);
+			for ( const shape of shapes ) {
+				expect( shape.fit, `${ shape.src } fitted in whole` ).toBe(
+					'contain'
+				);
+				expect(
+					Math.abs( shape.shown / shape.file - 1 ),
+					`${ shape.src } keeps its file's shape`
+				).toBeLessThan( 0.03 );
+			}
+		} );
+	}
+} );

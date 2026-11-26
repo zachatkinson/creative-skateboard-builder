@@ -488,8 +488,9 @@ final class StateAnswer {
 				'name'        => self::preset( $preset->name, $at, $state->id ),
 				'description' => self::text( $preset->description, 'preset_description', $state->id, (string) $at ),
 				'picks'       => $picks,
-				// A tile not shown asks for no picture to be made: its first part's photo will do.
-				'image'       => $this->tile( $state->id, $preset->picks, $preset->image, $begun || ! $shown ) ?? ( null === $first ? null : ( $cards[ $first ]['image'] ?? null ) ),
+				// A tile not shown asks for no picture to be made: its first part's photo will do, whole, as a tile shows
+				// every picture (D-461).
+				'image'       => $this->tile( $state->id, $preset->picks, $preset->image, $begun || ! $shown ) ?? ( null === $first ? null : ( $cards[ $first ]['large'] ?? $cards[ $first ]['image'] ?? null ) ),
 				'total'       => $money( $built->quote->total ?? 0 ),
 				'ready'       => array() === $kept,
 				// What keeps it from the cart, each part named for its tile (spec: Presets).

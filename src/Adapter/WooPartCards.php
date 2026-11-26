@@ -386,7 +386,8 @@ final class WooPartCards implements PartCards {
 	}
 
 	/**
-	 * An image from the media library as a card's photo is, or null when it is none.
+	 * An image from the media library as a ready build's tile shows it, or null when it is none: in the shop's
+	 * single-product size, which is never cropped, so the tile shows it whole (D-461).
 	 *
 	 * @since 1.0.0
 	 *
@@ -394,7 +395,7 @@ final class WooPartCards implements PartCards {
 	 * @return array{src: string, width: int, height: int, srcset: string, sizes: string}|null
 	 */
 	public function photo( int $attachment ): ?array {
-		return self::image( $attachment );
+		return self::image( $attachment, self::LARGE_SIZE );
 	}
 
 	/**

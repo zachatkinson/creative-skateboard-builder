@@ -274,6 +274,7 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-401 · The guided start's ready builds: the cheapest, the middle and the dearest part a slot, through the fit engine](#d-401--the-guided-starts-ready-builds-the-cheapest-the-middle-and-the-dearest-part-a-slot-through-the-fit-engine--2026-11-25)
 - [D-402 · Help me choose: a disclosure at the builder's start, one GET form, answers in the link alone](#d-402--help-me-choose-a-disclosure-at-the-builders-start-one-get-form-answers-in-the-link-alone--2026-11-25)
 - [D-404 · Help me choose steps aside once a width is pressed, and the guide's tiles have their own list](#d-404--help-me-choose-steps-aside-once-a-width-is-pressed-and-the-guides-tiles-have-their-own-list--2026-11-25)
+- [D-461 · A ready build's tile shows its picture whole, in a size WordPress never crops](#d-461--a-ready-builds-tile-shows-its-picture-whole-in-a-size-wordpress-never-crops--2026-11-26)
 - [D-432 · After a swap the notice says the swap and the status the build alone, so a screen reader hears it once](#d-432--after-a-swap-the-notice-says-the-swap-and-the-status-the-build-alone-so-a-screen-reader-hears-it-once--2026-11-25)
 
 ### Motion
@@ -6713,5 +6714,21 @@ English lists of three or more lose core's comma before "and": "Deck, Trucks and
 - **Red run.** `ListWordsTest::test_two_and_three_items_are_joined_in_the_plugins_french_not_cores`, core's French separators given as fr_CA.po has them and the plugin's own French loaded: "no full stop inside the list", expected "Échangé : roues et quincaillerie." and got "Échangé : roues et .quincaillerie." (ListWordsTest.php:58). `ListWordsTest::test_two_and_three_items_are_joined_in_english_with_no_comma_before_and`: "Swapped: wheels, bearings, and hardware." (ListWordsTest.php:37). In the browser, french.spec.ts "says what a swap changed as French joins a list" on fr-ca: received "Échangé : wheels et .hardware." (french.spec.ts:83).
 - **After.** All three pass, with `WordsTest::test_a_list_is_one_item_alone_two_joined_by_and_and_more_by_commas_and_the_last_and` for none to four items. `ShareCardTest`'s and `PrivacyTest`'s English lists of three or more expect no comma before "and"; the unit shims lose `wp_sprintf()`.
 - **Deliberate break.** `joined()` handed back to `wp_sprintf( '%l' )`: both `ListWordsTest` cases fail again, "Échangé : roues et .quincaillerie." (ListWordsTest.php:59) and "Swapped: wheels, bearings, and hardware." (ListWordsTest.php:37).
+
+**Status:** Accepted.
+
+### D-461 · A ready build's tile shows its picture whole, in a size WordPress never crops · 2026-11-26
+
+Milestone 13's walkthrough, a should-fix. Help me choose's Mid-range tile showed a navy and yellow square with no board's outline (`docs/reviews/M13/walkthrough/*-guide-builds-*`), where Budget and High-end showed the whole deck. The tile's CSS was not the cause: `.cbuild-preset__photo` is `object-fit: contain` in a 4:3 box on Twenty Twenty-Five and Kadence alike. Nor was D-408's mark: the 8.25 in deck's tile is its photo, rightly not `--drawn`. The cause was the rendition. A guide build took its deck's card picture, which for a deck with a photo is the shop's `woocommerce_thumbnail`, and WooCommerce crops that square by default: the fixture's 407 by 1,600 photo came as `-324x324.png`, the middle of the deck, and every size in its `srcset` was a square crop too. The decks with no photo show their layer image, which a card already takes in WordPress's `medium`, never cropped (D-282), so they were whole.
+
+The ready builds' tiles share `templates/builder/tile.php` and the same risk: a preset's own picture came through `PartCards::photo()` in the thumbnail size, and a tile on a build begun took its first part's card picture, the thumbnail again. Their usual picture, the composed board, is whole.
+
+**Decision:** a tile's picture is never the shop's thumbnail. A guide build's is its deck card's `large`, the shop's single-product size, which WooCommerce never crops (#82), else its layer image as the card has it; still marked drawn where it is the layer image (D-408). `PartCards::photo()`, whose one caller is a preset's tile, gives the single-product size, and a preset's tile that falls back to its first part's picture takes that part's `large` first. The state route's `presets[].image` keeps its shape; only the file it names changes. The single-product rendition's `sizes` is WordPress's, so a browser may fetch a larger file than the tile draws; the tile is lazy, and the deck cards keep the thumbnail.
+
+**Tests.**
+
+- **Red run.** guide.spec.ts "A build's tile shows its whole picture" on twentytwentyfive and on kadence, chromium-desktop: "builder-test-deck-8-25-photo-324x324.png keeps its file's shape", the shape against the file's 2.93 apart, where 0.03 is allowed (guide.spec.ts:639). `WooPartCardsTest::test_a_card_is_the_parts_name_page_price_stock_and_photo_as_the_shop_shows_them`: "a tile's picture whole, not the shop's square thumbnail", `canola-88-300x300.jpg` where `canola-88-600x450.jpg` was expected (WooPartCardsTest.php:102).
+- **After.** Both pass. Five unit assertions on a preset tile's fallback picture (`StateAnswerTest`, `StateAnswerDetailTest`) expect the first part's `large`.
+- **Deliberate break.** The guide build's image back to its card's `image`: the browser test fails again on `-324x324.png`, 2.93 (guide.spec.ts:639).
 
 **Status:** Accepted.

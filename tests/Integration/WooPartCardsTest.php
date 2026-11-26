@@ -98,6 +98,8 @@ final class WooPartCardsTest extends IntegrationTestCase {
 		// #82: the photo uncropped, at the shop's single-product size, for the picture's deck with no layer image.
 		self::assertSame( wp_get_attachment_image_src( $photo, 'woocommerce_single' )[0], $card['large']['src'] ?? null );
 		self::assertSame( array( 'src', 'width', 'height', 'srcset', 'sizes' ), array_keys( $card['large'] ?? array() ) );
+		// D-461: a ready build's own picture, uncropped too, so its tile shows it whole.
+		self::assertSame( wp_get_attachment_image_src( $photo, 'woocommerce_single' )[0], $this->cards()->photo( $photo )['src'] ?? null, 'a tile\'s picture whole, not the shop\'s square thumbnail' );
 		self::assertSame( 'Rascals "8.25" & deck', $card['name'], 'plain text, where WordPress stores &amp;: the edge escapes it once' );
 		self::assertSame( get_permalink( $deck ), $card['url'] );
 		self::assertSame( self::price( 44.5 ), $card['price'], 'the price of one as the shop shows it' );

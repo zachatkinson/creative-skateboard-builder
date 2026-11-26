@@ -180,7 +180,7 @@ final class BuilderTest extends TestCase {
 		);
 		self::assertSame( 'Start from Street', $street['button'], 'each button has a name of its own (P11)' );
 		self::assertTrue( $street['hasImage'] );
-		self::assertSame( 'https://shop.test/101.jpg', $street['src'] );
+		self::assertSame( 'https://shop.test/101-large.jpg', $street['src'], 'its deck\'s photo whole, not the square thumbnail (D-461)' );
 		self::assertTrue( $street['hasTotal'] );
 
 		self::assertFalse( $this->show( new BuildLink( array( SlotKey::DECK => 101 ) ) )['view']['presets']['shown'], 'a build begun has no tiles' );

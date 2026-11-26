@@ -134,7 +134,9 @@ final readonly class GuidedBuilds {
 				'total'  => $this->money->text( $totals[ $at ], $decimals ),
 				'amount' => $totals[ $at ],
 				'over'   => $over ? $this->money->text( $totals[ $at ] - (int) $budget, $decimals ) : '',
-				'image'  => $cards[ $deck ]['image'] ?? null,
+				// A tile shows its picture whole (D-461): a photo in the shop's single-product size, never cropped, not its
+				// thumbnail, which WooCommerce crops square; a layer image as the card has it, never cropped either.
+				'image'  => $cards[ $deck ]['large'] ?? $cards[ $deck ]['image'] ?? null,
 				// The deck's card picture is its layer image where it has no photo (D-282): marked drawn, as the card's is.
 				'drawn'  => null !== ( $cards[ $deck ]['image'] ?? null ) && false === ( $cards[ $deck ]['photo'] ?? true ),
 				'deck'   => $deck,
