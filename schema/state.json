@@ -139,7 +139,8 @@
 					"total",
 					"ready",
 					"problems",
-					"image"
+					"image",
+					"drawn"
 				],
 				"properties": {
 					"at": {
@@ -188,6 +189,10 @@
 								"type": "null"
 							}
 						]
+					},
+					"drawn": {
+						"description": "From 1.4.0: whether its picture is drawn from the parts' layers rather than a photo: the build's composed picture, or its first part's layer image where that part has no photo, marked as a card's layer image is (F41, #164).",
+						"type": "boolean"
 					},
 					"total": {
 						"description": "What the build it starts costs, at the kit's own assembly setting. From 0.6.0.",

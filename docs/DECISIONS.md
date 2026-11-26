@@ -161,6 +161,7 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-336 · The state route lists every ready build again, each saying whether it is shown](#d-336--the-state-route-lists-every-ready-build-again-each-saying-whether-it-is-shown--2026-11-23)
 - [D-376 · A rendered event and five builder classes for other plugins](#d-376--a-rendered-event-and-five-builder-classes-for-other-plugins--2026-11-24)
 - [D-407 · A place just above the step's cards for another plugin's element](#d-407--a-place-just-above-the-steps-cards-for-another-plugins-element--2026-11-25)
+- [D-478 · A ready build drawn from the layers is marked drawn, and Help me choose's builds get a place](#d-478--a-ready-build-drawn-from-the-layers-is-marked-drawn-and-help-me-chooses-builds-get-a-place--2026-11-26)
 
 ### The builder page
 
@@ -7040,5 +7041,16 @@ Cowork's 1.3.0 review, F38 (#161): the kit page's redirect to the Builder page k
 - **Every other argument goes with the visitor**, not a list of known tags: a shop's own campaign tool may use any name, and an allowlist would lose it.
 - **Not the build's own, nor the kit page's query variables** (`$wp->query_vars`' keys, such as `product` or `p`), which found the kit and mean nothing on the Builder page. The build is added after them, as before.
 - **A name as tags and click IDs are written**, letters, digits, `_`, `.` and `-`, up to 64, and a value that is text, sanitised as text and encoded for the address. Anything else is left behind, so the redirect never carries markup or a nested array the Builder page would read as its own.
+
+**Status:** Accepted.
+
+### D-478 · A ready build drawn from the layers is marked drawn, and Help me choose's builds get a place · 2026-11-26
+
+Cowork's 1.3.0 review, F41 (#164): a shop's ready build's tile shows the build's composed picture, drawn from the parts' layers, unmarked, while Help me choose marks a tile showing a layer image (D-408). Mature Content couldn't tell it from a photo. Its notice for a guide tile also landed first in the step's form, 439 px below the tile.
+
+**Decision:**
+
+- **`presets[].drawn`** (1.4.0) says whether the tile's picture is drawn from the layers: the composed picture, or the first part's layer image where it has no photo (D-282). The tile's picture then carries `cbuild-preset__photo--drawn`, as the guide's does. A rider photo, or a part's photo, is not marked. It is a new field, so nothing a plugin reads changes.
+- **`.cbuild-guide__above-builds`** (1.4.0) is an empty `<div>` just above the guide's tiles, rendered by the server and never drawn into, promised as `.cbuild-step__above-cards` is (D-407). It is out of the layout while empty, and a browser test holds that an element put there stays, alone, through a new answer's builds.
 
 **Status:** Accepted.

@@ -195,6 +195,10 @@ export interface CbuildState {
 		 * Its picture: for now its first slot's part's photo at the catalogue's size, or null when it has none. From 0.6.0.
 		 */
 		image: Photo | null;
+		/**
+		 * From 1.4.0: whether its picture is drawn from the parts' layers rather than a photo: the build's composed picture, or its first part's layer image where that part has no photo, marked as a card's layer image is (F41, #164).
+		 */
+		drawn: boolean;
 		total: Money;
 		/**
 		 * Whether the build it starts can go to the cart as it stands. From 0.6.0.

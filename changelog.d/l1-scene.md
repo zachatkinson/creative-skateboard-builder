@@ -3,9 +3,11 @@
 - **The 3D view's scene** (#139, D-470): `Domain\Scene\Scene` measures every part of a build in whole micrometres from its specs, on the same frame as the 2D picture (`Domain\Picture\Board`), and names each usual value it assumed. The builder's view carries it as `view.scene` (`schema/state.json`).
 - **Spec keys `nose_length`, `tail_length`, `concave_depth`, `kick_angle` and `wheel_width`** (D-472, D-473): optional, through the import's columns, Part specs and the specs index. A deck or wheel without one gets a usual value.
 - **Two Build tab switches under Shown in the builder** (D-474): **3D view** (`view_3d` in `_cbuild_settings`), on for a new kit and off for one saved before 1.4.0, so an update changes no builder (D-476); and **Trick buttons** (`tricks`), on where a kit has none, shown only once the kit's 3D view is saved on.
-
 - **The filter `cbuild_scene`** (D-475): the 3D view's scene of a build, after the domain, with each drawn part's texture. `cbuild_composed_layer` gains the use `3d`; a part answered `blurred` or `left_out` has no texture in the 3D view.
 - **The Catalogue check names a deck or wheel the 3D view draws at a usual size** (D-473), on a kit whose 3D view is on, with the size to fill in.
+
+- **A place for another plugin's element above Help me choose's builds**, `cbuild-guide__above-builds`, rendered empty just above the tiles, so a notice about a tile sits by it (F41, #164).
+- **`presets[].drawn`** in the state route's answer: whether a ready build's picture is drawn from the parts' layers. Such a tile's picture carries `cbuild-preset__photo--drawn`, as Help me choose's do (F41, #164).
 
 ### Changed
 
@@ -14,4 +16,6 @@
 
 ### Fixed
 
+- **At a deck width with no deck in stock,** the deck step says so, "No 8.25″ deck is in stock right now.", rather than blaming the parts before it (F36, #159).
 - **The kit's page sends its visitor on to the Builder page with every other argument of the request,** so a newsletter's `utm_*` tags and an ad's `gclid` or `fbclid` are kept (F38, #161).
+- **Over the budget, Help me choose counts every build that fits,** not only the closest one it shows (F40, #163).

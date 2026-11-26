@@ -199,6 +199,7 @@
         "cbuild-chips__more--idle",
         "cbuild-chips__options--row",
         "cbuild-edit",
+        "cbuild-guide__above-builds",
         "cbuild-kit",
         "cbuild-part",
         "cbuild-part__slot",
@@ -334,7 +335,7 @@
         "schema/kit-slots.json": "7c383e3f551b517328d9d195c01e15f9f5dad1a1263a20fa4ff2188592bb820c",
         "schema/order-snapshot.json": "22d23b0213b466dfd4092e7e40ec09574bb4eaed6e99347bd166dadc86c441bb",
         "schema/settings.json": "b1d0f645f11ca978b3a12cba411f8328d636a5e2a242db01451282bc6adc88b5",
-        "schema/state.json": "dd8118427bfc3a8a84303132947b080073be5ba9973722e077a6e27d7bdbe043"
+        "schema/state.json": "720828942805c1359477d1a676da94a9eca411a5d2901d72888ce6cc30888814"
     },
     "spec_keys": [
         "deck_width",
