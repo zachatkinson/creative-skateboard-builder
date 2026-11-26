@@ -1093,6 +1093,81 @@ function folding(
 	};
 }
 
+/**
+ * What Next's press to another step can show before its answer, as the answer will (D-406, D-408, D-512):
+ * - the deck step's width line goes, as no later step asks the width, with the "Showing" line, as the answer lists the
+ *   next step's own. It otherwise stayed until the answer, a second late on a real host, took it and moved the cards up
+ *   under the heading;
+ * - on the first step, which has no Back, the bar's Back comes, as the next step's: the view gives its words. It
+ *   otherwise came in with the answer, narrowed the total and moved Next.
+ *
+ * Null where the press is no Next to another step, or there is nothing to show.
+ *
+ * @param view   The view shown.
+ * @param button The button pressed.
+ */
+function onward(
+	view: Shown,
+	button: HTMLElement | null | undefined
+): ( () => void ) | null {
+	const known = view as {
+		step: {
+			slot?: string;
+			stepName?: string;
+			next?: { value?: string };
+			more?: { count?: string };
+			shelf?: { width?: { shown?: boolean } };
+		};
+	};
+	const step = known.step;
+	const to = step.next?.value;
+	if (
+		! button ||
+		! to ||
+		to === step.slot ||
+		button.getAttribute( 'name' ) !== step.stepName ||
+		button.getAttribute( 'value' ) !== to
+	) {
+		return null;
+	}
+	const width = true === step.shelf?.width?.shown ? step.shelf.width : null;
+	const back = view.bar?.back;
+	const ahead = back && ! back.shown && '' !== back.ahead.url ? back : null;
+	if ( ! width && ! ahead ) {
+		return null;
+	}
+	return () => {
+		const more = step.more;
+		const counted = more?.count ?? '';
+		const was = ahead ? { url: ahead.url, label: ahead.label } : null;
+		// A press the rate limit or the store's limit stops leaves the step as it was (D-364).
+		unfold = () => {
+			if ( width ) {
+				width.shown = true;
+				if ( more ) {
+					more.count = counted;
+				}
+			}
+			if ( ahead && was ) {
+				ahead.shown = false;
+				ahead.url = was.url;
+				ahead.label = was.label;
+			}
+		};
+		if ( width ) {
+			width.shown = false;
+			if ( more ) {
+				more.count = '';
+			}
+		}
+		if ( ahead ) {
+			ahead.shown = true;
+			ahead.url = ahead.ahead.url;
+			ahead.label = ahead.ahead.label;
+		}
+	};
+}
+
 /** Undo a width's fold made at its press, until the answer comes. */
 let unfold: ( () => void ) | undefined;
 
@@ -1706,6 +1781,8 @@ const { state } = store(
 				if ( fold ) {
 					steady( fold );
 				}
+				// Next leaves the step, so nothing on it is held in place: the page's own scroll anchoring has the say.
+				onward( state.view, event.submitter )?.();
 				const move: Move = {
 					fields: fields( form, event.submitter ),
 					history: 'push',

@@ -341,17 +341,26 @@ final class BuilderView {
 	 * @param BuildLink                   $link   The address of what is shown.
 	 * @param callable(BuildLink): string $url    Makes an address.
 	 * @param callable(string): string    $label  A slot's label.
-	 * @return array{shown: bool, url: string, text: string, label: string}
+	 * @return array{shown: bool, url: string, text: string, label: string, ahead: array{url: string, label: string}}
 	 */
 	private static function back( bool $review, array $step, array $steps, BuildLink $link, callable $url, callable $label ): array {
 		$own  = Cast::map( $step['back'] ?? null );
 		$last = $review && array() !== $steps ? $steps[ count( $steps ) - 1 ] : null;
+		$slot = Cast::str( $step['slot'] ?? null );
+		// On a step with no Back of its own, the first, the Back the next step shows, which goes back here: the store
+		// shows it at Next's press, so it doesn't come in with the answer a second late and move Next (#152, D-512).
+		$ahead = null === $last && '' !== $slot && ! Cast::bool( $own['shown'] ?? null );
 		return array(
 			'shown' => null !== $last || Cast::bool( $own['shown'] ?? null ),
 			'url'   => null === $last ? Cast::str( $own['url'] ?? null ) : $url( $link->at( $last ) ),
 			'text'  => __( 'Back', 'creative-skateboard-builder' ),
 			/* translators: %s: a step's name, such as Deck. */
 			'label' => null === $last ? Cast::str( $own['text'] ?? null ) : sprintf( __( 'Back: %s', 'creative-skateboard-builder' ), $label( $last ) ),
+			'ahead' => array(
+				'url'   => $ahead ? $url( $link->at( $slot ) ) : '',
+				/* translators: %s: a step's name, such as Deck. */
+				'label' => $ahead ? sprintf( __( 'Back: %s', 'creative-skateboard-builder' ), $label( $slot ) ) : '',
+			),
 		);
 	}
 
@@ -361,16 +370,16 @@ final class BuilderView {
 	 * form with JavaScript or without. The change panel asks for Use these or Undo in its own forms, so the bar has no
 	 * button there.
 	 *
-	 * @param array<string, mixed>                                         $summary The summary.
-	 * @param array<string, mixed>                                         $step    The step.
-	 * @param array<string, mixed>                                         $shown   The review.
-	 * @param bool                                                         $review  Whether the review is shown.
-	 * @param bool                                                         $panel   Whether the change panel is shown.
-	 * @param array<string, mixed>                                         $first   The picture's first part, if it has one: its slot, its ID and its photo.
-	 * @param int                                                          $kit     The kit product's ID.
-	 * @param array<string, mixed>                                         $board   The board, drawn at the bar's size.
-	 * @param array{shown: bool, url: string, text: string, label: string} $back The footer's Back.
-	 * @return array{shown: bool, seen: bool, board: array<string, mixed>, photo: array{hasImage: bool, src: string, srcset: string, sizes: string, width: int, height: int, classes: string}, picture: string, total: string, amount: string, parts: string, hide: string, started: bool, back: array{shown: bool, url: string, text: string, label: string}, next: array{shown: bool, onStep: bool, onReview: bool, text: string, form: string, name: string, value: string, disabled: bool, ready: bool, missing: string}}
+	 * @param array<string, mixed>                                                                                   $summary The summary.
+	 * @param array<string, mixed>                                                                                   $step    The step.
+	 * @param array<string, mixed>                                                                                   $shown   The review.
+	 * @param bool                                                                                                   $review  Whether the review is shown.
+	 * @param bool                                                                                                   $panel   Whether the change panel is shown.
+	 * @param array<string, mixed>                                                                                   $first   The picture's first part, if it has one: its slot, its ID and its photo.
+	 * @param int                                                                                                    $kit     The kit product's ID.
+	 * @param array<string, mixed>                                                                                   $board   The board, drawn at the bar's size.
+	 * @param array{shown: bool, url: string, text: string, label: string, ahead: array{url: string, label: string}} $back The footer's Back.
+	 * @return array{shown: bool, seen: bool, board: array<string, mixed>, photo: array{hasImage: bool, src: string, srcset: string, sizes: string, width: int, height: int, classes: string}, picture: string, total: string, amount: string, parts: string, hide: string, started: bool, back: array{shown: bool, url: string, text: string, label: string, ahead: array{url: string, label: string}}, next: array{shown: bool, onStep: bool, onReview: bool, text: string, form: string, name: string, value: string, disabled: bool, ready: bool, missing: string}}
 	 */
 	private static function bar( array $summary, array $step, array $shown, bool $review, bool $panel, array $first, int $kit, array $board, array $back ): array {
 		$next  = Cast::map( $step['next'] ?? null );

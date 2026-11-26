@@ -113,6 +113,20 @@ final class BuilderViewTest extends TestCase {
 		self::assertTrue( $this->view( array(), SlotKey::TRUCKS )['bar']['back']['shown'] );
 	}
 
+	// #152 (D-512): the first step gives the bar the next step's Back, back to it, which the store shows at Next's
+	// press; a step with its own Back, and the review, give none.
+	public function test_the_first_step_gives_the_next_steps_back_for_nexts_press(): void {
+		$first = $this->view( array(), SlotKey::DECK )['bar']['back']['ahead'];
+		self::assertSame( 'Back: Deck', $first['label'] );
+		self::assertStringContainsString( 'cbuild%5Bstep%5D=deck', $first['url'] );
+		$none = array(
+			'url'   => '',
+			'label' => '',
+		);
+		self::assertSame( $none, $this->view( array(), SlotKey::TRUCKS )['bar']['back']['ahead'], 'a step with its own Back' );
+		self::assertSame( $none, $this->view( array(), State::REVIEW )['bar']['back']['ahead'], 'the review' );
+	}
+
 	/**
 	 * The footer's Next on a step, with the answer's steps saying which need a pick.
 	 *

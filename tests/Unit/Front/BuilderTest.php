@@ -840,6 +840,10 @@ final class BuilderTest extends TestCase {
 					'url'   => self::url( array( 'deck' => '101', 'step' => 'deck' ) ),
 					'text'  => 'Back',
 					'label' => 'Back: Deck',
+					'ahead' => array(
+						'url'   => '',
+						'label' => '',
+					),
 				),
 				'next'  => array(
 					'shown'    => true,

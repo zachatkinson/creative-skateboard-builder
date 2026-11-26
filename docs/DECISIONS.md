@@ -252,6 +252,7 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-435 · A rating's average takes the language's decimal separator, not the shop's for prices](#d-435--a-ratings-average-takes-the-languages-decimal-separator-not-the-shops-for-prices--2026-11-26)
 - [D-436 · A deck card's height limit sets a long name's lines past two apart, so it holds in every engine's fonts](#d-436--a-deck-cards-height-limit-sets-a-long-names-lines-past-two-apart-so-it-holds-in-every-engines-fonts--2026-11-26)
 - [D-510 · On a phone the bar's buttons stay beside the total, Next's words breaking inside it](#d-510--on-a-phone-the-bars-buttons-stay-beside-the-total-nexts-words-breaking-inside-it--2026-11-26)
+- [D-512 · Next's press shows what its answer will: the deck step's width line goes, and the first step's bar takes the next step's Back](#d-512--nexts-press-shows-what-its-answer-will-the-deck-steps-width-line-goes-and-the-first-steps-bar-takes-the-next-steps-back--2026-11-26)
 
 ### Accessibility
 
@@ -6844,5 +6845,46 @@ Issue #155. Vitest's "takes a lock older than its limit from a holder still runn
 
 - **Red run.** A new case, "takes a lock older than its limit when the clock crosses a millisecond between judging it and giving up", sets the lock's time to a fraction past a millisecond and the clock to read that millisecond twice and then the next. Before the fix it failed every time: "The lock …/lock is still held by … token." (`lock.ts:138`, from `e2e-lock.test.ts:134`).
 - **After.** It passes, and the file's six tests passed 15 runs out of 15.
+
+**Status:** Accepted.
+
+### D-512 · Next's press shows what its answer will: the deck step's width line goes, and the first step's bar takes the next step's Back · 2026-11-26
+
+Issue #152, deferred from 1.3.0 (D-408). With the state route's answer held a second (D-406), Next pressed on the deck step shifted the step when the answer came: the width line and the deck count stayed until the answer took them, 0.021 on chromium-desktop and 0.021 to 0.046 on chromium-phone. M13's patch takes both away at the press (`onward()` in the store) and puts them back at a limit. Two things were left for this milestone:
+
+- the bar's Back, which the second step has and the first doesn't, still came with the answer: 0.001 on the desktop and 0.004 on the phone;
+- "the deck settles onto the stage … crosses over" failed on webkit-phone.
+
+**The two ways, measured** with the held-answer helper under a 129 px header, every answer held 1 s, five runs each on chromium-desktop, chromium-phone and webkit-phone, three workers on lane 3:
+
+| | Next, at the press (desktop / phone) | Next, asked ahead (desktop / phone) | Other moments | "The deck settles" |
+| --- | --- | --- | --- | --- |
+| The patch alone | 0.001 / 0.004, the bar's | 0.001 / 0.070, the bar's with the theme's footer | none new | chromium-phone 1 of 5 and webkit-phone 4 of 5 failed |
+| B: Back's place kept on the first step, once the build has a part | 0.000 / 0.000 | 0.000 / 0.065, the theme's footer alone | the deck's pick on the phone, 0.014: the bar grew 17 px when the estimate came, wrapping in the narrower total | webkit-phone 4 of 5 failed |
+| A: the server gives the first step the next step's Back, shown at the press | 0.000 / 0.000 | 0.000 / 0.059, the theme's footer alone | none new | 15 of 15 failed |
+
+**Why "the deck settles" failed.** The test pressed Next as soon as the deck's answer was drawn, and its total was still counting then. The count's last frame was drawn after the press, on the step the press had just changed: the width line gone in both ways, and Back shown as well in A. The test holds still the bar's place during the count, and that last frame is its reference. Neither way of handling Back caused it: the patch alone failed the same way. The test now presses Next once the count has landed on the server's total, as its three moments follow one another. A press during a count still ends it, since a press ends every moment.
+
+**After that change**, A passed every run: 35 of 35, "the deck settles", the held Next test and "what an answer a second late moves", five runs each on the three projects. B still adds 0.014 to the deck's pick on a phone.
+
+**Decision: A**, which leaves the smaller shift. B moves the bar's shift from Next to the deck's pick, and keeps an empty gap beside Next on every first step.
+
+- **The server:** `BuilderView::back()` gives the bar's `back` an `ahead`, `{url, label}`. On a step with no Back of its own, the first, it is the Back the next step will show: back to this step, read as "Back: Deck". Elsewhere it is empty. The view is the builder's own and no part of the public API, but `schema/state.json` now describes the bar's `back`, so the store's types have it.
+- **The store:** `onward()` handles both parts of Next's press to another step. It takes the deck step's width line and count away, as before, and on the first step it shows Back with the `ahead` words. At a limit, its `unfold` puts both back (D-364).
+- **What is left:** with Back at the press, Next's own words still change with the answer, from "Next: Trucks" to "Next: Wheels". Back then moves sideways by the difference, a shift under 0.0005 that rounds to 0.000 above. The held Next test reads each node's top, so it doesn't see a sideways move.
+
+**"Each moment answers within 200 ms" on the held-answer helper: not moved.** Moved, with every answer held a second and the builder's shifts read by `shiftsSince()`, it failed on chromium-desktop and chromium-phone on moments outside #152. This is the same on the tree without this change:
+
+- wheels: 0.001 on the desktop, cards; 0.017 on the phone, cards;
+- the swap: 0.001 on the desktop; 0.015 on the phone, cards;
+- grip: 0.001 on the phone, the bar;
+- step: under 0.0005, Next's words, as above.
+
+A gate can't land red, and fixing those moments is beyond #152, so the test keeps its quick answers. The moved test is kept as a patch, `l3-moments-held.patch`, in the milestone's lane handoff folder, for whoever takes it up. The findings are for Zach (lane 3's report).
+
+**Tests.**
+
+- **Red runs.** The held Next test, now counting the bar too ("… moves nothing of the step or the bar …"), on the patch alone, chromium-phone: "at the press: the builder's layout shift: 0.004 … [cbuild-bar__actions 766→783; cbuild-bar__more 792→809]". The store test "shows the next step's Back at the press of the first step's Next, and hides it again at a limit" failed with `onward()`'s Back part taken out (store.test.ts:4076). The step fix's own red runs are D-408's, in the M13 handoff's patch: 0.021, and 0.020 to 0.046.
+- **After.** As in the table, A's row. `BuilderViewTest::test_the_first_step_gives_the_next_steps_back_for_nexts_press` covers the server's `ahead`. Two store tests cover the press and the cases that leave Back alone, and the patch's two store tests cover the width line.
 
 **Status:** Accepted.

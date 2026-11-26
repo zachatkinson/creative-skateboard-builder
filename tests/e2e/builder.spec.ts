@@ -4677,6 +4677,21 @@ test.describe( 'Motion', () => {
 			'aria-busy',
 			'false'
 		);
+		// Next once the count has landed on the server's total, as the test's three moments follow one another. Pressed
+		// during the count, the press ends it (a press ends every moment) and takes the deck step's width line away
+		// (D-408): on webkit-phone under load the count was still running then, and its last frame was drawn on the
+		// shorter step (#152, D-512). The count's own frames are what this test holds still.
+		const total = page.locator( '.cbuild-bar__total .screen-reader-text' );
+		await expect
+			.poll( async () => {
+				const amount = await page
+					.locator( '.cbuild-bar__amount > :first-child' )
+					.textContent();
+				return ( await total.textContent() )?.endsWith(
+					` ${ amount }`
+				);
+			} )
+			.toBe( true );
 		await page
 			.locator( '.cbuild' )
 			.getByRole( 'button', { name: 'Next: Trucks' } )
@@ -5795,6 +5810,129 @@ test.describe( 'Motion', () => {
 		}
 		info.annotations.push( {
 			type: 'layout shift, answers a second late',
+			description: measured.join( '\n' ),
+		} );
+		// eslint-disable-next-line no-console
+		console.log( measured.join( '\n' ) );
+	} );
+
+	// D-406 found the step's moment shifting with the answers held: Next pressed and its answer a second late, whether
+	// the press asked for it or took the answer asked ahead (D-355) still on its way, as a shopper who knows what they
+	// want presses Next at once. The deck step's width line, which no later step has, stayed until the answer took it,
+	// and the cards moved up under the step's heading: 0.021 on a desktop and 0.040 on a phone (D-408). The bar's Back,
+	// which comes in beside Next on the second step, moved Next and the total too, 0.001 and 0.004: its place is now
+	// kept on the first step once the build has a part (#152, D-512).
+	test( 'Next pressed with its answer a second late moves nothing of the step or the bar when the answer comes, asked at the press or ahead', async ( {
+		page,
+	}, info ) => {
+		test.skip(
+			! info.project.name.startsWith( 'chromium' ),
+			'Only Chromium reports layout shift (the Layout Instability API).'
+		);
+		test.setTimeout( 60_000 );
+		const builder = page.locator( '.cbuild' );
+		const deck = id( 'builder-test-deck-8-0' );
+		// A request for the trucks' step: the trucks' answer asks ahead for the wheels in its turn.
+		const trucks = ( request: { url: () => string } ) => {
+			const url = new URL( request.url() );
+			return (
+				url.pathname.endsWith( '/state' ) &&
+				'trucks' === url.searchParams.get( 'cbuild[step]' )
+			);
+		};
+		// The page opened on the deck step with a deck, Next asking at its press; and a deck picked, Next pressed as
+		// soon as the deck's answer is drawn, while the answer asked ahead for it is held.
+		const ways: [
+			string,
+			Record< string, string | number >,
+			() => Promise< void >,
+			number,
+		][] = [
+			[ 'at the press', { deck, step: 'deck' }, async () => {}, 1 ],
+			[
+				'asked ahead',
+				{ _width: '8in', step: 'deck' },
+				// Next pressed as soon as the deck's answer has asked ahead for it.
+				async () => {
+					const ahead = page.waitForRequest( trucks );
+					await choose( page, 'Builder test deck 8.0' );
+					await ahead;
+				},
+				0,
+			],
+		];
+		const measured: string[] = [];
+		for ( const [ way, link, before, asks ] of ways ) {
+			await page.unrouteAll( { behavior: 'ignoreErrors' } );
+			const held = await holdAnswers( page );
+			await page.goto( linkTo( link ) );
+			await expect( builder ).toHaveAttribute( 'data-ready', '' );
+			await emojiDone( page );
+			await themeHeader( page, 129 );
+			await watchShifts( page );
+			// The trucks asked for, at the press or ahead of it, and when each answer came.
+			const asked: number[] = [];
+			const came: number[] = [];
+			const ask = ( request: { url: () => string } ) => {
+				if ( trucks( request ) ) {
+					asked.push( Date.now() );
+				}
+			};
+			const answer = ( request: { url: () => string } ) => {
+				if ( trucks( request ) ) {
+					came.push( Date.now() );
+				}
+			};
+			page.on( 'request', ask );
+			page.on( 'requestfinished', answer );
+			await before();
+			const from = await pageNow( page );
+			const pressed = Date.now();
+			await builder
+				.getByRole( 'button', { name: 'Next: Trucks' } )
+				.first()
+				.click();
+			await expect
+				.poll( () => page.url(), { timeout: 10_000 } )
+				.toContain( 'cbuild%5Bstep%5D=trucks' );
+			await held.drained();
+			await expect( builder ).toHaveAttribute( 'aria-busy', 'false' );
+			// The answer drawn and its pictures painted.
+			await page.waitForTimeout( 1000 );
+			page.off( 'request', ask );
+			page.off( 'requestfinished', answer );
+			expect(
+				asked.filter( ( at ) => at >= pressed ).length,
+				`${ way }: asked at the press`
+			).toBe( asks );
+			expect( asked.length, `${ way }: the trucks asked once` ).toBe( 1 );
+			// Past the 500 ms after the press that CLS leaves out, or the press measures nothing.
+			expect(
+				( came[ 0 ] ?? 0 ) - pressed,
+				`${ way }: the answer came late`
+			).toBeGreaterThan( 500 );
+			const { shifts, said } = await shiftsSince( page, from );
+			measured.push( `${ way }: ${ said }` );
+			// Every shift that moves a node of the builder's, the bar's included: Back's place is kept on the first step
+			// (#152, D-512). A theme's footer the taller step moves down in the same frame is the page's own (D-406): a
+			// builder node in that frame that kept its place moved nothing.
+			const step = shifts
+				.filter( ( shift ) =>
+					shift.sources.some( ( source ) => {
+						const [ name, move ] = source.split( ' ' );
+						const [ was, now ] = ( move ?? '' ).split( '→' );
+						return (
+							( name ?? '' ).startsWith( 'cbuild' ) && was !== now
+						);
+					} )
+				)
+				.reduce( ( sum, shift ) => sum + shift.value, 0 );
+			expect
+				.soft( step, `${ way }: the builder's layout shift: ${ said }` )
+				.toBe( 0 );
+		}
+		info.annotations.push( {
+			type: 'layout shift, Next a second late',
 			description: measured.join( '\n' ),
 		} );
 		// eslint-disable-next-line no-console

@@ -657,6 +657,37 @@ export interface CbuildState {
 			 * Whether the build has a part, so the bar keeps the estimate's line while there is none. The store sets it at a part's press, before the answer (1.2.0, D-374).
 			 */
 			started?: boolean;
+			/**
+			 * The bar's Back: shown, with its address and the words it is read with (1.4.0 describes it).
+			 */
+			back?: {
+				/**
+				 * Whether Back is shown: on every step but the first, and at the review.
+				 */
+				shown: boolean;
+				/**
+				 * Where Back goes.
+				 */
+				url: string;
+				/**
+				 * What Back is read as, such as Back: Deck.
+				 */
+				label: string;
+				/**
+				 * From 1.4.0, on a step with no Back of its own: the Back the next step shows, which the store shows at Next's press, so it does not come in with the answer and move Next (#152, D-512). Empty elsewhere.
+				 */
+				ahead: {
+					/**
+					 * Where it goes: this step.
+					 */
+					url: string;
+					/**
+					 * What it is read as, such as Back: Deck.
+					 */
+					label: string;
+				};
+				[k: string]: unknown;
+			};
 			next: {
 				/**
 				 * Whether the step's Next goes on: the step has a pick, or needs none; true at the review and on the change panel. Until then the store dims Next (1.1.0).

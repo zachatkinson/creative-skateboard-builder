@@ -3977,6 +3977,211 @@ describe( 'what a press foretells', () => {
 		expect( 'swapped' in state.view ).toBe( false );
 	} );
 
+	// D-408: the deck step's width line stayed at Next's press until the answer, a second late on the demo, took it, and
+	// the cards moved up under the heading (D-406). It goes at the press, with the "Showing" line, as the answer takes
+	// them; a press the limit stops puts them back.
+	const CHOSEN = {
+		...START,
+		step: {
+			slot: 'deck',
+			stepName: 'cbuild[step]',
+			next: { value: 'trucks' },
+			more: { count: 'Showing 3 of 3' },
+			shelf: { width: { shown: true } },
+		},
+	};
+	type Onward = {
+		more: { count: string };
+		shelf: { width: { shown: boolean } };
+	};
+	const onward = (): Onward => state.view.step as unknown as Onward;
+
+	it( 'takes the deck step’s width line and its count away at the press of Next, and puts them back at a limit', async () => {
+		const { root, next } = builder();
+		state.view = structuredClone( CHOSEN ) as unknown as typeof state.view;
+		reply = () =>
+			new Response( JSON.stringify( { message: 'Later.' } ), {
+				status: 429,
+				headers: { 'Content-Type': 'application/json' },
+			} );
+		actions.submit(
+			new SubmitEvent( 'submit', { submitter: next, cancelable: true } )
+		);
+		expect( onward().shelf.width.shown ).toBe( false );
+		expect( onward().more.count ).toBe( '' );
+		expect( root.hasAttribute( 'data-folded' ) ).toBe( false );
+		await settle();
+		await vi.advanceTimersByTimeAsync( 50 );
+		expect( onward().shelf.width.shown ).toBe( true );
+		expect( onward().more.count ).toBe( 'Showing 3 of 3' );
+		expect( state.limited ).toBe( 'Later.' );
+
+		// A step with no count has none made.
+		const { next: again } = builder();
+		const counted = structuredClone( CHOSEN ) as {
+			step: { more?: unknown };
+		};
+		delete counted.step.more;
+		state.view = counted as unknown as typeof state.view;
+		actions.submit(
+			new SubmitEvent( 'submit', { submitter: again, cancelable: true } )
+		);
+		expect( onward().shelf.width.shown ).toBe( false );
+		expect( 'more' in ( state.view.step as object ) ).toBe( false );
+		await settle();
+		await vi.advanceTimersByTimeAsync( 50 );
+		expect( onward().shelf.width.shown ).toBe( true );
+		expect( 'more' in ( state.view.step as object ) ).toBe( false );
+	} );
+
+	// #152 (D-512): the first step has no Back; the second's came in with the answer a second late, narrowed the total
+	// and moved Next. The view gives the first step the next step's Back, which the press shows; a limit hides it again.
+	type Back = {
+		shown: boolean;
+		url: string;
+		label: string;
+		ahead: { url: string; label: string };
+	};
+	const FIRST = {
+		...START,
+		step: {
+			slot: 'deck',
+			stepName: 'cbuild[step]',
+			next: { value: 'trucks' },
+		},
+		bar: {
+			next: { ready: true, missing: '' },
+			back: {
+				shown: false,
+				url: '',
+				label: '',
+				ahead: { url: '/kit/?cbuild[step]=deck', label: 'Back: Deck' },
+			},
+		},
+	};
+	const back = (): Back =>
+		( state.view as unknown as { bar: { back: Back } } ).bar.back;
+
+	it( 'shows the next step’s Back at the press of the first step’s Next, and hides it again at a limit', async () => {
+		const { next } = builder();
+		state.view = structuredClone( FIRST ) as unknown as typeof state.view;
+		reply = () =>
+			new Response( JSON.stringify( { message: 'Later.' } ), {
+				status: 429,
+				headers: { 'Content-Type': 'application/json' },
+			} );
+		actions.submit(
+			new SubmitEvent( 'submit', { submitter: next, cancelable: true } )
+		);
+		expect( back() ).toEqual( {
+			shown: true,
+			url: '/kit/?cbuild[step]=deck',
+			label: 'Back: Deck',
+			ahead: { url: '/kit/?cbuild[step]=deck', label: 'Back: Deck' },
+		} );
+		await settle();
+		await vi.advanceTimersByTimeAsync( 50 );
+		expect( back() ).toEqual( FIRST.bar.back );
+		expect( state.limited ).toBe( 'Later.' );
+	} );
+
+	it( 'leaves Back as it is where the step has its own, the view gives none, or the press is no Next', () => {
+		const cases: [ string, ( view: typeof FIRST ) => void, string? ][] = [
+			[
+				'its own Back',
+				( view ) => {
+					view.bar.back.shown = true;
+					view.bar.back.url = '/kit/?cbuild[step]=grip';
+					view.bar.back.label = 'Back: Grip';
+				},
+			],
+			[ 'none given', ( view ) => ( view.bar.back.ahead.url = '' ) ],
+			[ 'no bar', ( view ) => delete ( view as { bar?: unknown } ).bar ],
+			[ 'another value', () => undefined, 'wheels' ],
+		];
+		for ( const [ name, change, value ] of cases ) {
+			const { next } = builder();
+			if ( undefined !== value ) {
+				next.value = value;
+			}
+			const view = structuredClone( FIRST );
+			change( view );
+			const before = JSON.stringify(
+				( view as { bar?: unknown } ).bar ?? null
+			);
+			state.view = view as unknown as typeof state.view;
+			reply = () => new Promise< Response >( () => undefined );
+			actions.submit(
+				new SubmitEvent( 'submit', {
+					submitter: next,
+					cancelable: true,
+				} )
+			);
+			expect(
+				`${ name }: ${ JSON.stringify(
+					( state.view as { bar?: unknown } ).bar ?? null
+				) }`
+			).toBe( `${ name }: ${ before }` );
+		}
+	} );
+
+	it( 'leaves the width line where the press is no Next to another step, or the step shows none', () => {
+		const cases: [
+			string,
+			( view: typeof CHOSEN ) => void,
+			string?,
+			string?,
+		][] = [
+			[
+				'another step’s width hidden',
+				( view ) => ( view.step.shelf.width.shown = false ),
+			],
+			[
+				'no next step',
+				( view ) => ( view.step.next.value = '' ),
+				'cbuild[step]',
+				'',
+			],
+			[
+				'the same step',
+				( view ) => ( view.step.next.value = 'deck' ),
+				'cbuild[step]',
+				'deck',
+			],
+			[ 'another name', () => undefined, 'cbuild[sort]', 'trucks' ],
+			[ 'another value', () => undefined, 'cbuild[step]', 'wheels' ],
+		];
+		for ( const [ name, change, button, value ] of cases ) {
+			const { next } = builder();
+			if ( undefined !== button ) {
+				next.name = button;
+				next.value = value ?? '';
+			}
+			const view = structuredClone( CHOSEN );
+			change( view );
+			const shown = view.step.shelf.width.shown;
+			state.view = view as unknown as typeof state.view;
+			reply = () => new Promise< Response >( () => undefined );
+			actions.submit(
+				new SubmitEvent( 'submit', {
+					submitter: next,
+					cancelable: true,
+				} )
+			);
+			expect(
+				`${ name }: ${ String( onward().shelf.width.shown ) }`
+			).toBe( `${ name }: ${ String( shown ) }` );
+			expect( `${ name }: ${ onward().more.count }` ).toBe(
+				`${ name }: Showing 3 of 3`
+			);
+		}
+		// A form sent with no button pressed, as Enter in a field sends it.
+		builder();
+		state.view = structuredClone( CHOSEN ) as unknown as typeof state.view;
+		actions.submit( new SubmitEvent( 'submit', { cancelable: true } ) );
+		expect( onward().shelf.width.shown ).toBe( true );
+	} );
+
 	// The auditor's second pass on M12, should-fix 3: a width press the rate limit or the store's limit stopped kept its
 	// fold, the widths folded away and no decks under them, and only Change asked again (D-364).
 	it( 'asks the width question again, its options open and the pressed one focused, when the press hits a limit', async () => {
