@@ -88,6 +88,23 @@ git switch -q one
 check "two lanes adding the same number still conflict" "! git merge -q --no-edit three >/dev/null 2>&1"
 git merge --abort
 
+# Two lanes add entries in the middle, above an entry both already have: each side's blank line can come at its end, and
+# the entry after the settled ones must still have a blank line before it (lane 1's run on into D-490, M14).
+git switch -q main
+git switch -qc mid
+printf '\n### D-490 · Later\n\nAlready there.\n' >> docs/DECISIONS.md
+git commit -qam mid
+git switch -qc five
+awk '/^### D-490/ { print "### D-470 · Five"; print ""; print "From five."; print "" } { print }' docs/DECISIONS.md > d.tmp && mv d.tmp docs/DECISIONS.md
+git commit -qam five
+git switch -q mid
+git switch -qc six
+awk '/^### D-490/ { print "### D-480 · Six"; print ""; print "From six."; print "" } { print }' docs/DECISIONS.md > d.tmp && mv d.tmp docs/DECISIONS.md
+git commit -qam six
+check "two lanes' entries above a shared one merge with no conflict" "git merge -q --no-edit five >/dev/null 2>&1"
+check "those entries are in number order" "[ \"\$(grep -o '^### D-[0-9]*' docs/DECISIONS.md | tr '\n' ' ')\" = '### D-1 ### D-470 ### D-480 ### D-490 ' ]"
+check "the shared entry after them still has a blank line before it" "! grep -B1 '^### D-' docs/DECISIONS.md | grep -v '^### D-' | grep -v '^--$' | grep -q ."
+
 cd "$root"
 frag="$work/frag"
 mkdir -p "$frag/changelog.d" "$frag/tools"
