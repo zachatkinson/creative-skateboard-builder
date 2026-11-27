@@ -125,7 +125,8 @@ final class Health {
 	/**
 	 * What the Catalogue check found, for Site Health. Background work that failed is left out: the index's and the
 	 * jobs' tests report it, and one failure is not shown three times. Parts with no layer image are counted apart, by
-	 * part: they stay in the builder with their photo drawn, so they are not things that keep a part out (D-211).
+	 * part: they stay in the builder with their photo drawn, so they are not things that keep a part out (D-211). A size
+	 * only the 3D view assumes is left out too, from 1.4.0 (D-485).
 	 *
 	 * @since 0.3.0
 	 *
@@ -140,6 +141,10 @@ final class Health {
 			// Background work has its own test, variations that share a card are what the builder does (D-281), and a
 			// part kept out is what the shop chose (#116).
 			if ( in_array( $finding->code, array( CatalogueCheck::REINDEX_FAILED, CatalogueCheck::IMPORT_FAILED, CatalogueCheck::JOBS_FAILED, CatalogueCheck::LOOK_SHARED, CatalogueCheck::NOT_OFFERED ), true ) ) {
+				continue;
+			}
+			// A size only the 3D view assumes leaves the part offered and drawn, so it is said, not a fix (D-485).
+			if ( CatalogueCheck::ASSUMED === $finding->code && CatalogueCheck::SCENE_ASSUMED === ( $finding->values['note'] ?? '' ) ) {
 				continue;
 			}
 			if ( CatalogueCheck::LAYER_MISSING === $finding->code ) {

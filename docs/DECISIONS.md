@@ -120,6 +120,7 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-287 · The specs CSV reads and writes a part's Layer image, by ID or file name, by the field's rules](#d-287--the-specs-csv-reads-and-writes-a-parts-layer-image-by-id-or-file-name-by-the-fields-rules--2026-11-19)
 - [D-472 · The 3D view's five optional specs, and a kick angle in whole degrees](#d-472--the-3d-views-five-optional-specs-and-a-kick-angle-in-whole-degrees--2026-11-26)
 - [D-473 · The 3D view's usual values, from published deck and truck specs](#d-473--the-3d-views-usual-values-from-published-deck-and-truck-specs--2026-11-26)
+- [D-485 · Site Health leaves out a size only the 3D view assumes](#d-485--site-health-leaves-out-a-size-only-the-3d-view-assumes--2026-11-26)
 
 ### Kits and their settings
 
@@ -7302,5 +7303,15 @@ Cowork's review of 1.3.0, F39 (#162). A 118 px element put in `.cbuild-step__abo
 
 - **Red run** on chromium-phone: "the answer's layout shift: 0.034 +1172 ms 0.034 [cbuild-cards 545→0]" (shelf.spec.ts:965). The desktop measured 0.000 here.
 - **After:** 0.000 on both, and the cards at the event are the answer's. The #143 tests and the F30 width tests pass.
+
+**Status:** Accepted.
+
+### D-485 · Site Health leaves out a size only the 3D view assumes · 2026-11-26
+
+M14's audit, F4. Every new kit has the 3D view on (D-476), and the Catalogue check lists each deck or wheel the view assumes a usual size for (D-473). `Health::catalogue()` counted each of those as a thing to fix, so after an update Site Health said "found N things to fix" for specs no part had before 1.4.0, though every one of those parts is offered and drawn.
+
+**Decision:** `Health::catalogue()` skips an `spec_assumed` finding whose note is `scene_assumed`, as it skips `look_shared` and `part_not_offered`: said on the Catalogue check, not counted as a fix. A rule's own assumption (a hole pattern, an axle) is still counted, since a fit was judged without it.
+
+**Test.** HealthTest, "a size only the 3d view assumes is said not counted as a fix": two scene findings give GOOD and nothing counted, and a rule's assumption beside them gives one finding on one part. Red run: "Failed asserting that two arrays are identical" (HealthTest.php:224).
 
 **Status:** Accepted.
