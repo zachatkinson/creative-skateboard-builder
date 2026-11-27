@@ -14,6 +14,8 @@
  * @var int                                                                  $past   How many of those it does not list.
  * @var list<array{kit: string, about: string, link: string, says: string}> $alike  Variations that share a card, as far as the page lists (D-281).
  * @var int                                                                  $beyond How many of those it does not list.
+ * @var list<array{kit: string, about: string, link: string, says: string}> $scene  Sizes only the 3D view assumes, as far as the page lists (D-532).
+ * @var int                                                                  $drawn  How many of those it does not list.
  * @var list<array{kit: string, about: string, link: string, says: string}> $kept   Parts the shop keeps out of the builder, as far as the page lists (#116).
  * @var int                                                                  $aside  How many of those it does not list.
  * @var bool                                                                 $none  Whether the shop has no kit yet.
@@ -45,7 +47,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	<?php if ( $asked ) : ?>
 		<div class="notice notice-success inline" role="status"><p><?php esc_html_e( 'Every part is being read again in the background, 100 at a time. Tools > Site Health shows how far it is.', 'creative-skateboard-builder' ); ?></p></div>
 	<?php endif; ?>
-	<?php if ( $ran && 0 === $count && 0 === $unlaid && array() === $alike ) : ?>
+	<?php if ( $ran && 0 === $count && 0 === $unlaid && array() === $alike && array() === $scene ) : ?>
 		<div class="notice notice-success inline" role="status"><p><?php esc_html_e( 'The check found nothing to fix.', 'creative-skateboard-builder' ); ?></p></div>
 	<?php elseif ( $ran && 0 === $count ) : ?>
 		<div class="notice notice-success inline" role="status"><p><?php esc_html_e( 'Nothing the check found keeps a part out of the builder.', 'creative-skateboard-builder' ); ?></p></div>
@@ -71,6 +73,14 @@ if ( ! defined( 'ABSPATH' ) ) {
 			$bare,
 			$past,
 			$cbuild_fix,
+		),
+		array(
+			'cbuild-scene',
+			__( 'Sizes the 3D view assumes', 'creative-skateboard-builder' ),
+			__( 'These parts leave out a size the 3D view draws, so it draws the usual one. Each is still offered, and needs no fix. Fill the size in on its Part specs to draw the part as it is.', 'creative-skateboard-builder' ),
+			$scene,
+			$drawn,
+			__( 'What it says', 'creative-skateboard-builder' ),
 		),
 		array(
 			'cbuild-shared',

@@ -53,7 +53,7 @@ final class LabelsTest extends TestCase {
 			'nose_length'      => array( 'Nose length', 'Nose length (in)' ),
 			'tail_length'      => array( 'Tail length', 'Tail length (in)' ),
 			'concave_depth'    => array( 'Concave depth', 'Concave depth (in)' ),
-			'kick_angle'       => array( 'Kick angle in degrees', 'Kick angle in degrees' ),
+			'kick_angle'       => array( 'Kick angle', 'Kick angle (°)' ),
 			'wheel_width'      => array( 'Wheel width', 'Wheel width (mm)' ),
 		);
 		self::assertSame( array_column( SpecKey::cases(), 'value' ), array_keys( $names ), 'every spec, and none twice' );
@@ -95,6 +95,8 @@ final class LabelsTest extends TestCase {
 			'a count'                   => array( SpecKey::SetSize, '4', '4' ),
 			'a count in the thousands'  => array( SpecKey::SetSize, '1000', '1,000' ),
 			'a count is whole'          => array( SpecKey::SetSize, '4.9', '4' ),
+			'degrees'                   => array( SpecKey::KickAngle, '20', '20°' ),
+			'degrees in the thousands'  => array( SpecKey::KickAngle, '1000', '1,000°' ),
 			'a choice'                  => array( SpecKey::HeightClass, 'low', 'Low' ),
 			'a choice not known'        => array( SpecKey::HolePattern, 'other', 'other' ),
 		);

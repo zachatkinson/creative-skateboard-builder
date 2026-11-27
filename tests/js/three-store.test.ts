@@ -36,6 +36,8 @@ interface Defined {
 	state: {
 		view: Record< string, unknown >;
 		status: string;
+		canTurn: boolean;
+		readonly turns: boolean;
 		three: {
 			open: boolean;
 			loading: boolean;
@@ -98,6 +100,8 @@ beforeEach( () => {
 		scene: scene(),
 	};
 	window.matchMedia = vi.fn( () => ( { matches: false } ) ) as never;
+	// jsdom has no scrolling: the open view's canvas is brought on to the screen a frame after it opens (D-523).
+	Element.prototype.scrollIntoView = vi.fn();
 } );
 
 afterEach( () => {
@@ -152,6 +156,39 @@ describe( 'View in 3D', () => {
 		await actions.three();
 		expect( state.three.open ).toBe( true );
 		expect( opened.open ).toHaveBeenCalledTimes( 2 );
+	} );
+
+	// M14's walkthrough, finding 3 (D-522): the view's own Top and Underside move its camera, so the board's are hidden.
+	it( 'hides the board’s turn while open, and shows it again once closed, where the store can turn it', async () => {
+		page();
+		expect( state.canTurn ).toBe( true );
+		expect( state.turns ).toBe( true );
+		await actions.three();
+		expect( state.turns ).toBe( false );
+		await actions.three();
+		expect( state.turns ).toBe( true );
+		state.canTurn = false;
+		expect( state.turns ).toBe( false );
+	} );
+
+	// M14's walkthrough, finding 1 (D-523): on a phone the page was left with the canvas above the screen.
+	it( 'brings the canvas on to the screen once the open view is laid out, and not where it closed first', async () => {
+		vi.useFakeTimers( { toFake: [ 'requestAnimationFrame' ] } );
+		const shown = vi.fn();
+		Element.prototype.scrollIntoView = shown;
+		const canvas = page()!;
+		await actions.three();
+		expect( shown ).not.toHaveBeenCalled();
+		vi.advanceTimersToNextFrame();
+		expect( shown ).toHaveBeenCalledTimes( 1 );
+		expect( shown.mock.contexts[ 0 ] ).toBe( canvas );
+		expect( shown ).toHaveBeenCalledWith( { block: 'nearest' } );
+		await actions.three();
+		await actions.three();
+		await actions.three();
+		vi.advanceTimersToNextFrame();
+		expect( shown ).toHaveBeenCalledTimes( 1 );
+		vi.useRealTimers();
 	} );
 
 	it( 'stays closed where it was pressed again while it loaded', async () => {

@@ -92,6 +92,8 @@ interface State {
 	added: boolean;
 	canCopy: boolean;
 	canTurn: boolean;
+	/** Whether the turn's two buttons show: once the store runs, and not while the 3D view is open, whose own Top and Underside move its camera (D-522). */
+	readonly turns: boolean;
 	live: boolean;
 	turning: boolean;
 	/** The route's rate limit, in its words, while the step waits to be asked again; empty otherwise. */
@@ -1656,6 +1658,15 @@ async function rise( state: State ): Promise< void > {
 		return;
 	}
 	state.three.loading = false;
+	// The stage stops sticking as the view opens and grows by the view's height, above the cards: on a phone the
+	// browser's scroll anchoring then kept the cards where they were and left the canvas above the screen (M14's
+	// walkthrough, D-523). Once the open view is laid out, its canvas comes on to the screen by the least scroll, its
+	// top first where it is above, and nothing moves where it is already shown.
+	window.requestAnimationFrame( () => {
+		if ( ticket === opening ) {
+			canvas.scrollIntoView( { block: 'nearest' } );
+		}
+	} );
 }
 
 /**
@@ -1809,6 +1820,9 @@ const { state } = store(
 				playing: false,
 			},
 			missing: '',
+			get turns(): boolean {
+				return state.canTurn && ! state.three.open;
+			},
 			get dimmed(): boolean {
 				return state.live && false === state.view.bar?.next.ready;
 			},

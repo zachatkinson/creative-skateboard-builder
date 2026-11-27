@@ -1095,6 +1095,220 @@ test.describe( '3D view (milestone 14)', () => {
 		await expect( page.locator( '.cbuild-picture__side' ) ).toBeVisible();
 	} );
 
+	// M14's walkthrough, finding 3: the flat board's Underside and Top stayed beside the view's own Top and Underside,
+	// two buttons of each name, and "Top" stayed pressed whatever the camera showed (D-522).
+	test( 'while open, one Top and one Underside show, the view’s, and the board’s come back on close as they were', async ( {
+		page,
+	} ) => {
+		const named = ( name: string ) =>
+			page
+				.locator( '.cbuild' )
+				.getByRole( 'button', { name, exact: true } );
+		const turn = page.locator( '.cbuild-picture__sides' );
+		const pressed = () =>
+			turn
+				.getByRole( 'button' )
+				.evaluateAll( ( buttons ) =>
+					buttons.map( ( button ) =>
+						button.getAttribute( 'aria-pressed' )
+					)
+				);
+		await page.goto( build( fixture().three.page ) );
+		const before = await pressed();
+		expect( before ).toHaveLength( 2 );
+		await open( page );
+		for ( const name of [ 'Top', 'Underside' ] ) {
+			await expect( named( name ), name ).toHaveCount( 1 );
+			await expect(
+				page
+					.getByRole( 'group', { name: 'Views of the board' } )
+					.getByRole( 'button', { name, exact: true } )
+			).toBeVisible();
+		}
+		await expect( turn ).toHaveAttribute( 'hidden', '' );
+		const toggle = page.getByRole( 'button', { name: 'View in 3D' } );
+		await expect( toggle ).toHaveAttribute( 'aria-pressed', 'true' );
+		await toggle.click();
+		await expect( toggle ).toHaveAttribute( 'aria-pressed', 'false' );
+		await expect( turn ).toBeVisible();
+		for ( const name of [ 'Top', 'Underside' ] ) {
+			await expect( named( name ), name ).toHaveCount( 1 );
+		}
+		expect( await pressed() ).toEqual( before );
+	} );
+
+	// M14's walkthrough, finding 1: on a phone a tap on View in 3D left the page about 404 px further down, the canvas
+	// above the top of the screen. The stage stops sticking as the view opens and grows by the view's height, and the
+	// browser's scroll anchoring kept the cards under it in place (D-523). From the top of the page, from where the
+	// stage starts to stick and from where it has stuck, the canvas is on the screen after the tap, its top on it.
+	for ( const from of [ 0, 150, 500 ] ) {
+		test( `on a phone a tap on View in 3D, ${ from } px down the page, leaves the canvas on the screen`, async ( {
+			page,
+		} ) => {
+			test.skip(
+				! test.info().project.use.hasTouch,
+				'A tap needs a touch screen: chromium-phone and webkit-phone.'
+			);
+			await page.setViewportSize( { width: 390, height: 844 } );
+			await page.goto( build( fixture().three.page ) );
+			test.skip(
+				! ( await drawsWebGL( page ) ),
+				'This browser has no WebGL 2 here; the fallback tests cover it.'
+			);
+			await page.evaluate( ( down ) => window.scrollTo( 0, down ), from );
+			await expect
+				.poll( () => page.evaluate( () => window.scrollY ) )
+				.toBe( from );
+			const toggle = page.locator( '.cbuild-3d__open' );
+			await toggle.tap();
+			await expect( toggle ).toHaveAttribute( 'aria-pressed', 'true' );
+			await still( page );
+			const [ top, bottom, height ] = await page
+				.locator( '.cbuild-3d__canvas' )
+				.evaluate( ( canvas ) => {
+					const box = canvas.getBoundingClientRect();
+					return [ box.top, box.bottom, window.innerHeight ];
+				} );
+			expect( top, 'the canvas’s top' ).toBeGreaterThanOrEqual( -0.5 );
+			expect( top, 'the canvas’s top' ).toBeLessThan( height! );
+			expect( bottom, 'the canvas’s foot' ).toBeGreaterThan( 0 );
+		} );
+	}
+
+	// M14's walkthrough, finding 2: on a phone held sideways the open view's 609 px frame lay over the words' column,
+	// View in 3D, which closes it, and the turn's buttons with it (D-524).
+	for ( const language of [ 'English', 'French' ] as const ) {
+		test( `on a phone held sideways in ${ language }, the open view covers none of the controls, and View in 3D closes it`, async ( {
+			page,
+		} ) => {
+			await page.setViewportSize( { width: 844, height: 390 } );
+			if ( 'French' === language ) {
+				await page.setExtraHTTPHeaders( {
+					'x-cbuild-e2e-locale': 'fr_CA',
+					'x-cbuild-e2e-translated': '1',
+				} );
+			}
+			await page.goto( build( fixture().three.page ) );
+			test.skip(
+				! ( await drawsWebGL( page ) ),
+				'This browser has no WebGL 2 here; the fallback tests cover it.'
+			);
+			const toggle = page.locator( '.cbuild-3d__open' );
+			await toggle.click();
+			await expect( toggle ).toHaveAttribute( 'aria-pressed', 'true' );
+			await expect( page.locator( '.cbuild-3d__canvas' ) ).toBeVisible();
+			await still( page );
+			await toggle.evaluate( ( shown ) =>
+				shown.scrollIntoView( { block: 'center' } )
+			);
+			const found = await toggle.evaluate( ( shown ) => {
+				const box = ( element: Element ) => {
+					const r = element.getBoundingClientRect();
+					return [ r.left, r.top, r.right, r.bottom ];
+				};
+				const [ left, top, right, bottom ] = box( shown );
+				const others = [
+					...shown
+						.closest( '.cbuild__stage' )!
+						.querySelectorAll(
+							'button, a, canvas, .cbuild-3d__frame'
+						),
+				]
+					.filter(
+						( other ) =>
+							other !== shown &&
+							0 !== other.getClientRects().length &&
+							'hidden' !== getComputedStyle( other ).visibility
+					)
+					.filter( ( other ) => {
+						const [ l, t, r, b ] = box( other );
+						return (
+							l! < right! &&
+							r! > left! &&
+							t! < bottom! &&
+							b! > top!
+						);
+					} )
+					.map(
+						( other ) =>
+							`${ other.tagName } ${ String( other.className ) } ${ other.textContent?.trim() }`
+					);
+				const hit = document.elementFromPoint(
+					( left! + right! ) / 2,
+					( top! + bottom! ) / 2
+				);
+				return { others, hit: hit === shown || shown.contains( hit ) };
+			} );
+			expect( found.others, 'controls under View in 3D' ).toEqual( [] );
+			expect( found.hit, 'View in 3D at its own centre' ).toBe( true );
+			await toggle.click( { timeout: 5000 } );
+			await expect( toggle ).toHaveAttribute( 'aria-pressed', 'false' );
+			await expect( page.locator( '.cbuild-3d__stage' ) ).toBeHidden();
+		} );
+	}
+
+	// M14's walkthrough, finding 4: on a phone the fallback's message shared the parts' labels' row, squeezed into a
+	// column beside them that ended where "Bearings" began (D-525). Upright on a phone and on a desktop, it has a row of
+	// its own: no label, part or button shares its lines, or lies over it.
+	for ( const [ name, size ] of [
+		[ 'a phone', { width: 390, height: 844 } ],
+		[ 'a desktop', { width: 1440, height: 900 } ],
+	] as const ) {
+		test( `on ${ name } the fallback’s message has a place of its own`, async ( {
+			page,
+		} ) => {
+			await page.setViewportSize( size );
+			await page.addInitScript( () => {
+				HTMLCanvasElement.prototype.getContext = ( () =>
+					null ) as typeof HTMLCanvasElement.prototype.getContext;
+			} );
+			// The whole build, on the grip step, as the walkthrough had it: bearings and hardware have no layer image, so
+			// their labels are under the board.
+			const url = new URL( build( fixture().three.page ) );
+			for ( const [ slot, sku ] of [
+				[ 'bearings', 'builder-test-bearings' ],
+				[ 'hardware', 'builder-test-bolts-1' ],
+				[ 'grip', 'builder-test-grip' ],
+			] as const ) {
+				url.searchParams.set(
+					`cbuild[${ slot }]`,
+					String( fixture().parts[ sku ] )
+				);
+			}
+			url.searchParams.set( 'cbuild[step]', 'grip' );
+			await page.goto( url.toString() );
+			await page.locator( '.cbuild-3d__open' ).click();
+			const message = page.locator( '.cbuild-3d__failed' );
+			await expect( message ).toBeVisible();
+			const over = await message.evaluate( ( shown ) => {
+				const a = shown.getBoundingClientRect();
+				return [
+					...shown
+						.closest( '.cbuild__stage' )!
+						.querySelectorAll(
+							'.cbuild-picture__item, .cbuild-picture__label, button, .cbuild-board'
+						),
+				]
+					.filter(
+						( other ) =>
+							0 !== other.getClientRects().length &&
+							'hidden' !== getComputedStyle( other ).visibility
+					)
+					.filter( ( other ) => {
+						const b = other.getBoundingClientRect();
+						return (
+							b.width > 0 && a.top < b.bottom && a.bottom > b.top
+						);
+					} )
+					.map(
+						( other ) =>
+							`${ String( other.className ) } ${ other.textContent?.trim() }`
+					);
+			} );
+			expect( over, 'what shares the message’s lines' ).toEqual( [] );
+		} );
+	}
+
 	// The auditor's M14 review, F7: View in 3D shared the turn's cell, and covered its buttons at 320 px in French; on
 	// a phone held sideways it took a row of its own, so the board was smaller before the press. Upright it now goes
 	// beside the heading, the board's box as with no 3D view; sideways the strip grows to hold it, the board its size

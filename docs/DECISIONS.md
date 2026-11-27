@@ -121,6 +121,8 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-472 · The 3D view's five optional specs, and a kick angle in whole degrees](#d-472--the-3d-views-five-optional-specs-and-a-kick-angle-in-whole-degrees--2026-11-26)
 - [D-473 · The 3D view's usual values, from published deck and truck specs](#d-473--the-3d-views-usual-values-from-published-deck-and-truck-specs--2026-11-26)
 - [D-485 · Site Health leaves out a size only the 3D view assumes](#d-485--site-health-leaves-out-a-size-only-the-3d-view-assumes--2026-11-26)
+- [D-532 · The Catalogue check lists the 3D view's usual sizes apart, and counts as Site Health does](#d-532--the-catalogue-check-lists-the-3d-views-usual-sizes-apart-and-counts-as-site-health-does--2026-11-27)
+- [D-533 · The kick angle names its unit as a measure does](#d-533--the-kick-angle-names-its-unit-as-a-measure-does--2026-11-27)
 
 ### Kits and their settings
 
@@ -371,7 +373,9 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-506 · A textured part is drawn in its colour until its image arrives](#d-506--a-textured-part-is-drawn-in-its-colour-until-its-image-arrives--2026-11-26)
 - [D-507 · One finger turns the 3D view about its upright alone](#d-507--one-finger-turns-the-3d-view-about-its-upright-alone--2026-11-26)
 - [D-508 · The scene sends each truck's axle centre, and the view measures nothing](#d-508--the-scene-sends-each-trucks-axle-centre-and-the-view-measures-nothing--2026-11-26)
+- [D-509 · A landing runs the fast gates on each of the lane's commits, merges and docs commits included](#d-509--a-landing-runs-the-fast-gates-on-each-of-the-lanes-commits-merges-and-docs-commits-included--2026-11-27)
 - [D-518 · The 3D view's Side place: level with the deck's edge, turned 17 degrees toward the nose](#d-518--the-3d-views-side-place-level-with-the-decks-edge-turned-17-degrees-toward-the-nose--2026-11-26)
+- [D-520 · Every Yoast test runs wherever Yoast's tests run, from one filter](#d-520--every-yoast-test-runs-wherever-yoasts-tests-run-from-one-filter--2026-11-27)
 - [D-530 · The 3D view's places are held to their framing by the pixels a shopper sees](#d-530--the-3d-views-places-are-held-to-their-framing-by-the-pixels-a-shopper-sees--2026-11-27)
 
 ### Cart, checkout and orders
@@ -6746,6 +6750,8 @@ The first CI run of 1.3.0's pull request. F31's test (D-399) holds a deck card u
 
 **Status:** Accepted. Refines D-399's test.
 
+D-437 to D-449 are unused: milestone 13's lanes took their numbers in blocks of ten (D-391 to D-399, D-400 to D-409, D-410 to D-419), and the final run's block from D-420 ended at D-436. The walkthrough's fixes were numbered from D-450 so that no lane could collide with them (#165, F42).
+
 ### D-450 · My builds' and an order page's rules print on a style handle of the plugin's own · 2026-11-26
 
 Found in milestone 13's walkthrough. `SavedBuildHooks::styles()` added My builds' rules to WooCommerce's `woocommerce-general` with `wp_add_inline_style()`, and `EmailHooks::pageStyles()` added the indent of a part's row on an order's page there too. Kadence and Storefront dequeue `woocommerce-general` and load their own WooCommerce styles, and WordPress prints a handle's inline rules only with the handle (`WP_Styles::do_item()`), so on either theme every rule was lost. On a phone the compare had no scroll region: its table was 404 px wide in a 326 px box, and the third build was cut off where no one could reach it. The 14rem columns, the Differs mark, the row tints and D-412's rule that names each row on a phone went too. Twenty Twenty-Five keeps WooCommerce's handle, so the suites, run on it, passed.
@@ -6777,6 +6783,8 @@ Found with D-450, by a search of `src/` for `wp_add_inline_style()` on a handle 
 **Why:** as D-450: a rule the plugin needs is the plugin's to print.
 
 **Status:** Accepted.
+
+D-452 to D-459 are unused: the block from D-450 was kept for the walkthrough's style fixes, which needed two. D-460 started the next block of ten (#165, F42).
 
 ### D-460 · A list is joined in the plugin's own words, never WordPress's translation of them · 2026-11-26
 
@@ -7582,6 +7590,19 @@ Milestone 14's full set: `composer test:integration:yoast` failed on `ShareCardY
 
 **Status:** Accepted.
 
+### D-509 · A landing runs the fast gates on each of the lane's commits, merges and docs commits included · 2026-11-27
+
+The rule "/verify before every commit" (CLAUDE.md) was held by the lane's word, and a landing checked only the lane's final tree. So a commit in the middle of a lane could be red and land behind a green one, leaving `git bisect` and a revert of a later commit on a red tree. Zach's answer on 26 November was "do whatever is best practice": every commit on the main line builds and passes the fast gates, which is how bisect and revert stay usable (Google's and the Linux kernel's rule for a bisectable history).
+
+**Decision:**
+
+- **The handoff's `commit-check.sh`** runs `composer check` and `npm run check` on each commit a lane brings, in a worktree of its own. Merges are included. A commit that touches only Markdown and pictures runs `npm run lint:md` alone. A commit that passed is recorded in `commit-checked` and isn't run again. It's bash 3.2 compatible.
+- **`land.sh` runs it** as the step "the fast gates on each of the lane's commits", before Infection on the changed lines. A red commit stops the landing.
+- **The full /verify stays per tree**, with D-469's receipt. The integration and browser suites take 35 minutes, and on each commit they would cost hours for what the fast gates and the final tree already catch.
+- **Found at once:** 7c40f18, on m14-3d before the check existed, fails markdownlint MD022 at D-468. The cause was the old merge driver's merge commit bba4eaa. It's fixed in `tools/merge-decisions.php` (0925d4e, a blank line restored after the entry, with a landing self-test case), and the commit is left as it is, since m14-3d's history is shared.
+
+**Status:** Accepted.
+
 ### D-521 · The turn's buttons hold their place from the first paint, so the board keeps its size as the store starts · 2026-11-27
 
 D-519's fixed header made `3d.spec.ts` "in French at a phone held sideways" fail every time on chromium-desktop: 0.00274 of shift against an allowance of 0.00244. The allowance is right. The shift is the product's. At 844 by 390 px, the board grew from 122.6 to 130.0 px, and from 482.7 to 512 px long, as the store took over, on the plain page and on the 3D page alike. The old header, a list of every page, had pushed the builder low enough that little of the board was on the screen. The shorter header showed more of it, so more of the grow was counted.
@@ -7597,6 +7618,67 @@ The cause is the turn's two buttons, Underside and Top. The store shows them by 
 
 - **`3d.spec.ts` "on a phone held sideways in English, and in French, the board is the size before the store runs that it is after, with 3D off and on".** This holds the board's box to 0.5 px on the plain page and the 3D page. Before the fix, it failed with `[[289.64,323.70,482.70,122.58]] before, [[275,326,512,130.03]] after`, `Received: 14.640625`.
 - **Repeated runs.** After the fix, that test and the two F7 layout tests ran 3 times each on chromium-desktop, chromium-phone and webkit-phone: 30 passed, and the 6 skips are the Chromium-only shift test on WebKit.
+
+**Status:** Accepted.
+
+### D-522 · While the 3D view is open, the flat board's turn is hidden · 2026-11-27
+
+M14's walkthrough, finding 3: with the view open, the flat board's Underside and Top stayed beside the view's own Top and Underside. The page had two buttons of each name, and the board's "Top" stayed pressed whatever the camera showed.
+
+**Decision:** the turn's two buttons show where `state.turns` is true: the store can turn the board (`canTurn`) and the 3D view is closed. The view's own Top and Underside, in "Views of the board", are the only ones while it is open. On close the board's come back, pressed as they were, since closing the view changes no side. Their row, empty while the view is open, takes no room (`.cbuild-picture--3d .cbuild-picture__turn`). The server's state has `turns` false, as it has `canTurn` false, so a page without the script shows neither.
+
+- **Why hide, not join them.** The flat board shows one of two sides; the camera has five places, and Side and the close-ups are neither. A pressed "Top" that followed the camera would be wrong at three of them.
+
+**Tests:**
+
+- **`three-store.test.ts` "hides the board's turn while open, and shows it again once closed, where the store can turn it".** Before the fix: `AssertionError: expected undefined to be true`. The deliberate break, the getter as `canTurn` alone: `expected true to be false`, at :165.
+- **`3d.spec.ts` "while open, one Top and one Underside show, the view's, and the board's come back on close as they were",** on chromium-desktop and chromium-phone. Before the fix, and with the same break: `Error: Top`, `toHaveCount` expected 1, received 2, at :975.
+
+**Status:** Accepted.
+
+### D-523 · Once the 3D view opens, its canvas is brought on to the screen by the least scroll · 2026-11-27
+
+M14's walkthrough, finding 1: on a phone, a tap on View in 3D left the page about 404 px further down, with the canvas above the top of the screen. The stage stops sticking as the view opens (D-483) and grows by the view's height, above the cards. The browser's scroll anchoring then kept the cards where they were, so the page under the shopper moved and the canvas went up out of sight.
+
+**Decision:** a frame after the view has opened and drawn, the store calls `scrollIntoView( { block: 'nearest' } )` on the canvas, unless a later press has closed it since (the same ticket as D-480's). `nearest` scrolls only where the canvas is not already shown, and by the least amount, so on a desktop, where the stage sticks and the canvas is in view, nothing moves.
+
+- **Why not turn scroll anchoring off.** `overflow-anchor: none` on the stage would stop this jump, and every other one the anchoring prevents as the step's cards change above the shopper's place. The canvas is the one thing the tap asked for, so it is the one thing brought into view.
+- **Why the scroll is not smooth.** It follows the shopper's own tap, at once, as the page's other jumps do, and a reduced-motion setting needs no case of its own.
+
+**Tests:**
+
+- **`three-store.test.ts` "brings the canvas on to the screen once the open view is laid out, and not where it closed first".** Before the fix, and with the deliberate break (the call never made): `expected "vi.fn()" to be called 1 times, but got 0 times`, at :183.
+- **`3d.spec.ts` "on a phone a tap on View in 3D, 0, 150 and 500 px down the page, leaves the canvas on the screen",** on the touch projects. Before the fix, and with the break, from 500 px on chromium-phone: `Error: the canvas's top`, expected >= -0.5, received -20.359375, at :1026. On the e2e site's theme the jump is shorter than the walkthrough's 404 px; the test holds that the canvas's top is on the screen, whatever the theme.
+
+**Status:** Accepted.
+
+### D-524 · On a phone held sideways, the open 3D view takes the board's column, as high as the screen leaves room for · 2026-11-27
+
+M14's walkthrough, finding 2: on a phone held sideways with the view open, the frame covered View in 3D and the flat board's turn, so none could be tapped, and the view could not be closed. Its stage spanned the stage's full width in the board's row, and its 4 by 3 frame, as wide as an 844 px screen, was 609 px high on a screen 390 px high.
+
+**Decision:** where the stage is a phone's held sideways (the D-483 media query, `(orientation: landscape) and (max-height: 30rem)`, with the builder's container under 64rem), the view's stage goes where the board was, in the second column, through every row (`grid-area: 1 / 2 / -1 / 3`), beside the words' column and View in 3D, never across them. Its frame gives up its aspect ratio and is as high as the screen leaves room for, `max(10rem, 100svh - 8rem)`, with the camera's row under it. The camera's buttons stay reachable: each was checked at its centre, on Twenty Twenty-Five and Kadence.
+
+**Tests:** `3d.spec.ts` "on a phone held sideways in English, and in French, the open view covers none of the controls, and View in 3D closes it", on chromium-desktop and chromium-phone. Before the fix: `Error: controls under View in 3D`, with `DIV cbuild-3d__frame` and `CANVAS cbuild-3d__canvas` received, at :1096. The deliberate break, the `grid-area` line alone taken out: the same red line.
+
+**Status:** Accepted.
+
+### D-525 · The 3D view's fallback message has a row of its own, under the picture's others · 2026-11-27
+
+M14's walkthrough, finding 4: on a phone, where the browser could not draw the view, the message "The 3D view can't be shown here, so the board is drawn flat" ran into the board's "Bearings" label. It was placed in the stage's fourth row, the parts' labels' row. There it took the picture's one column, and the grid put the labels in a column of their own beside it, where the two met.
+
+**Decision:** the message goes in a sixth row, after every row the picture's other pieces use (the stage's template has five; the sixth is implicit and sized to the message), across the full width as before. Nothing shares its lines on a phone or a desktop.
+
+**Tests:** `3d.spec.ts` "on a phone, and on a desktop, the fallback's message has a place of its own", on chromium-desktop and chromium-phone, with the whole build on the grip step as the walkthrough had it. Before the fix, on a phone: `Error: what shares the message's lines`, received the `cbuild-picture__item` and `cbuild-picture__label` of "Bearings" and "Hardware: 1″", at :1162. The desktop case passed before and after; it holds the desktop as it was. The deliberate break, the row put back to 4: the same red line.
+
+**Status:** Accepted.
+
+### D-527 · The axe states test brings a control cut by the stacked bar or stage into view before each check · 2026-11-27
+
+Milestone 14's full set: "passes axe on every state it shows" failed 3 of 3 on webkit-tablet at the blank start. axe's `target-size` named "Not sure of your width?", the bar's total and a width's chip, each partly under the stacked bar. D-519's fixed menus made the test themes' header shorter, so the builder stands higher on the iPad mini's 768 by 1024 screen and the width question's foot falls where the bar sticks over the window's foot. D-288 met the same on a Firefox tablet, and the test brought the width question into view for one state alone. A shopper scrolls a control into view before pressing it; axe counts a target the bar covers in part as too small wherever the page happens to stand.
+
+**Decision:** before each state's check, the test brings any control cut by the edge of a sticky cover, the stacked bar or the stage, into view, as a shopper scrolls to it (`scrollIntoView( { block: 'nearest' } )`, clear of both by the page's scroll padding), until none is cut, at most 8 times. A control inside a cover is its own, and is not counted. One that stays cut wherever the page stands, as a control the bar covers for good would, still fails, so the check is not weakened: it measures each target where a shopper can press it. Nothing in the product changes.
+
+**Tests:** `builder.spec.ts` "passes axe on every state it shows (Accessibility: axe on every state)". Without the helper, on webkit-tablet, it fails at tests/e2e/support/axe.ts:81, "webkit-tablet: the blank start", with `target-size` on `<summary …>Not sure of your width?</summary>`, the bar's `<summary class="cbuild-bar__total">` and the 8″ chip. With it, 3 of 3 passed on webkit-tablet, and it passes on chromium-desktop and chromium-phone. The run without the helper is the deliberate break.
 
 **Status:** Accepted.
 
@@ -7654,12 +7736,34 @@ The board's box is read from a screenshot of the canvas: each pixel unlike the f
 
 **Status:** Accepted.
 
-### D-527 · The axe states test brings a control cut by the stacked bar or stage into view before each check · 2026-11-27
+### D-532 · The Catalogue check lists the 3D view's usual sizes apart, and counts as Site Health does · 2026-11-27
 
-Milestone 14's full set: "passes axe on every state it shows" failed 3 of 3 on webkit-tablet at the blank start. axe's `target-size` named "Not sure of your width?", the bar's total and a width's chip, each partly under the stacked bar. D-519's fixed menus made the test themes' header shorter, so the builder stands higher on the iPad mini's 768 by 1024 screen and the width question's foot falls where the bar sticks over the window's foot. D-288 met the same on a Firefox tablet, and the test brought the width question into view for one state alone. A shopper scrolls a control into view before pressing it; axe counts a target the bar covers in part as too small wherever the page happens to stand.
+The M14 walkthrough's #7: on the browser site, Site Health said the Catalogue check found 11 things to fix, and the check's own screen said 43. The other 32 were the 3D view's notes, a deck or wheel without one of the sizes only the scene reads (`nose_length`, `tail_length`, `concave_depth`, `kick_angle`, `wheel_width`; D-472, D-473). D-485 left them out of Site Health's count, since the part is still offered and drawn. The check's screen still counted them, among what it found to fix.
 
-**Decision:** before each state's check, the test brings any control cut by the edge of a sticky cover, the stacked bar or the stage, into view, as a shopper scrolls to it (`scrollIntoView( { block: 'nearest' } )`, clear of both by the page's scroll padding), until none is cut, at most 8 times. A control inside a cover is its own, and is not counted. One that stays cut wherever the page stands, as a control the bar covers for good would, still fails, so the check is not weakened: it measures each target where a shopper can press it. Nothing in the product changes.
+**Decision:**
 
-**Tests:** `builder.spec.ts` "passes axe on every state it shows (Accessibility: axe on every state)". Without the helper, on webkit-tablet, it fails at tests/e2e/support/axe.ts:81, "webkit-tablet: the blank start", with `target-size` on `<summary …>Not sure of your width?</summary>`, the bar's `<summary class="cbuild-bar__total">` and the 8″ chip. With it, 3 of 3 passed on webkit-tablet, and it passes on chromium-desktop and chromium-phone. The run without the helper is the deliberate break.
+- **A list of their own,** "Sizes the 3D view assumes" (`h3#cbuild-scene`), after the parts with no layer image, as the other lists that need no fix are. Its intro says each part is still offered, needs no fix, and where the size is filled in.
+- **Out of the count.** The screen's "The check found N things to fix" counts what `Service\Health::catalogue` counts for the same findings, and the 3D view's notes alone leave the notice "Nothing the check found keeps a part out of the builder." above their list.
+- **The finding is unchanged.** `CatalogueCheck` still returns each note as `assumed` with `note` `scene_assumed`; only the screen sorts it.
+
+**Tests:** `tests/Integration/CheckScreenTest.php`:
+
+- **"a size only the 3D view assumes is listed apart and not counted as a thing to fix".** Before the fix, it failed at :358, the page not containing "The check found 1 thing to fix.".
+- **"the 3D views notes alone leave nothing to fix".** Before the fix, it failed at :377, the page not containing `<h3 id="cbuild-scene">Sizes the 3D view assumes</h3>`.
+- **The deliberate break,** the notes put back among the fixes with the list kept, failed both: :358 again, and :378, the page matching `/found (\d+ things?|nothing) to fix/`.
+
+**Status:** Accepted.
+
+### D-533 · The kick angle names its unit as a measure does · 2026-11-27
+
+The M14 walkthrough's #8: of the five specs 1.4.0 added, the kick angle alone was labelled "Kick angle in degrees", where its siblings are "Nose length (in)" and "Wheel width (mm)", from the spec's name and the translatable pattern `%1$s (%2$s)`. D-472 made it a count of whole degrees, so `SpecKey::unit()` has no unit for it and the pattern was never used.
+
+**Decision:**
+
+- **The name is "Kick angle",** the field's label "Kick angle (°)", through the same pattern, with `°` translatable as a field's `in` and `mm` are (context "degrees, in the label of a field").
+- **Its value reads "20°",** through `%s°` (context "degrees"), as a measure's reads "8.25 in", in the import's preview, Part specs' sources, the check's sentences and the order's workshop lines.
+- **In `Admin\Labels`, not the domain.** The domain keeps a count, as D-472 chose. An angle unit would reach the parser and the index for one spec, so the label names the degrees alone.
+
+**Tests:** `tests/Unit/Admin/LabelsTest.php`. Before the fix, "every spec has its own name and a measure names its unit in a fields label" failed at :61, `'Kick angle'` expected and `'Kick angle in degrees'` received, and the values "degrees" and "degrees in the thousands" failed at :107, `'20°'` expected and `'20'` received. The deliberate break, `deg` for `°`, failed at :62 with `'Kick angle (deg)'`.
 
 **Status:** Accepted.

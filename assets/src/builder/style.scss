@@ -3129,6 +3129,13 @@
 	visibility: hidden;
 }
 
+/* While the view is open the turn's buttons are hidden, since the view's own Top and Underside move its camera, and
+   their row, empty, takes no room (M14's walkthrough, D-522). */
+.cbuild-picture--3d .cbuild-picture__turn {
+	min-block-size: 0;
+	padding-block-end: 0;
+}
+
 /* Its width is its cell's, never its contents': Firefox sized the picture's column from the 4 by 3 frame's height,
    and the canvas ran past the edge of a phone's screen. */
 :where(.cbuild-3d__stage:not([hidden])) {
@@ -3171,8 +3178,10 @@
 	font-size: var(--cbuild-small);
 }
 
+/* A row of its own, after the picture's others: in the labels' row, as it was, it took the picture's one column and
+   pushed the labels into a column of their own beside it, where it ran into them (M14's walkthrough, D-525). */
 :where(.cbuild__stage .cbuild-3d__failed) {
-	grid-row: 4;
+	grid-row: 6;
 	grid-column: 1 / -1;
 }
 
@@ -3227,5 +3236,22 @@
 	:where(.cbuild-3d__frame) {
 		aspect-ratio: 4 / 3;
 		min-block-size: 0;
+	}
+}
+
+/* On a phone held sideways the open view goes where the board was, beside the words' column, never across it: in the
+   board's row, the full width, its 4 by 3 frame was 609 px high on a 390 px screen and lay over View in 3D, which
+   closes it (M14's walkthrough, D-524). Its frame is as high as the screen leaves room for, with the camera's row
+   under it, and as wide as its column. */
+@media (orientation: landscape) and (max-height: 30rem) {
+	@container cbuild (width < 64rem) {
+		:where(.cbuild__stage .cbuild-3d__stage) {
+			grid-area: 1 / 2 / -1 / 3;
+		}
+
+		:where(.cbuild-3d__frame) {
+			aspect-ratio: auto;
+			block-size: max(10rem, 100svh - 8rem);
+		}
 	}
 }
