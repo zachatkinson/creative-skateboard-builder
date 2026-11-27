@@ -494,7 +494,7 @@ final class StateAnswer {
 				'image'       => $tile['image'] ?? ( null === $first ? null : ( $cards[ $first ]['large'] ?? $cards[ $first ]['image'] ?? null ) ),
 				// From 1.4.0: whether that picture is drawn from the parts' layers, the build's composed picture or its first
 				// part's layer image where it has no photo (D-282), so another plugin can tell it from a photo (F41, #164).
-				'drawn'       => null !== $tile ? $tile['drawn'] : false === ( $cards[ $first ?? 0 ]['photo'] ?? null ),
+				'drawn'       => null !== $tile ? $tile['drawn'] : ( null !== $first && false === ( $cards[ $first ]['photo'] ?? null ) ),
 				'total'       => $money( $built->quote->total ?? 0 ),
 				'ready'       => array() === $kept,
 				// What keeps it from the cart, each part named for its tile (spec: Presets).
