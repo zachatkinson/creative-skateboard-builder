@@ -164,6 +164,7 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-407 · A place just above the step's cards for another plugin's element](#d-407--a-place-just-above-the-steps-cards-for-another-plugins-element--2026-11-25)
 - [D-478 · A ready build drawn from the layers is marked drawn, and Help me choose's builds get a place](#d-478--a-ready-build-drawn-from-the-layers-is-marked-drawn-and-help-me-chooses-builds-get-a-place--2026-11-26)
 - [D-517 · cbuild:rendered is sent in the task that draws the answer, not a frame later](#d-517--cbuildrendered-is-sent-in-the-task-that-draws-the-answer-not-a-frame-later--2026-11-26)
+- [D-487 · The state route's view stays private, but for its scene and its 3D switches](#d-487--the-state-routes-view-stays-private-but-for-its-scene-and-its-3d-switches--2026-11-26)
 
 ### The builder page
 
@@ -388,6 +389,7 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-335 · Add to cart leaves the Mini-Cart's count to WooCommerce, and three choices from milestone 11's audit](#d-335--add-to-cart-leaves-the-mini-carts-count-to-woocommerce-and-three-choices-from-milestone-11s-audit--2026-11-23)
 - [D-352 · A build's add keeps the cart before it answers](#d-352--a-builds-add-keeps-the-cart-before-it-answers--2026-11-24)
 - [D-375 · The kit's assembly time in business days, and the parts and their quantities, for a plugin that dates a delivery](#d-375--the-kits-assembly-time-in-business-days-and-the-parts-and-their-quantities-for-a-plugin-that-dates-a-delivery--2026-11-24)
+- [D-488 · The delivery filters are given the kit line an Edit build would replace, by its cart key](#d-488--the-delivery-filters-are-given-the-kit-line-an-edit-build-would-replace-by-its-cart-key--2026-11-26)
 
 ### Saved builds and privacy
 
@@ -7313,5 +7315,30 @@ M14's audit, F4. Every new kit has the 3D view on (D-476), and the Catalogue che
 **Decision:** `Health::catalogue()` skips an `spec_assumed` finding whose note is `scene_assumed`, as it skips `look_shared` and `part_not_offered`: said on the Catalogue check, not counted as a fix. A rule's own assumption (a hole pattern, an axle) is still counted, since a fit was judged without it.
 
 **Test.** HealthTest, "a size only the 3d view assumes is said not counted as a fix": two scene findings give GOOD and nothing counted, and a rule's assumption beside them gives one finding on one part. Red run: "Failed asserting that two arrays are identical" (HealthTest.php:224).
+
+**Status:** Accepted.
+
+### D-487 · The state route's view stays private, but for its scene and its 3D switches · 2026-11-26
+
+M14's audit, S3. `docs/HOOKS.md` says the state route's `view` is the builder's own and may change in any release, yet 1.4.0 documents `view.scene` (as `cbuild_scene` answers it) and `view.three` (for a theme styling the 3D view) as `@since 1.4.0`. A reader could not tell which rule held.
+
+**Decision:** `view` stays private, with one stated exception: `view.scene` and `view.three` are public from 1.4.0, each with a row in the state route's table, and follow Semantic Versioning as every other public item does. Nothing else under `view` is. They are not renamed or moved out of `view`, since both are already published in `schema/state.json` and renaming a public item is Zach's call.
+
+**Gate.** `composer api:check` holds HOOKS.md's rows against the snapshot.
+
+**Status:** Accepted.
+
+### D-488 · The delivery filters are given the kit line an Edit build would replace, by its cart key · 2026-11-26
+
+Creative Checkout 1.7.1's ask (#168, approved by Zach for 1.4.0 on 26 November). Checkout counts the cart to say how far a build is from free shipping. On an Edit build it counted the build being edited beside the new one, so the line said less was needed than was. Checkout already reads a `replace` key in both filters' `$context` and leaves that line out.
+
+**Decision:**
+
+- **What it holds.** Cowork's note asked for "the cart key of the kit line a build would replace". The builder's private `_replace` is the build's own identifier (`_cbuild_id`), not WooCommerce's cart key, so `Front\Delivery` finds the kit line whose build has that identifier and sends that line's cart key. Only a kit line carries a build. With no `_replace`, or one no kit line of this shopper's holds, it sends ''.
+- **Where the cart comes from.** WooCommerce loads no cart for a REST request, and the state route does not load one (D-138). `Port\Cart::held()` reads the lines from the cart where the request loaded it, and otherwise from the session's own copy (`cart`, includes/class-wc-cart-session.php:125 and :304, WooCommerce 11.3.1), making the session as `shopper()` does: the cookie is read and none is set. It is asked only where a `_replace` is sent.
+- **Nothing leaks.** The key is given to the filters alone, never put in the answer, and only a line of the visitor's own session can match. A value in the identifiers' shape that names a cart key, a part's line or another shopper's build gives ''.
+- **An addition only.** `replace` comes after 1.2.0's keys, and no key changes. A container an earlier release built gives `Delivery` no cart, and says ''.
+
+**Tests.** DeliveryTest, "both filters are given the cart key of the kit line an edit build would replace": two builds in the cart, the state route asked with each one's `_replace`, none, a build no line holds, a cart key, a part's line, a build removed, the session alone with no cart, and another shopper's session. The 1.2.0 context tests gain `replace` at the end. Red run: "Undefined array key "replace"" (DeliveryTest.php).
 
 **Status:** Accepted.

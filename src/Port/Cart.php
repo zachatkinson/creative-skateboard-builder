@@ -30,6 +30,17 @@ interface Cart {
 	public function lines(): array;
 
 	/**
+	 * Every line the shopper's session holds, by its cart key: the cart's where the request has loaded it, and
+	 * otherwise the lines as the session stored them, read without loading the cart (D-138), so a REST route can
+	 * find one. A request with no session gives none.
+	 *
+	 * @since 1.4.0
+	 *
+	 * @return array<string, CartLine>
+	 */
+	public function held(): array;
+
+	/**
 	 * Add a part as a line of a build.
 	 *
 	 * @since 0.5.0

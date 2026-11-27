@@ -1480,7 +1480,8 @@ final class StateAnswerTest extends TestCase {
 		self::assertSame( array_keys( self::COMPLETE ), array_keys( $seen['line']['quantities'] ), 'the risers left empty are in neither' );
 		self::assertSame( 2, $seen['line']['quantities'][ SlotKey::HARDWARE ], 'two packs of four bolts' );
 		self::assertSame( 1, $seen['line']['quantities'][ SlotKey::TRUCKS ], 'one pair of trucks' );
-		self::assertSame( array( 'kit', 'assembly', 'lead_time', 'total', 'decimals', 'lead_days', 'parts', 'quantities' ), array_keys( $seen['line'] ), 'added after 1.1.0\'s keys' );
+		self::assertSame( array( 'kit', 'assembly', 'lead_time', 'total', 'decimals', 'lead_days', 'parts', 'quantities', 'replace' ), array_keys( $seen['line'] ), 'added after 1.1.0\'s keys, and 1.4.0\'s after 1.2.0\'s' );
+		self::assertSame( '', $seen['line']['replace'], 'no Edit build, and a Delivery with no cart' );
 
 		$this->answer( self::COMPLETE, null, null, false );
 		self::assertSame( '', $seen['line']['lead_days'], 'a build the shop does not assemble has none' );
