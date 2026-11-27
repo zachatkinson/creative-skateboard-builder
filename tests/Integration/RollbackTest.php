@@ -30,8 +30,9 @@ use CreativeBranding\SkateboardBuilder\Tests\Support\KitFactory;
 final class RollbackTest extends IntegrationTestCase {
 
 	/**
-	 * The kit documents of the release before, 1.2.0: each meta key and its schema's file in the fixtures. 1.2.0's
-	 * `_cbuild_settings` lets through a key it does not know at its top, and closes the objects it has.
+	 * The kit documents of the release before, 1.3.0: each meta key and its schema's file in the fixtures, each taken
+	 * with `git show v1.3.0:schema/<file>` (only `kit-settings.json` changed since 1.2.0). 1.3.0's `_cbuild_settings`
+	 * lets through a key it does not know at its top, and closes the objects it has.
 	 */
 	private const array PREVIOUS = array(
 		'_cbuild_slots'    => 'kit-slots.json',
@@ -77,7 +78,8 @@ final class RollbackTest extends IntegrationTestCase {
 	// The release blocker of milestone 12's audit: 1.2.0 wrote its new settings into `_cbuild_layout`, whose schema in
 	// 1.1.0 has additionalProperties false, so 1.1.0 read no kit saved on 1.2.0. Every setting of 1.2.0 and of 1.3.0 is
 	// set here, as the Build tab sends them, and every kit document 1.2.0 reads must still pass 1.2.0's schema (the
-	// auditor's 1.3.0 should-fix 6).
+	// auditor's 1.3.0 should-fix 6). From 1.4.0 the release before is 1.3.0, and 1.4.0's settings, the 3D view and its
+	// trick buttons, are sent too.
 	public function test_a_kit_saved_with_every_setting_of_this_release_passes_the_schemas_of_the_release_before(): void {
 		wp_set_current_user( self::factory()->user->create( array( 'role' => 'shop_manager' ) ) );
 		$kit  = KitFactory::kit();
@@ -89,6 +91,23 @@ final class RollbackTest extends IntegrationTestCase {
 				'post_content' => '<!-- wp:creative-skateboard-builder/builder {"kit":' . $kit->get_id() . '} /-->',
 			)
 		);
+		clean_post_cache( $kit->get_id() );
+		$GLOBALS['product_object'] = wc_get_product( $kit->get_id() );
+		ob_start();
+		$this->hooks()->panel();
+		$panel = (string) ob_get_clean();
+
+		// 1.4.0's: the tab shows the trick buttons only once the 3D view is saved on (D-474), so the 3D view is ticked
+		// and saved first, as a shop manager would, and the panel drawn again.
+		$first = array(
+			self::named( $panel, '3D view' )            => '1',
+			BuildTab::FIELD . '[' . BuildTab::END . ']' => '1',
+		);
+		parse_str( http_build_query( $first ), $sent );
+		$_POST[ BuildTab::FIELD ] = wp_slash( $sent[ BuildTab::FIELD ] );
+		$this->hooks()->save( $kit );
+		$kit->save();
+		self::assertSame( array(), array_values( \WC_Admin_Meta_Boxes::$meta_box_errors ), 'the 3D view saved with no notice' );
 		clean_post_cache( $kit->get_id() );
 		$GLOBALS['product_object'] = wc_get_product( $kit->get_id() );
 		ob_start();
@@ -117,6 +136,9 @@ final class RollbackTest extends IntegrationTestCase {
 			self::named( $panel, 'Help me choose' )           => '0',
 			self::named( $panel, 'Ready-build picks on cards' ) => '0',
 			self::named( $panel, 'Ratings on cards' )         => '0',
+			// 1.4.0's: the 3D view on, and its trick buttons unticked, sending their 0 (#139, D-474).
+			self::named( $panel, '3D view' )                  => '1',
+			self::named( $panel, 'Trick buttons' )            => '0',
 			BuildTab::FIELD . '[' . BuildTab::END . ']'       => '1',
 		);
 		parse_str( http_build_query( $fields ), $sent );
@@ -151,5 +173,9 @@ final class RollbackTest extends IntegrationTestCase {
 		self::assertSame( array( '51.0000', '55.0000' ), array( $street?->from->decimal(), $street?->to?->decimal() ), 'the wheel guide\'s row' );
 		self::assertTrue( $read?->settings->wheels->isOwn( \CreativeBranding\SkateboardBuilder\Domain\Guide\RidingStyle::Street ) );
 		self::assertSame( array( false, false, false, false ), array( $read?->settings->swaps, $read?->settings->guided, $read?->settings->cardPicks, $read?->settings->cardRatings ), 'smart swaps, Help me choose, the picks and the ratings, off' );
+		self::assertSame( array( true, false ), array( $read?->settings->view3d, $read?->settings->tricks ), 'the 3D view on, its trick buttons off' );
+		$document = json_decode( (string) get_post_meta( $kit->get_id(), '_cbuild_settings', true ), true );
+		self::assertIsArray( $document );
+		self::assertSame( array( true, false ), array( $document['view_3d'] ?? null, $document['tricks'] ?? null ), '1.4.0\'s keys, stored in _cbuild_settings' );
 	}
 }

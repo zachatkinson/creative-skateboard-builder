@@ -127,6 +127,23 @@ final class BuilderAddressTest extends IntegrationTestCase {
 		self::assertSame( $this->kit, $this->service( BuilderPlace::class )->kit( $page, 'page' ) );
 	}
 
+	// F38 (#161): the kit's page sent its visitor on with the build alone, so a newsletter's or an ad's tags were lost.
+	// Every other argument of the request goes with them, as WordPress's own redirects keep them; the kit page's own
+	// query variables, which find the product, do not.
+	public function test_the_kits_page_sends_its_visitor_on_with_every_other_argument_of_the_request(): void {
+		$page = $this->page();
+		$this->settings( array( 'builder_page' => $page ) );
+		$there = (string) get_permalink( $page );
+		$this->go_to( add_query_arg( array( 'utm_source' => 'newsletter', 'utm_medium' => 'email', 'gclid' => 'Cj0KCQ', 'fbclid' => 'IwAR3x' ), (string) get_permalink( $this->kit ) ) );
+		self::assertSame( add_query_arg( array( 'utm_source' => 'newsletter', 'utm_medium' => 'email', 'gclid' => 'Cj0KCQ', 'fbclid' => 'IwAR3x' ), $there ), $this->service( PageHooks::class )->elsewhere() );
+
+		// With a build, the build after them; a value that is no text, or one with markup, is not carried as it came.
+		$this->go_to( add_query_arg( array( 'utm_campaign' => 'spring <b>sale</b>', 'odd' => array( 'a' => 'b' ) ), (string) get_permalink( $this->kit ) ) );
+		$_GET['cbuild'] = array( 'step' => 'trucks' );
+		self::assertSame( add_query_arg( array( 'utm_campaign' => rawurlencode( 'spring sale' ), 'cbuild' => array( 'step' => 'trucks' ) ), $there ), $this->service( PageHooks::class )->elsewhere() );
+		unset( $_GET['cbuild'] );
+	}
+
 	public function test_a_page_that_cannot_be_used_now_sends_no_one_there(): void {
 		$own   = (string) get_permalink( $this->kit );
 		$other = KitFactory::kit( 'Cruiser complete' )->get_id();

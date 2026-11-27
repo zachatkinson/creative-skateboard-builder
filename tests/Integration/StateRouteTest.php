@@ -984,10 +984,37 @@ final class StateRouteTest extends IntegrationTestCase {
 		self::assertContains( 429, $this->statuses( 25, array( 'X-Forwarded-For' => '192.0.2.77, 198.51.100.200' ) ), 'One visitor behind the proxy, whatever they put first in the list.' );
 	}
 
+	/**
+	 * With the kit's 3D view off and on: with it on, each answer to a build with a deck also measures its scene and
+	 * looks up its textures (M14's audit, F12).
+	 *
+	 * @return array<string, array{bool}>
+	 */
+	public static function threeViews(): array {
+		return array(
+			'3D view off' => array( false ),
+			'3D view on'  => array( true ),
+		);
+	}
+
 	// The auditor's should-fix 8, milestone 4: the plan promised a query count on the route, and only the benchmark's
 	// time would have noticed a query for each option.
-	public function test_the_route_asks_the_same_number_of_queries_however_many_parts_a_step_has(): void {
+	/**
+	 * @dataProvider threeViews
+	 *
+	 * @param bool $three Whether the kits' 3D view is on.
+	 */
+	public function test_the_route_asks_the_same_number_of_queries_however_many_parts_a_step_has( bool $three ): void {
 		$this->terms( 100000 );
+		$settings = $three ? array(
+			'schema_version' => 1,
+			'view_3d'        => true,
+		) : null;
+		if ( $three ) {
+			$kit = wc_get_product( $this->kit );
+			$kit->setDocument( Options::META_KIT_SETTINGS, $settings );
+			$kit->save();
+		}
 		$decks = (int) wp_get_object_terms( $this->parts['deck 8.0'], 'product_cat', array( 'fields' => 'ids' ) )[0];
 		$count = function ( bool $cold, array $query = array() ): int {
 			// Once for whatever is read the first time a part is met, then the request that is counted.
@@ -1079,6 +1106,7 @@ final class StateRouteTest extends IntegrationTestCase {
 		self::assertSame( array( $widths['8.2500'] ), array_column( array_filter( $this->answer( $widen )['steps'], static fn( array $step ): bool => 'deck' === $step['slot'] ), 'picked' ), 'the width moves the deck' );
 		$few = array( $count( false ), $count( true ), $moved( false ), $moved( true ), $widened( false ), $widened( true ) );
 		self::assertNotNull( $this->answer()['options'][0]['board'] ?? null, 'a deck\'s card draws its board' );
+		self::assertSame( $three, null !== ( $this->answer( $widen )['view']['scene'] ?? null ), 'the scene is measured where the 3D view is on' );
 		$rated = array_filter( array_column( array_column( array_column( $this->answer( array( 'width' => '8.25in' ) )['shelf']['looks'], 'part' ), 'card' ), 'rating' ) );
 		self::assertNotSame( array(), $rated, 'the cards counted have their ratings' );
 
@@ -1107,7 +1135,7 @@ final class StateRouteTest extends IntegrationTestCase {
 
 		// The review with every slot picked, where smart swaps are worked out (the auditor's 1.3.0 should-fix 2 and 7):
 		// the wheels' parts to try grow, some ranked, and the review asks as many queries at each size, warm and cold.
-		$whole     = $this->whole();
+		$whole     = $this->whole( null, null, $settings );
 		$this->kit = $whole['kit'];
 		$review    = array( 'cbuild' => array_map( 'strval', $whole['picks'] ) + array( 'step' => 'review' ) );
 		// Each size asked once before it is counted: the parts just saved move WooCommerce's term counts, whose transient
@@ -1131,6 +1159,7 @@ final class StateRouteTest extends IntegrationTestCase {
 		};
 		$wheels( 3 );
 		self::assertNotSame( array(), $this->answer( $review )['swaps'], 'the review offers swaps' );
+		self::assertSame( $three, null !== ( $this->answer( $review )['view']['scene'] ?? null ), 'and on the review' );
 		$sizes = array( $reviewed( false ), $reviewed( true ) );
 		$wheels( 15 );
 		self::assertSame( $sizes, array( $reviewed( false ), $reviewed( true ) ), 'the review, 4 wheels or 16' );
@@ -1718,6 +1747,54 @@ final class StateRouteTest extends IntegrationTestCase {
 		foreach ( $was as $option => $value ) {
 			update_option( $option, $value );
 		}
+	}
+
+	// #139, D-470: the view carries the 3D view's scene only where the kit's 3D view is on, measured by the domain from
+	// a deck whose specs no deck has, and held to the schema's limits; a plugin's answer that is no scene is passed over.
+	public function test_the_view_carries_the_scene_only_where_the_kits_3d_view_is_on_and_a_hostile_deck_is_held_to_its_limits(): void {
+		$scene = function ( ?array $settings, ?int $deck = null ): array {
+			$whole     = $this->whole( null, null, $settings );
+			$this->kit = $whole['kit'];
+			$picks     = array( 'step' => 'review' ) + array_map( 'strval', ( null === $deck ? array() : array( 'deck' => $deck ) ) + $whole['picks'] );
+			return $this->answer( array( 'cbuild' => $picks ) )['view'];
+		};
+		foreach ( array(
+			'a kit saved before 1.4.0' => null,
+			'1.3.0\'s settings'        => array( 'schema_version' => 1, 'ratings' => true ),
+			'the 3D view said off'     => array( 'schema_version' => 1, 'view_3d' => false ),
+		) as $case => $settings ) {
+			self::assertArrayNotHasKey( 'scene', $scene( $settings ), $case );
+		}
+
+		$hostile = $this->part(
+			'Deck with specs no deck has',
+			'60',
+			array(
+				'deck_width'    => '8.0000',
+				'deck_length'   => '20.0000',
+				'wheelbase'     => '14.0000',
+				'nose_length'   => '40.0000',
+				'concave_depth' => '9.0000',
+				'kick_angle'    => '900',
+			),
+			$this->categories['deck']
+		);
+		$on   = array( 'schema_version' => 1, 'view_3d' => true );
+		$deck = $scene( $on, $hostile )['scene']['deck'];
+		$span = $deck['holes']['points'][0][0] - $deck['holes']['points'][7][0];
+		self::assertSame( array( $hostile, 508000 ), array( $deck['part'], $deck['length'] ) );
+		self::assertSame( $deck['length'], $deck['nose'] + $deck['tail'] + $span, 'no nose or tail past what the length leaves' );
+		self::assertSame( array( 0, 450 ), array( $deck['tail'], $deck['kick'] ), 'the nose takes what is left; the kick held at 45°' );
+		self::assertSame( intdiv( $deck['width'], 4 ), $deck['concave'], 'the concave held at a quarter of the width' );
+
+		$view = $scene( $on );
+		self::assertSame( $this->parts['deck 8.0'], $view['scene']['deck']['part'] );
+		self::assertSame( -( 11000 + $view['scene']['trucks']['height'] ), $view['scene']['wheels']['places'][0][2], 'no risers: the axle under the deck' );
+		self::assertSame( $view['scene']['wheels']['places'][0][2], $view['scene']['trucks']['centres'][0][2], 'the trucks\' axle is the wheels\' (F9)' );
+		self::assertContains( 'nose_length', $view['scene']['assumed'] );
+		add_filter( 'cbuild_scene', static fn(): string => 'no scene' );
+		$kept = $scene( $on )['scene'];
+		self::assertSame( array( $view['scene']['deck'], $view['scene']['trucks'] ), array( $kept['deck'], $kept['trucks'] ), 'the domain\'s kept' );
 	}
 
 	/**

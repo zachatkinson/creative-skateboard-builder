@@ -57,6 +57,8 @@ add_action(
 			'.cbuild-e2e-hostile h1,.cbuild-e2e-hostile h2,.cbuild-e2e-hostile h3,.cbuild-e2e-hostile h4{margin:1.5em 0 .75em}',
 			// Every button the theme's own, Add to cart's yellow with dark words, as the demo's.
 			'button,.button,a.button,.wp-element-button{background:rgb(232,228,0);color:rgb(18,18,18);border:0;border-radius:6px;padding:.6em 1.4em;font-weight:600}',
+			// Kadence's `.button:focus`: a dark fill and light words in focus, eased in over 0.2 s (F34, #157).
+			'button:focus,.button:focus,a.button:focus,.wp-element-button:focus{background:rgb(18,18,18);color:rgb(244,241,234);transition:background-color .2s,color .2s}',
 		);
 		echo '<style id="cbuild-e2e-hostile">' . implode( '', $rules ) . '</style>';
 	},

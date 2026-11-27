@@ -1667,6 +1667,66 @@ describe( 'the store', () => {
 		expect( state.status ).toBe( '2 parts no longer fit.' );
 	} );
 
+	// #135, D-397: a smart swap stays on the step and may take away the control pressed, so focus goes to its notice, and
+	// after the notice's Undo back to the swap that made it; the region says the build and total. #176.
+	it( "puts focus on a swap's notice, and after its Undo back on the swap pressed", async () => {
+		const div = builder();
+		div.insertAdjacentHTML(
+			'beforeend',
+			`<div class="cbuild-swapped" tabindex="-1">Swapped: trucks.
+				<a class="cbuild-swapped__undo" href="/?cbuild%5Bstep%5D=deck&_undo=1">Undo swap</a></div>
+			<a id="cbuild-swap-7" class="cbuild-swap" href="/?cbuild%5Bstep%5D=deck&swap=7">Swap</a>
+			<a class="cbuild-plain" href="/?cbuild%5Bstep%5D=deck&w=1">Width</a>`
+		);
+		const notice = div.querySelector< HTMLElement >( '.cbuild-swapped' )!;
+		const swap = div.querySelector< HTMLElement >( '#cbuild-swap-7' )!;
+		swap.tabIndex = 0;
+		const swappedView = {
+			...START,
+			status: 'Swapped: trucks. Total: $97.00.',
+			swapped: { shown: true },
+		};
+		reply = () => answer( swappedView );
+		setElement( swap );
+		await move();
+		expect( state.status ).toBe( 'Swapped: trucks. Total: $97.00.' );
+		vi.advanceTimersToNextFrame();
+		expect( div.ownerDocument.activeElement, 'the notice' ).toBe( notice );
+
+		// Undo: the notice is gone, and focus goes back to the swap that made it.
+		reply = () =>
+			answer( {
+				...START,
+				status: 'Undone.',
+				swapped: { shown: false },
+			} );
+		setElement( div.querySelector( '.cbuild-swapped__undo' ) );
+		await move();
+		expect( state.status ).toBe( 'Undone.' );
+		vi.advanceTimersToNextFrame();
+		expect( div.ownerDocument.activeElement, 'the swap pressed' ).toBe(
+			swap
+		);
+
+		// A swap pressed whose answer shows no notice: focus goes to the step's heading, not back to the swap.
+		reply = () => answer( { ...START, swapped: { shown: false } } );
+		div.ownerDocument.body.focus();
+		setElement( swap );
+		await move();
+		vi.advanceTimersToNextFrame();
+		expect( div.ownerDocument.activeElement, 'the heading' ).toBe(
+			div.querySelector( '.cbuild__heading' )
+		);
+
+		// A plain link that stays on the step is no swap: focus is left where it was.
+		swap.focus();
+		reply = () => answer( { ...START, swapped: { shown: true } } );
+		setElement( div.querySelector( '.cbuild-plain' ) );
+		await move();
+		vi.advanceTimersToNextFrame();
+		expect( div.ownerDocument.activeElement, 'left alone' ).toBe( swap );
+	} );
+
 	it( "takes a pick that opens the change panel as a step: a new entry, the panel's heading focused, the title", async () => {
 		const { radio } = form();
 		document.body.insertAdjacentHTML(
@@ -1805,6 +1865,32 @@ describe( 'the store', () => {
 			div.ownerDocument.activeElement,
 			'the shopper keeps their place, on the line that says the width'
 		).toBe( chosen!.querySelector( 'summary' ) );
+
+		// A browser drops focus to the page as the fold hides the button, before the frame: the line takes it all the
+		// same (#176).
+		chosen!.open = true;
+		width.focus();
+		await move();
+		width.blur();
+		expect( div.ownerDocument.activeElement ).toBe(
+			div.ownerDocument.body
+		);
+		vi.advanceTimersToNextFrame();
+		expect(
+			div.ownerDocument.activeElement,
+			'from the page, too, to the line that says the width'
+		).toBe( chosen!.querySelector( 'summary' ) );
+
+		// Focus the view has put elsewhere before the frame stays there (F35, D-516).
+		chosen!.open = true;
+		width.focus();
+		await move();
+		const heading = div.querySelector< HTMLElement >( '.cbuild__heading' )!;
+		heading.focus();
+		vi.advanceTimersToNextFrame();
+		expect( div.ownerDocument.activeElement, 'left where it was put' ).toBe(
+			heading
+		);
 	} );
 
 	it( 'puts focus on the first new card after Show more, and says how many were added', async () => {
@@ -3977,6 +4063,211 @@ describe( 'what a press foretells', () => {
 		expect( 'swapped' in state.view ).toBe( false );
 	} );
 
+	// D-408: the deck step's width line stayed at Next's press until the answer, a second late on the demo, took it, and
+	// the cards moved up under the heading (D-406). It goes at the press, with the "Showing" line, as the answer takes
+	// them; a press the limit stops puts them back.
+	const CHOSEN = {
+		...START,
+		step: {
+			slot: 'deck',
+			stepName: 'cbuild[step]',
+			next: { value: 'trucks' },
+			more: { count: 'Showing 3 of 3' },
+			shelf: { width: { shown: true } },
+		},
+	};
+	type Onward = {
+		more: { count: string };
+		shelf: { width: { shown: boolean } };
+	};
+	const onward = (): Onward => state.view.step as unknown as Onward;
+
+	it( 'takes the deck step’s width line and its count away at the press of Next, and puts them back at a limit', async () => {
+		const { root, next } = builder();
+		state.view = structuredClone( CHOSEN ) as unknown as typeof state.view;
+		reply = () =>
+			new Response( JSON.stringify( { message: 'Later.' } ), {
+				status: 429,
+				headers: { 'Content-Type': 'application/json' },
+			} );
+		actions.submit(
+			new SubmitEvent( 'submit', { submitter: next, cancelable: true } )
+		);
+		expect( onward().shelf.width.shown ).toBe( false );
+		expect( onward().more.count ).toBe( '' );
+		expect( root.hasAttribute( 'data-folded' ) ).toBe( false );
+		await settle();
+		await vi.advanceTimersByTimeAsync( 50 );
+		expect( onward().shelf.width.shown ).toBe( true );
+		expect( onward().more.count ).toBe( 'Showing 3 of 3' );
+		expect( state.limited ).toBe( 'Later.' );
+
+		// A step with no count has none made.
+		const { next: again } = builder();
+		const counted = structuredClone( CHOSEN ) as {
+			step: { more?: unknown };
+		};
+		delete counted.step.more;
+		state.view = counted as unknown as typeof state.view;
+		actions.submit(
+			new SubmitEvent( 'submit', { submitter: again, cancelable: true } )
+		);
+		expect( onward().shelf.width.shown ).toBe( false );
+		expect( 'more' in ( state.view.step as object ) ).toBe( false );
+		await settle();
+		await vi.advanceTimersByTimeAsync( 50 );
+		expect( onward().shelf.width.shown ).toBe( true );
+		expect( 'more' in ( state.view.step as object ) ).toBe( false );
+	} );
+
+	// #152 (D-512): the first step has no Back; the second's came in with the answer a second late, narrowed the total
+	// and moved Next. The view gives the first step the next step's Back, which the press shows; a limit hides it again.
+	type Back = {
+		shown: boolean;
+		url: string;
+		label: string;
+		ahead: { url: string; label: string };
+	};
+	const FIRST = {
+		...START,
+		step: {
+			slot: 'deck',
+			stepName: 'cbuild[step]',
+			next: { value: 'trucks' },
+		},
+		bar: {
+			next: { ready: true, missing: '' },
+			back: {
+				shown: false,
+				url: '',
+				label: '',
+				ahead: { url: '/kit/?cbuild[step]=deck', label: 'Back: Deck' },
+			},
+		},
+	};
+	const back = (): Back =>
+		( state.view as unknown as { bar: { back: Back } } ).bar.back;
+
+	it( 'shows the next step’s Back at the press of the first step’s Next, and hides it again at a limit', async () => {
+		const { next } = builder();
+		state.view = structuredClone( FIRST ) as unknown as typeof state.view;
+		reply = () =>
+			new Response( JSON.stringify( { message: 'Later.' } ), {
+				status: 429,
+				headers: { 'Content-Type': 'application/json' },
+			} );
+		actions.submit(
+			new SubmitEvent( 'submit', { submitter: next, cancelable: true } )
+		);
+		expect( back() ).toEqual( {
+			shown: true,
+			url: '/kit/?cbuild[step]=deck',
+			label: 'Back: Deck',
+			ahead: { url: '/kit/?cbuild[step]=deck', label: 'Back: Deck' },
+		} );
+		await settle();
+		await vi.advanceTimersByTimeAsync( 50 );
+		expect( back() ).toEqual( FIRST.bar.back );
+		expect( state.limited ).toBe( 'Later.' );
+	} );
+
+	it( 'leaves Back as it is where the step has its own, the view gives none, or the press is no Next', () => {
+		const cases: [ string, ( view: typeof FIRST ) => void, string? ][] = [
+			[
+				'its own Back',
+				( view ) => {
+					view.bar.back.shown = true;
+					view.bar.back.url = '/kit/?cbuild[step]=grip';
+					view.bar.back.label = 'Back: Grip';
+				},
+			],
+			[ 'none given', ( view ) => ( view.bar.back.ahead.url = '' ) ],
+			[ 'no bar', ( view ) => delete ( view as { bar?: unknown } ).bar ],
+			[ 'another value', () => undefined, 'wheels' ],
+		];
+		for ( const [ name, change, value ] of cases ) {
+			const { next } = builder();
+			if ( undefined !== value ) {
+				next.value = value;
+			}
+			const view = structuredClone( FIRST );
+			change( view );
+			const before = JSON.stringify(
+				( view as { bar?: unknown } ).bar ?? null
+			);
+			state.view = view as unknown as typeof state.view;
+			reply = () => new Promise< Response >( () => undefined );
+			actions.submit(
+				new SubmitEvent( 'submit', {
+					submitter: next,
+					cancelable: true,
+				} )
+			);
+			expect(
+				`${ name }: ${ JSON.stringify(
+					( state.view as { bar?: unknown } ).bar ?? null
+				) }`
+			).toBe( `${ name }: ${ before }` );
+		}
+	} );
+
+	it( 'leaves the width line where the press is no Next to another step, or the step shows none', () => {
+		const cases: [
+			string,
+			( view: typeof CHOSEN ) => void,
+			string?,
+			string?,
+		][] = [
+			[
+				'another step’s width hidden',
+				( view ) => ( view.step.shelf.width.shown = false ),
+			],
+			[
+				'no next step',
+				( view ) => ( view.step.next.value = '' ),
+				'cbuild[step]',
+				'',
+			],
+			[
+				'the same step',
+				( view ) => ( view.step.next.value = 'deck' ),
+				'cbuild[step]',
+				'deck',
+			],
+			[ 'another name', () => undefined, 'cbuild[sort]', 'trucks' ],
+			[ 'another value', () => undefined, 'cbuild[step]', 'wheels' ],
+		];
+		for ( const [ name, change, button, value ] of cases ) {
+			const { next } = builder();
+			if ( undefined !== button ) {
+				next.name = button;
+				next.value = value ?? '';
+			}
+			const view = structuredClone( CHOSEN );
+			change( view );
+			const shown = view.step.shelf.width.shown;
+			state.view = view as unknown as typeof state.view;
+			reply = () => new Promise< Response >( () => undefined );
+			actions.submit(
+				new SubmitEvent( 'submit', {
+					submitter: next,
+					cancelable: true,
+				} )
+			);
+			expect(
+				`${ name }: ${ String( onward().shelf.width.shown ) }`
+			).toBe( `${ name }: ${ String( shown ) }` );
+			expect( `${ name }: ${ onward().more.count }` ).toBe(
+				`${ name }: Showing 3 of 3`
+			);
+		}
+		// A form sent with no button pressed, as Enter in a field sends it.
+		builder();
+		state.view = structuredClone( CHOSEN ) as unknown as typeof state.view;
+		actions.submit( new SubmitEvent( 'submit', { cancelable: true } ) );
+		expect( onward().shelf.width.shown ).toBe( true );
+	} );
+
 	// The auditor's second pass on M12, should-fix 3: a width press the rate limit or the store's limit stopped kept its
 	// fold, the widths folded away and no decks under them, and only Change asked again (D-364).
 	it( 'asks the width question again, its options open and the pressed one focused, when the press hits a limit', async () => {
@@ -4428,7 +4719,7 @@ describe( 'the rendered event', () => {
 		expect( events[ 0 ]!.detail ).toEqual( { kit: 7, step: 'deck' } );
 	} );
 
-	it( 'is sent once after each answer is drawn, not at the pick, nor before the frame that draws it', async () => {
+	it( 'is sent once after each answer is drawn, in the task that draws it, not at the pick', async () => {
 		const { root, bar } = builder();
 		state.view = KIT;
 		hydrated( bar );
@@ -4445,6 +4736,7 @@ describe( 'the rendered event', () => {
 		expect( state.status ).toBe( 'A deck. Total: $70.00.' );
 		expect( events, 'not before the view is drawn' ).toHaveLength( 0 );
 		vi.advanceTimersToNextFrame();
+		await settle();
 		expect( events ).toHaveLength( 1 );
 		expect( events[ 0 ]!.target ).toBe( root );
 		expect( events[ 0 ]!.detail ).toEqual( { kit: 7, step: 'deck' } );
@@ -4455,6 +4747,7 @@ describe( 'the rendered event', () => {
 		await settle();
 		vi.advanceTimersToNextFrame();
 		vi.advanceTimersToNextFrame();
+		await settle();
 		stop();
 		expect( events ).toHaveLength( 2 );
 		expect( events[ 1 ]!.detail ).toEqual( { kit: 7, step: 'trucks' } );
@@ -4481,6 +4774,7 @@ describe( 'the rendered event', () => {
 		await settle();
 		vi.advanceTimersToNextFrame();
 		vi.advanceTimersToNextFrame();
+		await settle();
 		stop();
 		expect( fetched ).toHaveLength( 1 );
 		expect( events ).toHaveLength( 1 );
@@ -4502,6 +4796,7 @@ describe( 'the rendered event', () => {
 		actions.back();
 		await settle();
 		vi.advanceTimersToNextFrame();
+		await settle();
 		stop();
 		expect( events.map( ( event ) => event.detail ) ).toEqual( [
 			{ kit: 7, step: 'review' },
@@ -4667,6 +4962,8 @@ describe( 'what the stage plays as a view comes in', () => {
 	 * @param view The answer's view.
 	 */
 	async function shown( view: unknown ): Promise< void > {
+		// The last view's event, sent in the task that drew it, is heard before this one is asked.
+		await settle();
 		let told = 0;
 		const hear = () => told++;
 		document.addEventListener( 'cbuild:rendered', hear );
@@ -4674,6 +4971,7 @@ describe( 'what the stage plays as a view comes in', () => {
 		actions.back();
 		await settle();
 		vi.advanceTimersToNextFrame();
+		await settle();
 		document.removeEventListener( 'cbuild:rendered', hear );
 		expect( told, 'the view is drawn' ).toBe( 1 );
 	}
@@ -4961,5 +5259,198 @@ describe( 'what the stage plays as a view comes in', () => {
 				`cbuild-cart ${ turned ? 'top' : 'underside' }`,
 			] );
 		}
+	} );
+} );
+
+// The auditor's M14 review, F3: Show builds' press was held until an answer came, so a pick that overtook it, or a
+// limit that answered it, left it set. A pick's own answer replaces the entry and so never read it, but the next answer
+// that moves did: a pick that opens the change panel lost its count, and Back went to the guide's builds. The press is
+// the move's own, and only the move's answer acts on it.
+describe( 'Show builds overtaken', () => {
+	const PANEL = {
+		...START,
+		url: window.location.origin + '/?changes',
+		isChanges: true,
+		status: '1 part no longer fits.',
+	};
+	const BACK = {
+		...START,
+		url: window.location.origin + '/?back',
+		step: { slot: 'wheels' },
+		guide: { shown: true, asked: true },
+	};
+
+	/**
+	 * The guide's questions and the step's cards in a builder, its init run on it.
+	 */
+	function guided(): {
+		guide: HTMLFormElement;
+		show: HTMLButtonElement;
+		radio: HTMLInputElement;
+	} {
+		document.body.innerHTML = `
+			<div class="cbuild">
+				<h2 class="cbuild__heading" tabindex="-1">Step</h2>
+				<h3 class="cbuild-changes__heading" tabindex="-1">Changes</h3>
+				<h3 class="cbuild-guide__heading" tabindex="-1">Builds</h3>
+				<form class="cbuild-guide__form" method="get" action="/">
+					<input type="hidden" name="cbuild[guide][budget]" value="150">
+					<button type="submit" name="cbuild[step]" value="deck">Show builds</button>
+				</form>
+				<form method="get" action="/">
+					<input type="radio" name="cbuild[deck]" value="11">
+				</form>
+			</div>`;
+		setElement( document.querySelector< HTMLElement >( '.cbuild' ) );
+		(
+			defined.definition as { callbacks: { init: () => void } }
+		 ).callbacks.init();
+		return {
+			guide: document.querySelector( '.cbuild-guide__form' )!,
+			show: document.querySelector( '.cbuild-guide__form button' )!,
+			radio: document.querySelector( 'input[type=radio]' )!,
+		};
+	}
+
+	/**
+	 * Press Show builds.
+	 *
+	 * @param guide The guide's form.
+	 * @param show  Its button.
+	 */
+	function press( guide: HTMLFormElement, show: HTMLButtonElement ): void {
+		setElement( guide );
+		actions.submit(
+			new SubmitEvent( 'submit', { submitter: show, cancelable: true } )
+		);
+	}
+
+	/**
+	 * Pick the card, its answer the change panel, and wait for it and the frame after.
+	 *
+	 * @param radio The card's radio.
+	 */
+	async function pick( radio: HTMLInputElement ): Promise< void > {
+		reply = () => answer( PANEL );
+		radio.checked = true;
+		actions.pick( { target: radio } as unknown as Event );
+		vi.advanceTimersByTime( WAIT );
+		await settle();
+		vi.advanceTimersToNextFrame();
+	}
+
+	it( 'takes Show builds’ own answer to the builds, and Skip’s to the step with the questions shut', async () => {
+		const { guide, show } = guided();
+		document
+			.querySelector( '.cbuild' )!
+			.insertAdjacentHTML(
+				'beforeend',
+				'<details class="cbuild-guide__ask" open><summary>Ask</summary></details><a class="cbuild-guide__skip" href="/?cbuild%5Bstep%5D=deck">Skip</a>'
+			);
+		reply = () =>
+			answer( {
+				...PANEL,
+				isChanges: false,
+				guide: { shown: true, asked: true },
+			} );
+		press( guide, show );
+		await settle();
+		vi.advanceTimersToNextFrame();
+		expect( state.status ).toBe( '' );
+		expect( guide.ownerDocument.activeElement ).toBe(
+			document.querySelector( '.cbuild-guide__heading' )
+		);
+		const ask = document.querySelector( '.cbuild-guide__ask' )!;
+		expect(
+			ask.hasAttribute( 'open' ),
+			'Show builds leaves them open'
+		).toBe( true );
+		// Show builds with nothing asked yet: no builds to go to, so the step's heading (#176).
+		reply = () =>
+			answer( {
+				...PANEL,
+				isChanges: false,
+				guide: { shown: true, asked: false },
+			} );
+		press( guide, show );
+		await settle();
+		vi.advanceTimersToNextFrame();
+		expect( guide.ownerDocument.activeElement ).toBe(
+			document.querySelector( '.cbuild__heading' )
+		);
+		reply = () =>
+			answer( { ...BACK, guide: { shown: true, asked: true } } );
+		setElement( document.querySelector( '.cbuild-guide__skip' ) );
+		actions.follow(
+			new MouseEvent( 'click', { cancelable: true, button: 0 } )
+		);
+		await settle();
+		vi.advanceTimersToNextFrame();
+		expect(
+			document
+				.querySelector( '.cbuild-guide__ask' )!
+				.hasAttribute( 'open' )
+		).toBe( false );
+		expect( guide.ownerDocument.activeElement ).toBe(
+			document.querySelector( '.cbuild__heading' )
+		);
+		// Skip where the questions are gone already: the step's heading all the same.
+		ask.remove();
+		document.body.focus();
+		await expect(
+			( async () => {
+				actions.follow(
+					new MouseEvent( 'click', { cancelable: true, button: 0 } )
+				);
+				await settle();
+				vi.advanceTimersToNextFrame();
+			} )()
+		).resolves.toBeUndefined();
+		expect( guide.ownerDocument.activeElement ).toBe(
+			document.querySelector( '.cbuild__heading' )
+		);
+	} );
+
+	it( 'says the count of a pick that overtakes the press and opens the change panel', async () => {
+		const { guide, show, radio } = guided();
+		reply = () => new Promise< Response >( () => undefined );
+		press( guide, show );
+		await pick( radio );
+		expect( state.status ).toBe( PANEL.status );
+		expect( radio.ownerDocument.activeElement ).toBe(
+			document.querySelector( '.cbuild-changes__heading' )
+		);
+	} );
+
+	it( 'says the count of the pick after a press a limit answered', async () => {
+		const { guide, show, radio } = guided();
+		reply = () =>
+			new Response( JSON.stringify( { message: 'Wait a moment.' } ), {
+				status: 429,
+				headers: { 'Content-Type': 'application/json' },
+			} );
+		press( guide, show );
+		await settle();
+		expect( state.limited ).toBe( 'Wait a moment.' );
+		await pick( radio );
+		expect( state.status ).toBe( PANEL.status );
+	} );
+
+	it( 'takes Back after a press a limit answered to the step’s heading, not the builds', async () => {
+		const { guide, show } = guided();
+		reply = () =>
+			new Response( JSON.stringify( { message: 'Wait a moment.' } ), {
+				status: 429,
+				headers: { 'Content-Type': 'application/json' },
+			} );
+		press( guide, show );
+		await settle();
+		reply = () => answer( BACK );
+		actions.back();
+		await settle();
+		vi.advanceTimersToNextFrame();
+		expect( guide.ownerDocument.activeElement ).toBe(
+			document.querySelector( '.cbuild__heading' )
+		);
 	} );
 } );

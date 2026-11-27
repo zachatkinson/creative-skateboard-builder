@@ -59,18 +59,36 @@ final class SavedBuildHooks implements Hookable {
 	 * the region scrolls sideways, its focus ring drawn as the theme's text. A row that differs is tinted, and the
 	 * lowest total, beside the words that say each; the tint is mixed with transparency, so the theme's text keeps its
 	 * contrast on a light or a dark page. Under forced colours the tint is gone and the words and the mark's border stay.
+	 * Each row's header stays at the region's start as it scrolls, on the page's ground, so a row that differs is told
+	 * by its words at every build, not by its tint alone (F37, D-515). In a region under 30rem the header's inline padding is
+	 * halved, so beside a build's 14rem it covers no more than the column's own padding, in French too.
 	 */
 	private const string STYLES = '.cbuild-my-builds__build th img{display:block;margin:0 0 8px}'
 		// A phone's responsive table hides its row headers (WooCommerce's woocommerce-smallscreen.css), and the build's
 		// name is its row's header: shown, so each row says which build its controls are for (D-412).
 		. 'table.cbuild-my-builds.shop_table_responsive tbody tr th[scope=row]{display:block;text-align:start}'
 		. '.cbuild-my-builds__pick{display:flex;align-items:center;gap:.5em;margin-block-end:.5em}'
-		. '.cbuild-compare{overflow-x:auto;margin-block:1em}'
+		// My builds stays in the account's column (D-528). Beside a theme's sidebar at a tablet's width, Storefront's is
+		// 387 px, and the four columns, each with the theme's padding, need 458 at the least: the table ran out under the
+		// sidebar, which covered Open. In a frame under 32rem each build's cells stack, each under its column's name, as
+		// WooCommerce's own small-screen table does, but read from the column's width, not the screen's. The name's field
+		// takes the cell's width up to its own 20 characters, and no more.
+		. '.cbuild-my-builds__frame{container-type:inline-size}'
+		. '.cbuild-my-builds__rename input[type=text]{box-sizing:border-box;inline-size:100%;max-inline-size:20em;min-inline-size:0}'
+		. '@container (max-width:32rem){'
+		. '.cbuild-my-builds__frame table.cbuild-my-builds.shop_table_responsive thead{display:none}'
+		. '.cbuild-my-builds__frame table.cbuild-my-builds.shop_table_responsive tr,.cbuild-my-builds__frame table.cbuild-my-builds.shop_table_responsive td{display:block}'
+		. '.cbuild-my-builds__frame table.cbuild-my-builds.shop_table_responsive tr td{text-align:start!important}'
+		. '.cbuild-my-builds__frame table.cbuild-my-builds.shop_table_responsive tr td::before{content:attr(data-title);display:block;float:none;font-weight:600}'
+		. '}'
+		. '.cbuild-compare{overflow-x:auto;margin-block:1em;container-type:inline-size}'
 		. '.cbuild-compare:focus-visible{outline:2px solid currentColor;outline-offset:2px}'
 		. '.cbuild-compare__table{inline-size:auto;min-inline-size:100%;margin:0}'
 		. '.cbuild-compare__table caption{text-align:start;font-weight:600;padding-block:.5em}'
 		. '.cbuild-compare__table th,.cbuild-compare__table td{vertical-align:top;text-align:start}'
 		. '.cbuild-compare__build{min-width:14rem}'
+		. '.cbuild-compare__table tbody th[scope=row]{position:sticky;inset-inline-start:0;z-index:1;background-color:var(--wp--preset--color--base,Canvas)}'
+		. '@container (max-width:30rem){.cbuild-compare__table tbody th[scope=row]{padding-inline:.5em}}'
 		. '.cbuild-compare__part,.cbuild-compare__price,.cbuild-compare__note,.cbuild-compare__open,.cbuild-compare__name{display:block}'
 		. '.cbuild-compare__note{font-size:.875em;margin-block-start:.25em}'
 		. '.cbuild-compare__open{font-weight:400}'

@@ -733,16 +733,17 @@ final class PartSpecsPanelTest extends IntegrationTestCase {
 		list( $parent, $variation ) = self::variable();
 		self::assertSame( array(), self::sent( $this->fields( $variation ) ), 'a variation with no specs' );
 		self::assertSame( array(), self::sent( $this->panel( $parent ) ), 'and its parent' );
-		self::assertSame( 24, substr_count( $this->fields( $variation ), ' disabled' ), 'every field is still drawn: 22 specs, the layer image and the rank' );
+		self::assertSame( 29, substr_count( $this->fields( $variation ), ' disabled' ), 'every field is still drawn: 27 specs from 1.4.0, the layer image and the rank' );
 
 		$variation->update_meta_data( Options::META_SPECS, array( 'wheel_diameter' => '54.0000' ) );
 		$variation->save();
-		self::assertSame( array( 'cbuild_variation_specs[0][wheel_diameter]', 'cbuild_variation_specs[0][bearings_included]' ), self::sent( $this->fields( $variation ) ), 'one with specs sends its open groups alone: Wheels, with Bearings included (D-246)' );
+		self::assertSame( array( 'cbuild_variation_specs[0][wheel_diameter]', 'cbuild_variation_specs[0][wheel_width]', 'cbuild_variation_specs[0][bearings_included]' ), self::sent( $this->fields( $variation ) ), 'one with specs sends its open groups alone: Wheels, with its width from 1.4.0 and Bearings included (D-246)' );
 
 		$deck = self::simple( array( 'deck_width' => '8.2500' ) );
 		self::assertSame(
-			array( 'cbuild_specs[deck_width]', 'cbuild_specs[deck_length]', 'cbuild_specs[wheelbase]', 'cbuild_specs[hole_pattern]' ),
-			self::sent( $this->panel( $deck ) )
+			array( 'cbuild_specs[deck_width]', 'cbuild_specs[deck_length]', 'cbuild_specs[wheelbase]', 'cbuild_specs[hole_pattern]', 'cbuild_specs[nose_length]', 'cbuild_specs[tail_length]', 'cbuild_specs[concave_depth]', 'cbuild_specs[kick_angle]' ),
+			self::sent( $this->panel( $deck ) ),
+			'the Deck group, with its 3D view sizes from 1.4.0'
 		);
 	}
 

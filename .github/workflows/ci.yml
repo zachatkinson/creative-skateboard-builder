@@ -236,7 +236,8 @@ jobs:
     runs-on: ubuntu-26.04
     # Everything on main takes Infection 11 to 14 minutes on this runner, and Stryker and the dry run two more. At
     # 15 the job was cancelled on 0.3.1's merge with nothing wrong, and the release waited on a second run (D-107).
-    timeout-minutes: 25
+    # At 25 it was cancelled again at 25:16 on #173, with StrykerJS at 4,103 mutants after the 3D view (D-541).
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:

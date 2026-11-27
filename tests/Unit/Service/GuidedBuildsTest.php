@@ -124,6 +124,7 @@ final class GuidedBuildsTest extends TestCase {
 
 		$over = $this->builds( null, 150 );
 		self::assertSame( array( 15000, true ), array( $over['budget'], $over['over'] ) );
+		self::assertSame( array( 3, 3, 3 ), array( $within['fit'], $at['fit'], $over['fit'] ), 'F40 (#163): every build that fits, whatever the budget keeps' );
 		self::assertSame( array( array( 'budget', self::complete( 101, 139, 301 ), '$167.00', 16700, '$17.00' ) ), self::made( $over ) );
 
 		$this->kits->decimals = 0;

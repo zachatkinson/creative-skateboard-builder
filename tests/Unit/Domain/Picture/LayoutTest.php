@@ -213,6 +213,16 @@ final class LayoutTest extends TestCase {
 		self::assertSame( array( SlotKey::TRUCKS, 144, 0, -2127250, 2095500, 857250 ), self::rows( $layout )[2] );
 	}
 
+	// 1.4.0 (D-470): a deck drilled for both is bolted through its old school holes when the trucks take only those, in
+	// the picture as in the 3D view.
+	public function test_a_deck_drilled_for_both_takes_old_school_trucks_on_its_old_school_holes(): void {
+		$old = Layout::of( Parts::picks( array( SlotKey::DECK => self::deck( array( 'hole_pattern' => 'both' ) ), SlotKey::TRUCKS => Parts::indy( '144', array( 'baseplate' => 'old_school' ) ) ) ) );
+		$new = Layout::of( Parts::picks( array( SlotKey::DECK => self::deck( array( 'hole_pattern' => 'both' ) ), SlotKey::TRUCKS => Parts::indy( '144', array( 'baseplate' => 'both' ) ) ) ) );
+
+		self::assertSame( array( SlotKey::TRUCKS, 144, 0, 2127250, 2095500, 857250 ), self::rows( $old )[1] );
+		self::assertSame( array( SlotKey::TRUCKS, 144, 0, 2079625, 2095500, 762000 ), self::rows( $new )[1] );
+	}
+
 	/**
 	 * @return array<string, array{string}>
 	 */

@@ -170,10 +170,19 @@ if git cat-file -e "v$from:tests/e2e/fixtures/shop.php" 2>/dev/null; then
 		git show "v$from:$path" > "tmp/upgrade/fixture/$path"
 	done
 	said="$(wp_said eval-file "$here/tmp/upgrade/fixture/tests/e2e/fixtures/shop.php")"
+	# shellcheck disable=SC2001 # sed indents every line of the answer; a parameter expansion would miss the first.
 	case "$said" in *"Fatal error"*|*"Error:"*) echo "$said" | sed 's/^/   /'; fail "$from's own fixture did not run" ;; esac
 fi
 kits="$(wp eval-file "$here/tools/upgrade/seed.php" kits | tail -n 1)"
 kits="${kits#kits:}"
+# A release from 0.4.0 on whose own fixture made no kit fails here, with what the fixture said, not later at the grip
+# no kit offers: CI's run on #173 stopped there on 0.9.0 and said nothing of why (D-539).
+if [ "$kits" = 0 ] && [ "$(printf '%s\n' 0.4.0 "$from" | sort -V | head -n 1)" = 0.4.0 ]; then
+	answer="${said:-the fixture of v$from was not found, so it did not run}"
+	# shellcheck disable=SC2001 # sed indents every line of the answer; a parameter expansion would miss the first.
+	echo "$answer" | sed 's/^/   /'
+	fail "the fixture of $from made no kit"
+fi
 saved="$(wp eval-file "$here/tools/upgrade/seed.php" saved | tail -n 1)"
 user="${saved#saved:}"; [ "$user" = none ] && user=0
 # A grip with a layer image and no spec, as the demo's were, from 0.7.0 (#129, D-373): until 1.2.0 it got no copies.
@@ -214,6 +223,8 @@ kitsread="$(sed -n 's/.*; kits \([0-9]*\) of [0-9]*,.*/\1/p' <<<"$read")"
 [ "$kitsread" = "$kits" ] || fail "after the update, $kitsread kits read where $from read $kits: $read"
 presets="$(sed -n 's/.*presets \([0-9]*\) of \([0-9]*\) priced.*/\1 \2/p' <<<"$read")"
 [ "${presets% *}" = "${presets#* }" ] || fail "after the update, not every preset was priced: $read"
+# A kit saved before 1.4.0 keeps the 3D view off (D-476).
+case "$read" in *"kits with 3D on 0;"*) ;; *) fail "after the update, a kit $from saved has the 3D view on: $read" ;; esac
 [ "$user" = 0 ] || case "$read" in *"saved builds 1"*) ;; *) fail "after the update, $from's saved build was not listed: $read" ;; esac
 # A build saved before 1.0.0 kept no prices; one saved by 1.0.0 or later kept them, and shows the total it kept (D-254).
 if [ "$(printf '%s\n' 1.0.0 "$from" | sort -V | head -n 1)" = 1.0.0 ]; then

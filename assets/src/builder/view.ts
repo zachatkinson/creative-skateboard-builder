@@ -55,6 +55,15 @@ import {
 	type Currency,
 } from './motion';
 import { add, body } from './cart';
+import {
+	flat,
+	placeOf,
+	trickOf,
+	type Renderer,
+	type Trick,
+	type TrickName,
+} from './picture';
+import type { Scene } from './three/scene';
 import type { CbuildState } from '../types/state';
 
 export const NAME = 'creative-skateboard-builder';
@@ -83,12 +92,24 @@ interface State {
 	added: boolean;
 	canCopy: boolean;
 	canTurn: boolean;
+	/** Whether the turn's two buttons show: once the store runs, and not while the 3D view is open, whose own Top and Underside move its camera (D-522). */
+	readonly turns: boolean;
 	live: boolean;
 	turning: boolean;
 	/** The route's rate limit, in its words, while the step waits to be asked again; empty otherwise. */
 	limited: string;
 	/** Whether a phone's filters are folded behind the Filters button: only once the script runs, so they show without it. */
 	folded: boolean;
+	/**
+	 * The 3D view (1.4.0, #139): whether it is open, whether its script is on its way, whether it failed, so the
+	 * board shows flat with the message under it, and whether a trick plays, so its buttons say they are disabled.
+	 */
+	three: {
+		open: boolean;
+		loading: boolean;
+		failed: boolean;
+		playing: boolean;
+	};
 	/** Whether the picture is being drawn: a pick has kept the shopper SLOW, and its answer or image is on its way (D-308). */
 	drawing: boolean;
 	/** What the step's Next said is missing when it was pressed dimmed, in the server's words; empty otherwise (#100). */
@@ -388,13 +409,17 @@ function first( view: Shown ): string {
  * @param history How the move treats history.
  * @param config  The page's config.
  * @param before  The view it takes the place of.
+ * @param guided  Help me choose's press that made the move (F35, D-516): Show builds, whose builds focus goes to by
+ *                their heading, or Skip, which shuts the questions and takes focus to the step's heading, as the page
+ *                that answers without the script has them. The move's own, so a later answer never takes it (D-479).
  */
 function say(
 	state: State,
 	view: Shown,
 	history: Move[ 'history' ],
 	config: Partial< Config >,
-	before: Shown
+	before: Shown,
+	guided: Move[ 'press' ]
 ): void {
 	if ( 'replace' === history ) {
 		state.status = view.status;
@@ -405,6 +430,25 @@ function say(
 		! before.isChanges &&
 		! view.errors.shown &&
 		view.step.slot === before.step.slot;
+	if ( undefined !== guided ) {
+		// The heading is read as focus comes to it; the region would say the build and its total over it.
+		state.status = '';
+		if ( 'skip' === guided ) {
+			root?.querySelector( '.cbuild-guide__ask' )?.removeAttribute(
+				'open'
+			);
+		}
+		const asked =
+			true === ( view as { guide?: { asked?: boolean } } ).guide?.asked;
+		const target =
+			'show' === guided && asked && ! view.errors.shown
+				? '.cbuild-guide__heading'
+				: first( view );
+		window.requestAnimationFrame( () => {
+			root?.querySelector< HTMLElement >( target )?.focus();
+		} );
+		return;
+	}
 	// A swap stays on the step, and the control pressed may be gone: focus goes to the notice, which says the swap and
 	// holds Undo, and after Undo back to the control that made it (#135, D-397). The region says the build and total.
 	const swapped = swapPress.pressed;
@@ -776,9 +820,14 @@ function steady( change: () => void ): void {
 	}
 	window.requestAnimationFrame( () => {
 		// A control the view folds away, as a width once chosen is, hands focus to its fold's summary: the line that
-		// now says the width, with Change (the spec reviewer's M10 minor M1).
+		// now says the width, with Change (the spec reviewer's M10 minor M1). Not where the view has put focus elsewhere
+		// already, as Skip in Help me choose's questions does (F35, D-516).
+		const now = builder.ownerDocument.activeElement;
 		const fold =
-			anchor === focused ? anchor.closest( 'details:not([open])' ) : null;
+			anchor === focused &&
+			( now === anchor || now === builder.ownerDocument.body )
+				? anchor.closest( 'details:not([open])' )
+				: null;
 		const summary =
 			fold?.querySelector< HTMLElement >( ':scope > summary' );
 		if ( summary && ! summary.hidden ) {
@@ -1093,6 +1142,81 @@ function folding(
 	};
 }
 
+/**
+ * What Next's press to another step can show before its answer, as the answer will (D-406, D-408, D-512):
+ * - the deck step's width line goes, as no later step asks the width, with the "Showing" line, as the answer lists the
+ *   next step's own. It otherwise stayed until the answer, a second late on a real host, took it and moved the cards up
+ *   under the heading;
+ * - on the first step, which has no Back, the bar's Back comes, as the next step's: the view gives its words. It
+ *   otherwise came in with the answer, narrowed the total and moved Next.
+ *
+ * Null where the press is no Next to another step, or there is nothing to show.
+ *
+ * @param view   The view shown.
+ * @param button The button pressed.
+ */
+function onward(
+	view: Shown,
+	button: HTMLElement | null | undefined
+): ( () => void ) | null {
+	const known = view as {
+		step: {
+			slot?: string;
+			stepName?: string;
+			next?: { value?: string };
+			more?: { count?: string };
+			shelf?: { width?: { shown?: boolean } };
+		};
+	};
+	const step = known.step;
+	const to = step.next?.value;
+	if (
+		! button ||
+		! to ||
+		to === step.slot ||
+		button.getAttribute( 'name' ) !== step.stepName ||
+		button.getAttribute( 'value' ) !== to
+	) {
+		return null;
+	}
+	const width = true === step.shelf?.width?.shown ? step.shelf.width : null;
+	const back = view.bar?.back;
+	const ahead = back && ! back.shown && '' !== back.ahead.url ? back : null;
+	if ( ! width && ! ahead ) {
+		return null;
+	}
+	return () => {
+		const more = step.more;
+		const counted = more?.count ?? '';
+		const was = ahead ? { url: ahead.url, label: ahead.label } : null;
+		// A press the rate limit or the store's limit stops leaves the step as it was (D-364).
+		unfold = () => {
+			if ( width ) {
+				width.shown = true;
+				if ( more ) {
+					more.count = counted;
+				}
+			}
+			if ( ahead && was ) {
+				ahead.shown = false;
+				ahead.url = was.url;
+				ahead.label = was.label;
+			}
+		};
+		if ( width ) {
+			width.shown = false;
+			if ( more ) {
+				more.count = '';
+			}
+		}
+		if ( ahead ) {
+			ahead.shown = true;
+			ahead.url = ahead.ahead.url;
+			ahead.label = ahead.ahead.label;
+		}
+	};
+}
+
 /** Undo a width's fold made at its press, until the answer comes. */
 let unfold: ( () => void ) | undefined;
 
@@ -1312,7 +1436,7 @@ function nav( state: State ): Navigator {
 			locale: String( config.locale ?? '' ),
 			late: String( config.late ?? '' ),
 			fetch: ( input, init ) => window.fetch( input, init ),
-			show: ( view, history ) => {
+			show: ( view, history, guided ) => {
 				const shown = view as Shown;
 				// A pick that opens the change panel is a step: an entry of its own, which Back leaves for the step
 				// the pick was made on, with focus on the panel's heading, as Next would have it (D-152).
@@ -1357,15 +1481,19 @@ function nav( state: State ): Navigator {
 					state.added = false;
 					state.limited = '';
 					state.missing = '';
-					say( state, shown, turned, config, before );
+					say( state, shown, turned, config, before, guided );
 					priced( before, shown );
+					// The Interactivity API draws the view in a microtask queued as it is set, so one queued after it finds the
+					// view drawn, in the same task: what another plugin adds on the event is laid out with the answer, not a
+					// frame after it, where it would move the cards (F39, D-517).
+					void Promise.resolve()
+						.then( () => undefined )
+						.then( () => rendered( root, shown ) );
 					window.requestAnimationFrame( () => {
 						moments( before, shown, was );
 						if ( ahead ) {
 							foresee();
 						}
-						// The Interactivity API has drawn the view by this frame.
-						rendered( root, shown );
 					} );
 				};
 				// Only a new step crosses over (spec: Motion): a transition takes the screen's taps while it
@@ -1402,6 +1530,146 @@ function nav( state: State ): Navigator {
 }
 
 /**
+ * The picture's renderer (SPEC: Ready for 3D): the 2D board's, which the template draws, until the 3D view opens.
+ */
+let renderer: Renderer = flat;
+
+/** The 3D view's tricks, from its script once it has loaded. */
+let tricks: Partial< Record< TrickName, Trick > > = {};
+
+/** Each press of View in 3D, so a press that closes it while its script is on its way leaves it closed. */
+let opening = 0;
+
+/**
+ * The scene the server measured for a view, where the kit offers 3D and a deck is picked.
+ *
+ * @param view The view.
+ */
+function scened( view: Shown ): Scene | null {
+	return ( view as Shown & { scene?: Scene | null } ).scene ?? null;
+}
+
+/**
+ * Close the 3D view, giving everything it holds back, and show the board.
+ *
+ * @param state The store's state.
+ */
+function flatten( state: State ): void {
+	opening++;
+	renderer.close();
+	renderer = flat;
+	state.three.open = false;
+	state.three.loading = false;
+	state.three.playing = false;
+}
+
+/**
+ * Why the 3D view could not be shown, or stopped, as `cbuild:3d-failed` says it (F8, D-481): its script did not load,
+ * the browser draws no WebGL 2, its context was lost, or anything else was thrown while it drew.
+ */
+export type Fall = 'load' | 'webgl' | 'lost' | 'error';
+
+/**
+ * The 3D view could not be shown, or stopped: the board comes back, the message shows under it, and the status
+ * region says it once, in the server's words. The reason goes to the console and in `cbuild:3d-failed`, for a shop's
+ * analytics (F8, D-481). Focus that was in the view, which is now hidden, goes to View in 3D on the next frame, not to
+ * the page (F2, D-480).
+ *
+ * @param state  The store's state.
+ * @param reason Why, as the event says it.
+ * @param why    What failed, for the console.
+ */
+function fell( state: State, reason: Fall, why: unknown ): void {
+	const view3d = root?.querySelector( '.cbuild-3d__stage' );
+	const within =
+		view3d?.contains( view3d.ownerDocument.activeElement ) ?? false;
+	flatten( state );
+	state.three.failed = true;
+	state.status =
+		root?.querySelector( '.cbuild-3d__failed' )?.textContent?.trim() ?? '';
+	// eslint-disable-next-line no-console
+	console.warn( `The 3D view stopped (${ reason }).`, why );
+	root?.dispatchEvent(
+		new CustomEvent( 'cbuild:3d-failed', {
+			bubbles: true,
+			detail: { kit: state.view.kit, reason },
+		} )
+	);
+	if ( within ) {
+		window.requestAnimationFrame( () => {
+			root?.querySelector< HTMLElement >( '.cbuild-3d__open' )?.focus();
+		} );
+	}
+}
+
+/**
+ * Open the 3D view: its script, loaded now and not before, drawing the view's scene on the canvas the server
+ * rendered. No WebGL 2, a lost context or anything thrown goes back to the board.
+ *
+ * @param state The store's state.
+ */
+async function rise( state: State ): Promise< void > {
+	const canvas =
+		root?.querySelector< HTMLCanvasElement >( '.cbuild-3d__canvas' );
+	if ( ! canvas ) {
+		return;
+	}
+	const ticket = ++opening;
+	state.three.loading = true;
+	state.three.failed = false;
+	let chunk: typeof import( './three/index' );
+	try {
+		chunk = await import(
+			/* webpackChunkName: "builder/three" */ './three/index'
+		);
+	} catch ( error ) {
+		fell( state, 'load', error );
+		return;
+	}
+	tricks = chunk.tricks;
+	if ( ticket !== opening ) {
+		return;
+	}
+	state.three.open = true;
+	try {
+		renderer = chunk.open( {
+			canvas,
+			reduced: () => calm( root ),
+			failed: ( why ) =>
+				fell(
+					state,
+					why instanceof Event && 'webglcontextlost' === why.type
+						? 'lost'
+						: 'error',
+					why
+				),
+		} );
+	} catch ( error ) {
+		fell( state, 'webgl', error );
+		return;
+	}
+	try {
+		renderer.show(
+			scened( state.view ),
+			true === state.view.picture?.turned
+		);
+	} catch ( error ) {
+		fell( state, 'error', error );
+		return;
+	}
+	state.three.loading = false;
+	// The stage stops sticking as the view opens and grows by the view's height, above the cards: on a phone the
+	// browser's scroll anchoring then kept the cards where they were and left the canvas above the screen (M14's
+	// walkthrough, D-523). Once the open view is laid out, its canvas comes on to the screen by the least scroll, its
+	// top first where it is above, and nothing moves where it is already shown.
+	window.requestAnimationFrame( () => {
+		if ( ticket === opening ) {
+			canvas.scrollIntoView( { block: 'nearest' } );
+		}
+	} );
+}
+
+/**
  * Forget the navigator: for tests, which give each its own page.
  */
 export function reset(): void {
@@ -1410,6 +1678,10 @@ export function reset(): void {
 	held = null;
 	top = undefined;
 	boards.clear();
+	renderer.close();
+	renderer = flat;
+	tricks = {};
+	opening = 0;
 	pressed = Number.NEGATIVE_INFINITY;
 	picking = false;
 	narrowing = undefined;
@@ -1541,7 +1813,16 @@ const { state } = store(
 			turning: false,
 			limited: '',
 			folded: false,
+			three: {
+				open: false,
+				loading: false,
+				failed: false,
+				playing: false,
+			},
 			missing: '',
+			get turns(): boolean {
+				return state.canTurn && ! state.three.open;
+			},
 			get dimmed(): boolean {
 				return state.live && false === state.view.bar?.next.ready;
 			},
@@ -1618,6 +1899,25 @@ const { state } = store(
 					laid.set( options, marks );
 					lay( options );
 				}
+			},
+			/**
+			 * Draw each view's scene in the 3D view, once it is open, on its step's side (1.4.0, #139): a part changed
+			 * swaps that part alone. The board's renderer has nothing to draw.
+			 */
+			scene(): void {
+				// A view with no scene, a deck sold out or a step back to before one, closes the view: the board is
+				// shown again, and View in 3D, hidden with the scene, is not left pressed (F6, D-482).
+				if (
+					null === scened( state.view ) &&
+					( state.three.open || state.three.loading )
+				) {
+					flatten( state );
+					return;
+				}
+				renderer.show(
+					scened( state.view ),
+					true === state.view.picture?.turned
+				);
 			},
 			/**
 			 * Say on the builder whether an answer is awaited: its root is no region, so no directive binds it (D-296).
@@ -1706,11 +2006,16 @@ const { state } = store(
 				if ( fold ) {
 					steady( fold );
 				}
+				// Next leaves the step, so nothing on it is held in place: the page's own scroll anchoring has the say.
+				onward( state.view, event.submitter )?.();
 				const move: Move = {
 					fields: fields( form, event.submitter ),
 					history: 'push',
 					fallback: () => send( form, event.submitter ),
 				};
+				if ( form.classList.contains( 'cbuild-guide__form' ) ) {
+					move.press = 'show';
+				}
 				nav( state ).go( move );
 			},
 			narrow( event: Event ): void {
@@ -1901,6 +2206,48 @@ const { state } = store(
 				turnTo( true );
 			},
 			/**
+			 * View in 3D (1.4.0, #139): open the 3D view, or close it and show the board again. A press while its
+			 * script is on its way closes it as well.
+			 */
+			async three(): Promise< void > {
+				if ( state.three.open || state.three.loading ) {
+					flatten( state );
+					return;
+				}
+				await rise( state );
+			},
+			/**
+			 * One of the 3D view's camera buttons: the button's value names where it sends the camera.
+			 */
+			look(): void {
+				const where = placeOf(
+					( getElement().ref as HTMLButtonElement | null )?.value
+				);
+				if ( where ) {
+					renderer.look( where );
+				}
+			},
+			/**
+			 * One of the 3D view's trick buttons (1.4.0, #139): the button's value names the trick. While one plays
+			 * the buttons say they are disabled, and a press does nothing; with reduced motion the view plays none.
+			 */
+			async trick(): Promise< void > {
+				const name = trickOf(
+					( getElement().ref as HTMLButtonElement | null )?.value
+				);
+				const played = name ? tricks[ name ] : undefined;
+				if ( ! played || ! state.three.open || state.three.playing ) {
+					return;
+				}
+				const playing = renderer;
+				state.three.playing = true;
+				await playing.play( played );
+				// Closed meanwhile, the view has freed its buttons already.
+				if ( playing === renderer ) {
+					state.three.playing = false;
+				}
+			},
+			/**
 			 * The screen changed: fit the phone bar into the theme again (D-163).
 			 */
 			fit(): void {
@@ -1959,6 +2306,9 @@ const { state } = store(
 					fields: [ ...url.searchParams ],
 					history: 'push',
 					fallback: () => browser.assign( url.href ),
+					...( link.classList.contains( 'cbuild-guide__skip' )
+						? { press: 'skip' as const }
+						: {} ),
 				} );
 			},
 			back(): void {

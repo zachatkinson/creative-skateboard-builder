@@ -86,6 +86,7 @@ interface Start {
 	yields: number;
 	resumed: number;
 	errors: string[];
+	marks: string[];
 }
 
 /**
@@ -101,6 +102,7 @@ function countStart() {
 		yields: 0,
 		resumed: 0,
 		errors: [],
+		marks: [],
 	};
 	( window as unknown as { cbuildStart: Start } ).cbuildStart = start;
 	// An error or a promise no one handled, a module's that failed to load among them, said where the trace may not.
@@ -115,11 +117,46 @@ function countStart() {
 		},
 		true
 	);
+	// What a script said went wrong without throwing: the Interactivity runtime logs a directive's error (#93).
+	// eslint-disable-next-line no-console -- the diagnostic wraps it, and passes every message on.
+	const said = console.error.bind( console );
+	// eslint-disable-next-line no-console -- as above.
+	console.error = ( ...args: unknown[] ) => {
+		start.errors.push(
+			`console: ${ args
+				.map( ( arg ) =>
+					arg instanceof Error
+						? `${ arg.message } ${ arg.stack ?? '' }`
+						: String( arg )
+				)
+				.join( ' ' )
+				.slice( 0, 400 ) }`
+		);
+		said( ...args );
+	};
 	window.addEventListener( 'unhandledrejection', ( event ) => {
 		start.errors.push( `unhandled: ${ String( event.reason ) }` );
 	} );
 	document.addEventListener( 'DOMContentLoaded', () => {
 		start.contentLoaded = performance.now();
+		// The ready mark's every change, and the bar's, with its time: set and taken away again, or never set (#93).
+		new MutationObserver( ( changes ) => {
+			for ( const change of changes ) {
+				const element = change.target as Element;
+				start.marks.push(
+					`${ Math.round( performance.now() ) } ${
+						element.className.split( ' ' )[ 0 ]
+					} ${ change.attributeName } ${
+						element.hasAttribute( change.attributeName! )
+							? 'on'
+							: 'off'
+					}`
+				);
+			}
+		} ).observe( document.body, {
+			subtree: true,
+			attributeFilter: [ 'data-ready' ],
+		} );
 	} );
 	const scheduler = (
 		window as unknown as { scheduler?: { yield?: () => Promise< void > } }
@@ -195,6 +232,16 @@ async function startSeen( page: Page ): Promise< unknown > {
 				timerNow: await within(
 					new Promise( ( done ) => setTimeout( done, 0 ) )
 				),
+				frameNow: await within(
+					new Promise( ( done ) => requestAnimationFrame( done ) )
+				),
+				// Whether any region's effects ran: callbacks.busy, a watch, sets aria-busy on the builder.
+				busySet:
+					document
+						.querySelector( '.cbuild' )
+						?.getAttribute( 'aria-busy' ) ?? 'none',
+				bars: document.querySelectorAll( '.cbuild-bar' ).length,
+				visible: document.visibilityState,
 			};
 		} )
 		.catch( ( error: unknown ) => String( error ) );

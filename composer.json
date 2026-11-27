@@ -57,7 +57,10 @@
 			"bash tools/release-plan-selftest.sh",
 			"bash tools/ci-code-hash-selftest.sh",
 			"bash tools/focused-selftest.sh",
-			"bash tools/upgrade-releases-selftest.sh"
+			"bash tools/upgrade-releases-selftest.sh",
+			"bash tools/landing-selftest.sh",
+			"bash tools/shellcheck.sh",
+			"@php tools/changelog.php --check"
 		],
 		"focused": "bash tools/focused.sh",
 		"test:unit": "phpunit -c phpunit.xml.dist --testsuite unit --exclude-group benchmark",
@@ -88,11 +91,19 @@
 			"@api:check"
 		],
 		"build": "bash tools/build-zip.sh",
-		"hooks": "git config core.hooksPath .githooks",
-		"i18n:pot": "npx wp-env run cli --env-cwd=wp-content/plugins/creative-skateboard-builder -- wp i18n make-pot . languages/creative-skateboard-builder.pot --domain=creative-skateboard-builder --exclude=node_modules,vendor,tests,tools,tmp,docs,assets/src",
+		"hooks": [
+			"git config core.hooksPath .githooks",
+			"git config merge.decisions.name 'DECISIONS.md by entry (D-462)'",
+			"git config merge.decisions.driver 'php tools/merge-decisions.php %O %A %B'",
+			"git config merge.po.name 'po files by entry (D-463)'",
+			"git config merge.po.driver 'php tools/merge-po.php %O %A %B'"
+		],
+		"infection:diff": "bash tools/infection.sh --git-diff-lines --git-diff-base=${CBUILD_DIFF_BASE:-origin/main} --ignore-msi-with-no-mutations",
+		"changelog:check": "@php tools/changelog.php --check",
+		"i18n:pot": "npx wp-env run cli --env-cwd=wp-content/plugins/creative-skateboard-builder -- wp i18n make-pot . languages/creative-skateboard-builder.pot --domain=creative-skateboard-builder --exclude=node_modules,vendor,tests,tools,tmp,docs,assets/src,build/builder/three.js",
 		"i18n:po": "npx wp-env run cli --env-cwd=wp-content/plugins/creative-skateboard-builder -- wp i18n update-po languages/creative-skateboard-builder.pot languages/",
 		"i18n:check": [
-			"npx wp-env run cli --env-cwd=wp-content/plugins/creative-skateboard-builder -- wp i18n make-pot . tmp/i18n-check.pot --domain=creative-skateboard-builder --exclude=node_modules,vendor,tests,tools,tmp,docs,assets/src",
+			"npx wp-env run cli --env-cwd=wp-content/plugins/creative-skateboard-builder -- wp i18n make-pot . tmp/i18n-check.pot --domain=creative-skateboard-builder --exclude=node_modules,vendor,tests,tools,tmp,docs,assets/src,build/builder/three.js",
 			"@php tools/i18n-check.php tmp/i18n-check.pot languages/creative-skateboard-builder.pot languages/*.po"
 		],
 		"i18n:compile": "npx wp-env run cli --env-cwd=wp-content/plugins/creative-skateboard-builder -- bash -c 'rm -f languages/*.json languages/*.mo languages/*.l10n.php && wp i18n make-mo languages/ languages/ && wp i18n make-php languages/ languages/ && wp i18n make-json languages/ --no-purge'"

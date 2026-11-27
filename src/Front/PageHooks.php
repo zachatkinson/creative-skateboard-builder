@@ -236,8 +236,16 @@ final class PageHooks implements Hookable {
 		if ( (string) get_permalink( $kit ) === $url ) {
 			return null;
 		}
+		// The request's arguments, and WordPress's request for the query variables that found the page, are read here
+		// and judged by CarriedArgs (M14's audit, F10). WordPress has no function that gives the request: `wp` hands it
+		// to a listener, which a copy an earlier release's container built would not be (D-208).
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read to be passed on, as requested() says.
+		$args = CarriedArgs::of( wp_unslash( $_GET ), $GLOBALS['wp'] ?? null );
 		$sent = BuilderPage::sent();
-		return is_array( $sent ) && array() !== $sent ? add_query_arg( array( BuildLink::PARAM => urlencode_deep( $sent ) ), $url ) : $url;
+		if ( is_array( $sent ) && array() !== $sent ) {
+			$args[ BuildLink::PARAM ] = urlencode_deep( $sent );
+		}
+		return array() === $args ? $url : add_query_arg( $args, $url );
 	}
 
 	/**

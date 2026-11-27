@@ -1,0 +1,534 @@
+/**
+ * The store's side of the 3D view (1.4.0, #139): View in 3D loads the chunk on its press alone and opens it on the
+ * server's canvas; a second press, or one while it loads, closes it; a failure goes back to the board with the
+ * server's message; each view's scene is drawn once it is open; and the camera's buttons send it by their values.
+ */
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { setElement, stores } from './support/interactivity';
+import { NAME, reset } from '../../assets/src/builder/view';
+import {
+	flat,
+	placeOf,
+	PLACES,
+	TRICKS,
+	trickOf,
+} from '../../assets/src/builder/picture';
+import { scene } from './support/scene';
+
+const drawn = {
+	show: vi.fn(),
+	look: vi.fn(),
+	play: vi.fn( () => Promise.resolve( true ) ),
+	close: vi.fn(),
+};
+
+const opened = vi.hoisted( () => ( {
+	open: vi.fn(),
+	tricks: {
+		ollie: { duration: 930, pose: () => undefined },
+		kickflip: { duration: 1200, pose: () => undefined },
+	} as Record< string, { duration: number; pose: () => void } >,
+} ) );
+
+vi.mock( '../../assets/src/builder/three/index', () => opened );
+
+interface Defined {
+	state: {
+		view: Record< string, unknown >;
+		status: string;
+		canTurn: boolean;
+		readonly turns: boolean;
+		three: {
+			open: boolean;
+			loading: boolean;
+			failed: boolean;
+			playing: boolean;
+		};
+	};
+	actions: {
+		three: () => Promise< void >;
+		look: () => void;
+		trick: () => Promise< void >;
+	};
+	callbacks: { init: () => void; scene: () => void };
+}
+
+const { state, actions, callbacks } = stores.get( NAME )!.definition as Defined;
+
+/**
+ * The builder with its 3D view, as the server renders it, and the store started on it.
+ *
+ * @param canvas Whether the page has the canvas.
+ */
+function page( canvas = true ): HTMLCanvasElement | null {
+	document.body.innerHTML = `
+		<div class="cbuild">
+			<p class="cbuild__status"></p>
+			<button type="button" class="cbuild-3d__open">View in 3D</button>
+			<div class="cbuild-3d">
+				<div class="cbuild-3d__stage">
+				${ canvas ? '<canvas class="cbuild-3d__canvas" tabindex="0"></canvas>' : '' }
+				</div>
+				<button type="button" value="top">Top</button>
+				<button type="button" value="nowhere">Nowhere</button>
+				<button type="button" value="kickflip">Kickflip</button>
+				<button type="button" value="ollie">Ollie</button>
+				<p class="cbuild-3d__failed">
+					The 3D view can’t be shown here, so the board is drawn flat.
+				</p>
+			</div>
+		</div>`;
+	setElement( document.querySelector< HTMLElement >( '.cbuild__status' ) );
+	callbacks.init();
+	return document.querySelector( 'canvas' );
+}
+
+beforeEach( () => {
+	reset();
+	vi.clearAllMocks();
+	opened.open.mockImplementation( () => drawn );
+	state.three = {
+		open: false,
+		loading: false,
+		failed: false,
+		playing: false,
+	};
+	state.status = '';
+	state.view = {
+		step: { slot: 'deck' },
+		picture: { turnable: true, turned: false },
+		scene: scene(),
+	};
+	window.matchMedia = vi.fn( () => ( { matches: false } ) ) as never;
+	// jsdom has no scrolling: the open view's canvas is brought on to the screen a frame after it opens (D-523).
+	Element.prototype.scrollIntoView = vi.fn();
+} );
+
+afterEach( () => {
+	document.body.innerHTML = '';
+	vi.restoreAllMocks();
+	vi.useRealTimers();
+} );
+
+describe( 'View in 3D', () => {
+	it( 'loads the 3D view on its press, and draws the view’s scene on its step’s side', async () => {
+		const canvas = page();
+		const pressed = actions.three();
+		expect( state.three.loading ).toBe( true );
+		expect( state.three.open ).toBe( false );
+		await pressed;
+		expect( state.three ).toEqual( {
+			open: true,
+			loading: false,
+			failed: false,
+			playing: false,
+		} );
+		expect( opened.open ).toHaveBeenCalledTimes( 1 );
+		const [ opening ] = opened.open.mock.calls[ 0 ]!;
+		expect( opening.canvas ).toBe( canvas );
+		expect( opening.reduced() ).toBe( false );
+		expect( drawn.show ).toHaveBeenCalledWith( state.view.scene, false );
+	} );
+
+	it( 'opens on the top where the step shows it', async () => {
+		page();
+		state.view = { ...state.view, picture: { turned: true } };
+		await actions.three();
+		expect( drawn.show ).toHaveBeenCalledWith( state.view.scene, true );
+	} );
+
+	it( 'reads reduced motion as the board’s moments do', async () => {
+		page();
+		await actions.three();
+		window.matchMedia = vi.fn( () => ( { matches: true } ) ) as never;
+		expect( opened.open.mock.calls[ 0 ]![ 0 ].reduced() ).toBe( true );
+	} );
+
+	it( 'closes on a second press, giving everything back', async () => {
+		page();
+		await actions.three();
+		await actions.three();
+		expect( drawn.close ).toHaveBeenCalledTimes( 1 );
+		expect( state.three.open ).toBe( false );
+		// The board's renderer draws nothing.
+		callbacks.scene();
+		expect( drawn.show ).toHaveBeenCalledTimes( 1 );
+		await actions.three();
+		expect( state.three.open ).toBe( true );
+		expect( opened.open ).toHaveBeenCalledTimes( 2 );
+	} );
+
+	// M14's walkthrough, finding 3 (D-522): the view's own Top and Underside move its camera, so the board's are hidden.
+	it( 'hides the board’s turn while open, and shows it again once closed, where the store can turn it', async () => {
+		page();
+		expect( state.canTurn ).toBe( true );
+		expect( state.turns ).toBe( true );
+		await actions.three();
+		expect( state.turns ).toBe( false );
+		await actions.three();
+		expect( state.turns ).toBe( true );
+		state.canTurn = false;
+		expect( state.turns ).toBe( false );
+	} );
+
+	// M14's walkthrough, finding 1 (D-523): on a phone the page was left with the canvas above the screen.
+	it( 'brings the canvas on to the screen once the open view is laid out, and not where it closed first', async () => {
+		vi.useFakeTimers( { toFake: [ 'requestAnimationFrame' ] } );
+		const shown = vi.fn();
+		Element.prototype.scrollIntoView = shown;
+		const canvas = page()!;
+		await actions.three();
+		expect( shown ).not.toHaveBeenCalled();
+		vi.advanceTimersToNextFrame();
+		expect( shown ).toHaveBeenCalledTimes( 1 );
+		expect( shown.mock.contexts[ 0 ] ).toBe( canvas );
+		expect( shown ).toHaveBeenCalledWith( { block: 'nearest' } );
+		await actions.three();
+		await actions.three();
+		await actions.three();
+		vi.advanceTimersToNextFrame();
+		expect( shown ).toHaveBeenCalledTimes( 1 );
+		vi.useRealTimers();
+	} );
+
+	it( 'stays closed where it was pressed again while it loaded', async () => {
+		page();
+		const first = actions.three();
+		const second = actions.three();
+		expect( state.three.loading ).toBe( false );
+		await second;
+		await first;
+		expect( opened.open ).not.toHaveBeenCalled();
+		expect( state.three ).toEqual( {
+			open: false,
+			loading: false,
+			failed: false,
+			playing: false,
+		} );
+	} );
+
+	it( 'does nothing on a page with no canvas', async () => {
+		page( false );
+		await actions.three();
+		expect( state.three.loading ).toBe( false );
+		expect( opened.open ).not.toHaveBeenCalled();
+	} );
+
+	it( 'goes back to the board with the server’s message where it cannot open', async () => {
+		page();
+		opened.open.mockImplementation( () => {
+			throw new Error( 'Error creating WebGL context.' );
+		} );
+		await actions.three();
+		expect( state.three ).toEqual( {
+			open: false,
+			loading: false,
+			failed: true,
+			playing: false,
+		} );
+		expect( state.status ).toBe(
+			'The 3D view can’t be shown here, so the board is drawn flat.'
+		);
+		await actions.three();
+		expect( opened.open ).toHaveBeenCalledTimes( 2 );
+	} );
+
+	it( 'says nothing where the page has no message', async () => {
+		page();
+		document.querySelector( '.cbuild-3d__failed' )!.remove();
+		opened.open.mockImplementation( () => {
+			throw new Error( 'no WebGL' );
+		} );
+		await actions.three();
+		expect( state.three.failed ).toBe( true );
+		expect( state.status ).toBe( '' );
+	} );
+
+	it( 'goes back to the board where the open view fails', async () => {
+		page();
+		await actions.three();
+		opened.open.mock.calls[ 0 ]![ 0 ].failed( new Error( 'lost' ) );
+		expect( drawn.close ).toHaveBeenCalledTimes( 1 );
+		expect( state.three ).toEqual( {
+			open: false,
+			loading: false,
+			failed: true,
+			playing: false,
+		} );
+		expect( state.status ).toContain( 'drawn flat' );
+		// A failure clears once it opens again.
+		await actions.three();
+		expect( state.three.failed ).toBe( false );
+	} );
+} );
+
+describe( 'each view in 3D', () => {
+	it( 'draws the view’s scene once open, on its step’s side', async () => {
+		page();
+		await actions.three();
+		const next = scene();
+		next.wheels!.part = 304;
+		state.view = {
+			...state.view,
+			picture: { turned: true },
+			scene: next,
+		};
+		callbacks.scene();
+		expect( drawn.show ).toHaveBeenLastCalledWith( next, true );
+		// A view with no scene closes the view (F6, below), so the view never draws none.
+	} );
+} );
+
+describe( 'the camera’s buttons', () => {
+	it( 'send the camera where their values name', async () => {
+		page();
+		await actions.three();
+		setElement( document.querySelector< HTMLElement >( '[value=top]' ) );
+		actions.look();
+		expect( drawn.look ).toHaveBeenCalledWith( 'top' );
+		setElement(
+			document.querySelector< HTMLElement >( '[value=nowhere]' )
+		);
+		actions.look();
+		setElement( null );
+		actions.look();
+		expect( drawn.look ).toHaveBeenCalledTimes( 1 );
+	} );
+} );
+
+describe( 'the trick buttons', () => {
+	/**
+	 * Press a trick's button.
+	 *
+	 * @param value The button's value.
+	 */
+	const press = ( value: string ): Promise< void > => {
+		setElement(
+			document.querySelector< HTMLElement >( `[value="${ value }"]` )
+		);
+		return actions.trick();
+	};
+
+	it( 'play the trick their values name, and say it plays until it lands', async () => {
+		page();
+		await actions.three();
+		let landed: ( played: boolean ) => void = () => undefined;
+		drawn.play.mockImplementationOnce(
+			() =>
+				new Promise< boolean >( ( done ) => {
+					landed = done;
+				} )
+		);
+		const pressed = press( 'kickflip' );
+		expect( drawn.play ).toHaveBeenCalledWith( opened.tricks.kickflip );
+		expect( state.three.playing ).toBe( true );
+		// A press while it plays does nothing: the buttons say they are disabled.
+		await press( 'ollie' );
+		expect( drawn.play ).toHaveBeenCalledTimes( 1 );
+		landed( true );
+		await pressed;
+		expect( state.three.playing ).toBe( false );
+		await press( 'ollie' );
+		expect( drawn.play ).toHaveBeenLastCalledWith( opened.tricks.ollie );
+		expect( state.three.playing ).toBe( false );
+	} );
+
+	it( 'play nothing for a value that names no trick, or with the view closed', async () => {
+		page();
+		await press( 'kickflip' );
+		expect( drawn.play ).not.toHaveBeenCalled();
+		await actions.three();
+		await press( 'nowhere' );
+		setElement( null );
+		await actions.trick();
+		expect( drawn.play ).not.toHaveBeenCalled();
+		expect( state.three.playing ).toBe( false );
+	} );
+
+	it( 'are free again once the view closes in the middle of one', async () => {
+		page();
+		await actions.three();
+		drawn.play.mockImplementationOnce(
+			() => new Promise< boolean >( () => undefined )
+		);
+		void press( 'ollie' );
+		expect( state.three.playing ).toBe( true );
+		await actions.three();
+		expect( state.three.playing ).toBe( false );
+	} );
+
+	it( 'leave a trick on a view opened again playing, where one on the closed view lands late', async () => {
+		page();
+		await actions.three();
+		let late: ( played: boolean ) => void = () => undefined;
+		drawn.play.mockImplementationOnce(
+			() =>
+				new Promise< boolean >( ( done ) => {
+					late = done;
+				} )
+		);
+		const first = press( 'ollie' );
+		await actions.three();
+		const again = { ...drawn };
+		opened.open.mockImplementation( () => again );
+		await actions.three();
+		again.play = vi.fn( () => new Promise< boolean >( () => undefined ) );
+		void press( 'kickflip' );
+		expect( again.play ).toHaveBeenCalledTimes( 1 );
+		late( false );
+		await first;
+		expect( state.three.playing ).toBe( true );
+	} );
+} );
+
+describe( 'the picture’s renderers', () => {
+	it( 'has the board’s draw nothing and play nothing', async () => {
+		expect( flat.show( scene(), true ) ).toBeUndefined();
+		expect( flat.look( 'top' ) ).toBeUndefined();
+		expect( flat.close() ).toBeUndefined();
+		await expect(
+			flat.play( { duration: 1, pose: () => undefined } )
+		).resolves.toBe( false );
+	} );
+
+	it( 'reads a place from a button’s value', () => {
+		expect( PLACES ).toEqual( [
+			'reset',
+			'top',
+			'under',
+			'side',
+			'graphic',
+		] );
+		for ( const one of PLACES ) {
+			expect( placeOf( one ) ).toBe( one );
+		}
+		expect( placeOf( 'edge' ) ).toBeNull();
+		expect( placeOf( undefined ) ).toBeNull();
+	} );
+
+	it( 'reads a trick from a button’s value', () => {
+		for ( const one of TRICKS ) {
+			expect( trickOf( one ) ).toBe( one );
+		}
+		expect( trickOf( 'nollie' ) ).toBeNull();
+		expect( trickOf( undefined ) ).toBeNull();
+	} );
+} );
+
+// The auditor's M14 review, F6: a view whose scene went, a deck sold out or a step back to before one, left the view
+// open on a blank canvas with View in 3D hidden. It closes, and the board is shown again (D-482).
+describe( 'the scene gone', () => {
+	it( 'closes the open view where the view has no scene', async () => {
+		page();
+		await actions.three();
+		state.view = { step: { slot: 'deck' }, scene: null };
+		callbacks.scene();
+		expect( drawn.close ).toHaveBeenCalledTimes( 1 );
+		expect( state.three.open ).toBe( false );
+		expect( state.three.failed ).toBe( false );
+		expect( drawn.show ).toHaveBeenCalledTimes( 1 );
+	} );
+
+	it( 'leaves a view still loading closed where its scene goes', async () => {
+		page();
+		const pressed = actions.three();
+		state.view = { step: { slot: 'deck' } };
+		callbacks.scene();
+		expect( state.three.loading ).toBe( false );
+		await pressed;
+		expect( opened.open ).not.toHaveBeenCalled();
+		expect( state.three.open ).toBe( false );
+	} );
+
+	it( 'draws nothing and closes nothing with the view closed', () => {
+		page();
+		state.view = { step: { slot: 'deck' } };
+		callbacks.scene();
+		expect( drawn.close ).not.toHaveBeenCalled();
+		expect( drawn.show ).not.toHaveBeenCalled();
+	} );
+} );
+
+// The auditor's M14 review, F8: a failure said nothing to a developer or a shop. It is warned in the console with
+// what failed, and sent as `cbuild:3d-failed` with the kit and why (D-481).
+describe( 'a failure told', () => {
+	/**
+	 * Hear the builder's cbuild:3d-failed events.
+	 */
+	function heard(): unknown[] {
+		const details: unknown[] = [];
+		document
+			.querySelector( '.cbuild' )!
+			.addEventListener( 'cbuild:3d-failed', ( event ) =>
+				details.push( ( event as CustomEvent ).detail )
+			);
+		return details;
+	}
+
+	it( 'warns and sends each reason: no WebGL 2, a lost context, an error', async () => {
+		const warned = vi
+			.spyOn( console, 'warn' )
+			.mockImplementation( () => undefined );
+		page();
+		state.view = { ...state.view, kit: 7 };
+		const details = heard();
+		const thrown = new Error( 'Error creating WebGL context.' );
+		opened.open.mockImplementationOnce( () => {
+			throw thrown;
+		} );
+		await actions.three();
+		expect( warned ).toHaveBeenLastCalledWith(
+			'The 3D view stopped (webgl).',
+			thrown
+		);
+		await actions.three();
+		const lost = new Event( 'webglcontextlost' );
+		opened.open.mock.calls[ 1 ]![ 0 ].failed( lost );
+		expect( warned ).toHaveBeenLastCalledWith(
+			'The 3D view stopped (lost).',
+			lost
+		);
+		await actions.three();
+		const drawing = new Error( 'a shader' );
+		opened.open.mock.calls[ 2 ]![ 0 ].failed( drawing );
+		await actions.three();
+		opened.open.mock.calls[ 3 ]![ 0 ].failed( new Event( 'error' ) );
+		drawn.show.mockImplementationOnce( () => {
+			throw drawing;
+		} );
+		await actions.three();
+		expect( warned ).toHaveBeenLastCalledWith(
+			'The 3D view stopped (error).',
+			drawing
+		);
+		expect( details ).toEqual( [
+			{ kit: 7, reason: 'webgl' },
+			{ kit: 7, reason: 'lost' },
+			{ kit: 7, reason: 'error' },
+			{ kit: 7, reason: 'error' },
+			{ kit: 7, reason: 'error' },
+		] );
+		expect( state.three.failed ).toBe( true );
+	} );
+
+	it( 'gives focus in the view to View in 3D once it fails, and leaves focus elsewhere where it is', async () => {
+		vi.useFakeTimers( { toFake: [ 'requestAnimationFrame' ] } );
+		vi.spyOn( console, 'warn' ).mockImplementation( () => undefined );
+		const canvas = page()!;
+		await actions.three();
+		canvas.focus();
+		opened.open.mock.calls[ 0 ]![ 0 ].failed( new Error( 'lost' ) );
+		vi.advanceTimersToNextFrame();
+		const open = document.querySelector( '.cbuild-3d__open' );
+		expect( canvas.ownerDocument.activeElement ).toBe( open );
+		const other = document.querySelector< HTMLElement >( '[value=top]' )!;
+		other.focus();
+		await actions.three();
+		document.body.append( other );
+		other.focus();
+		opened.open.mock.calls[ 1 ]![ 0 ].failed( new Error( 'lost' ) );
+		vi.advanceTimersToNextFrame();
+		expect( canvas.ownerDocument.activeElement ).toBe( other );
+		vi.useRealTimers();
+	} );
+} );

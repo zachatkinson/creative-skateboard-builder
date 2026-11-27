@@ -989,9 +989,10 @@
 	box-shadow: 0 0 0 4px var(--cbuild-focus-contrast);
 }
 
-/* The place above the cards for another plugin's element (#151): out of the layout while it holds nothing, so a shop
-   with no such plugin sees no gap. */
-:where(.cbuild-step__above-cards:empty) {
+/* The places above the cards and above the guide's builds for another plugin's element (#151, F41): out of the
+   layout while they hold nothing, so a shop with no such plugin sees no gap. */
+:where(.cbuild-step__above-cards:empty),
+:where(.cbuild-guide__above-builds:empty) {
 	display: none;
 }
 
@@ -1817,9 +1818,29 @@
 	block-size: calc(100% - 2 * var(--cbuild-gap));
 }
 
-:where(.cbuild__stage .cbuild-picture__turn) {
+/* The turn and, where the kit offers it, View in 3D: one row that wraps, the turn at its end and View in 3D at its start,
+   so in a narrow picture or in longer words neither covers the other, and the picture has no row of its own for the
+   button (F7, D-483). The turn comes first in the page, so a press of View in 3D is followed by the canvas it opens. */
+:where(.cbuild__stage .cbuild-picture__controls) {
+	display: flex;
+	flex-direction: row-reverse;
+	flex-wrap: wrap;
+	align-items: start;
+	gap: 0.25rem var(--cbuild-gap-small);
 	grid-row: 5;
 	justify-self: end;
+	min-inline-size: 0;
+	max-inline-size: 100%;
+}
+
+:where(
+	.cbuild__stage
+		.cbuild-picture__controls:has(> .cbuild-3d__open:not([hidden]))
+) {
+	justify-self: stretch;
+}
+
+:where(.cbuild__stage .cbuild-picture__turn) {
 	min-block-size: var(--cbuild-target);
 	margin: 0;
 	padding-block-end: var(--cbuild-gap-small);
@@ -1830,9 +1851,12 @@
    are placed in their rows: left to the grid, they went after the button's, the heading took the board's row with a
    box 1 px high, and the side line was drawn over it (F21, #119). */
 @media (orientation: landscape) and (max-height: 30rem) {
-	:where(.cbuild__stage .cbuild-picture__turn) {
+	:where(.cbuild__stage .cbuild-picture__controls) {
 		grid-row: 1 / span 2;
 		align-self: start;
+	}
+
+	:where(.cbuild__stage .cbuild-picture__turn) {
 		padding-block-end: 0;
 	}
 
@@ -1859,6 +1883,17 @@
 .cbuild .cbuild__stage:not(.cbuild__stage--bare) .cbuild-picture__turn[hidden] {
 	display: flex;
 	visibility: hidden;
+}
+
+/* The turn's two buttons are the store's to show (it sets canTurn as it starts), and in a strip as short as a phone's
+   held sideways their row sizes the board: it grew from 122.6 to 130.0 px as the store took over (D-521). On a page
+   that will run the script they hold their place, unseen, from the first paint, so the store's showing them moves
+   nothing. Without the script, scripting is none and they take no room. */
+@media (scripting: enabled) {
+	.cbuild:not([data-ready]) .cbuild-picture__sides[hidden] {
+		display: inline-flex;
+		visibility: hidden;
+	}
 }
 
 /* Stacked, on a tablet as on a phone, the stage is a short strip on top: the board turned fills its width (D-280). */
@@ -2006,9 +2041,10 @@
 			column-gap: var(--cbuild-gap-small);
 		}
 
-		:where(.cbuild__stage .cbuild-picture__turn) {
+		:where(.cbuild__stage .cbuild-picture__controls) {
 			grid-area: 3 / 1;
 			justify-self: start;
+			justify-content: flex-end;
 			max-inline-size: 100%;
 		}
 
@@ -2527,10 +2563,16 @@
 	overflow-wrap: normal;
 }
 
+/* Back and Next beside the total wherever their narrowest fits there (#153, D-510). The line is broken at their
+   narrowest, Next's words each on a line of their own, and they grow back to their widest before the total takes the
+   rest: on a phone in the theme's content width, and in French at the review, their widest had put them on a row of
+   their own under the total, up to 199 px of bar. Where even their narrowest does not fit, they still take that row. */
 :where(.cbuild-bar__actions) {
 	display: flex;
-	flex: none;
+	flex: 1000 1 0;
 	gap: var(--cbuild-gap-small);
+	min-inline-size: min-content;
+	max-inline-size: max-content;
 	margin-inline-start: auto;
 }
 
@@ -2627,6 +2669,17 @@
 	flex: none;
 	padding-inline: 0.875rem;
 	font-size: 1rem;
+}
+
+/* Next's and Add to cart's words break between them inside the button, as evenly as they can, where the bar is short
+   of room (#153, D-510): never inside a word, and the button keeps the 44 px target. A theme's `nowrap` for a button
+   is set aside at the same two classes' weight. */
+.cbuild.cbuild :where(.cbuild-bar__next) {
+	flex: 0 1 auto;
+	text-align: center;
+	text-wrap: balance;
+	white-space: normal;
+	overflow-wrap: normal;
 }
 
 :where(.cbuild-bar__back) {
@@ -2996,5 +3049,209 @@
 		scroll-padding-block-start: calc(
 			var(--cbuild-stage-size, 0px) + 0.5rem
 		);
+	}
+}
+
+/*
+ * The 3D view (1.4.0, #139). Its wrapper lays its pieces into the picture's own rows: View in 3D at the start of the
+ * turn's row, under the board, its place kept while the script loads so nothing moves when it shows; once pressed, the
+ * canvas in the board's row, the board and the parts' photos hidden, and the camera's buttons under the canvas. The
+ * board comes back with the message under it where the view can't be shown.
+ */
+:where(.cbuild-3d:not([hidden])) {
+	display: contents;
+}
+
+/* View in 3D, in the turn's row (F7, D-483): at the row's start, before the turn. */
+:where(.cbuild__stage .cbuild-3d__open) {
+	margin-inline-end: auto;
+}
+
+/* Stacked and upright, the turn's row has no room for View in 3D beside Underside and Top at 320 px, and a row of its
+   own would take the board's height: it goes up beside the heading and the side line, at their end, where the side
+   line leaves room, as the turn does on a short screen. It overhangs the side line's row by what its target needs
+   past the two lines, so neither row grows (F7, D-483). */
+@container cbuild (max-width: 63.99rem) {
+	@media not ((orientation: landscape) and (max-height: 30rem)) {
+		:where(.cbuild__stage .cbuild-picture__controls) {
+			display: contents;
+		}
+
+		:where(.cbuild__stage .cbuild-picture__turn) {
+			grid-row: 5;
+			justify-self: end;
+		}
+
+		:where(.cbuild__stage .cbuild-picture__heading) {
+			grid-area: 1 / 1;
+		}
+
+		:where(.cbuild__stage .cbuild-picture__side) {
+			grid-area: 2 / 1;
+		}
+
+		:where(.cbuild__stage .cbuild-3d__open) {
+			grid-area: 1 / 1 / span 2;
+			justify-self: end;
+			align-self: start;
+			margin-block-end: calc(var(--cbuild-target) * -1 + 2.25rem);
+			margin-inline-end: 0;
+		}
+	}
+}
+
+/* On a phone held sideways the words' column, already full in French, holds View in 3D after the turn, with its 44 px
+   target. The strip has no room for it, so where the kit offers the view the strip grows to hold the column, and the
+   board, its size kept, sits in the middle of the taller strip. It is so in the server's first paint, so nothing moves
+   once the page is ready (F7, D-483). */
+@media (orientation: landscape) and (max-height: 30rem) {
+	@container cbuild (width < 64rem) {
+		.cbuild :where(.cbuild__stage:has(.cbuild-3d__open:not([hidden]))) {
+			block-size: auto;
+			min-block-size: var(--cbuild-stage-height, 34svh);
+		}
+	}
+}
+
+:where(.cbuild-3d__open--waiting) {
+	visibility: hidden;
+}
+
+.cbuild-picture--3d > .cbuild-board,
+.cbuild-picture--3d > .cbuild-picture__items,
+.cbuild-picture--3d > .cbuild-picture__empty {
+	display: none;
+}
+
+/* The side line names the board's side, which the 3D view's camera does not keep: it goes, its row kept, so the
+   canvas is where the board was (F13, D-484). */
+.cbuild-picture--3d > .cbuild-picture__side {
+	visibility: hidden;
+}
+
+/* While the view is open the turn's buttons are hidden, since the view's own Top and Underside move its camera, and
+   their row, empty, takes no room (M14's walkthrough, D-522). */
+.cbuild-picture--3d .cbuild-picture__turn {
+	min-block-size: 0;
+	padding-block-end: 0;
+}
+
+/* Its width is its cell's, never its contents': Firefox sized the picture's column from the 4 by 3 frame's height,
+   and the canvas ran past the edge of a phone's screen. */
+:where(.cbuild-3d__stage:not([hidden])) {
+	display: grid;
+	grid-template-rows: minmax(0, 1fr) auto auto auto auto;
+	gap: var(--cbuild-gap-small);
+	min-block-size: 0;
+	min-inline-size: 0;
+	contain: inline-size;
+}
+
+:where(.cbuild__stage .cbuild-3d__stage) {
+	grid-row: 3;
+	grid-column: 1 / -1;
+	margin-block: var(--cbuild-gap-small);
+}
+
+/* The canvas is clear, so the frame's ground is the 3D view's: the builder's own, which follows the theme and its dark
+   scheme, or a theme's own for the view alone (D-500). */
+:where(.cbuild-3d__frame) {
+	position: relative;
+	min-block-size: 16rem;
+	border-radius: 0.25rem;
+	background: var(--cbuild-3d-ground, var(--cbuild-ground));
+}
+
+:where(.cbuild-3d__canvas) {
+	position: absolute;
+	inset: 0;
+	display: block;
+	inline-size: 100%;
+	block-size: 100%;
+	border-radius: 0.25rem;
+	cursor: grab;
+}
+
+:where(.cbuild-3d__note, .cbuild-3d__keys, .cbuild-3d__failed) {
+	margin: 0;
+	color: var(--cbuild-muted);
+	font-size: var(--cbuild-small);
+}
+
+/* A row of its own, after the picture's others: in the labels' row, as it was, it took the picture's one column and
+   pushed the labels into a column of their own beside it, where it ran into them (M14's walkthrough, D-525). */
+:where(.cbuild__stage .cbuild-3d__failed) {
+	grid-row: 6;
+	grid-column: 1 / -1;
+}
+
+/* Pressed while the view is open, marked as the board's sides are: filled in the accent, in bold. */
+.cbuild.cbuild .cbuild-3d__open[aria-pressed="true"] {
+	border-color: var(--cbuild-accent);
+	background: var(--cbuild-accent);
+	color: var(--cbuild-text);
+	-webkit-text-fill-color: var(--cbuild-on-accent);
+	font-weight: 600;
+}
+
+:where(.cbuild-3d__places, .cbuild-3d__tricks) {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.25rem;
+}
+
+.cbuild.cbuild .cbuild-3d__places .cbuild-button,
+.cbuild.cbuild .cbuild-3d__tricks .cbuild-button {
+	padding-inline: 0.625rem;
+	font-weight: 400;
+}
+
+/* While a trick plays the trick buttons say they are disabled, and still take focus, so it stays where it was. */
+.cbuild.cbuild .cbuild-3d__tricks .cbuild-button[aria-disabled="true"] {
+	color: var(--cbuild-muted);
+	cursor: not-allowed;
+}
+
+/* With reduced motion, or the kit's Motion subtle, no trick is offered: a button that did nothing would say less than
+   none (D-503). */
+@media (prefers-reduced-motion: reduce) {
+	.cbuild.cbuild .cbuild-3d__tricks {
+		display: none;
+	}
+}
+
+.cbuild.cbuild--subtle .cbuild-3d__tricks {
+	display: none;
+}
+
+/* Stacked, on a tablet or a phone, the open 3D view takes the room it needs: the stage stops sticking and grows to the
+   canvas, which keeps a 4 by 3 frame, so the page scrolls past it as past any picture. */
+@container cbuild (max-width: 63.99rem) {
+	.cbuild .cbuild__stage:has(.cbuild-picture--3d) {
+		position: relative;
+		inset-block-start: auto;
+		block-size: auto;
+	}
+
+	:where(.cbuild-3d__frame) {
+		aspect-ratio: 4 / 3;
+		min-block-size: 0;
+	}
+}
+
+/* On a phone held sideways the open view goes where the board was, beside the words' column, never across it: in the
+   board's row, the full width, its 4 by 3 frame was 609 px high on a 390 px screen and lay over View in 3D, which
+   closes it (M14's walkthrough, D-524). Its frame is as high as the screen leaves room for, with the camera's row
+   under it, and as wide as its column. */
+@media (orientation: landscape) and (max-height: 30rem) {
+	@container cbuild (width < 64rem) {
+		:where(.cbuild__stage .cbuild-3d__stage) {
+			grid-area: 1 / 2 / -1 / 3;
+		}
+
+		:where(.cbuild-3d__frame) {
+			aspect-ratio: auto;
+			block-size: max(10rem, 100svh - 8rem);
+		}
 	}
 }

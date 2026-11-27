@@ -86,7 +86,7 @@ final class ShareCardYoastTest extends CartTestCase {
 
 		$build         = array_map( 'strval', $this->picks() ) + array( 'step' => 'review' );
 		[ $html, $tags ] = $this->head( $build );
-		self::assertSame( array( '8.5″ complete: Deck, Trucks, and Wheels' ), $tags['og:title'] );
+		self::assertSame( array( '8.5″ complete: Deck, Trucks and Wheels' ), $tags['og:title'], 'joined as the plugin joins a list, as ShareCardTest says (D-460)' );
 		self::assertSame( array( 'Total: $183.00' ), $tags['og:description'] );
 		self::assertCount( 1, $tags['og:url'], 'one set of tags' );
 		self::assertSame( (string) get_permalink( $this->kit ), remove_query_arg( BuildLink::PARAM, $tags['og:url'][0] ) );

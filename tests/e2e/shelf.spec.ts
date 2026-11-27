@@ -903,6 +903,86 @@ test.describe( 'A width pressed, its answer a second late (F30)', () => {
 	}
 } );
 
+// Cowork's review of 1.3.0, F39 (#162): another plugin that puts its notice above the cards when it hears
+// `cbuild:rendered` moved a width's late answer by 0.062 on an iPhone 13 and 0.015 at 1440 by 900, as the event came
+// a frame after the cards were laid out. Sent in the task that draws the answer, the notice is laid out with them.
+test.describe( 'An element added above the cards on cbuild:rendered (F39)', () => {
+	test( 'moves nothing when a width answered a second late brings the cards', async ( {
+		page,
+	}, info ) => {
+		test.skip(
+			! info.project.name.startsWith( 'chromium' ) ||
+				info.project.name.includes( 'tablet' ),
+			'Only Chromium reports layout shift (the Layout Instability API); a phone and a desktop.'
+		);
+		test.setTimeout( 90_000 );
+		const phone = info.project.name.includes( 'phone' );
+		await page.setViewportSize(
+			phone ? { width: 390, height: 664 } : { width: 1440, height: 900 }
+		);
+		// Cowork's element: 118 px, put in the place above the cards on each event after the first, as a notice for
+		// the decks a width lists.
+		await page.addInitScript( () => {
+			let heard = 0;
+			const record = window as unknown as { f39Cards: number[] };
+			record.f39Cards = [];
+			document.addEventListener( 'cbuild:rendered', () => {
+				heard++;
+				// The cards the page holds as the event is heard: the answer's, drawn before it is sent.
+				record.f39Cards.push(
+					document.querySelectorAll( '.cbuild-cards > li' ).length
+				);
+				const place = document.querySelector(
+					'.cbuild-step__above-cards'
+				);
+				if ( heard < 2 || ! place || place.querySelector( '.f39' ) ) {
+					return;
+				}
+				const notice = document.createElement( 'div' );
+				notice.className = 'f39';
+				notice.style.blockSize = '118px';
+				notice.textContent = 'Another plugin';
+				place.append( notice );
+			} );
+		} );
+		const builder = page.locator( '.cbuild' );
+		await page.goto( shelf().page );
+		await expect( builder ).toHaveAttribute( 'data-ready', '' );
+		await page.waitForLoadState( 'networkidle' );
+		await holdAnswers( page );
+		await watchShifts( page );
+		const from = await now( page );
+		await page
+			.locator( '.cbuild-width__option', {
+				has: page.locator( '.cbuild-chip__text', {
+					hasText: /^8\.25″$/,
+				} ),
+			} )
+			.click();
+		await expect( builder ).toHaveAttribute( 'aria-busy', 'true' );
+		await expect( builder ).toHaveAttribute( 'aria-busy', 'false', {
+			timeout: 10_000,
+		} );
+		await expect( page.locator( '.f39' ) ).toHaveCount( 1 );
+		// The event for the width's answer is heard with its cards drawn: as many as the step shows once it is still.
+		const drawn = await page.locator( '.cbuild-cards > li' ).count();
+		expect( drawn, 'the width lists decks' ).toBeGreaterThan( 0 );
+		expect(
+			await page.evaluate(
+				() => ( window as unknown as { f39Cards: number[] } ).f39Cards
+			),
+			'the cards drawn at each event: the start, then the width'
+		).toEqual( [ expect.any( Number ), drawn ] );
+		await page.waitForTimeout( 2000 );
+		const { counted, said } = await shiftsSince( page, from );
+		// eslint-disable-next-line no-console
+		console.log( `${ info.project.name } F39: ${ said }` );
+		expect( counted, `the answer's layout shift: ${ said }` ).toBeLessThan(
+			0.001
+		);
+	} );
+} );
+
 // Issue #143: a search sends `cbuild:rendered` once its answer is drawn, not for each key typed before it.
 test.describe( 'The rendered event on a search (#143)', () => {
 	test( 'sends cbuild:rendered once for a search, after its answer, not per key', async ( {

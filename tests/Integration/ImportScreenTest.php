@@ -361,6 +361,47 @@ final class ImportScreenTest extends IntegrationTestCase {
 		);
 	}
 
+
+	// M14's audit, S9: no test imported the 3D view's specs. A sheet with `nose_length`, `kick_angle` and `wheel_width`
+	// columns is imported, and each part's row in the specs index holds them, from the part's own fields.
+	public function test_the_3d_views_specs_are_imported_and_read_back_from_the_index(): void {
+		$deck  = self::part( 'DK-8250', array( 'deck_width' => '8.2500' ) );
+		$wheel = self::part( 'WH-54', array( 'wheel_diameter' => '54.0000' ), 'Spitfire 54' );
+		$this->as( 'shop_manager' );
+		[ $screen ] = $this->read( "id,nose_length,kick_angle,wheel_width\n{$deck->get_id()},7 1/4,21,\n{$wheel->get_id()},,,32\n" );
+		self::assertStringContainsString( '2 parts would change.', self::drawn( $screen ) );
+		$import = $this->service( SpecImport::class );
+		self::assertTrue( $import->confirm( (string) $import->state()?->token, get_current_user_id() ) );
+		$import->run();
+		self::assertSame(
+			array(
+				'deck_width'  => '8.2500',
+				'nose_length' => '7.2500',
+				'kick_angle'  => '21',
+			),
+			self::stored( $deck->get_id() )
+		);
+
+		$indexer = $this->service( \CreativeBranding\SkateboardBuilder\Service\SpecIndexer::class );
+		$indexer->index( $deck->get_id() );
+		$indexer->index( $wheel->get_id() );
+		$index = $this->service( \CreativeBranding\SkateboardBuilder\Repository\SpecIndexRepository::class );
+		$rows  = static fn( int $part ): array => array_combine(
+			array_map( static fn( $row ): string => $row->key->value, $index->rowsOf( $part ) ),
+			array_map( static fn( $row ): array => array( $row->text, $row->origin->value ), $index->rowsOf( $part ) )
+		);
+		$deckRows = $rows( $deck->get_id() );
+		self::assertSame( array( '7.2500', 'field' ), $deckRows['nose_length'] );
+		self::assertSame( array( '21', 'field' ), $deckRows['kick_angle'] );
+		self::assertArrayNotHasKey( 'wheel_width', $deckRows, 'an empty cell writes nothing' );
+		self::assertSame( array( '32.0000', 'field' ), $rows( $wheel->get_id() )['wheel_width'] );
+		// And the index reads them as the specs the 3D view is drawn from.
+		$specs = $index->specsOf( $deck->get_id(), $wheel->get_id() );
+		self::assertTrue( $specs[ $deck->get_id() ]->has( \CreativeBranding\SkateboardBuilder\Domain\Spec\SpecKey::NoseLength ) );
+		self::assertSame( 21, $specs[ $deck->get_id() ]->count( \CreativeBranding\SkateboardBuilder\Domain\Spec\SpecKey::KickAngle ) );
+		self::assertTrue( $specs[ $wheel->get_id() ]->has( \CreativeBranding\SkateboardBuilder\Domain\Spec\SpecKey::WheelWidth ) );
+	}
+
 	public function test_a_file_that_is_refused_says_why_beside_the_field_and_nothing_waits(): void {
 		$this->as( 'shop_manager' );
 		[ $screen, $next ] = $this->read( "sku,name\nA,B\n" );

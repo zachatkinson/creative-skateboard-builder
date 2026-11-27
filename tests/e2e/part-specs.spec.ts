@@ -335,9 +335,10 @@ test.describe( 'The Part specs panel', () => {
 		await expect(
 			page.locator( PANEL ).getByLabel( 'Wheel diameter (mm)' )
 		).toBeEnabled();
-		// The Wheels group holds Bearings included too (D-246).
+		// The Wheels group holds Bearings included too (D-246), and from 1.4.0 the wheel's width (D-472).
 		expect( await sent() ).toEqual( [
 			'cbuild_specs[wheel_diameter]',
+			'cbuild_specs[wheel_width]',
 			'cbuild_specs[bearings_included]',
 		] );
 	} );

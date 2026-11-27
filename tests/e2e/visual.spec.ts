@@ -188,12 +188,9 @@ for ( const theme of THEMES ) {
 							caret: 'hide',
 							// The link names the parts by their IDs, which are the site's own: a baseline made on one site
 							// failed on CI's where the field is wide enough to show them (CI run 43531285881, Kadence).
-							// And the bar's "Show the parts", quarantined (#110): about one run in 60 to 90 under load it is drawn a
-							// pixel lower, its layout the same to the thousandth of a pixel. The start shot still compares it.
-							mask: [
-								on.locator( '.cbuild-share__link' ),
-								on.locator( '.cbuild-bar__more' ),
-							],
+							// The bar's "Show the parts" is compared again (#110, D-486): drawn a pixel lower in 2 of 360
+							// runs before D-415's wait for a still page, and in none of 920 since.
+							mask: [ on.locator( '.cbuild-share__link' ) ],
 						}
 					);
 				} );
@@ -352,8 +349,17 @@ test.describe( 'The end state of each moment, Twenty Twenty-Five, light, desktop
 		}
 		return url.toString();
 	};
+	// The pick's answer awaited, not only aria-busy: busy is still false in the moment between the press and the request,
+	// and CI once took the trucks' picture there, without the trucks drawn (#173, D-542).
 	const choose = ( on: Page, name: string ) =>
-		on.getByRole( 'radio', { name: `Choose ${ name }` } ).check();
+		Promise.all( [
+			on.waitForResponse( ( answer ) =>
+				/cbuild(%2F|\/)v1(%2F|\/)kits(%2F|\/)\d+(%2F|\/)state/.test(
+					answer.url()
+				)
+			),
+			on.getByRole( 'radio', { name: `Choose ${ name }` } ).check(),
+		] );
 	const parts = () => ( {
 		deck: part( 'builder-test-deck-8-0' ),
 		trucks: part( 'builder-test-trucks-139' ),

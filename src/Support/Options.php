@@ -234,12 +234,42 @@ final class Options {
 	public const CLASS_ABOVE_CARDS = 'cbuild-step__above-cards';
 
 	/**
+	 * The place just above the guide's builds, which the builder renders empty for another plugin's own element
+	 * (F41, #164).
+	 *
+	 * @since 1.4.0
+	 */
+	public const CLASS_ABOVE_BUILDS = 'cbuild-guide__above-builds';
+
+	/**
 	 * A ready build's tile picture when it is the deck's layer image rather than its photo, as a build Help me choose
 	 * recommends shows its deck's card picture (D-408).
 	 *
 	 * @since 1.3.0
 	 */
 	public const CLASS_PRESET_DRAWN = 'cbuild-preset__photo--drawn';
+
+	/**
+	 * The 3D view's classes, which docs/HOOKS.md offers a theme (#139, D-495): its root, View in 3D, the open view, the
+	 * canvas's box, the canvas, the camera's buttons, the trick buttons and the message where it can't be shown.
+	 *
+	 * @since 1.4.0
+	 */
+	public const CLASS_THREE        = 'cbuild-3d';
+	public const CLASS_THREE_OPEN   = 'cbuild-3d__open';
+	public const CLASS_THREE_STAGE  = 'cbuild-3d__stage';
+	public const CLASS_THREE_FRAME  = 'cbuild-3d__frame';
+	public const CLASS_THREE_CANVAS = 'cbuild-3d__canvas';
+	public const CLASS_THREE_PLACES = 'cbuild-3d__places';
+	public const CLASS_THREE_TRICKS = 'cbuild-3d__tricks';
+	public const CLASS_THREE_FAILED = 'cbuild-3d__failed';
+
+	/**
+	 * The picture's root while the 3D view is open (#139, the spec review of milestone 14, S4).
+	 *
+	 * @since 1.4.0
+	 */
+	public const CLASS_PICTURE_THREE = 'cbuild-picture--3d';
 
 	/**
 	 * Order item meta (spec: Data model, Order items). Hidden from customers by their underscore, and kept with the
@@ -532,7 +562,17 @@ final class Options {
 			self::CLASS_REVIEW_PHOTO,
 			self::CLASS_REVIEW_DRAWN,
 			self::CLASS_ABOVE_CARDS,
+			self::CLASS_ABOVE_BUILDS,
 			self::CLASS_PRESET_DRAWN,
+			self::CLASS_THREE,
+			self::CLASS_PICTURE_THREE,
+			self::CLASS_THREE_OPEN,
+			self::CLASS_THREE_STAGE,
+			self::CLASS_THREE_FRAME,
+			self::CLASS_THREE_CANVAS,
+			self::CLASS_THREE_PLACES,
+			self::CLASS_THREE_TRICKS,
+			self::CLASS_THREE_FAILED,
 		);
 	}
 

@@ -532,19 +532,47 @@ Planned as 1.0.0. On 18 November 2026 Zach moved 1.0.0 to milestone 10, the conf
 
 ## After 1.0
 
+### Milestones 12 to 16
+
+Each has its plan and review in `docs/reviews/M<n>.md`, with no entry of its own here (Zach, 24 Nov 2026):
+
+| Milestone | Release | What it builds |
+| --- | --- | --- |
+| 12 | 1.2.0 | Cowork's review of 1.1.0, every open issue, and Markdown lint |
+| 13 | 1.3.0 | Compact cards, review thumbnails, Help me choose, smart swaps, compare, ratings and the pick outline |
+| 14 | 1.4.0 | The 3D view from each part's sizes, on three.js, with tricks (#139). It replaces Module B |
+| 15 | 1.5.0 | The admin, on DataForm and DataViews, starting with an audit of what a shop can change (#156) |
+| 16 | 1.6.0 | At real size: AR from the 3D scene (#140) |
+
 ### Companion releases
 
 Each is a small release of its own, once the hooks it needs are in a tagged build:
 
 | Plugin | Who builds it | What it does with the builder |
 | --- | --- | --- |
-| Creative Checkout | Claude in Cowork | Answers `cbuild_arrival_estimate` and `cbuild_delivery_line`; adds the assembly lead time wherever a cart or order holds an assembled build, Apple Pay's and Google Pay's sheets included; adds an assembly step to "What happens next" |
+| Creative Checkout | Claude in Cowork | **Done (26 Nov 2026).** 1.7.1 answers `cbuild_delivery_line` with the cart drawer's meter for the cart with the build in it, coupons and WooCommerce 9.6's minimum rule included. It answers `cbuild_arrival_estimate` with the date the cart will give: the slowest assembly among this build and the cart's builds, then the shipping. Its Cart and Checkout blocks show a date under each shipping option, and the assembly time under the Checkout block's. Wallet sheets, the order received page and the Processing email have counted assembly since 1.6.0. From 1.4.0 the builder gives it `replace`, so an edited build isn't counted twice (#168) |
 | Mature Content | Claude in Cowork | Blurs a flagged part on its card, in the picture's layers and in the review, through `cbuild_part_classes` and `mcw_image_selectors`; from 1.3.0 that includes the review's thumbnails (#132) |
-| Creative Shipment Tracking | Claude Code | Shows a build under the kit's name in "In this parcel" |
-| Creative Reviews | Claude Code | Leaves the kit out of review requests. Its `creviews_should_send_request` (1.0.3) decides per order, so this needs a per-line filter in a Reviews release. The ratings shown in each step (#137) need nothing from it: its reviews are WooCommerce's own, read through the product |
+| Creative Shipment Tracking | Claude Code | **Done (26 Nov 2026).** 1.13.0 shows a build under the kit's name with its parts beneath, in "In this parcel", the emails, My Account and Ship orders, reading `_cbuild_id` and `_cbuild_role` only. 1.13.1 groups the order box's "Items in this parcel" the same way, with a "Whole build" box. 1.14.0 lists a theme's outdated copies of its templates on WooCommerce > Status. 1.14.1 reports them in Site Health, as WooCommerce now does, in place of a notice |
+| Creative Reviews | Claude Code | **Done (26 Nov 2026).** 1.0.12 adds `creviews_should_request_item( $include, $item, $order )`, which leaves a line whose `_cbuild_role` is `kit` out of every review request, reminder and review page, reading order item meta only. A build's parts are still asked about, and an order holding only a kit gets no request. The ratings shown in each step (#137) need nothing from it: its reviews are WooCommerce's own, read through the product |
 | Creative Loyalty | Claude Code, from its own brief (Phase 3) | Points per part line; a points line under the builder's total through `cbuild_summary_notes` |
 
 Creative Schema needs no release: a kit prints no product markup, and from 1.3.0 a browser test holds the kit's page to carrying none, so Schema's markup can't reach it unnoticed.
+
+### The siblings' admins, after milestone 15
+
+Once milestone 15 has rebuilt the builder's admin on DataForm and DataViews, each sibling plugin gets the same treatment in a release of its own (Zach, 26 Nov 2026). They run in their own lanes beside later milestones, as Tracking's and Reviews' companion releases did. Each needs Zach's OK before it starts, since it changes a sibling repository.
+
+- **What carries over from milestone 15:** the field descriptions, the server form underneath for no JavaScript, the server checking every save, the test helpers and the admin budget line. Milestone 15 keeps these apart from the builder's own code, so a sibling copies them rather than starting again.
+- **Each release starts with an options audit,** as milestone 15's did: what a shop might want to change, benchmarked against the leading plugins of its kind, sorted into setting, CSS property, hook or kept fixed.
+- **Order, by payoff:**
+
+  | Plugin | Why |
+  | --- | --- |
+  | Creative Search | Synonyms, Boosts and Rules are lists of rules, a DataViews list with "Add a rule" each; Analytics is a table |
+  | Creative Shipment Tracking | Ship orders and the carriers list suit DataViews; the carriers settings are already the most modern of the three |
+  | Creative Reviews | The Reviews list and the waiting days per category |
+
+- **The cost:** each plugin loads its own copy of DataViews on its admin screens, about 160 to 240 kB compressed per screen. It's admin only and never reaches the shop's pages. If WordPress ships DataViews as a script of its own, each sibling moves to it.
 
 ### Skatehouse's setup
 

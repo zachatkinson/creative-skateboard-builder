@@ -25,8 +25,24 @@
 			"type": "string",
 			"pattern": "^([0-9]|[1-5][0-9]|60)(-([0-9]|[1-5][0-9]|60))?(?!\\n)$"
 		},
+		"guide": {
+			"description": "Whether the builder offers \"Help me choose\", the guided start's questions, at its start, from 1.3.0 (D-409). Off, the page draws no disclosure, form or builds, and answers in a link recommend nothing. The default is true.",
+			"type": "boolean"
+		},
+		"picks": {
+			"description": "Whether a card in the builder says which ready builds pick its part, such as \"Picked for Street\", from 1.3.0 (#137, D-409). Off, no card says it. The default is true.",
+			"type": "boolean"
+		},
+		"ratings": {
+			"description": "Whether a card in the builder shows its part's rating, a star and its score, from 1.3.0 (#137, D-409). Off, no card shows them; on, none show while WooCommerce's star ratings are off. The default is true.",
+			"type": "boolean"
+		},
 		"start_button": {
 			"description": "Whether the kit places \"Build a complete with this deck\" on the pages of the parts its first slot offers. Off, the kit is passed over, and another kit that offers the part may place it. The default is true.",
+			"type": "boolean"
+		},
+		"swaps": {
+			"description": "Whether the builder offers smart swaps, from 1.3.0 (#135): on the review and on the picked card, a part for less and a better one that fit the build. Off, the state route's answer has none and the builder shows no swap control. The default is true.",
 			"type": "boolean"
 		},
 		"width_guide": {
@@ -66,6 +82,48 @@
 								"description": "The widest, in inches, no narrower than from. Left out or empty, the row says from and wider.",
 								"type": "string",
 								"pattern": "^([5-9](\\.[0-9]{1,4})?|1[01](\\.[0-9]{1,4})?|12(\\.0{1,4})?)?(?!\\n)$"
+							}
+						}
+					}
+				}
+			}
+		},
+		"wheel_guide": {
+			"description": "From 1.3.0 (#134): the wheel sizes the guided start recommends for each riding style, in millimetres. Left out, or a style with no row, the plugin's sizes, from published wheel guides: street 50 to 54, park 53 to 56, bowl 55 to 58 and cruising 59 to 65.",
+			"type": "object",
+			"additionalProperties": false,
+			"properties": {
+				"rows": {
+					"description": "The shop's own sizes, a row a riding style at most.",
+					"type": "array",
+					"maxItems": 4,
+					"items": {
+						"type": "object",
+						"additionalProperties": false,
+						"required": [
+							"style",
+							"from"
+						],
+						"properties": {
+							"style": {
+								"description": "The riding style the guided start asks about.",
+								"type": "string",
+								"enum": [
+									"street",
+									"park",
+									"bowl",
+									"cruising"
+								]
+							},
+							"from": {
+								"description": "The smallest wheel it recommends, in millimetres, from 40 to 90, with a point and up to four decimals.",
+								"type": "string",
+								"pattern": "^((4[0-9]|[5-8][0-9])(\\.[0-9]{1,4})?|90(\\.0{1,4})?)(?!\\n)$"
+							},
+							"to": {
+								"description": "The largest, in millimetres, no smaller than from. Left out or empty, from alone.",
+								"type": "string",
+								"pattern": "^((4[0-9]|[5-8][0-9])(\\.[0-9]{1,4})?|90(\\.0{1,4})?)?(?!\\n)$"
 							}
 						}
 					}

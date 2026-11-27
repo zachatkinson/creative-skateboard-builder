@@ -113,6 +113,36 @@ final class BuilderViewTest extends TestCase {
 		self::assertTrue( $this->view( array(), SlotKey::TRUCKS )['bar']['back']['shown'] );
 	}
 
+	// #152 (D-512): the first step gives the bar the next step's Back, back to it, which the store shows at Next's
+	// press; a step with its own Back, and the review, give none.
+	public function test_the_first_step_gives_the_next_steps_back_for_nexts_press(): void {
+		$first = $this->view( array(), SlotKey::DECK )['bar']['back']['ahead'];
+		self::assertSame( 'Back: Deck', $first['label'] );
+		self::assertStringContainsString( 'cbuild%5Bstep%5D=deck', $first['url'] );
+		$none = array(
+			'url'   => '',
+			'label' => '',
+		);
+		self::assertSame( $none, $this->view( array(), SlotKey::TRUCKS )['bar']['back']['ahead'], 'a step with its own Back' );
+		self::assertSame( $none, $this->view( array(), State::REVIEW )['bar']['back']['ahead'], 'the review' );
+		// The review's Back is the last step's, whatever step the view names and whether or not it shows its own.
+		$back = ( new \ReflectionMethod( BuilderView::class, 'back' ) )->invoke(
+			null,
+			true,
+			array(
+				'slot' => SlotKey::DECK,
+				'back' => array( 'shown' => false ),
+			),
+			array( SlotKey::DECK, SlotKey::TRUCKS ),
+			new BuildLink(),
+			static fn( BuildLink $link ): string => 'https://shop.test/kit/',
+			static fn( string $slot ): string => ucfirst( $slot )
+		);
+		self::assertIsArray( $back );
+		self::assertSame( $none, $back['ahead'], 'the review, its step named' );
+		self::assertSame( 'Back: Trucks', $back['label'] );
+	}
+
 	/**
 	 * The footer's Next on a step, with the answer's steps saying which need a pick.
 	 *
@@ -312,6 +342,15 @@ final class BuilderViewTest extends TestCase {
 			array( 'cbuild-preset__photo cbuild-preset__photo--drawn is-flagged', 'cbuild-preset__photo' ),
 			array_column( $guide['tiles'], 'photoClasses' )
 		);
+	}
+
+	// F41 (#164): a shop's ready build whose picture is drawn from the parts' layers is marked drawn, as a guide's tile
+	// with its deck's layer image is; one with a photo is not.
+	public function test_a_ready_build_tile_drawn_from_the_layers_is_marked_drawn(): void {
+		$drawn          = self::preset( array() );
+		$drawn['drawn'] = true;
+		$tiles          = $this->view( array( 'presets' => array( $drawn, self::preset( array() ) ) ), SlotKey::DECK )['presets']['tiles'];
+		self::assertSame( array( 'cbuild-preset__photo cbuild-preset__photo--drawn', 'cbuild-preset__photo' ), array_column( $tiles, 'photoClasses' ) );
 	}
 
 	// The auditor's 1.1.0 should-fix 2: the answer lists every ready build, each saying whether it is shown, and the
@@ -982,15 +1021,17 @@ final class BuilderViewTest extends TestCase {
 				'wheels' => new Span( Measure::millimetres( 530000 ), Measure::millimetres( 560000 ) ),
 				'budget' => 100,
 				'over'   => true,
+				'fit'    => 3,
 				'builds' => array( self::recommendedBuild( Tier::Only, array( SlotKey::DECK => 101 ), '$140.00', '$40.00' ) ),
 			)
 		);
+		// F40 (#163): over the budget the closest is shown alone, and the count is of the builds that fit, not of it.
 		self::assertSame(
 			array(
 				array( 'text' => 'No deck for shoe size 9.5 and larger is in stock right now, so the builds take any width.' ),
 				array( 'text' => "Wheels of 53\u{00A0}mm to 56\u{00A0}mm." ),
 				array( 'text' => 'No build comes within your budget. The closest is $140.00.' ),
-				array( 'text' => '1 build fits and is in stock.' ),
+				array( 'text' => '3 builds fit and are in stock.' ),
 			),
 			$guide['reasons']
 		);
@@ -1164,5 +1205,63 @@ final class BuilderViewTest extends TestCase {
 		);
 		self::assertSame( array( array( 'text' => 'Indy 149: $54.00 when you saved, $59.00 now' ) ), $view['changes']['prices'] );
 		self::assertTrue( $view['changes']['hasPrices'] );
+	}
+
+	// Milestone 14 (#139, D-497): the view says whether the kit offers the 3D view, the trick buttons only with it, and
+	// the canvas's classes, with what a plugin gives the deck picked, as the board's layers have them.
+	public function test_the_3d_view_is_offered_by_the_kits_switches_and_its_canvas_takes_the_decks_classes(): void {
+		$three = function ( ?array $settings, BuildLink $link ): array {
+			$slots = KitDocuments::slots();
+			$kit   = Kit::fromDocuments( $slots, KitDocuments::rules(), KitDocuments::presets(), KitDocuments::assembly(), null, null, null === $settings ? null : array( 'schema_version' => 1 ) + $settings );
+			$this->kits->add( self::KIT, $kit, Shop::parts() );
+			$state = ( new BuildState( $this->kits, new InMemoryShopSettings(), new FakeLogger() ) )->of( self::KIT, $link->picks, null, (string) $link->step );
+			self::assertNotNull( $state );
+			// The answer's total counts the deck picked, as the route's does.
+			$lines = array();
+			foreach ( $link->picks as $slot => $part ) {
+				$lines[] = array(
+					'slot' => $slot,
+					'part' => $part,
+				);
+			}
+			$view = ( new BuilderView() )->of( $state, array( 'total' => array( 'lines' => $lines ) ), $link, self::BASE, $state->kit->slots->keys(), null );
+			self::assertIsArray( $view['three'] );
+			return $view['three'];
+		};
+		$start = new BuildLink( array(), null, SlotKey::DECK );
+		foreach ( array(
+			'no settings'    => array( null, false, false ),
+			'off'            => array( array( 'view_3d' => false ), false, false ),
+			'off, tricks on' => array(
+				array(
+					'view_3d' => false,
+					'tricks'  => true,
+				),
+				false,
+				false,
+			),
+			'on'             => array( array( 'view_3d' => true ), true, true ),
+			'on, tricks off' => array(
+				array(
+					'view_3d' => true,
+					'tricks'  => false,
+				),
+				true,
+				false,
+			),
+		) as $case => [ $settings, $shown, $tricks ] ) {
+			self::assertSame(
+				array(
+					'shown'  => $shown,
+					'tricks' => $tricks,
+					'canvas' => 'cbuild-3d__canvas',
+				),
+				$three( $settings, $start ),
+				$case
+			);
+		}
+		$GLOBALS['cbuild_test_filters']['cbuild_part_classes'] = static fn( array $classes, int $part, string $slot ): array => 102 === $part && SlotKey::DECK === $slot ? array( 'is-flagged' ) : $classes;
+		self::assertSame( 'cbuild-3d__canvas is-flagged', $three( array( 'view_3d' => true ), new BuildLink( array( SlotKey::DECK => 102 ), null, SlotKey::TRUCKS ) )['canvas'] );
+		self::assertSame( 'cbuild-3d__canvas', $three( array( 'view_3d' => true ), new BuildLink( array( SlotKey::DECK => 101 ), null, SlotKey::TRUCKS ) )['canvas'] );
 	}
 }

@@ -43,15 +43,17 @@ It is the agency's showpiece, built to the twelve-dimension audit in `docs/AUDIT
   - an mbstring case change with no `function_exists()` fallback (#72);
   - `.gitattributes`' export-ignore lines against `.distignore`, and every tracked dotfile on both (D-346);
   - a merge's conflict marker left in any tracked file (D-347);
+  - ShellCheck 0.11.0 on every tracked shell script, with `.shellcheckrc` (`tools/shellcheck.sh`, pinned as actionlint is; D-467);
   - a job of `release.yml` that holds the token and runs anything but `gh`, and the release plan's cases.
 - `composer test:unit`: PHPUnit 13, no WordPress
 - `composer test:coverage`: unit tests with the domain's floors: 100 % of lines and branches in `src/Domain` (Xdebug's path coverage, since pcov measures lines only)
 - `composer test:coverage:all`: the unit and integration suites' line coverage merged, with the floor: 95 % of all of `src/`, each file's direct-access guard left out (D-050, D-061). Needs the integration site, which `npm run env:start` starts with Xdebug in coverage mode. `CBUILD_COVERAGE_DRIVER=pcov` runs the integration half with pcov and Xdebug off (`tools/pcov.sh` builds it into the cli container), about 2.7 times faster, and /verify uses it; `=xdebug` forces Xdebug on both halves (D-312). In CI the integration suite runs in three shards (`tools/integration-shards.php`), and `CBUILD_COVERAGE_SHARDS=<folder>` merges their reports in place of a run of the suite (D-323)
 - `composer focused` / `bash tools/focused.sh [--dry-run] [<base-ref>]`: before the full /verify, only the integration and browser tests that cover what changed since `<base-ref>` (HEAD: the working tree), with the reason for each; in a lane, `bash tools/lane.sh 2 bash tools/focused.sh`. It never replaces /verify (D-324)
-- `composer hooks`: turns on `.githooks/pre-commit` (phpcbf and PHPCS on staged PHP in the lint's scope, Prettier on staged files in the format's scope, markdownlint-cli2 on staged Markdown, re-staged; a file staged in part is checked, not rewritten; D-313)
+- `composer hooks`: registers the merge drivers that join `docs/DECISIONS.md` and the `.po` files by entry (D-462, D-463), and turns on `.githooks/pre-commit` (phpcbf and PHPCS on staged PHP in the lint's scope, Prettier on staged files in the format's scope, markdownlint-cli2 on staged Markdown, re-staged; a file staged in part is checked, not rewritten; D-313)
 - `composer test:benchmark`: the server budgets
 - `composer test:benchmark:integration`: `tests/Benchmark` in the integration site with Xdebug off: 2,000 parts indexed, exported, checked and dry-run, each inside a request
 - `composer infection`: 100 % MSI on `src/Domain`, 95 % elsewhere. In the domain, a mutant only static analysis catches must be in `tools/infection-static-allowed.txt` (D-063)
+- `composer infection:diff`: CI's pull request run, on the lines changed since `CBUILD_DIFF_BASE` (default `origin/main`). A lane runs it against the milestone branch before landing (D-465)
 - `composer api:check`: the public API against `docs/HOOKS.md`, `tests/Fixtures/api-surface.json` and the changelog's entry for each item's version. `composer api:snapshot` rewrites the snapshot; do it, `HOOKS.md` and the changelog in the same commit as the change
 - `composer check`: lint, analyse, arch, gates, unit tests and api:check
 - `npm run env:start`: two wp-env environments on WordPress 7.1.5, WooCommerce 11.3.1 and PHP 8.5: the browser site at :8898 (`.wp-env.json`, with Plugin Check) and the integration site at :8899 (`.wp-env.tests.json`, D-047). It, `env:stop` and `env:clean` run through `tools/wp-env.sh`, which gives each site its lane's port. `npx wp-env start` starts the browser site alone; a command for the integration site takes `--config=.wp-env.tests.json`, and `--xdebug=coverage` when it starts it. `npm run env:oldest` switches to WordPress 7.0 with WooCommerce 11.2.0, and `npm run env:newest` back. `@wordpress/env` is pinned to the major Creative Search uses (^12). Search still runs its integration suite in wp-env's built-in tests site, which wp-env 12 deprecates
@@ -68,6 +70,7 @@ It is the agency's showpiece, built to the twelve-dimension audit in `docs/AUDIT
 - `npm run lhci`: Lighthouse CI on the builder page (LCP, CLS, TBT, SEO)
 - `npm run plugin-check`: builds the zip and runs Plugin Check on it in wp-env. Any error or warning fails
 - `composer i18n:pot` / `composer i18n:check` / `composer i18n:compile`: run inside wp-env (`.mo`, `.l10n.php` and script JSON)
+- `php tools/changelog.php --assemble <version> <date>`: puts `changelog.d/`'s fragments into CHANGELOG.md's release entry before the release's pull request; `composer changelog:check` (in `composer gates`) holds their shape (D-464)
 - `composer audit:deps`: `composer audit` and `npm audit --omit=dev`
 - `composer build`: `tmp/creative-skateboard-builder-<version>.zip`, without dev files
 - `git tag v<version> && git push --tags`: run on the merge commit on `main`. `release.yml` publishes to `zachatkinson/creative-releases` once CI has passed on that commit. The zip anyone installs is the release's
@@ -92,7 +95,7 @@ It is the agency's showpiece, built to the twelve-dimension audit in `docs/AUDIT
   - every setting in `docs/SETTINGS.md`;
   - everything stored in `docs/PRIVACY.md`;
   - every decision you make yourself in `docs/DECISIONS.md` with its reason;
-  - a `CHANGELOG.md` entry per milestone.
+  - a `CHANGELOG.md` entry per milestone, written in lanes as `changelog.d/` fragments (D-464).
 - **Check before relying.** Where the spec names a WordPress or WooCommerce hook, function or event, confirm it in the source wp-env installed. Record any difference in `docs/DECISIONS.md` with the file and line.
 - **Tests.**
   - The spec's cases come first.

@@ -274,6 +274,9 @@ final class BuilderView {
 				'amount'   => Cast::int( Cast::map( Cast::map( $answer['total'] ?? null )['total'] ?? null )['amount'] ?? null ),
 				'currency' => Cast::map( $answer['currency'] ?? null ),
 			),
+			// The 3D view (1.4.0, #139): whether the kit offers it and its trick buttons, and its canvas's classes, with
+			// what another plugin adds for the deck picked, so a flagged deck's graphic blurs there too.
+			'three'     => self::three( $state, $counted ),
 			'bar'       => self::bar( $summary, $step, $shown, $review, $panel, $first, $state->id, self::board( $picture, $state->id, self::BAR_SIZE ), self::back( $review, $step, $steps, $link, $url, $label ) ),
 			'picture'   => array(
 				'heading'     => __( 'Your board', 'creative-skateboard-builder' ),
@@ -341,17 +344,26 @@ final class BuilderView {
 	 * @param BuildLink                   $link   The address of what is shown.
 	 * @param callable(BuildLink): string $url    Makes an address.
 	 * @param callable(string): string    $label  A slot's label.
-	 * @return array{shown: bool, url: string, text: string, label: string}
+	 * @return array{shown: bool, url: string, text: string, label: string, ahead: array{url: string, label: string}}
 	 */
 	private static function back( bool $review, array $step, array $steps, BuildLink $link, callable $url, callable $label ): array {
 		$own  = Cast::map( $step['back'] ?? null );
 		$last = $review && array() !== $steps ? $steps[ count( $steps ) - 1 ] : null;
+		$slot = Cast::str( $step['slot'] ?? null );
+		// On a step with no Back of its own, the first, the Back the next step shows, which goes back here: the store
+		// shows it at Next's press, so it doesn't come in with the answer a second late and move Next (#152, D-512).
+		$ahead = null === $last && '' !== $slot && ! Cast::bool( $own['shown'] ?? null );
 		return array(
 			'shown' => null !== $last || Cast::bool( $own['shown'] ?? null ),
 			'url'   => null === $last ? Cast::str( $own['url'] ?? null ) : $url( $link->at( $last ) ),
 			'text'  => __( 'Back', 'creative-skateboard-builder' ),
 			/* translators: %s: a step's name, such as Deck. */
 			'label' => null === $last ? Cast::str( $own['text'] ?? null ) : sprintf( __( 'Back: %s', 'creative-skateboard-builder' ), $label( $last ) ),
+			'ahead' => array(
+				'url'   => $ahead ? $url( $link->at( $slot ) ) : '',
+				/* translators: %s: a step's name, such as Deck. */
+				'label' => $ahead ? sprintf( __( 'Back: %s', 'creative-skateboard-builder' ), $label( $slot ) ) : '',
+			),
 		);
 	}
 
@@ -361,16 +373,16 @@ final class BuilderView {
 	 * form with JavaScript or without. The change panel asks for Use these or Undo in its own forms, so the bar has no
 	 * button there.
 	 *
-	 * @param array<string, mixed>                                         $summary The summary.
-	 * @param array<string, mixed>                                         $step    The step.
-	 * @param array<string, mixed>                                         $shown   The review.
-	 * @param bool                                                         $review  Whether the review is shown.
-	 * @param bool                                                         $panel   Whether the change panel is shown.
-	 * @param array<string, mixed>                                         $first   The picture's first part, if it has one: its slot, its ID and its photo.
-	 * @param int                                                          $kit     The kit product's ID.
-	 * @param array<string, mixed>                                         $board   The board, drawn at the bar's size.
-	 * @param array{shown: bool, url: string, text: string, label: string} $back The footer's Back.
-	 * @return array{shown: bool, seen: bool, board: array<string, mixed>, photo: array{hasImage: bool, src: string, srcset: string, sizes: string, width: int, height: int, classes: string}, picture: string, total: string, amount: string, parts: string, hide: string, started: bool, back: array{shown: bool, url: string, text: string, label: string}, next: array{shown: bool, onStep: bool, onReview: bool, text: string, form: string, name: string, value: string, disabled: bool, ready: bool, missing: string}}
+	 * @param array<string, mixed>                                                                                   $summary The summary.
+	 * @param array<string, mixed>                                                                                   $step    The step.
+	 * @param array<string, mixed>                                                                                   $shown   The review.
+	 * @param bool                                                                                                   $review  Whether the review is shown.
+	 * @param bool                                                                                                   $panel   Whether the change panel is shown.
+	 * @param array<string, mixed>                                                                                   $first   The picture's first part, if it has one: its slot, its ID and its photo.
+	 * @param int                                                                                                    $kit     The kit product's ID.
+	 * @param array<string, mixed>                                                                                   $board   The board, drawn at the bar's size.
+	 * @param array{shown: bool, url: string, text: string, label: string, ahead: array{url: string, label: string}} $back The footer's Back.
+	 * @return array{shown: bool, seen: bool, board: array<string, mixed>, photo: array{hasImage: bool, src: string, srcset: string, sizes: string, width: int, height: int, classes: string}, picture: string, total: string, amount: string, parts: string, hide: string, started: bool, back: array{shown: bool, url: string, text: string, label: string, ahead: array{url: string, label: string}}, next: array{shown: bool, onStep: bool, onReview: bool, text: string, form: string, name: string, value: string, disabled: bool, ready: bool, missing: string}}
 	 */
 	private static function bar( array $summary, array $step, array $shown, bool $review, bool $panel, array $first, int $kit, array $board, array $back ): array {
 		$next  = Cast::map( $step['next'] ?? null );
@@ -469,7 +481,7 @@ final class BuilderView {
 					}
 					$notes[ $slot ] = array( 'text' => null === $code ? Cast::str( $problem['message'] ?? null ) : Words::named( $code, $label( $slot ), Cast::str( $problem['name'] ?? null ) ) );
 				}
-				$tiles[] = self::tile( $state, new BuildLink( $picks, null, State::REVIEW, null, $at ), $preset['image'] ?? null, Cast::str( $preset['name'] ?? null ), Cast::str( $preset['description'] ?? null ), $whole ? Cast::str( Cast::map( $preset['total'] ?? null )['text'] ?? null ) : '', array_values( $notes ) );
+				$tiles[] = self::tile( $state, new BuildLink( $picks, null, State::REVIEW, null, $at ), $preset['image'] ?? null, Cast::str( $preset['name'] ?? null ), Cast::str( $preset['description'] ?? null ), $whole ? Cast::str( Cast::map( $preset['total'] ?? null )['text'] ?? null ) : '', array_values( $notes ), Cast::bool( $preset['drawn'] ?? null ) );
 			}
 		}
 		return array(
@@ -621,8 +633,10 @@ final class BuilderView {
 				: __( 'Every build here is within your budget.', 'creative-skateboard-builder' );
 		}
 		if ( array() !== $builds ) {
+			// Over the budget the closest is shown alone; the count is still of every build that fits (F40, #163).
+			$fit = Cast::bool( $recommended['over'] ?? null ) ? max( count( $builds ), Cast::int( $recommended['fit'] ?? null ) ) : count( $builds );
 			/* translators: %s: how many builds, such as 3. */
-			$reasons[] = sprintf( _n( '%s build fits and is in stock.', '%s builds fit and are in stock.', count( $builds ), 'creative-skateboard-builder' ), number_format_i18n( count( $builds ) ) );
+			$reasons[] = sprintf( _n( '%s build fits and is in stock.', '%s builds fit and are in stock.', $fit, 'creative-skateboard-builder' ), number_format_i18n( $fit ) );
 		}
 		$tiles = array();
 		foreach ( $builds as $build ) {
@@ -1468,18 +1482,36 @@ final class BuilderView {
 
 	/**
 	 * The width the deck step's shelf lists, as the `width` argument names it, or empty: the one asked, or the one
-	 * of the deck the build holds.
+	 * of the deck the build holds. Its `text` field is the width as its button says it (F36).
 	 *
 	 * @param array<string, mixed> $shelf The answer's shelf.
+	 * @param string               $field `value`, as the argument names it, or `text`, as its button says it.
 	 */
-	private static function shown( array $shelf ): string {
+	private static function shown( array $shelf, string $field = 'value' ): string {
 		foreach ( Cast::items( $shelf['widths'] ?? null ) as $width ) {
 			$width = Cast::map( $width );
 			if ( Cast::bool( $width['selected'] ?? null ) ) {
-				return Cast::str( $width['value'] ?? null );
+				return Cast::str( $width[ $field ] ?? null );
 			}
 		}
 		return '';
+	}
+
+	/**
+	 * Why a step lists nothing: the filters a shopper set, the deck width chosen where no deck in it is in stock (F36,
+	 * #159), or the parts before it.
+	 *
+	 * @param BuildLink $link  The address.
+	 * @param string    $width The deck width chosen, as the step's width buttons say it, or empty.
+	 */
+	private static function nothing( BuildLink $link, string $width ): string {
+		if ( '' !== $link->brand || '' !== $link->size || array() !== $link->shelf->chips ) {
+			return __( 'No part matches these filters.', 'creative-skateboard-builder' );
+		}
+		return '' === $width
+			? __( 'Nothing the shop has fits the parts before this step.', 'creative-skateboard-builder' )
+			/* translators: %s: a deck width, such as 8.25″. */
+			: sprintf( __( 'No %s deck is in stock right now.', 'creative-skateboard-builder' ), $width );
 	}
 
 	/**
@@ -1909,9 +1941,7 @@ final class BuilderView {
 			// The deck step asking its width lists nothing yet, and says nothing is missing; a search that lists nothing
 			// says so itself, so the fit rule is not given as the reason (#83).
 			'empty'     => array() === $options && ! ( null !== $shelf && SlotKey::DECK === $slot && '' === $link->shelf->width ) && true !== $found['shown'],
-			'emptyText' => '' === $link->brand && '' === $link->size && array() === $link->shelf->chips
-				? __( 'Nothing the shop has fits the parts before this step.', 'creative-skateboard-builder' )
-				: __( 'No part matches these filters.', 'creative-skateboard-builder' ),
+			'emptyText' => self::nothing( $link, SlotKey::DECK === $slot ? self::shown( $shelf ?? array(), 'text' ) : '' ),
 			'found'     => $found,
 			'leave'     => array(
 				'shown'   => ! $required,
@@ -2027,6 +2057,24 @@ final class BuilderView {
 			$classes[] = 'cbuild-card--chosen';
 		}
 		return self::flagged( $classes, $kit, $slot, $part );
+	}
+
+	/**
+	 * The 3D view's part of the view (1.4.0, #139): whether the kit offers it, whether it offers the trick buttons, and
+	 * the canvas's classes, the deck's `cbuild_part_classes` after its own.
+	 *
+	 * @param State              $state   The build's state.
+	 * @param array<string, int> $counted The parts the total counts, by slot.
+	 * @return array{shown: bool, tricks: bool, canvas: string}
+	 */
+	private static function three( State $state, array $counted ): array {
+		$settings = $state->kit->settings;
+		$own      = array( Options::CLASS_THREE_CANVAS );
+		return array(
+			'shown'  => $settings->view3d,
+			'tricks' => $settings->view3d && $settings->tricks,
+			'canvas' => isset( $counted[ SlotKey::DECK ] ) ? self::flagged( $own, $state->id, SlotKey::DECK, $counted[ SlotKey::DECK ] ) : implode( ' ', $own ),
+		);
 	}
 
 	/**

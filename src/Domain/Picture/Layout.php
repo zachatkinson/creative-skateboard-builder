@@ -13,8 +13,6 @@ use CreativeBranding\SkateboardBuilder\Domain\Kit\Part;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Picks;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\SlotKey;
 use CreativeBranding\SkateboardBuilder\Domain\Measure\Measure;
-use CreativeBranding\SkateboardBuilder\Domain\Measure\Unit;
-use CreativeBranding\SkateboardBuilder\Domain\Spec\HolePattern;
 use CreativeBranding\SkateboardBuilder\Domain\Spec\SpecKey;
 use CreativeBranding\SkateboardBuilder\Domain\Spec\Specs;
 
@@ -46,46 +44,6 @@ final readonly class Layout {
 	private const array ON_TOP = array( SlotKey::HARDWARE, SlotKey::GRIP );
 
 	/**
-	 * The length of a deck that gives none: 32 in.
-	 */
-	private const int USUAL_LENGTH = 320000;
-
-	/**
-	 * The usual wheelbase by deck width, from the widest: from 8.5 in, 14.5 in; from 8 in, 14.25 in.
-	 */
-	private const array USUAL_WHEELBASES = array(
-		85000 => 145000,
-		80000 => 142500,
-	);
-
-	/**
-	 * The usual wheelbase of a deck narrower than those: 14 in.
-	 */
-	private const int NARROW_WHEELBASE = 140000;
-
-	/**
-	 * The usual wheelbase of a deck whose length is known: this many thousandths of the length.
-	 */
-	private const int WHEELBASE_SHARE = 445;
-
-	/**
-	 * Between a baseplate's two rows of holes: 2.125 in, and 2.5 in on an old school deck.
-	 */
-	private const int HOLE_SPACING = 539750;
-
-	private const int OLD_SCHOOL_SPACING = 635000;
-
-	/**
-	 * A baseplate past its holes, both ends together: 0.875 in.
-	 */
-	private const int BASEPLATE_MARGIN = 222250;
-
-	/**
-	 * The diameter of a wheel that gives none: 54 mm.
-	 */
-	private const int USUAL_WHEEL = 540000;
-
-	/**
 	 * The sheet of a grip that gives no size: 9 by 33 in, the usual sheet (F18, #103).
 	 */
 	private const int USUAL_GRIP_WIDTH = 90000;
@@ -94,11 +52,6 @@ final readonly class Layout {
 	 * See USUAL_GRIP_WIDTH.
 	 */
 	private const int USUAL_GRIP_LENGTH = 330000;
-
-	/**
-	 * Between a baseplate's two columns of holes, new school or old: 1.625 in.
-	 */
-	private const int HOLE_COLUMNS = 412750;
 
 	/**
 	 * A bolt's head, seen from the top: 3/8 in across.
@@ -131,41 +84,17 @@ final readonly class Layout {
 	 * @param PictureSettings|null $settings The kit's picture settings; none, the usual order and no anchor.
 	 */
 	public static function of( Picks $picks, ?PictureSettings $settings = null ): self {
-		$deck  = $picks->part( SlotKey::DECK );
-		$width = $deck?->specs->measure( SpecKey::DeckWidth );
-		if ( null === $deck || null === $width ) {
+		$frame = Board::of( $picks, $settings );
+		if ( null === $frame ) {
 			return new self( 0, 0, array(), array() );
 		}
-		$assumed = array();
-		$length  = $deck->specs->measure( SpecKey::DeckLength );
-		$base    = $deck->specs->measure( SpecKey::Wheelbase );
-		if ( null === $base ) {
-			$assumed[] = SpecKey::Wheelbase;
-			$base      = $settings->wheelbase ?? self::usualWheelbase( $width, $length );
-		}
-		if ( null === $length ) {
-			$assumed[] = SpecKey::DeckLength;
-			$length    = Measure::inches( self::USUAL_LENGTH );
-		}
-		$wide  = self::mm( $width );
-		$long  = self::mm( $length );
-		$board = new Layer( SlotKey::DECK, $deck->id, 0, 0, $wide, $long );
-
-		$trucks = $picks->part( SlotKey::TRUCKS );
-		$wheels = $picks->part( SlotKey::WHEELS );
-		$axle   = $trucks?->specs->measure( SpecKey::AxleWidth );
-		if ( null === $axle && ( null !== $trucks || null !== $wheels ) ) {
-			$assumed[] = SpecKey::AxleWidth;
-		}
-		if ( null !== $wheels && null === $wheels->specs->measure( SpecKey::WheelDiameter ) ) {
-			$assumed[] = SpecKey::WheelDiameter;
-		}
-		$across  = self::mm( $axle ?? $width );
-		$spacing = HolePattern::OldSchool->value === $deck->specs->choice( SpecKey::HolePattern ) ? self::OLD_SCHOOL_SPACING : self::HOLE_SPACING;
-		// The wheelbase runs between the inner holes, so a truck's middle is half a spacing further out.
-		$out    = intdiv( self::mm( $base ) + $spacing, 2 );
-		$round  = self::wheels( $wheels, $out, $across );
-		$layers = array( $board, ...self::trucks( $trucks, $out, $across, $spacing ), ...$round );
+		$wide   = $frame->width;
+		$long   = $frame->length;
+		$board  = new Layer( SlotKey::DECK, $frame->deck->id, 0, 0, $wide, $long );
+		$across = $frame->axle;
+		$out    = $frame->out;
+		$round  = self::wheels( $frame );
+		$layers = array( $board, ...self::trucks( $frame->trucks, $out, $across, $frame->spacing ), ...$round );
 		if ( null !== $settings ) {
 			// usort() keeps equal ranks in the order they came in (PHP 8.0), so a slot's own layers stay in theirs.
 			usort( $layers, static fn( Layer $a, Layer $b ): int => $settings->rank( $a->slot ) <=> $settings->rank( $b->slot ) );
@@ -179,8 +108,8 @@ final readonly class Layout {
 			$sheet = self::sheet( $grip->specs );
 			$top[] = new Layer( SlotKey::GRIP, $grip->id, 0, 0, $sheet[0], $sheet[1] );
 		}
-		$top = array( ...$top, ...self::bolts( $picks->part( SlotKey::HARDWARE ), $out, $spacing ) );
-		return new self( max( $wide, $across ), $long, $layers, $assumed, $top );
+		$top = array( ...$top, ...self::bolts( $picks->part( SlotKey::HARDWARE ), $frame ) );
+		return new self( max( $wide, $across ), $long, $layers, $frame->assumed, $top );
 	}
 
 	/**
@@ -207,7 +136,7 @@ final readonly class Layout {
 	 * @return array{int, int}|null
 	 */
 	public static function drawn( string $slot, Specs $specs ): ?array {
-		$usual = self::mm( Measure::inches( self::USUAL_LENGTH ) );
+		$usual = self::mm( Measure::inches( Board::USUAL_LENGTH ) );
 		switch ( $slot ) {
 			case SlotKey::DECK:
 				$width  = $specs->measure( SpecKey::DeckWidth );
@@ -217,11 +146,9 @@ final readonly class Layout {
 				return self::sheet( $specs );
 			case SlotKey::TRUCKS:
 				$axle = $specs->measure( SpecKey::AxleWidth );
-				return null === $axle ? null : array( self::mm( $axle ), self::HOLE_SPACING + self::BASEPLATE_MARGIN );
+				return null === $axle ? null : array( self::mm( $axle ), Board::HOLE_SPACING + Board::BASEPLATE_MARGIN );
 			case SlotKey::WHEELS:
-				$diameter = $specs->measure( SpecKey::WheelDiameter );
-				$round    = null === $diameter ? self::USUAL_WHEEL : self::mm( $diameter );
-				return array( intdiv( $round * 3, 5 ), $round );
+				return array( Board::wheelWidth( $specs ), Board::wheelDiameter( $specs ) );
 		}
 		return null;
 	}
@@ -239,7 +166,7 @@ final readonly class Layout {
 		$layers = array();
 		if ( null !== $trucks ) {
 			foreach ( array( $out, -$out ) as $y ) {
-				$layers[] = new Layer( SlotKey::TRUCKS, $trucks->id, 0, $y, $across, $spacing + self::BASEPLATE_MARGIN );
+				$layers[] = new Layer( SlotKey::TRUCKS, $trucks->id, 0, $y, $across, $spacing + Board::BASEPLATE_MARGIN );
 			}
 		}
 		return $layers;
@@ -247,23 +174,18 @@ final readonly class Layout {
 
 	/**
 	 * The four wheels' layers, the nose's pair first and the left of each pair first; none when no wheels are picked.
+	 * Each wheel's outer face sits at the axle's end.
 	 *
-	 * @param Part|null $wheels The wheels.
-	 * @param int       $out    How far an axle is from the deck's middle.
-	 * @param int       $across The axle's width.
+	 * @param Board $frame The board.
 	 * @return list<Layer>
 	 */
-	private static function wheels( ?Part $wheels, int $out, int $across ): array {
+	private static function wheels( Board $frame ): array {
 		$layers = array();
-		if ( null !== $wheels ) {
-			$diameter = $wheels->specs->measure( SpecKey::WheelDiameter );
-			$round    = null === $diameter ? self::USUAL_WHEEL : self::mm( $diameter );
-			// A wheel is about three fifths as wide as it is tall, and its outer face sits at the axle's end.
-			$thick = intdiv( $round * 3, 5 );
-			$side  = intdiv( $across - $thick, 2 );
-			foreach ( array( $out, -$out ) as $y ) {
+		if ( null !== $frame->wheels ) {
+			$side = intdiv( $frame->axle - $frame->wheelWidth, 2 );
+			foreach ( array( $frame->out, -$frame->out ) as $y ) {
 				foreach ( array( -$side, $side ) as $x ) {
-					$layers[] = new Layer( SlotKey::WHEELS, $wheels->id, $x, $y, $thick, $round );
+					$layers[] = new Layer( SlotKey::WHEELS, $frame->wheels->id, $x, $y, $frame->wheelWidth, $frame->wheel );
 				}
 			}
 		}
@@ -271,44 +193,21 @@ final readonly class Layout {
 	}
 
 	/**
-	 * A bolt's head at each of the deck's eight holes, seen from the top: from the nose, each row's left first; none
-	 * when no hardware is picked. The rows are the trucks' baseplate holes, half a spacing either side of each truck's
-	 * middle, so the inner rows are the wheelbase apart.
+	 * A bolt's head at each of the deck's eight holes, seen from the top, in `Board::holes()`'s order; none when no
+	 * hardware is picked.
 	 *
 	 * @param Part|null $hardware The hardware.
-	 * @param int       $out      How far a truck's middle is from the deck's.
-	 * @param int       $spacing  Between a baseplate's two rows of holes.
+	 * @param Board     $frame    The board.
 	 * @return list<Layer>
 	 */
-	private static function bolts( ?Part $hardware, int $out, int $spacing ): array {
+	private static function bolts( ?Part $hardware, Board $frame ): array {
 		$layers = array();
 		if ( null !== $hardware ) {
-			$half = intdiv( $spacing, 2 );
-			foreach ( array( $out + $half, $out - $half, -$out + $half, -$out - $half ) as $y ) {
-				foreach ( array( -1, 1 ) as $side ) {
-					$layers[] = new Layer( SlotKey::HARDWARE, $hardware->id, $side * intdiv( self::HOLE_COLUMNS, 2 ), $y, self::BOLT_HEAD, self::BOLT_HEAD );
-				}
+			foreach ( $frame->holes() as [ $along, $across ] ) {
+				$layers[] = new Layer( SlotKey::HARDWARE, $hardware->id, $across, $along, self::BOLT_HEAD, self::BOLT_HEAD );
 			}
 		}
 		return $layers;
-	}
-
-	/**
-	 * The usual wheelbase of a deck that gives none: a share of its length when that is known, otherwise by its width.
-	 *
-	 * @param Measure      $width  The deck's width, in inches.
-	 * @param Measure|null $length The deck's length, in inches, when it gives one.
-	 */
-	private static function usualWheelbase( Measure $width, ?Measure $length ): Measure {
-		if ( null !== $length ) {
-			return Measure::inches( intdiv( $length->tenThousandths * self::WHEELBASE_SHARE, 1000 ) );
-		}
-		foreach ( self::USUAL_WHEELBASES as $from => $usual ) {
-			if ( $width->tenThousandths >= $from ) {
-				return Measure::inches( $usual );
-			}
-		}
-		return Measure::inches( self::NARROW_WHEELBASE );
 	}
 
 	/**
@@ -356,6 +255,6 @@ final readonly class Layout {
 	 * @param Measure $length The length.
 	 */
 	private static function mm( Measure $length ): int {
-		return $length->to( Unit::Millimetre )->tenThousandths;
+		return Board::mm( $length );
 	}
 }

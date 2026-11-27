@@ -2,6 +2,72 @@
 
 All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html). One entry per milestone; `v1.0.0` closes milestone 10 (D-236).
 
+## [1.4.0] - 2026-11-27
+
+### Added
+
+- **`replace` in the delivery filters' context** (#168, D-488): `cbuild_arrival_estimate` and `cbuild_delivery_line` are given the cart key of the kit line an Edit build would replace, or empty, so a plugin counting the cart, such as Creative Checkout 1.7.1, leaves that build out rather than counting it beside the new one.
+- **The 3D view's root and the picture's 3D state as theme classes** (M14's audit, S4): `cbuild-3d`, and `cbuild-picture--3d` on the picture while the 3D view is open, join the classes the API promises a theme.
+- **`view.scene` and `view.three` are public** (M14's audit, S3, D-487): the state route's `view` stays the builder's own, with these two keys as its one stated exception.
+- **The 3D view's scene** (#139, D-470): `Domain\Scene\Scene` measures every part of a build in whole micrometres from its specs, on the same frame as the 2D picture (`Domain\Picture\Board`), and names each usual value it assumed. The builder's view carries it as `view.scene` (`schema/state.json`).
+- **Spec keys `nose_length`, `tail_length`, `concave_depth`, `kick_angle` and `wheel_width`** (D-472, D-473): optional, through the import's columns, Part specs and the specs index. A deck or wheel without one gets a usual value.
+- **Two Build tab switches under Shown in the builder** (D-474): **3D view** (`view_3d` in `_cbuild_settings`), on for a new kit and off for one saved before 1.4.0, so an update changes no builder (D-476); and **Trick buttons** (`tricks`), on where a kit has none, shown only once the kit's 3D view is saved on.
+- **The filter `cbuild_scene`** (D-475): the 3D view's scene of a build, after the domain, with each drawn part's texture. `cbuild_composed_layer` gains the use `3d`; a part answered `blurred` or `left_out` has no texture in the 3D view.
+- **The Catalogue check names a deck or wheel the 3D view draws at a usual size** (D-473), on a kit whose 3D view is on, with the size to fill in.
+
+- **A place for another plugin's element above Help me choose's builds**, `cbuild-guide__above-builds`, rendered empty just above the tiles, so a notice about a tile sits by it (F41, #164).
+- **`presets[].drawn`** in the state route's answer: whether a ready build's picture is drawn from the parts' layers. Such a tile's picture carries `cbuild-preset__photo--drawn`, as Help me choose's do (F41, #164).
+- **A Side place in the 3D view** (#171, D-518): beside Reset view, Top, Underside and Graphic close-up, it puts the camera level with the deck's edge, turned a little, so both wheels on the near side and the truck and riser between them show.
+- View in 3D: where a kit turns it on, the picture shows the build in 3D, drawn from the parts' own sizes, to scale with its shapes simplified. Drag or use the arrow keys to turn it, + and − to zoom, and four buttons for the three-quarter view, the top, the underside and the graphic close-up. Its script loads only when the button is pressed, and it draws nothing while still, off the screen or in a hidden tab (#139, D-490 to D-498).
+- Where the browser can't draw it, or it stops, the board comes back with a short message, and the build goes on as before (D-494).
+- The state route's view says whether the 3D view is offered: `view.three`, with `shown`, `tricks` and `canvas`; and the classes `cbuild-3d__open`, `cbuild-3d__stage`, `cbuild-3d__frame`, `cbuild-3d__canvas`, `cbuild-3d__places` and `cbuild-3d__failed` (D-495, D-497).
+- three.js 0.187.0, the 3D view's only new dependency, in a chunk of its own budgeted at 200 kB gzipped (D-490).
+- A plugin that blurs a part blurs the 3D view the same way: the deck's `cbuild_part_classes` go on the canvas, and `.cbuild-3d__frame` holds a plugin's veil through every change, so the plugin's own reveal lifts it (D-468).
+- Trick buttons in the 3D view: ollie, kickflip, heelflip, pop shove-it and 360 flip, each played once on its press, with the whole board moving and its parts assembled. While one plays the buttons say they are disabled, the camera holds still, and a camera button pressed meanwhile goes once the board lands. With reduced motion, or the kit's Motion subtle, they are not offered. They show where the kit's Trick buttons is on, as it is by default (#139, D-501 to D-504). The class is `cbuild-3d__tricks`.
+- `--cbuild-3d-ground`, the 3D view's ground behind the board. By default it is the builder's own `--cbuild-ground`, so the view follows the theme and its dark scheme (D-500).
+- `cbuild:3d-failed`, a DOM event the builder sends when the 3D view can't be shown or stops, with the kit's ID and why: `load`, `webgl`, `lost` or `error`, for a shop's analytics. The reason is also warned in the browser's console (F8, D-481).
+
+### Changed
+
+- **The rule for what a kit's page carries to the Builder page is a service of its own, `Front\CarriedArgs`** (M14's audit, F10), tested without WordPress; the redirect is unchanged.
+- **The review's visual shot compares "Show the parts" again** (#110, D-486), quarantined since 1.2.0.
+- **A deck drilled for both patterns** takes trucks whose baseplates fit only old school holes on its old school holes, in the picture as in the 3D view (D-470).
+- **A wheel's width** comes from `wheel_width` where it gives one, in the picture as in the 3D view; without one it is still drawn three fifths as wide as its diameter (D-471).
+- The 3D view's canvas is clear, so its ground is the builder's colour, not a fixed light grey (D-500).
+- In French, a smart swap is now « remplacement », the word for a part put in another's place: « Proposer des remplacements futés », « Annuler le remplacement » and « Remplacement : … ». In Quebec stores « échange » means returns and trade-ins (D-513).
+- **Development:** the browser tests' lock around wp-env reads the clock once to judge a lock and to give up on it. Read twice, a lock made within the millisecond the wait began could be given up on as still held, and its test failed now and then under load (#155, D-511).
+- **Development:** the browser tests of My builds, the saved builds' compare, the deck page's start button under the hostile theme and the bar's height at the review also run on Kadence and Storefront, where 1.3.0's compare lost its rules and the tests on Twenty Twenty-Five passed (D-466).
+- **Development:** the 3D view's fallback tests walk to the cart pressing each Next and each pick only once the last press's answer is drawn, as a shopper does; a press under load had come before it (D-529).
+- **Development:** a browser test holds the 3D view's Side place to the canvas's middle and the Graphic close-up to the whole nose, read from the canvas's pixels (D-530).
+- **Development:** the browser test that runs axe on each of the builder's states first brings a control cut by the stacked bar or stage into view, as a shopper scrolls to it, so a tablet's shorter header no longer leaves "Not sure of your width?" under the bar (D-527).
+
+### Fixed
+
+- **Site Health no longer counts a size only the 3D view assumes as a thing to fix** (M14's audit, F4, D-485). After the update, every new kit has the 3D view on, and each deck or wheel without the new optional specs was counted. The Catalogue check still names them.
+- **readme.txt names the 3D view among the features, and says the 3D view bundles three.js under the MIT License,** with its license in `licenses/three.js.txt` (M14's audit, F11). A gate now holds that the Features list names the release's minor version.
+- **At a deck width with no deck in stock,** the deck step says so, "No 8.25″ deck is in stock right now.", rather than blaming the parts before it (F36, #159).
+- **The kit's page sends its visitor on to the Builder page with every other argument of the request,** so a newsletter's `utm_*` tags and an ad's `gclid` or `fbclid` are kept (F38, #161).
+- **Over the budget, Help me choose counts every build that fits,** not only the closest one it shows (F40, #163).
+- **The Catalogue check lists the sizes only the 3D view assumes apart, under "Sizes the 3D view assumes",** and leaves them out of its count of things to fix, so its count is Site Health's (the M14 walkthrough's #7, D-532). Each part is still offered and drawn.
+- **The kick angle's field names its unit as its siblings do,** "Kick angle (°)", and its value reads "20°" (the M14 walkthrough's #8, D-533).
+- While the 3D view is open, the flat board's Underside and Top are hidden, so the view's own Top and Underside are the only ones, and no "Top" stays pressed whatever the camera shows. They come back as they were when the view closes (D-522).
+- On a phone, a tap on View in 3D leaves the view's canvas on the screen: the page no longer moves it up out of sight as the view opens (D-523).
+- On a phone held sideways, the open 3D view sits beside View in 3D and the board's heading, no longer over them, so the view can be closed (D-524).
+- On a phone, the message saying the 3D view can't be shown no longer runs into the board's part labels (D-525).
+- After Show builds or Skip in Help me choose was overtaken by a pick, or answered with the route's limit, a later pick that opened the change panel no longer goes unsaid, and Back no longer takes focus to the builds (F3, D-479).
+- Focus in the 3D view goes to View in 3D where the view stops, as when its context is lost, rather than to the page (F2, D-480).
+- The 3D view closes where the build's scene goes, as when the deck sells out or Back returns to before one, rather than leaving a blank canvas with View in 3D hidden (F6, D-482).
+- View in 3D no longer covers Underside at 320 px in French: upright it sits beside the picture's heading, so the board keeps its place, and with the turn otherwise. On a phone held sideways the picture's strip grows to hold it, so the board is no longer smaller with 3D on (F7, D-483).
+- The 3D view's note says where usual sizes stood in for a part's, rather than "Sizes true to scale", and the board's side line is hidden while the view is open (F13, D-484).
+- **Development:** the 3D view's fallback tests finish the build and add it to the cart (S6).
+- On a phone the bar's Back and Next, or Add to cart, stay beside the total: Next's words break inside the button where the bar is short of room, never inside a word, and the button keeps its 44 px target. In the theme's content width they had taken a row of their own under the total, on a step in English on Twenty Twenty-Five and Storefront and always in French, up to 199 px of bar; it is now 90 to 147 px (#153, D-510).
+- Next pressed on the first step no longer moves the step or the bar when its answer comes a second late, as on a real host: the deck step's width line and its count go at the press, as the answer takes them, and the bar's Back comes at the press too. On a phone the step had moved by up to 0.046 of layout shift and the bar by 0.004 (#152, D-512).
+- A deck page's start button, focused, keeps its outline's colours on a theme whose focus is a fill, as Kadence's is: its words had gone dark on Kadence's dark focus fill, 1.00:1 (F34, #157, D-514).
+- With the script, Show builds in Help me choose takes focus to the builds' heading and the status no longer repeats the empty build; Skip shuts the questions and takes focus to the step's heading, as the page without the script does (F35, #158, D-516).
+- On a phone, the saved builds' compare keeps each row's header in view as it scrolls, so a row that differs is told by its words at every build, not by its tint alone (F37, #160, D-515).
+- An element another plugin adds above the cards on `cbuild:rendered` no longer moves a width's late answer: the event comes in the task that draws the answer, not a frame later (F39, #162, D-517).
+- My builds stays in the account's column beside a theme's sidebar: where the column is narrower than 32rem, as Storefront's is at a tablet's width, each build's cells stack under their column's names. The table had run out under Storefront's sidebar, which covered Open (D-528).
+
 ## [1.3.0] - 2026-11-26
 
 ### Added
@@ -933,6 +999,7 @@ Milestone 1, the foundation. Nothing a shopper or shop owner sees yet: the skele
   - A weekly canary on WordPress trunk and WooCommerce's pre-release, the release workflow with CycloneDX SBOMs, and Dependabot.
 - Docs: `HOOKS.md`, `SETTINGS.md`, `SECURITY.md`, `PRIVACY.md`, `A11Y.md`, `BENCHMARK.md`, `DECISIONS.md` (D-020 to D-048), `reviews/M1.md`, `README.md` and `readme.txt`; the POT file.
 
+[1.4.0]: https://github.com/zachatkinson/creative-skateboard-builder/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/zachatkinson/creative-skateboard-builder/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/zachatkinson/creative-skateboard-builder/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/zachatkinson/creative-skateboard-builder/compare/v1.0.0...v1.1.0

@@ -75,7 +75,7 @@ if second; then
 	bash tools/object-cache.sh down
 	# Yoast SEO in the site's plugins, loaded for its own tests alone (tools/yoast.sh, D-102).
 	if bash tools/yoast.sh up; then
-		only=(--filter KitYoastTest)
+		only=(--filter "$(bash tools/yoast.sh tests)")
 		variant yoast CBUILD_YOAST=1
 		only=()
 	else

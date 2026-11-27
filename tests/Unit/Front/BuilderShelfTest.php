@@ -349,6 +349,18 @@ final class BuilderShelfTest extends TestCase {
 		self::assertSame( 'Nothing in 8.25″ is in stock right now.', $width['none'] );
 	}
 
+	// F36 (#159): a width with no deck in stock, pressed, listed nothing and blamed "the parts before this step", which the
+	// deck step has none of. It names the width, and the sold-out fold stays under it.
+	public function test_a_width_with_no_deck_in_stock_says_so_and_not_the_parts_before(): void {
+		$parts                  = Shop::parts();
+		$parts[ SlotKey::DECK ] = array_map( static fn( Part $part ): Part => 102 === $part->id ? Shop::priced( $part, $part->price, false, 0 ) : $part, $parts[ SlotKey::DECK ] );
+		$this->stock( $parts );
+		$step = $this->step( BuildLink::read( array( '_width' => '8.25in' ) ) );
+		self::assertSame( array(), $step['options'] );
+		self::assertTrue( $step['empty'] );
+		self::assertSame( 'No 8.25″ deck is in stock right now.', $step['emptyText'] );
+	}
+
 	public function test_a_width_lists_its_decks_and_travels_with_the_build(): void {
 		$step = $this->step( BuildLink::read( array( '_width' => '8.25in' ) ) );
 		self::assertSame( array( 102 ), array_column( $step['options'], 'id' ) );

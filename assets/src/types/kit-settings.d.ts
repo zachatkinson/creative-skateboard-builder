@@ -37,6 +37,14 @@ export interface CbuildSettings {
 	 */
 	swaps?: boolean;
 	/**
+	 * Whether the 3D view offers its trick buttons, from 1.4.0 (#139, D-474): ollie, kickflip, heelflip, pop shove-it and 360 flip. It matters only where view_3d is on, and the Build tab shows it only then. The default is true.
+	 */
+	tricks?: boolean;
+	/**
+	 * Whether the builder offers "View in 3D", from 1.4.0 (#139, D-474): a 3D view of the build drawn from its parts' sizes, loaded only when pressed. Off, the page draws no 3D button and the builder's view has no scene. Left out, as in every kit saved before 1.4.0, it is false, so an update changes no builder; a new kit's first Build tab save stores it true (D-476).
+	 */
+	view_3d?: boolean;
+	/**
 	 * "Not sure of your width?" under the deck step's width question. Left out, the guide is shown with the plugin's rows, by US shoe size.
 	 */
 	width_guide?: {

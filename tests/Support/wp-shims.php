@@ -100,6 +100,12 @@ if ( ! function_exists( 'wp_strip_all_tags' ) ) {
 		return trim( strip_tags( $text ) );
 	}
 }
+if ( ! function_exists( 'sanitize_text_field' ) ) {
+	// Near enough WordPress's for the unit suite: tags out, and every run of white space one space, trimmed.
+	function sanitize_text_field( string $text ): string {
+		return trim( (string) preg_replace( '/[\r\n\t ]+/', ' ', strip_tags( $text ) ) );
+	}
+}
 if ( ! function_exists( 'sanitize_html_class' ) ) {
 	// WordPress's: percent-encoded octets out, then anything but A-Z, a-z, 0-9, _ and -.
 	function sanitize_html_class( string $classname, string $fallback = '' ): string {

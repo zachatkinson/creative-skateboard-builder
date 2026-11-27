@@ -207,9 +207,60 @@ test.describe( 'Help me choose', () => {
 		await expect( builds.locator( '.cbuild-preset__notes li' ) ).toHaveText(
 			/^Over your budget by \$\d+\.00\.$/
 		);
+		// F40 (#163): the closest is shown alone, and the count is of every build that fits.
+		await expect(
+			builds.locator( '.cbuild-guide__reasons li' ).last()
+		).toHaveText( /^[2-9] builds fit and are in stock\.$/ );
 		await expect( page.getByLabel( 'Your budget ($)' ) ).toHaveValue(
 			'100'
 		);
+	} );
+
+	// F41 (#164): a place for another plugin's own element just above the builds' tiles, as `.cbuild-step__above-cards`
+	// is above the cards, so a notice about a tile sits by it. Rendered empty, it is out of the layout until used, and
+	// an element put there stays, alone, through the builds a new answer brings.
+	test( "keeps another plugin's element in the place above the builds", async ( {
+		page,
+		javaScriptEnabled,
+	} ) => {
+		await page.goto( fixture().page );
+		await page.locator( '.cbuild-guide summary' ).click();
+		const place = page.locator( '.cbuild-guide__above-builds' );
+		await expect( place, 'rendered by the server' ).toHaveCount( 1 );
+		test.skip( false === javaScriptEnabled, 'a script puts the element' );
+		await show( page, true );
+		await expect( place ).toBeHidden();
+		const tiles = page.locator( '.cbuild-guide__tiles' );
+		await page.evaluate( () => {
+			const element = document.createElement( 'p' );
+			element.className = 'another-plugin';
+			element.textContent = 'Another plugin';
+			document
+				.querySelector( '.cbuild-guide__above-builds' )!
+				.append( element );
+			( window as unknown as { cbuildOwn: Element } ).cbuildOwn = element;
+		} );
+		await expect( place ).toBeVisible();
+		const below = async () =>
+			( await tiles.boundingBox() )!.y - ( await place.boundingBox() )!.y;
+		expect( await below(), 'just above the tiles' ).toBeGreaterThan( 0 );
+
+		await open( page );
+		await page.getByLabel( 'Your budget ($)' ).fill( '100' );
+		await show( page, true );
+		await expect(
+			page.locator( '.cbuild-guide__builds .cbuild-preset__name' )
+		).toHaveText( [ 'Budget build' ] );
+		expect(
+			await place.evaluate(
+				( own ) =>
+					own.firstElementChild ===
+						( window as unknown as { cbuildOwn: Element } )
+							.cbuildOwn && 1 === own.childNodes.length
+			),
+			'the same element, alone'
+		).toBe( true );
+		expect( await below() ).toBeGreaterThan( 0 );
 	} );
 
 	test( 'skips to the builder from the questions, from the builds, and by keyboard', async ( {
@@ -259,6 +310,14 @@ test.describe( 'Help me choose', () => {
 		await expect( guide.locator( 'summary' ) ).toHaveText(
 			'Help me choose'
 		);
+		// The questions shut, as the page that answers without JavaScript has them, and with it focus goes to the
+		// step's heading, as a step's does (F35, #158).
+		await expect(
+			guide.locator( '.cbuild-guide__ask' )
+		).not.toHaveAttribute( 'open' );
+		if ( js ) {
+			await expect( page.locator( '.cbuild__heading' ) ).toBeFocused();
+		}
 
 		// From the builds.
 		await page.goto( asked( { style: 'street' } ) );
@@ -270,6 +329,9 @@ test.describe( 'Help me choose', () => {
 		);
 		await start();
 		await expect( page.locator( '.cbuild-guide__builds' ) ).toBeHidden();
+		if ( js ) {
+			await expect( page.locator( '.cbuild__heading' ) ).toBeFocused();
+		}
 
 		// By keyboard alone: the disclosure opens with Enter, and Skip is reached by Tab from the last question.
 		await page.goto( fixture().page );
@@ -287,6 +349,35 @@ test.describe( 'Help me choose', () => {
 		await expect( skip ).toBeFocused();
 		await follow( () => page.keyboard.press( 'Enter' ) );
 		await start();
+	} );
+
+	// F35 (#158): with the script, Show builds left focus on itself and the status said the empty build again, and Skip
+	// from the builds dropped focus to the page with the questions still open.
+	test( 'Show builds takes focus to the builds, and Skip from them shuts the questions and takes it to the step', async ( {
+		page,
+		javaScriptEnabled,
+	} ) => {
+		test.skip(
+			! javaScriptEnabled,
+			'Without the script each is a page load, which is right (Cowork, no-js-guide-and-swap.txt)'
+		);
+		await page.goto( fixture().page );
+		await page.locator( '.cbuild-guide summary' ).click();
+		await show( page, true );
+		await expect( page.locator( '.cbuild-guide__heading' ) ).toBeFocused();
+		await expect(
+			page.locator( '.cbuild__status' ),
+			'the status says no empty build over the heading'
+		).not.toContainText( 'Total' );
+		await page
+			.locator( '.cbuild-guide__builds' )
+			.getByRole( 'link', { name: 'Skip to the builder' } )
+			.click();
+		await expect( page.locator( '.cbuild-guide__builds' ) ).toBeHidden();
+		await expect( page.locator( '.cbuild__heading' ) ).toBeFocused();
+		await expect(
+			page.locator( '.cbuild-guide__ask' )
+		).not.toHaveAttribute( 'open' );
 	} );
 
 	test( 'passes axe with the questions open and with the builds', async ( {

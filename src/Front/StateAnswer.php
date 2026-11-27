@@ -480,6 +480,7 @@ final class StateAnswer {
 			$built     = $state->presets[ $at ] ?? null;
 			$kept      = null === $built ? array() : $built->problems();
 			$first     = self::first( $preset->picks );
+			$tile      = $this->tile( $state->id, $preset->picks, $preset->image, $begun || ! $shown );
 			$presets[] = array(
 				// From 1.1.0: its place among the kit's, which `cbuild[preset]` takes, and its own in the list.
 				'at'          => $at,
@@ -490,7 +491,10 @@ final class StateAnswer {
 				'picks'       => $picks,
 				// A tile not shown asks for no picture to be made: its first part's photo will do, whole, as a tile shows
 				// every picture (D-461).
-				'image'       => $this->tile( $state->id, $preset->picks, $preset->image, $begun || ! $shown ) ?? ( null === $first ? null : ( $cards[ $first ]['large'] ?? $cards[ $first ]['image'] ?? null ) ),
+				'image'       => $tile['image'] ?? ( null === $first ? null : ( $cards[ $first ]['large'] ?? $cards[ $first ]['image'] ?? null ) ),
+				// From 1.4.0: whether that picture is drawn from the parts' layers, the build's composed picture or its first
+				// part's layer image where it has no photo (D-282), so another plugin can tell it from a photo (F41, #164).
+				'drawn'       => null !== $tile ? $tile['drawn'] : ( null !== $first && false === ( $cards[ $first ]['photo'] ?? null ) ),
 				'total'       => $money( $built->quote->total ?? 0 ),
 				'ready'       => array() === $kept,
 				// What keeps it from the cart, each part named for its tile (spec: Presets).
@@ -553,7 +557,7 @@ final class StateAnswer {
 				'estimate' => null === $state->estimate ? null : $money( $state->estimate->total ),
 			),
 			'picture'           => $this->picture( $state, $counted, $labels, $brands, $cards ),
-			'delivery'          => $this->delivery->said( $state->id, $state->quote->assembly, $state->quote->total, $decimals, $state->quote->lines ),
+			'delivery'          => $this->delivery->said( $state->id, $state->quote->assembly, $state->quote->total, $decimals, $state->quote->lines, $link->replace ),
 			'notes'             => self::notes( $state, $decimals ),
 			// The shelf is the step's, so a view comes with the step it lists.
 			'shelf'             => null === $view || null === $current ? null : self::shelf( $view, $state->step, static fn( Option $shown ): array => $option( $shown, $state->step, $current ), $current ),
@@ -814,7 +818,7 @@ final class StateAnswer {
 	 * @param array<string, int> $picks The preset's picks.
 	 * @param int|null           $image The rider photo it names, or null.
 	 * @param bool               $begun Whether the build is begun.
-	 * @return array{src: string, width: int, height: int, srcset: string, sizes: string}|null
+	 * @return array{image: array{src: string, width: int, height: int, srcset: string, sizes: string}, drawn: bool}|null The picture, and whether it is drawn from the layers.
 	 */
 	private function tile( int $kit, array $picks, ?int $image, bool $begun ): ?array {
 		if ( $begun ) {
@@ -822,16 +826,22 @@ final class StateAnswer {
 		}
 		$photo = null === $image ? null : $this->cards->photo( $image );
 		if ( null !== $photo ) {
-			return $photo;
+			return array(
+				'image' => $photo,
+				'drawn' => false,
+			);
 		}
 		$url                = null === $this->pictures ? null : ( $this->pictures )( $kit, $picks );
 		[ $width, $height ] = ComposedPictures::CANVASES[ ComposedPictures::CART ];
 		return null === $url ? null : array(
-			'src'    => $url,
-			'width'  => $width,
-			'height' => $height,
-			'srcset' => '',
-			'sizes'  => '',
+			'image' => array(
+				'src'    => $url,
+				'width'  => $width,
+				'height' => $height,
+				'srcset' => '',
+				'sizes'  => '',
+			),
+			'drawn' => true,
 		);
 	}
 

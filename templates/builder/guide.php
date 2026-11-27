@@ -49,13 +49,18 @@ defined( 'ABSPATH' ) || exit;
 		</form>
 	</details>
 	<div class="cbuild-guide__builds" data-wp-bind--hidden="!state.view.guide.asked">
-		<h3 class="cbuild-guide__heading" data-wp-text="state.view.guide.heading"></h3>
+		<h3 class="cbuild-guide__heading" tabindex="-1" data-wp-text="state.view.guide.heading"></h3>
 		<ul class="cbuild-guide__reasons">
 			<template data-wp-each--reason="state.view.guide.reasons">
 				<li data-wp-text="context.reason.text"></li>
 			</template>
 		</ul>
 		<p class="cbuild-guide__none" data-wp-bind--hidden="!state.view.guide.hasNone" data-wp-text="state.view.guide.none"></p>
+		<?php
+		// A place for another plugin's own element just above the builds' tiles, such as a notice about one (F41, #164):
+		// rendered empty, with no directive, so the builder never draws into it (HOOKS.md).
+		?>
+		<div class="cbuild-guide__above-builds"></div>
 		<ul class="cbuild-guide__tiles">
 			<template data-wp-each--tile="state.view.guide.tiles" data-wp-each-key="context.tile.button">
 				<?php require __DIR__ . '/tile.php'; ?>

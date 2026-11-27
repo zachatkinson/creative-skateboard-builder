@@ -51,7 +51,7 @@ interface ComposedLayers {
 	 * @param int    $part The part's ID: a product's or a variation's.
 	 * @param string $slot The slot's key.
 	 * @param int    $kit  The kit product's ID.
-	 * @param string $purpose The picture's use: cart, share or email.
+	 * @param string $purpose The picture's use: cart, share or email, or from 1.4.0 3d, the 3D view's textures.
 	 */
 	public function answer( int $part, string $slot, int $kit, string $purpose ): string;
 }

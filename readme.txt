@@ -4,7 +4,7 @@ Tags: woocommerce, skateboard, product builder, configurator, bundle
 Requires at least: 7.0
 Tested up to: 7.1
 Requires PHP: 8.5
-Stable tag: 1.3.0
+Stable tag: 1.4.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -16,7 +16,7 @@ Creative Skateboard Builder lets a shopper put a complete skateboard together fr
 
 = Features =
 
-This is version 1.3.0.
+This is version 1.4.0.
 
 * **The builder page.** A kit's page is the builder: the board on one side, the steps on the other, and the total at the foot. The Builder block puts it on any other page.
 * **One step a slot.** The shopper goes one step a slot, picks a deck by the width they ride, and sees one card a look with only the parts that fit what they picked.
@@ -32,6 +32,7 @@ This is version 1.3.0.
 * **Parts kept out, from 1.2.0.** A part's Part specs can keep it out of the builder while it stays in the shop.
 * **Compare, from 1.3.0.** Under My builds, a customer can see up to three saved builds side by side at today's prices, with what differs said in words.
 * **Help me choose, from 1.3.0.** At the builder's start, a shopper can answer a shoe size, where they skate and a budget, each optional, and see up to three ready builds from parts in stock that fit, with why.
+* **The 3D view, from 1.4.0.** Where a kit turns it on, the shopper can turn and zoom the build in 3D, drawn to scale from the parts' sizes, and see it from the top, the underside or close to the graphic. Where the browser can't draw it, the board is drawn flat as before.
 
 = Accessibility and languages =
 
@@ -40,6 +41,10 @@ It works with a keyboard and a screen reader, on a phone, without JavaScript, in
 = Requirements =
 
 The plugin needs WooCommerce 11.2 or newer, WordPress 7.0 or newer and PHP 8.5 or newer. Below any of them it does nothing and says so on the Plugins screen.
+
+= Third-party code =
+
+The 3D view uses three.js 0.187.0 (https://threejs.org), copyright 2010 to 2026 the three.js authors, under the MIT License, which is compatible with the GPL. Its license is in `licenses/three.js.txt`.
 
 == Installation ==
 
@@ -103,6 +108,11 @@ Kadence can't pick products by type, so add each new kit the same way, or give y
 Yes. Its hooks, REST routes, block attributes, settings keys, order item keys, CSS custom properties and DOM events are listed with the version each arrived in. From 1.0.0 they follow Semantic Versioning: no minor or patch release removes or renames one, and a deprecation comes first.
 
 == Changelog ==
+
+= 1.4.0 =
+* View in 3D: where a kit turns it on, the shopper turns and zooms the build in 3D, drawn to scale from the parts' sizes. Where the browser can't show it, the board is drawn flat as before.
+* A deck's nose and tail lengths, its concave depth and kick angle, and a wheel's width can be given on Part specs and in the specs import. Each is optional.
+* On a kit whose 3D view is on, the Catalogue check names a deck or wheel it draws at a usual size, with the size to fill in.
 
 = 1.3.0 =
 * My builds compares up to three saved builds side by side, at today's prices. The parts that differ and the gap between the totals are said in words, and a part changed since the save is named.
@@ -261,6 +271,9 @@ Yes. Its hooks, REST routes, block attributes, settings keys, order item keys, C
 * Foundation: the plugin skeleton, the two tables, the upgrade steps, uninstall, the update check, the test harness and the CI gates. Nothing a shopper or shop owner sees yet.
 
 == Upgrade Notice ==
+
+= 1.4.0 =
+Update from the updater or by uploading the zip; no step is needed.
 
 = 1.3.0 =
 Update from the updater or by uploading the zip; no step is needed. A kit saved before 1.3.0 has the builder's wheel sizes, and offers smart swaps, Help me choose, and the cards' picks and ratings, until its Build tab turns them off.
