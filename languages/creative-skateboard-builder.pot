@@ -9,7 +9,7 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-11-27T15:14:27+00:00\n"
+"POT-Creation-Date: 2026-11-27T16:23:54+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: creative-skateboard-builder\n"
@@ -2314,16 +2314,16 @@ msgstr ""
 msgid "%1$s is now %2$s."
 msgstr ""
 
-#: src/Front/BuilderPage.php:205
+#: src/Front/BuilderPage.php:208
 msgid "The shop did not answer in time. Try again in a moment."
 msgstr ""
 
-#: src/Front/BuilderPage.php:238
+#: src/Front/BuilderPage.php:241
 msgid "This builder isn't available right now."
 msgstr ""
 
 #. translators: %s: why the builder could not be shown, as the error said it.
-#: src/Front/BuilderPage.php:242
+#: src/Front/BuilderPage.php:245
 #, php-format
 msgid "Shown to shop managers only: %s"
 msgstr ""
