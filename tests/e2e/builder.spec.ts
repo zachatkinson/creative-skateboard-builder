@@ -1565,6 +1565,8 @@ test.describe( 'The builder with JavaScript', () => {
 			'the page keeps its own title after a pick'
 		).toHaveTitle( /^Build a complete/ );
 
+		// The pick's crossing over first, as moveTo() waits (D-540, #178).
+		await expect( page.locator( 'html.cbuild-crossing' ) ).toHaveCount( 0 );
 		await page.getByRole( 'button', { name: 'Next: Trucks' } ).click();
 		await expect( heading( page ) ).toHaveText(
 			'Step 2 of 7: Choose your trucks'

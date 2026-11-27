@@ -129,6 +129,7 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-540 · The swipe test checks the browser can swipe, and the builder tests wait out a crossing before a press](#d-540--the-swipe-test-checks-the-browser-can-swipe-and-the-builder-tests-wait-out-a-crossing-before-a-press--2026-11-27)
 - [D-541 · The mutation job gets 40 minutes, and the tablet's picture-shift test is quarantined](#d-541--the-mutation-job-gets-40-minutes-and-the-tablets-picture-shift-test-is-quarantined--2026-11-27)
 - [D-542 · The visual tests' pick waits for its answer](#d-542--the-visual-tests-pick-waits-for-its-answer--2026-11-27)
+- [D-543 · The focus test waits out the pick's crossing, and #178 asks whether a tap in a crossing is lost](#d-543--the-focus-test-waits-out-the-picks-crossing-and-178-asks-whether-a-tap-in-a-crossing-is-lost--2026-11-27)
 
 ### Kits and their settings
 
@@ -7847,5 +7848,18 @@ CI run 46056908960 on #173, Browser (visual): "the end state of each moment: tru
 **Decision:** `choose()` waits for the state route's answer to the pick as well as for the radio, as the 3D tests' `onward()` does. The wait for `aria-busy` after it stays.
 
 **Tests:** in Playwright's Linux image, every moment's picture passed 3 times (27 of 27). The race was seen once on CI and not locally, so there is no local red run.
+
+**Status:** Accepted.
+
+### D-543 · The focus test waits out the pick's crossing, and #178 asks whether a tap in a crossing is lost · 2026-11-27
+
+CI run 46056908960, firefox-phone: "puts focus on each new step's heading, says the step in the title, and says each pick once" stayed on "Step 1 of 7: Choose your deck" after Next: Trucks, pressed straight after the deck's pick. It has the same shape as D-540's bearings failure. D-529 took a press during a crossing to be taken. Two firefox-phone sightings now suggest it may be lost, which would be a product defect: during a view transition, the browser's pseudo-element tree covers the page.
+
+**Decision:**
+
+- **For 1.4.0, the test waits for `html.cbuild-crossing` to go** before pressing Next, as `moveTo()` does.
+- **#178 settles the product question in milestone 15:** prove it with the crossing slowed, in every engine. If a tap is lost, fix the product with a failing test first and take the waits out. A first probe on 27 Nov could not get past `ride()` with every crossing slowed, so it proved nothing either way.
+
+The same run's other firefox-phone failure was #93's ready mark, its third sighting, with the same diagnostic as the second; the evidence is on #93.
 
 **Status:** Accepted.
