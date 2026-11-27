@@ -9,7 +9,7 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-11-27T16:23:54+00:00\n"
+"POT-Creation-Date: 2026-11-27T16:31:19+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: creative-skateboard-builder\n"
@@ -183,8 +183,8 @@ msgstr ""
 #: src/Order/OrderHooks.php:252
 #: src/Order/OrderHooks.php:344
 #: src/Order/WorkshopWords.php:286
-#: templates/account/my-builds.php:52
-#: templates/account/my-builds.php:63
+#: templates/account/my-builds.php:54
+#: templates/account/my-builds.php:65
 #: templates/admin/tickets.php:72
 msgid "Build"
 msgstr ""
@@ -531,7 +531,7 @@ msgstr ""
 #: src/Admin/BuildTab.php:789
 #: src/Admin/BuildTab.php:1513
 #: src/Privacy/PrivacyHooks.php:132
-#: templates/account/my-builds.php:93
+#: templates/account/my-builds.php:95
 msgid "Name"
 msgstr ""
 
@@ -3332,12 +3332,12 @@ msgid "Assembled"
 msgstr ""
 
 #: src/Front/CompareView.php:317
-#: templates/account/my-builds.php:90
+#: templates/account/my-builds.php:92
 msgid "The shop no longer sells this kit."
 msgstr ""
 
 #: src/Front/CompareView.php:319
-#: templates/account/my-builds.php:75
+#: templates/account/my-builds.php:77
 msgid "A part has changed since you saved it. Open the build to see which."
 msgstr ""
 
@@ -3359,61 +3359,61 @@ msgstr ""
 msgid "%1$s - %2$s"
 msgstr ""
 
-#: src/Front/SavedBuildHooks.php:242
-#: src/Front/SavedBuildHooks.php:246
+#: src/Front/SavedBuildHooks.php:255
 #: src/Front/SavedBuildHooks.php:259
+#: src/Front/SavedBuildHooks.php:272
 msgid "My builds"
 msgstr ""
 
-#: src/Front/SavedBuildHooks.php:347
+#: src/Front/SavedBuildHooks.php:360
 msgid "That form has expired. Please try again."
 msgstr ""
 
-#: src/Front/SavedBuildHooks.php:362
-#: src/Front/SavedBuildHooks.php:402
-#: src/Front/SavedBuildHooks.php:546
+#: src/Front/SavedBuildHooks.php:375
+#: src/Front/SavedBuildHooks.php:415
+#: src/Front/SavedBuildHooks.php:559
 msgid "The build could not be saved just now. Please try again."
 msgstr ""
 
-#: src/Front/SavedBuildHooks.php:364
+#: src/Front/SavedBuildHooks.php:377
 msgid "That build is not among your saved builds."
 msgstr ""
 
-#: src/Front/SavedBuildHooks.php:366
+#: src/Front/SavedBuildHooks.php:379
 msgid "The build is renamed."
 msgstr ""
 
-#: src/Front/SavedBuildHooks.php:368
+#: src/Front/SavedBuildHooks.php:381
 msgid "The build is deleted."
 msgstr ""
 
-#: src/Front/SavedBuildHooks.php:385
-#: src/Front/SavedBuildHooks.php:394
+#: src/Front/SavedBuildHooks.php:398
+#: src/Front/SavedBuildHooks.php:407
 msgid "The build is back in My builds."
 msgstr ""
 
-#: src/Front/SavedBuildHooks.php:388
+#: src/Front/SavedBuildHooks.php:401
 msgid "That build can no longer be brought back."
 msgstr ""
 
 #. translators: %s: how many builds a customer may keep, such as 100.
-#: src/Front/SavedBuildHooks.php:399
-#: src/Front/SavedBuildHooks.php:548
+#: src/Front/SavedBuildHooks.php:412
+#: src/Front/SavedBuildHooks.php:561
 #, php-format
 msgid "You have %s saved build, the most kept. Delete it to save another."
 msgid_plural "You have %s saved builds, the most kept. Delete one to save another."
 msgstr[0] ""
 msgstr[1] ""
 
-#: src/Front/SavedBuildHooks.php:544
+#: src/Front/SavedBuildHooks.php:557
 msgid "The build is saved. It is listed below."
 msgstr ""
 
-#: src/Front/SavedBuildHooks.php:545
+#: src/Front/SavedBuildHooks.php:558
 msgid "Your saved build is updated."
 msgstr ""
 
-#: src/Front/SavedBuildHooks.php:549
+#: src/Front/SavedBuildHooks.php:562
 msgid "This build could not be saved: a part is missing or no longer fits. Open it in the builder to check it."
 msgstr ""
 
@@ -4696,14 +4696,14 @@ msgstr ""
 
 #. translators: %s: the saved build's name.
 #: templates/account/compare.php:30
-#: templates/account/my-builds.php:88
+#: templates/account/my-builds.php:90
 #, php-format
 msgid "Open %s"
 msgstr ""
 
 #. translators: %s: the saved build's name.
 #: templates/account/compare.php:30
-#: templates/account/my-builds.php:88
+#: templates/account/my-builds.php:90
 msgid "Open"
 msgstr ""
 
@@ -4712,8 +4712,8 @@ msgid "Differs"
 msgstr ""
 
 #: templates/account/compare.php:63
-#: templates/account/my-builds.php:53
-#: templates/account/my-builds.php:71
+#: templates/account/my-builds.php:55
+#: templates/account/my-builds.php:73
 msgid "Total today"
 msgstr ""
 
@@ -4745,64 +4745,64 @@ msgstr ""
 msgid "You have no saved builds yet. Save one from the review step of the builder, and it waits for you here."
 msgstr ""
 
-#: templates/account/my-builds.php:54
-#: templates/account/my-builds.php:78
+#: templates/account/my-builds.php:56
+#: templates/account/my-builds.php:80
 msgid "Saved"
 msgstr ""
 
-#: templates/account/my-builds.php:55
-#: templates/account/my-builds.php:79
+#: templates/account/my-builds.php:57
+#: templates/account/my-builds.php:81
 msgid "Actions"
 msgstr ""
 
 #. translators: %s: the saved build's name.
-#: templates/account/my-builds.php:83
+#: templates/account/my-builds.php:85
 #, php-format
 msgid "Compare %s"
 msgstr ""
 
 #. translators: %s: the saved build's name.
-#: templates/account/my-builds.php:84
+#: templates/account/my-builds.php:86
 msgid "Compare"
 msgstr ""
 
 #. translators: %s: the saved build's name.
-#: templates/account/my-builds.php:94
+#: templates/account/my-builds.php:96
 #, php-format
 msgid "Name of %s"
 msgstr ""
 
 #. translators: %s: the saved build's name.
-#: templates/account/my-builds.php:99
+#: templates/account/my-builds.php:101
 #, php-format
 msgid "Rename %s"
 msgstr ""
 
 #. translators: %s: the saved build's name.
-#: templates/account/my-builds.php:99
+#: templates/account/my-builds.php:101
 msgid "Rename"
 msgstr ""
 
 #. translators: %s: the saved build's name.
-#: templates/account/my-builds.php:106
+#: templates/account/my-builds.php:108
 #, php-format
 msgid "Delete %s"
 msgstr ""
 
 #. translators: %s: the saved build's name.
-#: templates/account/my-builds.php:106
+#: templates/account/my-builds.php:108
 msgid "Delete"
 msgstr ""
 
 #. translators: %s: the most builds compared at once, such as 3.
-#: templates/account/my-builds.php:121
+#: templates/account/my-builds.php:124
 #, php-format
 msgid "Tick up to %s build, then compare them side by side at today's prices."
 msgid_plural "Tick up to %s builds, then compare them side by side at today's prices."
 msgstr[0] ""
 msgstr[1] ""
 
-#: templates/account/my-builds.php:124
+#: templates/account/my-builds.php:127
 msgid "Compare the ticked builds"
 msgstr ""
 
