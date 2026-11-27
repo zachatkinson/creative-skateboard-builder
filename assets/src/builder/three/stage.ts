@@ -121,6 +121,10 @@ export function aim(
 			return { from: [ 0, 1, 0.0001 ], at: 0, near: 1 };
 		case 'under':
 			return { from: [ 0, -1, 0.0001 ], at: 0, near: 1 };
+		// Level with the deck's edge, turned 17 degrees toward the nose: both wheels on the near side, and the truck
+		// and the riser between each and the deck, show (#171, D-518).
+		case 'side':
+			return { from: [ 0.3, 0, 1 ], at: 0, near: 1 };
 		case 'graphic':
 			return { from: [ 0.25, -1, 0.35 ], at: 0.45, near: 0.5 };
 		case 'reset':
@@ -188,7 +192,7 @@ export function stage( needs: Needs ): Renderer & {
 		playing: boolean;
 		/** The board's position, in millimetres, and its turns about x, y and z, in radians, in the scene's axes. */
 		board: number[];
-		/** The camera's position and the point it turns about, in millimetres, in three's axes. */
+		/** The camera's position and the point it turns about, in millimetres, in three's axes (#171). */
 		camera: number[];
 	};
 	/** For a test's picture: the board held at a moment of a trick, or at rest. */

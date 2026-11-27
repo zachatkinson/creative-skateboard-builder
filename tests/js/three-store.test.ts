@@ -355,11 +355,17 @@ describe( 'the picture’s renderers', () => {
 	} );
 
 	it( 'reads a place from a button’s value', () => {
-		expect( PLACES ).toEqual( [ 'reset', 'top', 'under', 'graphic' ] );
+		expect( PLACES ).toEqual( [
+			'reset',
+			'top',
+			'under',
+			'side',
+			'graphic',
+		] );
 		for ( const one of PLACES ) {
 			expect( placeOf( one ) ).toBe( one );
 		}
-		expect( placeOf( 'side' ) ).toBeNull();
+		expect( placeOf( 'edge' ) ).toBeNull();
 		expect( placeOf( undefined ) ).toBeNull();
 	} );
 

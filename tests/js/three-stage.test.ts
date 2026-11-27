@@ -245,6 +245,16 @@ describe( 'aim', () => {
 		} );
 	} );
 
+	it( 'looks at the side level with the deck’s edge, turned a little toward the nose (#171)', () => {
+		for ( const top of [ true, false ] ) {
+			expect( aim( 'side', top ) ).toEqual( {
+				from: [ 0.3, 0, 1 ],
+				at: 0,
+				near: 1,
+			} );
+		}
+	} );
+
 	it( 'resets to three-quarters above for a top’s step, below for the rest', () => {
 		expect( aim( 'reset', true ).from ).toEqual( [ 0.55, 0.6, 0.75 ] );
 		expect( aim( 'reset', false ).from ).toEqual( [ 0.55, -0.6, 0.75 ] );
@@ -601,6 +611,21 @@ describe( 'stage', () => {
 		shown.look( 'reset' );
 		frame();
 		expect( camera().distanceTo( reset ) ).toBeLessThan( 1e-6 );
+	} );
+
+	it( 'sends the camera to the side, level with the point it turns about, and the probe reads it (#171)', () => {
+		const { shown, camera, reduce } = open();
+		reduce( true );
+		shown.show( scene(), true );
+		frame();
+		shown.look( 'side' );
+		frame();
+		const [ x, y, z, tx, ty, tz ] = shown.probe().camera;
+		expect( [ x, y, z ] ).toEqual( camera().toArray() );
+		expect( [ tx, ty, tz ] ).toEqual( [ 0, -20, 0 ] );
+		expect( y ).toBeCloseTo( -20, 6 );
+		expect( z ).toBeGreaterThan( 1000 );
+		expect( x! / z! ).toBeCloseTo( 0.3, 6 );
 	} );
 
 	it( 'ends the camera’s move once the shopper takes it', () => {

@@ -430,6 +430,7 @@ test.describe( '3D view (milestone 14)', () => {
 		for ( const name of [
 			'Top',
 			'Underside',
+			'Side',
 			'Graphic close-up',
 			'Reset view',
 		] ) {
@@ -458,6 +459,61 @@ test.describe( '3D view (milestone 14)', () => {
 		const after = await frames( page );
 		await page.waitForTimeout( 3000 );
 		expect( await frames( page ) ).toBe( after );
+	} );
+
+	// #171: Side puts the camera level with the deck's edge, turned a little toward the nose, so both wheels on the
+	// near side show with the truck and the riser between them. With reduced motion it goes there at once.
+	test( 'Side sends the camera level with the deck’s edge, turned a little (#171)', async ( {
+		page,
+		browserName,
+	} ) => {
+		// WebKit tabs to buttons only with Option held, as Safari does without Full Keyboard Access.
+		const tab = 'webkit' === browserName ? 'Alt+Tab' : 'Tab';
+		await page.emulateMedia( { reducedMotion: 'reduce' } );
+		await open( page );
+		const places = page.getByRole( 'group', {
+			name: 'Views of the board',
+		} );
+		await expect( places.getByRole( 'button' ) ).toHaveText( [
+			'Reset view',
+			'Top',
+			'Underside',
+			'Side',
+			'Graphic close-up',
+		] );
+		// The places are in the page's order, one Tab each, and the group's last hands on to what follows it.
+		await places.getByRole( 'button', { name: 'Reset view' } ).focus();
+		for ( const name of [
+			'Top',
+			'Underside',
+			'Side',
+			'Graphic close-up',
+		] ) {
+			await page.keyboard.press( tab );
+			await expect(
+				places.getByRole( 'button', { name, exact: true } )
+			).toBeFocused();
+		}
+		await page.keyboard.press( tab );
+		await expect( places.locator( ':focus' ) ).toHaveCount( 0 );
+		await places
+			.getByRole( 'button', { name: 'Side', exact: true } )
+			.press( 'Enter' );
+		await expect
+			.poll( async () => {
+				const [ x, y, z, tx, ty, tz ] = ( await probe( page ) )!.camera;
+				return [
+					Math.round( ( y! - ty! ) * 10 ) / 10,
+					Math.round( ( ( x! - tx! ) / ( z! - tz! ) ) * 100 ) / 100,
+					z! - tz! > 0,
+				];
+			} )
+			.toEqual( [ 0, 0.3, true ] );
+		await axe(
+			page,
+			'the 3D view’s places, side on',
+			'.cbuild-3d__places'
+		);
 	} );
 
 	test( 'offers no trick where the kit’s Trick buttons is off', async ( {

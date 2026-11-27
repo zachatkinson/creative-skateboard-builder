@@ -5306,10 +5306,6 @@ msgstr "Voir en 3D"
 msgid "Sizes true to scale, shapes simplified."
 msgstr "Tailles à l’échelle, formes simplifiées."
 
-#: templates/builder/three.php:34
-msgid "Sizes to scale, with usual sizes where a part lists none. Shapes simplified."
-msgstr "Tailles à l’échelle, avec des tailles courantes là où une pièce n’en indique pas. Formes simplifiées."
-
 #: templates/builder/three.php:35
 msgid "Drag or use the arrow keys to turn the board, and + and − to zoom."
 msgstr "Faites glisser ou utilisez les flèches pour tourner la planche, et + et − pour zoomer."
@@ -5333,39 +5329,44 @@ msgid "Underside"
 msgstr "Dessous"
 
 #: templates/builder/three.php:40
+msgctxt "a view of the board in 3D"
+msgid "Side"
+msgstr "De côté"
+
+#: templates/builder/three.php:41
 msgid "Graphic close-up"
 msgstr "Gros plan sur le graphisme"
 
-#: templates/builder/three.php:61
+#: templates/builder/three.php:62
 msgid "The 3D view can’t be shown here, so the board is drawn flat."
 msgstr "La vue 3D ne peut pas s’afficher ici, la planche est donc montrée à plat."
 
-#: templates/builder/three.php:47
+#: templates/builder/three.php:48
 msgctxt "a skateboard trick"
 msgid "Ollie"
 msgstr "Ollie"
 
-#: templates/builder/three.php:48
+#: templates/builder/three.php:49
 msgctxt "a skateboard trick"
 msgid "Kickflip"
 msgstr "Kickflip"
 
-#: templates/builder/three.php:49
+#: templates/builder/three.php:50
 msgctxt "a skateboard trick"
 msgid "Heelflip"
 msgstr "Heelflip"
 
-#: templates/builder/three.php:50
+#: templates/builder/three.php:51
 msgctxt "a skateboard trick"
 msgid "Pop shove-it"
 msgstr "Pop shove-it"
 
-#: templates/builder/three.php:51
+#: templates/builder/three.php:52
 msgctxt "a skateboard trick"
 msgid "360 flip"
 msgstr "360 flip"
 
-#: templates/builder/three.php:54
+#: templates/builder/three.php:55
 msgctxt "skateboard tricks the 3D view plays"
 msgid "Tricks"
 msgstr "Figures"
@@ -5419,3 +5420,7 @@ msgstr "Le champ %s est vide, donc la vue 3D dessine la valeur habituelle. La pi
 #, php-format
 msgid "No %s deck is in stock right now."
 msgstr "Aucune planche de %s n’est en stock en ce moment."
+
+#: templates/builder/three.php:34
+msgid "Sizes to scale, with usual sizes where a part lists none. Shapes simplified."
+msgstr "Tailles à l’échelle, avec des tailles courantes là où une pièce n’en indique pas. Formes simplifiées."

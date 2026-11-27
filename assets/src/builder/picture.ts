@@ -7,11 +7,20 @@
 import type { Object3D } from 'three';
 import type { Scene } from './three/scene';
 
-/** Where the camera can be sent: the step's side, the top, the underside, or close to the deck's graphic. */
-export type Place = 'reset' | 'top' | 'under' | 'graphic';
+/**
+ * Where the camera can be sent: the step's side, the top, the underside, level with the deck's edge (1.4.0, #171), or
+ * close to the deck's graphic.
+ */
+export type Place = 'reset' | 'top' | 'under' | 'side' | 'graphic';
 
 /** The places, as the server's buttons name them. */
-export const PLACES: readonly Place[] = [ 'reset', 'top', 'under', 'graphic' ];
+export const PLACES: readonly Place[] = [
+	'reset',
+	'top',
+	'under',
+	'side',
+	'graphic',
+];
 
 /** The tricks, as the server's buttons name them, in their order (1.4.0, #139). */
 export const TRICKS = [

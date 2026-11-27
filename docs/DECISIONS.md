@@ -370,6 +370,7 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-506 · A textured part is drawn in its colour until its image arrives](#d-506--a-textured-part-is-drawn-in-its-colour-until-its-image-arrives--2026-11-26)
 - [D-507 · One finger turns the 3D view about its upright alone](#d-507--one-finger-turns-the-3d-view-about-its-upright-alone--2026-11-26)
 - [D-508 · The scene sends each truck's axle centre, and the view measures nothing](#d-508--the-scene-sends-each-trucks-axle-centre-and-the-view-measures-nothing--2026-11-26)
+- [D-518 · The 3D view's Side place: level with the deck's edge, turned 17 degrees toward the nose](#d-518--the-3d-views-side-place-level-with-the-decks-edge-turned-17-degrees-toward-the-nose--2026-11-26)
 
 ### Cart, checkout and orders
 
@@ -7515,6 +7516,20 @@ The audit's F9. The axle's height was worked out twice: by `Scene::of()` for the
 
 - **It's an addition** to `view.scene` and `cbuild_scene`'s shape, in the same unreleased 1.4.0: `schema/state.json`, the generated types, `cbuild_scene`'s entry in `docs/HOOKS.md`, and the API snapshot.
 - **Tests:** `SceneTest` "changing the trucks' height alone moves the trucks and the wheels alike", with the 3 mm the trucks drop; `three-parts.test.ts`, where the trucks follow the scene's centres and a height change alone moves nothing; and the state route's integration test, where the trucks' z is the wheels'.
+
+**Status:** Accepted.
+
+### D-518 · The 3D view's Side place: level with the deck's edge, turned 17 degrees toward the nose · 2026-11-26
+
+Zach's #171, approved for 1.4.0 after the see-through edge (#167, D-505) was found from the side. The view's places were Reset view, Top, Underside and Graphic close-up. None shows what a shopper comparing wheel sizes, risers or ride height looks at: the wheels, the trucks and the gap under the deck, from the side.
+
+**Decision:** a fifth place, **Side**, after Underside in `.cbuild-3d__places` (`value="side"`, `_x( 'Side', 'a view of the board in 3D' )`, « De côté » in fr_CA). In `aim()` it looks from `[ 0.3, 0, 1 ]` at the deck's middle, with the whole deck framed (`near: 1`), as Top and Underside are.
+
+- **Level.** The direction has no height, so the camera sits at the height of the point it turns about, 20 mm under the deck's top: the deck's edge. That is the side-on camera of #167's visual test (`3d-side.png`, nine 10-degree tilts down from Top), without its zoom, which framed the nose's kick alone.
+- **Turned a little.** Straight side on, each near wheel hides the far one and the truck between them, and the riser reads as a line. Turned 17 degrees toward the nose (atan 0.3), the far wheel shows past each near one, and the hanger and riser show between them. More turn starts to read as the three-quarter view of Reset.
+- **Reduced motion** goes there at once, through the same `go()` as the other places.
+- **The probe** also reports the camera's position and the point it turns about (`camera`), so a browser test can read where a place put it. The probe is on only with `data-cbuild-probe`, which no shop page carries.
+- **Tests:** `three-stage.test.ts` ("looks at the side level with the deck's edge", and "sends the camera to the side ... and the probe reads it"); `3d.spec.ts` "Side sends the camera level with the deck's edge, turned a little (#171)", with the places' order, Tab through them, the camera's height and turn within 0.1 mm and 0.01, and axe on the group; and `3d-visual.spec.ts` "the 3D view at its Side place" (`3d-side-place.png`).
 
 **Status:** Accepted.
 

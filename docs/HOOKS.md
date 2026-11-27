@@ -1027,7 +1027,7 @@ From 1.4.0, where a kit's View in 3D is on, the picture holds the 3D view (#139,
 | `cbuild-3d__stage` | 1.4.0 | The open view: the canvas, its notes and the camera's buttons |
 | `cbuild-3d__frame` | 1.4.0 | The canvas's box, `position: relative`, painted `--cbuild-3d-ground`, and a plugin's place for a veil over the view, as `.cbuild__stage` is over the board. Once the view opens it is never replaced: an element a plugin puts in it stays through a part's change, a step's and the view closed and opened again, and it covers the canvas alone, never the camera's buttons. On a tablet and a phone it is 4 by 3; a theme may set its `aspect-ratio` or height |
 | `cbuild-3d__canvas` | 1.4.0 | The canvas, with the classes `cbuild_part_classes` gives the deck picked after its own, as the board's layers have them. They stay through every redraw and part change |
-| `cbuild-3d__places` | 1.4.0 | The camera's buttons: Reset view, Top, Underside and Graphic close-up |
+| `cbuild-3d__places` | 1.4.0 | The camera's buttons: Reset view, Top, Underside, Side (#171) and Graphic close-up |
 | `cbuild-3d__tricks` | 1.4.0 | The trick buttons, where `view.three.tricks` is true: Ollie, Kickflip, Heelflip, Pop shove-it and 360 flip, each with `aria-disabled` true while a trick plays. Hidden with reduced motion and where the root has `cbuild--subtle` (D-502, D-503) |
 | `cbuild-3d__failed` | 1.4.0 | The message shown where the view can't be drawn, with the board back |
 
