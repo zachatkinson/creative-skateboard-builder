@@ -167,6 +167,21 @@ test( 'the 3D view side on, level with the deck’s edge', async ( {
 	} );
 } );
 
+// 1.4.0, #171: the Side place, level with the deck's edge and turned a little toward the nose, so both near wheels show
+// with the truck and the riser between each and the deck (D-518).
+test( 'the 3D view at its Side place', async ( { page, context } ) => {
+	await opened( page, context );
+	await page
+		.getByRole( 'group', { name: 'Views of the board' } )
+		.getByRole( 'button', { name: 'Side', exact: true } )
+		.click();
+	await still( page );
+	await expect( page.locator( '.cbuild-3d__frame' ) ).toHaveScreenshot(
+		'3d-side-place.png',
+		{ maxDiffPixelRatio: 0.01 }
+	);
+} );
+
 // 1.4.0: the view's ground is the builder's (D-500), so on the dark scheme the board is drawn on the dark ground.
 test( 'the 3D view on the dark scheme', async ( { page, context } ) => {
 	await opened( page, context, 'dark' );

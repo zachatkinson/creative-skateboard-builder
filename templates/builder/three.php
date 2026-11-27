@@ -33,6 +33,7 @@ if ( true !== ( $shown['view']['three']['shown'] ?? false ) ) {
 			<button class="cbuild-button" type="button" value="reset" data-wp-on--click="actions.look"><?php esc_html_e( 'Reset view', 'creative-skateboard-builder' ); ?></button>
 			<button class="cbuild-button" type="button" value="top" data-wp-on--click="actions.look"><?php echo esc_html_x( 'Top', 'a view of the board in 3D', 'creative-skateboard-builder' ); ?></button>
 			<button class="cbuild-button" type="button" value="under" data-wp-on--click="actions.look"><?php echo esc_html_x( 'Underside', 'a view of the board in 3D', 'creative-skateboard-builder' ); ?></button>
+			<button class="cbuild-button" type="button" value="side" data-wp-on--click="actions.look"><?php echo esc_html_x( 'Side', 'a view of the board in 3D', 'creative-skateboard-builder' ); ?></button>
 			<button class="cbuild-button" type="button" value="graphic" data-wp-on--click="actions.look"><?php esc_html_e( 'Graphic close-up', 'creative-skateboard-builder' ); ?></button>
 		</div>
 		<?php
