@@ -304,8 +304,9 @@ jobs:
     # 25 minutes since milestone 7; at 30 a slow runner stopped the oldest leg with its browser tests still running
     # (CI run 43906165176). At 45 a slow runner fits and a hang still stops at less than the newest leg's limit.
     # Since D-258 the newest leg runs Chromium's two projects alone, and the `browsers` job the rest beside it, so
-    # every leg takes about what the oldest does.
-    timeout-minutes: 60
+    # every leg takes about what the oldest does. With milestone 14's 3D tests the oldest leg's 804 tests took 44 and
+    # 55 minutes, and on #173 a slow runner stopped it at 60 with 704 done and none failed (D-544).
+    timeout-minutes: 80
     strategy:
       fail-fast: false
       matrix:

@@ -130,6 +130,7 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-541 · The mutation job gets 40 minutes, and the tablet's picture-shift test is quarantined](#d-541--the-mutation-job-gets-40-minutes-and-the-tablets-picture-shift-test-is-quarantined--2026-11-27)
 - [D-542 · The visual tests' pick waits for its answer](#d-542--the-visual-tests-pick-waits-for-its-answer--2026-11-27)
 - [D-543 · The focus test waits out the pick's crossing, and #178 asks whether a tap in a crossing is lost](#d-543--the-focus-test-waits-out-the-picks-crossing-and-178-asks-whether-a-tap-in-a-crossing-is-lost--2026-11-27)
+- [D-544 · The integration and browser legs get 80 minutes](#d-544--the-integration-and-browser-legs-get-80-minutes--2026-11-27)
 
 ### Kits and their settings
 
@@ -7861,5 +7862,13 @@ CI run 46056908960, firefox-phone: "puts focus on each new step's heading, says 
 - **#178 settles the product question in milestone 15:** prove it with the crossing slowed, in every engine. If a tap is lost, fix the product with a failing test first and take the waits out. A first probe on 27 Nov could not get past `ride()` with every crossing slowed, so it proved nothing either way.
 
 The same run's other firefox-phone failure was #93's ready mark, its third sighting, with the same diagnostic as the second; the evidence is on #93.
+
+**Status:** Accepted.
+
+### D-544 · The integration and browser legs get 80 minutes · 2026-11-27
+
+CI run 46063991563 on #173: "Plugin Check, the zip, browser (oldest)" was cancelled at its 60-minute limit, with 704 of its 804 browser tests run and none failed. The same job took 44 and 55 minutes on the two runs before it. Milestone 14's 3D tests made the chromium-desktop and webkit-phone leg longer, and a slow runner took it past the limit. This is D-107 and D-188 again.
+
+**Decision:** the `integration` matrix's legs get 80 minutes. That is their longest time so far plus room for a slow runner. The limit stops a hung job, and no floor moves. The legs' length is for #179's caching and M15's pipeline work to bring down.
 
 **Status:** Accepted.
