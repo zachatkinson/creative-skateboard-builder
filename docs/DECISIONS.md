@@ -360,6 +360,7 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-504 · During a trick the camera waits](#d-504--during-a-trick-the-camera-waits--2026-11-26)
 - [D-505 · Every generated face is wound to look out, the deck's edge among them](#d-505--every-generated-face-is-wound-to-look-out-the-decks-edge-among-them--2026-11-26)
 - [D-506 · A textured part is drawn in its colour until its image arrives](#d-506--a-textured-part-is-drawn-in-its-colour-until-its-image-arrives--2026-11-26)
+- [D-507 · One finger turns the 3D view about its upright alone](#d-507--one-finger-turns-the-3d-view-about-its-upright-alone--2026-11-26)
 
 ### Cart, checkout and orders
 
@@ -7327,5 +7328,17 @@ The audit's F1, and the spec reviewer's S1. `material()` in `parts.ts` set a par
 **Decision:** a textured part's material starts in the part's colour, with no map. The stage hands each part's texture to the part once its image has loaded: the map goes on, the colour turns white, the material is marked for update, and a frame is asked for. An image that fails never arrives, so the part keeps its colour. An image that arrives after the view has closed is put on nothing. The texture waits on its material's `userData.texture`, and `release()` gives it back from there too, so a texture whose image never came isn't kept.
 
 - **Tests:** `three-parts.test.ts` (before and after the image), `three-stage.test.ts` (an image that never arrives, and one that arrives after the close), and `3d.spec.ts` "a texture that fails to load leaves the part in its colour", which routes the fixture's textures to 404 and samples the canvas's middle from underneath.
+
+**Status:** Accepted.
+
+### D-507 · One finger turns the 3D view about its upright alone · 2026-11-26
+
+The audit's F14, found by lane 3's real swipe test for S7. With `touch-action: pan-y` on the canvas, a vertical one-finger swipe scrolls the page. But Chrome hands OrbitControls the swipe's first pointer moves before it takes the pan, so the camera turned by about 15 degrees on the board's pitch as the page scrolled.
+
+The finding offered two fixes: lock the polar angle while one finger is down, or ignore a one-finger move that is mostly vertical. The second needs a threshold, and a slow diagonal drag would still tilt the board on its first moves. The first is exact.
+
+**Decision:** while exactly one touch pointer is down on the canvas, the stage sets OrbitControls' `minPolarAngle` and `maxPolarAngle` to the camera's present polar angle, so one finger turns the board about its upright and never tilts it. A second finger, the finger lifting, or the browser cancelling it for the pan lets the range go back to 0 to π. Two fingers pinch as before. A mouse, the keys and the camera buttons still tilt.
+
+- **Tests:** lane 3's `3d.spec.ts` "on a touch screen a vertical swipe over the canvas scrolls the page and leaves the camera", on chromium-phone; and `three-stage.test.ts` for one finger, two, a mouse and a cancel.
 
 **Status:** Accepted.

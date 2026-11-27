@@ -538,6 +538,30 @@ export function stage( needs: Needs ): Renderer & {
 	};
 	controls.addEventListener( 'start', taken );
 	controls.addEventListener( 'change', invalidate );
+	// A finger on the canvas turns the board about its upright alone (F14): Chrome hands the controls a swipe's first
+	// moves before it takes the page's pan, which turned the camera's pitch as the page scrolled. Two fingers pinch and
+	// turn as before; the buttons and the keys are the stage's own and unchanged.
+	const fingers = new Set< number >();
+	const pitch = (): void => {
+		const one = 1 === fingers.size;
+		controls.minPolarAngle = one ? controls.getPolarAngle() : 0;
+		controls.maxPolarAngle = one ? controls.getPolarAngle() : Math.PI;
+	};
+	const down = ( event: PointerEvent ): void => {
+		if ( 'touch' === event.pointerType ) {
+			fingers.add( event.pointerId );
+			pitch();
+		}
+	};
+	const up = ( event: PointerEvent ): void => {
+		if ( fingers.delete( event.pointerId ) ) {
+			pitch();
+		}
+	};
+	canvas.addEventListener( 'pointerdown', down );
+	for ( const ended of [ 'pointerup', 'pointercancel' ] as const ) {
+		canvas.addEventListener( ended, up );
+	}
 	size();
 
 	/**
@@ -560,6 +584,10 @@ export function stage( needs: Needs ): Renderer & {
 		canvas.removeEventListener( 'webglcontextlost', lost );
 		controls.removeEventListener( 'start', taken );
 		controls.removeEventListener( 'change', invalidate );
+		canvas.removeEventListener( 'pointerdown', down );
+		for ( const ended of [ 'pointerup', 'pointercancel' ] as const ) {
+			canvas.removeEventListener( ended, up );
+		}
 		controls.dispose();
 		for ( const { group } of drawn.values() ) {
 			if ( group ) {
