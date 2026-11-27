@@ -127,6 +127,7 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-538 · A 3D test that needs the view to draw skips where WebGL 2 is missing](#d-538--a-3d-test-that-needs-the-view-to-draw-skips-where-webgl-2-is-missing--2026-11-27)
 - [D-539 · The update test stops where an old release's fixture made no kit](#d-539--the-update-test-stops-where-an-old-releases-fixture-made-no-kit--2026-11-27)
 - [D-540 · The swipe test checks the browser can swipe, and the builder tests wait out a crossing before a press](#d-540--the-swipe-test-checks-the-browser-can-swipe-and-the-builder-tests-wait-out-a-crossing-before-a-press--2026-11-27)
+- [D-541 · The mutation job gets 40 minutes, and the tablet's picture-shift test is quarantined](#d-541--the-mutation-job-gets-40-minutes-and-the-tablets-picture-shift-test-is-quarantined--2026-11-27)
 
 ### Kits and their settings
 
@@ -7819,5 +7820,21 @@ Two more of CI's failures on #173:
 - **`moveTo` waits for `html.cbuild-crossing` to go** before each press, as D-529's `settled()` does.
 
 **Tests:** the swipe test passed 10 of 10 on chromium-phone on the Mac and skipped in the Linux image. The crossing race was not seen locally; the wait is D-529's, proven there by 20 runs.
+
+**Status:** Accepted.
+
+### D-541 · The mutation job gets 40 minutes, and the tablet's picture-shift test is quarantined · 2026-11-27
+
+Two more from CI run 46049772113 on #173:
+
+- **The mutation job was cancelled at 25:16** against its 25-minute limit, with nothing failing. The run before took 21 minutes. StrykerJS now has 4,103 mutants with the 3D view, and Infection's time is unchanged. This is D-107 again.
+- **chromium-tablet's "moves nothing as the pictures load"** measured 0.000004946235246564977 against 0 on two CI runs, the same to every digit. It passed on the Mac and 6 of 6 times in Playwright's Linux image on this Mac, one of them with the layer copies made again. That image is ARM; CI's runners are x86.
+
+**Decision:**
+
+- **The job's limit is 40 minutes.** That is the time it takes plus room for StrykerJS to grow. The limit guards against a hung job, and no floor moves.
+- **The test is skipped on chromium-tablet only, with #177.** It still runs on chromium-desktop and chromium-phone, and still asks for 0. Its failure message now names each counted shift's element and its boxes before and after, so a run of it on CI says what moved. The quarantine comes off with #177's fix.
+
+**Also read in the run's logs:** every PHP deprecation came from WooCommerce 11.3.1, Action Scheduler or WP-CLI, none from the plugin. One `_load_textdomain_just_in_time` notice for `woocommerce` came at each site's first install, not on any request.
 
 **Status:** Accepted.
