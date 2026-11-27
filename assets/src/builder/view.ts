@@ -1658,6 +1658,15 @@ async function rise( state: State ): Promise< void > {
 		return;
 	}
 	state.three.loading = false;
+	// The stage stops sticking as the view opens and grows by the view's height, above the cards: on a phone the
+	// browser's scroll anchoring then kept the cards where they were and left the canvas above the screen (M14's
+	// walkthrough, D-523). Once the open view is laid out, its canvas comes on to the screen by the least scroll, its
+	// top first where it is above, and nothing moves where it is already shown.
+	window.requestAnimationFrame( () => {
+		if ( ticket === opening ) {
+			canvas.scrollIntoView( { block: 'nearest' } );
+		}
+	} );
 }
 
 /**

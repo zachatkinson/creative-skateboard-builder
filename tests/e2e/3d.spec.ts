@@ -991,6 +991,44 @@ test.describe( '3D view (milestone 14)', () => {
 		expect( await pressed() ).toEqual( before );
 	} );
 
+	// M14's walkthrough, finding 1: on a phone a tap on View in 3D left the page about 404 px further down, the canvas
+	// above the top of the screen. The stage stops sticking as the view opens and grows by the view's height, and the
+	// browser's scroll anchoring kept the cards under it in place (D-523). From the top of the page, from where the
+	// stage starts to stick and from where it has stuck, the canvas is on the screen after the tap, its top on it.
+	for ( const from of [ 0, 150, 500 ] ) {
+		test( `on a phone a tap on View in 3D, ${ from } px down the page, leaves the canvas on the screen`, async ( {
+			page,
+		} ) => {
+			test.skip(
+				! test.info().project.use.hasTouch,
+				'A tap needs a touch screen: chromium-phone and webkit-phone.'
+			);
+			await page.setViewportSize( { width: 390, height: 844 } );
+			await page.goto( build( fixture().three.page ) );
+			test.skip(
+				! ( await drawsWebGL( page ) ),
+				'This browser has no WebGL 2 here; the fallback tests cover it.'
+			);
+			await page.evaluate( ( down ) => window.scrollTo( 0, down ), from );
+			await expect
+				.poll( () => page.evaluate( () => window.scrollY ) )
+				.toBe( from );
+			const toggle = page.locator( '.cbuild-3d__open' );
+			await toggle.tap();
+			await expect( toggle ).toHaveAttribute( 'aria-pressed', 'true' );
+			await still( page );
+			const [ top, bottom, height ] = await page
+				.locator( '.cbuild-3d__canvas' )
+				.evaluate( ( canvas ) => {
+					const box = canvas.getBoundingClientRect();
+					return [ box.top, box.bottom, window.innerHeight ];
+				} );
+			expect( top, 'the canvas’s top' ).toBeGreaterThanOrEqual( -0.5 );
+			expect( top, 'the canvas’s top' ).toBeLessThan( height! );
+			expect( bottom, 'the canvas’s foot' ).toBeGreaterThan( 0 );
+		} );
+	}
+
 	// The auditor's M14 review, F7: View in 3D shared the turn's cell, and covered its buttons at 320 px in French; on
 	// a phone held sideways it took a row of its own, so the board was smaller before the press. Upright it now goes
 	// beside the heading, the board's box as with no 3D view; sideways the strip grows to hold it, the board its size

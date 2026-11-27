@@ -7610,3 +7610,19 @@ M14's walkthrough, finding 3: with the view open, the flat board's Underside and
 - **`3d.spec.ts` "while open, one Top and one Underside show, the view's, and the board's come back on close as they were",** on chromium-desktop and chromium-phone. Before the fix, and with the same break: `Error: Top`, `toHaveCount` expected 1, received 2, at :975.
 
 **Status:** Accepted.
+
+### D-523 · Once the 3D view opens, its canvas is brought on to the screen by the least scroll · 2026-11-27
+
+M14's walkthrough, finding 1: on a phone, a tap on View in 3D left the page about 404 px further down, with the canvas above the top of the screen. The stage stops sticking as the view opens (D-483) and grows by the view's height, above the cards. The browser's scroll anchoring then kept the cards where they were, so the page under the shopper moved and the canvas went up out of sight.
+
+**Decision:** a frame after the view has opened and drawn, the store calls `scrollIntoView( { block: 'nearest' } )` on the canvas, unless a later press has closed it since (the same ticket as D-480's). `nearest` scrolls only where the canvas is not already shown, and by the least amount, so on a desktop, where the stage sticks and the canvas is in view, nothing moves.
+
+- **Why not turn scroll anchoring off.** `overflow-anchor: none` on the stage would stop this jump, and every other one the anchoring prevents as the step's cards change above the shopper's place. The canvas is the one thing the tap asked for, so it is the one thing brought into view.
+- **Why the scroll is not smooth.** It follows the shopper's own tap, at once, as the page's other jumps do, and a reduced-motion setting needs no case of its own.
+
+**Tests:**
+
+- **`three-store.test.ts` "brings the canvas on to the screen once the open view is laid out, and not where it closed first".** Before the fix, and with the deliberate break (the call never made): `expected "vi.fn()" to be called 1 times, but got 0 times`, at :183.
+- **`3d.spec.ts` "on a phone a tap on View in 3D, 0, 150 and 500 px down the page, leaves the canvas on the screen",** on the touch projects. Before the fix, and with the break, from 500 px on chromium-phone: `Error: the canvas's top`, expected >= -0.5, received -20.359375, at :1026. On the e2e site's theme the jump is shorter than the walkthrough's 404 px; the test holds that the canvas's top is on the screen, whatever the theme.
+
+**Status:** Accepted.
