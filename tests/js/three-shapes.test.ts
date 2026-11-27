@@ -242,14 +242,14 @@ describe( 'edge', () => {
 				band.points[ at * 6 + 2 ]! - band.points[ at * 6 + 5 ]!
 			).toBeCloseTo( 11, 9 );
 		}
-		// The last quad closes the band on its first points.
+		// The last quad closes the band on its first points, wound to look out (D-505).
 		expect( band.triangles.slice( -6 ) ).toEqual( [
 			2 * ( rim - 1 ),
-			2 * ( rim - 1 ) + 1,
-			0,
 			0,
 			2 * ( rim - 1 ) + 1,
+			0,
 			1,
+			2 * ( rim - 1 ) + 1,
 		] );
 		// Out along the toe side, back along the heel side.
 		expect( band.points[ 6 * ( GRID.along / 2 ) + 1 ] ).toBeCloseTo(

@@ -213,7 +213,9 @@ export function edge( deck: Deck ): Face {
 	for ( let at = 0; at < rim.length; at++ ) {
 		const a = 2 * at;
 		const b = 2 * ( ( at + 1 ) % rim.length );
-		triangles.push( a, a + 1, b, b, a + 1, b + 1 );
+		// The rim runs clockwise seen from above, so top, next top, bottom is counter-clockwise seen from outside
+		// (D-505): wound the other way, three.js culled the band and the deck looked hollow from the side.
+		triangles.push( a, b, a + 1, b, b + 1, a + 1 );
 	}
 	return { points, uvs, triangles };
 }

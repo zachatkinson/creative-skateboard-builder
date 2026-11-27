@@ -358,6 +358,7 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-502 · The trick buttons are the server's, play on a press alone, and wait for each other](#d-502--the-trick-buttons-are-the-servers-play-on-a-press-alone-and-wait-for-each-other--2026-11-26)
 - [D-503 · With reduced motion no trick is offered](#d-503--with-reduced-motion-no-trick-is-offered--2026-11-26)
 - [D-504 · During a trick the camera waits](#d-504--during-a-trick-the-camera-waits--2026-11-26)
+- [D-505 · Every generated face is wound to look out, the deck's edge among them](#d-505--every-generated-face-is-wound-to-look-out-the-decks-edge-among-them--2026-11-26)
 
 ### Cart, checkout and orders
 
@@ -7142,6 +7143,19 @@ Sources:
 The brief allowed an orbit or a camera button during a trick to wait or to cancel it cleanly. A cancel would put the board back at rest in one frame, a jump in the middle of the air.
 
 **Decision:** while a trick plays, the camera holds still. OrbitControls is off, so a drag turns nothing. The arrow keys and + and − are taken, so the page doesn't scroll, but move nothing. A camera button pressed meanwhile goes once the board lands, the last one pressed if there were several. A camera move already under way goes on to its end. A trick lands at rest at once, its promise kept, where the canvas leaves the screen, the tab hides or the view closes, so no frame is drawn out of sight and the buttons are free again.
+
+**Status:** Accepted.
+
+### D-505 · Every generated face is wound to look out, the deck's edge among them · 2026-11-26
+
+Zach found the deck see-through between its top and bottom from the side (#167). The edge band was there, but `edge()` in `assets/src/builder/three/shapes.ts` wound its quads `(a, a+1, b, b, a+1, b+1)`, with `a` a rim point's top and `a+1` its bottom. The rim runs along the +y side from the tail to the nose and back along the −y side, clockwise seen from above. On the +y side, (a+1 − a) × (b − a) is (0, 0, −t) × (dx, 0, 0) = (0, −t·dx, 0), into the board. So every one of the band's 288 triangles faced in. three.js draws a material's front side only by default, so the band was culled from outside, and `computeVertexNormals` would have lit it from inside.
+
+Checked the same way, the rest are wound out: the top's `(a, b, a+1)` gives +z and the bottom's `(a, a+1, b)` −z. The wheel's lathe profile runs counter-clockwise in (radius, width), which three's `LatheGeometry` turns outward, its bore facing the axle. The trucks, risers and bolts are three's own boxes and cylinders, and the bolts' turn is a rotation, not a mirror.
+
+**Decision:** the edge is wound `(a, b, a+1, b, b+1, a+1)`, counter-clockwise seen from outside, all the way round, since the rim's direction is the same everywhere. The material stays `FrontSide`. `DoubleSide` would hide the fault, but it doubles the fill and leaves the normals lighting the edge from inside.
+
+- **The test:** `tests/js/three-outward.test.ts` holds every generated mesh to it, with two helpers in `tests/js/support/outward.ts`. The first checks each triangle's normal against the outward direction at its centre: away from the deck's centre line round the edge, and up or down on the faces. The second casts a ray from just in front of each triangle and counts how many times it crosses the closed mesh: the deck's three faces together, and each truck, riser, wheel and bolt mesh.
+- **The picture:** `3d-side.png`, side on, the camera level with the edge, shows the seven plies. The probe's `hold()` lowers the board and moves it toward the tail to frame the nose's kick. The four pictures that see the far edge from above or below now show its maple band: three-quarter, close-up, dark and kickflip, each about 0.5 % of their pixels. The top and the underside changed by less than 0.05 %, where the edge is seen on end. All six were retaken.
 
 **Status:** Accepted.
 
