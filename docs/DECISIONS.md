@@ -124,6 +124,8 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-532 · The Catalogue check lists the 3D view's usual sizes apart, and counts as Site Health does](#d-532--the-catalogue-check-lists-the-3d-views-usual-sizes-apart-and-counts-as-site-health-does--2026-11-27)
 - [D-533 · The kick angle names its unit as a measure does](#d-533--the-kick-angle-names-its-unit-as-a-measure-does--2026-11-27)
 - [D-537 · The browser fixture makes its own folder, and a write it cannot make stops it](#d-537--the-browser-fixture-makes-its-own-folder-and-a-write-it-cannot-make-stops-it--2026-11-27)
+- [D-538 · The 3D tests give the view 20 s to open after its press](#d-538--the-3d-tests-give-the-view-20-s-to-open-after-its-press--2026-11-27)
+- [D-539 · The update test stops where an old release's fixture made no kit](#d-539--the-update-test-stops-where-an-old-releases-fixture-made-no-kit--2026-11-27)
 
 ### Kits and their settings
 
@@ -7781,3 +7783,21 @@ CI's visual and Lighthouse jobs failed on #173: every spec that reads `tmp/e2e-b
 **Tests:** on lane 3 with `tmp/` moved aside, before the fix, `bash tools/e2e-site.sh` exited 0 with two `file_put_contents(...): Failed to open stream` warnings and no `tmp/e2e-builder.json`. After it, both files were written. The deliberate break, a plain file where `tmp/` goes, stopped it with "Error: The fixture could not make …/tmp."
 
 **Status:** Accepted.
+
+### D-538 · The 3D tests give the view 20 s to open after its press · 2026-11-27
+
+CI's firefox-phone job failed "opens only on the press" on #173: `.cbuild-3d__stage` was still hidden 5 s after View in 3D was pressed. The view opens once the three.js chunk is fetched and parsed (`view.ts`, `rise()`), and the tests waited Playwright's default 5 s for it, where `still()` already allows 20 s for the view's first frames.
+
+**Decision:** every wait in `tests/e2e/3d.spec.ts` for the stage or canvas to show after the press takes `LOADED`, 20 s. The test still fails if the view never opens.
+
+**Tests:** a probe that held the chunk's requests 6 s failed with the 5 s wait and passed with 20 s, on chromium-desktop in lane 3. The builder itself waits for the chunk however long it takes.
+
+**Status:** Accepted.
+
+### D-539 · The update test stops where an old release's fixture made no kit · 2026-11-27
+
+CI's updates job failed on #173 at "the grip with a layer image was not made on 0.9.0: no layer: no kit offers a grip": 0.9.0's own fixture had made no kit, where 1.3.0's CI read 2 kits from it. The same sample, run locally on a fresh lane 1 site, passed for all six releases, and the job said nothing of why the fixture made none.
+
+**Decision:** `tools/upgrade.sh` fails as soon as a release from 0.4.0 on, the first with kits, reads no kit after its own fixture, and prints what the fixture said, or that its fixture was not found.
+
+**Status:** Accepted. The cause is open until CI's next run says it.

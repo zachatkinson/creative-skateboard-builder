@@ -175,6 +175,14 @@ if git cat-file -e "v$from:tests/e2e/fixtures/shop.php" 2>/dev/null; then
 fi
 kits="$(wp eval-file "$here/tools/upgrade/seed.php" kits | tail -n 1)"
 kits="${kits#kits:}"
+# A release from 0.4.0 on whose own fixture made no kit fails here, with what the fixture said, not later at the grip
+# no kit offers: CI's run on #173 stopped there on 0.9.0 and said nothing of why (D-539).
+if [ "$kits" = 0 ] && [ "$(printf '%s\n' 0.4.0 "$from" | sort -V | head -n 1)" = 0.4.0 ]; then
+	answer="${said:-the fixture of v$from was not found, so it did not run}"
+	# shellcheck disable=SC2001 # sed indents every line of the answer; a parameter expansion would miss the first.
+	echo "$answer" | sed 's/^/   /'
+	fail "the fixture of $from made no kit"
+fi
 saved="$(wp eval-file "$here/tools/upgrade/seed.php" saved | tail -n 1)"
 user="${saved#saved:}"; [ "$user" = none ] && user=0
 # A grip with a layer image and no spec, as the demo's were, from 0.7.0 (#129, D-373): until 1.2.0 it got no copies.

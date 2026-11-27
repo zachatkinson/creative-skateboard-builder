@@ -131,6 +131,12 @@ const drawsWebGL = ( page: Page ): Promise< boolean > =>
 	);
 
 /**
+ * How long the view may take to open after its press: the three.js chunk is fetched and parsed only then, which took
+ * over 5 s, Playwright's default, on CI's Firefox phone runner (#173, D-538). `still()` already allows 20 s.
+ */
+const LOADED = { timeout: 20_000 };
+
+/**
  * Open the 3D view on the 3D kit's page and wait until it is still.
  *
  * @param page The page.
@@ -145,7 +151,7 @@ async function open( page: Page ) {
 	await expect(
 		page.getByRole( 'button', { name: 'View in 3D' } )
 	).toHaveAttribute( 'aria-pressed', 'true' );
-	await expect( page.locator( '.cbuild-3d__canvas' ) ).toBeVisible();
+	await expect( page.locator( '.cbuild-3d__canvas' ) ).toBeVisible( LOADED );
 	await still( page );
 }
 
@@ -297,7 +303,9 @@ test.describe( '3D view (milestone 14)', () => {
 			asked.filter( ( url ) => url.includes( '/build/builder/three' ) )
 		).toEqual( [] );
 		await page.getByRole( 'button', { name: 'View in 3D' } ).click();
-		await expect( page.locator( '.cbuild-3d__stage' ) ).toBeVisible();
+		await expect( page.locator( '.cbuild-3d__stage' ) ).toBeVisible(
+			LOADED
+		);
 		expect(
 			asked.filter( ( url ) => url.includes( '/build/builder/three.js' ) )
 		).toHaveLength( 1 );
@@ -984,7 +992,9 @@ test.describe( '3D view (milestone 14)', () => {
 		await page.getByRole( 'button', { name: 'View in 3D' } ).click();
 		await expect( page.locator( '.cbuild-3d__stage' ) ).toBeHidden();
 		await page.getByRole( 'button', { name: 'View in 3D' } ).click();
-		await expect( page.locator( '.cbuild-3d__stage' ) ).toBeVisible();
+		await expect( page.locator( '.cbuild-3d__stage' ) ).toBeVisible(
+			LOADED
+		);
 		await kept( 'closed and opened again' );
 		// The plugin's reveal lifts its blur, by its own class on the page's root.
 		expect(
@@ -1196,7 +1206,9 @@ test.describe( '3D view (milestone 14)', () => {
 			const toggle = page.locator( '.cbuild-3d__open' );
 			await toggle.click();
 			await expect( toggle ).toHaveAttribute( 'aria-pressed', 'true' );
-			await expect( page.locator( '.cbuild-3d__canvas' ) ).toBeVisible();
+			await expect( page.locator( '.cbuild-3d__canvas' ) ).toBeVisible(
+				LOADED
+			);
 			await still( page );
 			await toggle.evaluate( ( shown ) =>
 				shown.scrollIntoView( { block: 'center' } )
