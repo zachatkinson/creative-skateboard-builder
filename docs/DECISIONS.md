@@ -128,6 +128,7 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-539 · The update test stops where an old release's fixture made no kit](#d-539--the-update-test-stops-where-an-old-releases-fixture-made-no-kit--2026-11-27)
 - [D-540 · The swipe test checks the browser can swipe, and the builder tests wait out a crossing before a press](#d-540--the-swipe-test-checks-the-browser-can-swipe-and-the-builder-tests-wait-out-a-crossing-before-a-press--2026-11-27)
 - [D-541 · The mutation job gets 40 minutes, and the tablet's picture-shift test is quarantined](#d-541--the-mutation-job-gets-40-minutes-and-the-tablets-picture-shift-test-is-quarantined--2026-11-27)
+- [D-542 · The visual tests' pick waits for its answer](#d-542--the-visual-tests-pick-waits-for-its-answer--2026-11-27)
 
 ### Kits and their settings
 
@@ -7836,5 +7837,15 @@ Two more from CI run 46049772113 on #173:
 - **The test is skipped on chromium-tablet only, with #177.** It still runs on chromium-desktop and chromium-phone, and still asks for 0. Its failure message now names each counted shift's element and its boxes before and after, so a run of it on CI says what moved. The quarantine comes off with #177's fix.
 
 **Also read in the run's logs:** every PHP deprecation came from WooCommerce 11.3.1, Action Scheduler or WP-CLI, none from the plugin. One `_load_textdomain_just_in_time` notice for `woocommerce` came at each site's first install, not on any request.
+
+**Status:** Accepted.
+
+### D-542 · The visual tests' pick waits for its answer · 2026-11-27
+
+CI run 46056908960 on #173, Browser (visual): "the end state of each moment: trucks" differed by 82,633 pixels (8 %). The picture showed the trucks card ticked, the board drawn without trucks and a total of $75.00 for $125.00. The call log showed `aria-busy="false"` on the first capture and `"true"` on the second. The moment's `choose()` checked the radio and the test then waited for `aria-busy` to be false, which it still was in the moment between the press and the pick's request. The builder was right; the test took its picture too early.
+
+**Decision:** `choose()` waits for the state route's answer to the pick as well as for the radio, as the 3D tests' `onward()` does. The wait for `aria-busy` after it stays.
+
+**Tests:** in Playwright's Linux image, every moment's picture passed 3 times (27 of 27). The race was seen once on CI and not locally, so there is no local red run.
 
 **Status:** Accepted.
