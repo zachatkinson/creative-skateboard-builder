@@ -5328,45 +5328,45 @@ msgctxt "a view of the board in 3D"
 msgid "Underside"
 msgstr "Dessous"
 
-#: templates/builder/three.php:36
+#: templates/builder/three.php:40
 msgctxt "a view of the board in 3D"
 msgid "Side"
 msgstr "De côté"
 
-#: templates/builder/three.php:37
+#: templates/builder/three.php:41
 msgid "Graphic close-up"
 msgstr "Gros plan sur le graphisme"
 
-#: templates/builder/three.php:58
+#: templates/builder/three.php:62
 msgid "The 3D view can’t be shown here, so the board is drawn flat."
 msgstr "La vue 3D ne peut pas s’afficher ici, la planche est donc montrée à plat."
 
-#: templates/builder/three.php:44
+#: templates/builder/three.php:48
 msgctxt "a skateboard trick"
 msgid "Ollie"
 msgstr "Ollie"
 
-#: templates/builder/three.php:45
+#: templates/builder/three.php:49
 msgctxt "a skateboard trick"
 msgid "Kickflip"
 msgstr "Kickflip"
 
-#: templates/builder/three.php:46
+#: templates/builder/three.php:50
 msgctxt "a skateboard trick"
 msgid "Heelflip"
 msgstr "Heelflip"
 
-#: templates/builder/three.php:47
+#: templates/builder/three.php:51
 msgctxt "a skateboard trick"
 msgid "Pop shove-it"
 msgstr "Pop shove-it"
 
-#: templates/builder/three.php:48
+#: templates/builder/three.php:52
 msgctxt "a skateboard trick"
 msgid "360 flip"
 msgstr "360 flip"
 
-#: templates/builder/three.php:51
+#: templates/builder/three.php:55
 msgctxt "skateboard tricks the 3D view plays"
 msgid "Tricks"
 msgstr "Figures"
