@@ -121,6 +121,8 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-472 · The 3D view's five optional specs, and a kick angle in whole degrees](#d-472--the-3d-views-five-optional-specs-and-a-kick-angle-in-whole-degrees--2026-11-26)
 - [D-473 · The 3D view's usual values, from published deck and truck specs](#d-473--the-3d-views-usual-values-from-published-deck-and-truck-specs--2026-11-26)
 - [D-485 · Site Health leaves out a size only the 3D view assumes](#d-485--site-health-leaves-out-a-size-only-the-3d-view-assumes--2026-11-26)
+- [D-532 · The Catalogue check lists the 3D view's usual sizes apart, and counts as Site Health does](#d-532--the-catalogue-check-lists-the-3d-views-usual-sizes-apart-and-counts-as-site-health-does--2026-11-27)
+- [D-533 · The kick angle names its unit as a measure does](#d-533--the-kick-angle-names-its-unit-as-a-measure-does--2026-11-27)
 
 ### Kits and their settings
 
@@ -7593,5 +7595,37 @@ The cause is the turn's two buttons, Underside and Top. The store shows them by 
 
 - **`3d.spec.ts` "on a phone held sideways in English, and in French, the board is the size before the store runs that it is after, with 3D off and on".** This holds the board's box to 0.5 px on the plain page and the 3D page. Before the fix, it failed with `[[289.64,323.70,482.70,122.58]] before, [[275,326,512,130.03]] after`, `Received: 14.640625`.
 - **Repeated runs.** After the fix, that test and the two F7 layout tests ran 3 times each on chromium-desktop, chromium-phone and webkit-phone: 30 passed, and the 6 skips are the Chromium-only shift test on WebKit.
+
+**Status:** Accepted.
+
+### D-532 · The Catalogue check lists the 3D view's usual sizes apart, and counts as Site Health does · 2026-11-27
+
+The M14 walkthrough's #7: on the browser site, Site Health said the Catalogue check found 11 things to fix, and the check's own screen said 43. The other 32 were the 3D view's notes, a deck or wheel without one of the sizes only the scene reads (`nose_length`, `tail_length`, `concave_depth`, `kick_angle`, `wheel_width`; D-472, D-473). D-485 left them out of Site Health's count, since the part is still offered and drawn. The check's screen still counted them, among what it found to fix.
+
+**Decision:**
+
+- **A list of their own,** "Sizes the 3D view assumes" (`h3#cbuild-scene`), after the parts with no layer image, as the other lists that need no fix are. Its intro says each part is still offered, needs no fix, and where the size is filled in.
+- **Out of the count.** The screen's "The check found N things to fix" counts what `Service\Health::catalogue` counts for the same findings, and the 3D view's notes alone leave the notice "Nothing the check found keeps a part out of the builder." above their list.
+- **The finding is unchanged.** `CatalogueCheck` still returns each note as `assumed` with `note` `scene_assumed`; only the screen sorts it.
+
+**Tests:** `tests/Integration/CheckScreenTest.php`:
+
+- **"a size only the 3D view assumes is listed apart and not counted as a thing to fix".** Before the fix, it failed at :358, the page not containing "The check found 1 thing to fix.".
+- **"the 3D views notes alone leave nothing to fix".** Before the fix, it failed at :377, the page not containing `<h3 id="cbuild-scene">Sizes the 3D view assumes</h3>`.
+- **The deliberate break,** the notes put back among the fixes with the list kept, failed both: :358 again, and :378, the page matching `/found (\d+ things?|nothing) to fix/`.
+
+**Status:** Accepted.
+
+### D-533 · The kick angle names its unit as a measure does · 2026-11-27
+
+The M14 walkthrough's #8: of the five specs 1.4.0 added, the kick angle alone was labelled "Kick angle in degrees", where its siblings are "Nose length (in)" and "Wheel width (mm)", from the spec's name and the translatable pattern `%1$s (%2$s)`. D-472 made it a count of whole degrees, so `SpecKey::unit()` has no unit for it and the pattern was never used.
+
+**Decision:**
+
+- **The name is "Kick angle",** the field's label "Kick angle (°)", through the same pattern, with `°` translatable as a field's `in` and `mm` are (context "degrees, in the label of a field").
+- **Its value reads "20°",** through `%s°` (context "degrees"), as a measure's reads "8.25 in", in the import's preview, Part specs' sources, the check's sentences and the order's workshop lines.
+- **In `Admin\Labels`, not the domain.** The domain keeps a count, as D-472 chose. An angle unit would reach the parser and the index for one spec, so the label names the degrees alone.
+
+**Tests:** `tests/Unit/Admin/LabelsTest.php`. Before the fix, "every spec has its own name and a measure names its unit in a fields label" failed at :61, `'Kick angle'` expected and `'Kick angle in degrees'` received, and the values "degrees" and "degrees in the thousands" failed at :107, `'20°'` expected and `'20'` received. The deliberate break, `deg` for `°`, failed at :62 with `'Kick angle (deg)'`.
 
 **Status:** Accepted.

@@ -11,6 +11,7 @@ namespace CreativeBranding\SkateboardBuilder\Tests\Integration;
 
 use CreativeBranding\SkateboardBuilder\Admin\BuilderHooks;
 use CreativeBranding\SkateboardBuilder\Admin\CheckScreen;
+use CreativeBranding\SkateboardBuilder\Domain\Kit\Kit;
 use CreativeBranding\SkateboardBuilder\Domain\Spec\SpecTable;
 use CreativeBranding\SkateboardBuilder\Port\ImportStore;
 use CreativeBranding\SkateboardBuilder\Port\Kits;
@@ -22,6 +23,7 @@ use CreativeBranding\SkateboardBuilder\Port\Reindex;
 use CreativeBranding\SkateboardBuilder\Port\ReindexStore;
 use CreativeBranding\SkateboardBuilder\Port\SpecTables;
 use CreativeBranding\SkateboardBuilder\Service\CatalogueCheck;
+use CreativeBranding\SkateboardBuilder\Service\Health;
 use CreativeBranding\SkateboardBuilder\Service\ImportState;
 use CreativeBranding\SkateboardBuilder\Service\ReindexState;
 use CreativeBranding\SkateboardBuilder\Service\SpecIndexer;
@@ -336,6 +338,45 @@ final class CheckScreenTest extends IntegrationTestCase {
 		self::assertSame( 0, substr_count( substr( $page, 0, (int) strpos( $page, 'id="cbuild-kept"' ) ), 'Not offered in the builder is ticked' ) );
 		// A part kept out is in no kit, so its list has no Kit column of empty cells.
 		self::assertStringNotContainsString( '<th scope="col">Kit</th>', substr( $page, (int) strpos( $page, 'id="cbuild-kept"' ) ), 'no Kit column' );
+	}
+
+	// The M14 walkthrough (D-532): Site Health said 11 things to fix where the check said 43, the difference the sizes
+	// only the 3D view assumes. They are listed apart, and the check's count of things to fix is Site Health's.
+	public function test_a_size_only_the_3d_view_assumes_is_listed_apart_and_not_counted_as_a_thing_to_fix(): void {
+		$kits = new InMemoryKits();
+		$deck = array(
+			'schema_version' => 1,
+			'slots'          => array( array_values( KitDocuments::slots()['slots'] )[0] ),
+		);
+		$kit  = Kit::fromDocuments( $deck, KitDocuments::rules(), KitDocuments::presets(), KitDocuments::assembly(), null, null, array( 'schema_version' => 1, 'view_3d' => true ) );
+		// The first deck gives none of the 3D view's four sizes; the second gives them all, and no hole pattern.
+		$kits->add( 5, $kit, array( 'deck' => array( Builds::deck( '8.0', 11 ), Parts::of( array( 'deck_width' => '8.25', 'deck_length' => '32', 'set_size' => 1, 'nose_length' => '7', 'tail_length' => '6.5', 'concave_depth' => '0.5', 'kick_angle' => 20 ), 12 ) ) ) );
+		$check = ( new CatalogueCheck( $kits, $this->service( PartCatalogue::class ), $this->service( SpecIndexer::class ), $this->service( ReindexStore::class ), $this->service( ImportStore::class ), $this->service( Queue::class ) ) );
+
+		$this->as( 'shop_manager' );
+		$page = self::checked( new CheckScreen( $check, $kits, $this->service( Reindex::class ) ) );
+		self::assertStringContainsString( 'The check found 1 thing to fix.', $page, 'the hole pattern, and not the 3D view\'s four sizes' );
+		self::assertSame( 1, Health::catalogue( $check->run() )['findings'], 'Site Health counts the same' );
+		self::assertStringContainsString( '<h3 id="cbuild-scene">Sizes the 3D view assumes</h3>', $page );
+		self::assertStringContainsString( 'These parts leave out a size the 3D view draws, so it draws the usual one. Each is still offered, and needs no fix. Fill the size in on its Part specs to draw the part as it is.', $page );
+		self::assertSame( 4, substr_count( $page, 'so the 3D view draws the usual one. The part is still offered.' ) );
+		self::assertSame( 0, substr_count( substr( $page, 0, (int) strpos( $page, 'id="cbuild-scene"' ) ), 'The part is still offered.' ), 'none of them among what it found to fix' );
+	}
+
+	// The 3D view's notes alone are nothing to fix, and the notice says so above their list (D-532).
+	public function test_the_3d_views_notes_alone_leave_nothing_to_fix(): void {
+		$kits = new InMemoryKits();
+		$deck = array(
+			'schema_version' => 1,
+			'slots'          => array( array_values( KitDocuments::slots()['slots'] )[0] ),
+		);
+		$kits->add( 5, Kit::fromDocuments( $deck, KitDocuments::rules(), KitDocuments::presets(), KitDocuments::assembly(), null, null, array( 'schema_version' => 1, 'view_3d' => true ) ), array( 'deck' => array( Builds::deck( '8.0', 11 ) ) ) );
+
+		$this->as( 'shop_manager' );
+		$page = self::checked( $this->screen( $kits ) );
+		self::assertStringContainsString( '<h3 id="cbuild-scene">Sizes the 3D view assumes</h3>', $page );
+		self::assertDoesNotMatchRegularExpression( '/found (\d+ things?|nothing) to fix/', $page, 'no count, and no "nothing to fix" above a list to look at' );
+		self::assertSame( 1, substr_count( $page, 'Nothing the check found keeps a part out of the builder.' ) );
 	}
 
 	// The auditor's M12 minor 6: with parts kept out and other lists below, the notice does not say there is nothing to
