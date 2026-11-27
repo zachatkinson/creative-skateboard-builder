@@ -362,6 +362,8 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-480 · When the 3D view fails with focus in it, focus goes to View in 3D](#d-480--when-the-3d-view-fails-with-focus-in-it-focus-goes-to-view-in-3d--2026-11-26)
 - [D-481 · A 3D view's failure is warned in the console and sent as cbuild:3d-failed](#d-481--a-3d-views-failure-is-warned-in-the-console-and-sent-as-cbuild3d-failed--2026-11-26)
 - [D-482 · The 3D view closes where the view has no scene](#d-482--the-3d-view-closes-where-the-view-has-no-scene--2026-11-26)
+- [D-483 · View in 3D shares a row with the turn, goes by the heading when upright, and the sideways strip grows to hold it](#d-483--view-in-3d-shares-a-row-with-the-turn-goes-by-the-heading-when-upright-and-the-sideways-strip-grows-to-hold-it--2026-11-26)
+- [D-484 · The 3D view's note says where usual sizes stood in, and the side line hides over the view](#d-484--the-3d-views-note-says-where-usual-sizes-stood-in-and-the-side-line-hides-over-the-view--2026-11-26)
 
 ### Cart, checkout and orders
 
@@ -7358,5 +7360,40 @@ The auditor's M14 review, F6. With the view open, an answer with no scene, such 
 
 - **Red runs:** "expected "vi.fn()" to be called 1 times, but got 0 times" (the close) and "expected true to be false" (`loading`).
 - **Deliberate break:** with the check left out, both fail with the same lines.
+
+**Status:** Accepted.
+
+### D-483 · View in 3D shares a row with the turn, goes by the heading when upright, and the sideways strip grows to hold it · 2026-11-26
+
+The auditor's M14 review, F7. View in 3D shared the turn's grid cell, at its start, with Underside and Top at its end. At 320 px in French it covered Underside (WCAG 2.5.8). On a phone held sideways it took a fifth row, so the board was smaller before the press than with 3D off.
+
+**Decision:**
+
+- **The markup.** View in 3D leaves `.cbuild-3d` for a template of its own, `three-open.php`. It sits with the turn in `.cbuild-picture__controls`, a row that wraps, after the turn in the page, so a press of View in 3D is followed by the canvas it opens (the keyboard test that tabs from it to the canvas still holds). It shows only where the view has a scene, as `.cbuild-3d` does. The wrapper is not a public class.
+- **Desktop, and a short screen at 64rem or wider.** The row wraps, View in 3D at its start and the turn at its end.
+- **Stacked and upright.** At 320 px there is no room in the turn's row for View in 3D beside Underside and Top, in English or French. A row of its own would take the board's height. So View in 3D goes beside the heading and the side line, at their end, where the side line leaves room, as the turn does on a short screen. It overhangs the side line's row by what its 44 px target needs past the two lines, so neither row grows. The board's box is identical with 3D on and off.
+- **A phone held sideways.** The strip is about 133 px high, and its words column is 13rem. In French the heading, the side line and Dessous/Dessus, which wrap to two lines, already take 134.6 px with no 3D view. No place in the column holds a fourth 44 px target without the column growing. The target is not shrunk, and nothing covers the board or hides the side line (the coordinator's call). Where the kit offers the view, the strip's height is `auto`, at least its usual height, so it holds View in 3D after the turn. The board keeps its size and sits in the middle of the taller strip, 24 px lower: 193 px in place of 133 px at 844 by 390.
+
+**Why the sideways board may move under D-498.** D-498 compares the page with the view on and off for files, LCP and layout shift, so that the view costs nothing before the press. Nothing shifts here: View in 3D is in the server's first paint, its place kept while the script loads, so the strip is taller from the start. The page scrolls in landscape anyway. The board's size is the same, and every child of the strip is inside it, so nothing overlaps what is below or is clipped.
+
+**Tests.** 3d.spec.ts, "in French at 320 px wide…" and "in French at a phone held sideways, View in 3D covers nothing, the board keeps its size and the strip holds it all". Each checks that View in 3D, the turn's buttons and the board are apart, View in 3D at least 44 px high, every child box inside the stage, and no more layout shift from the first paint to ready than with 3D off. Upright the board's box is identical to the one with 3D off; sideways its size is.
+
+- **Red runs** on the old stylesheet and templates (chromium-desktop and chromium-phone): "View in 3D and a turn button: Expected: true, Received: false" at 320 px; the board's box "Expected - 2, Received + 2" sideways.
+
+**Status:** Accepted.
+
+### D-484 · The 3D view's note says where usual sizes stood in, and the side line hides over the view · 2026-11-26
+
+The auditor's M14 review, F13. The note under the canvas said "Sizes true to scale, shapes simplified." even where `scene.assumed` listed specs a usual value stood in for. The side line, such as "Seen from underneath", stayed over the 3D view, whose camera keeps no side.
+
+**Decision:**
+
+- **The note.** The template writes both sentences, the second "Sizes to scale, with usual sizes where a part lists none. Shapes simplified." It picks one by whether the scene assumed anything, and the store shows the one each view calls for. The binding reads `state.view.scene.assumed.0`, the first key or nothing. A spec key is never "0", so the path is true in PHP and in the store alike. An empty list would be true in one and false in the other, and `length` would set `hidden="0"` on the server. The note's paragraph keeps its ID for the canvas's description, which leaves out the hidden sentence.
+- **The side line.** It is hidden under `.cbuild-picture--3d`, its row kept so the canvas is where the board was, and shows again once the view closes.
+
+**Tests.** ThreeViewTest, "the note says usual sizes stood in where any was assumed": the template with a deck missing its wheelbase, and with nothing assumed, checked as written and as WordPress processes the directives. 3d.spec.ts, "hides the side line while the view is open, and shows it again once it closes".
+
+- **Red runs:** "Failed asserting that '<div class="cbuild-3d" …' matches PCRE pattern" (ThreeViewTest.php:195); "expect(locator).toBeHidden() failed … Received: visible" (3d.spec.ts:804, chromium-desktop and chromium-phone).
+- **Deliberate break:** the template's choice inverted: "Failed asserting that '<button class="cbuild-button cbuild-3d__open" …' matches PCRE pattern" (ThreeViewTest.php:196).
 
 **Status:** Accepted.

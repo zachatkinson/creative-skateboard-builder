@@ -1818,9 +1818,29 @@
 	block-size: calc(100% - 2 * var(--cbuild-gap));
 }
 
-:where(.cbuild__stage .cbuild-picture__turn) {
+/* The turn and, where the kit offers it, View in 3D: one row that wraps, the turn at its end and View in 3D at its start,
+   so in a narrow picture or in longer words neither covers the other, and the picture has no row of its own for the
+   button (F7, D-483). The turn comes first in the page, so a press of View in 3D is followed by the canvas it opens. */
+:where(.cbuild__stage .cbuild-picture__controls) {
+	display: flex;
+	flex-direction: row-reverse;
+	flex-wrap: wrap;
+	align-items: start;
+	gap: 0.25rem var(--cbuild-gap-small);
 	grid-row: 5;
 	justify-self: end;
+	min-inline-size: 0;
+	max-inline-size: 100%;
+}
+
+:where(
+	.cbuild__stage
+		.cbuild-picture__controls:has(> .cbuild-3d__open:not([hidden]))
+) {
+	justify-self: stretch;
+}
+
+:where(.cbuild__stage .cbuild-picture__turn) {
 	min-block-size: var(--cbuild-target);
 	margin: 0;
 	padding-block-end: var(--cbuild-gap-small);
@@ -1831,9 +1851,12 @@
    are placed in their rows: left to the grid, they went after the button's, the heading took the board's row with a
    box 1 px high, and the side line was drawn over it (F21, #119). */
 @media (orientation: landscape) and (max-height: 30rem) {
-	:where(.cbuild__stage .cbuild-picture__turn) {
+	:where(.cbuild__stage .cbuild-picture__controls) {
 		grid-row: 1 / span 2;
 		align-self: start;
+	}
+
+	:where(.cbuild__stage .cbuild-picture__turn) {
 		padding-block-end: 0;
 	}
 
@@ -2007,9 +2030,10 @@
 			column-gap: var(--cbuild-gap-small);
 		}
 
-		:where(.cbuild__stage .cbuild-picture__turn) {
+		:where(.cbuild__stage .cbuild-picture__controls) {
 			grid-area: 3 / 1;
 			justify-self: start;
+			justify-content: flex-end;
 			max-inline-size: 100%;
 		}
 
@@ -3027,18 +3051,55 @@
 	display: contents;
 }
 
-/* View in 3D shares the turn's cell, at its start, the turn at its end: neither takes a column of its own, so the board
-   is laid out as it is with no 3D view. */
-:where(.cbuild__stage .cbuild-3d__open),
-:where(.cbuild__stage .cbuild-3d ~ .cbuild-picture__turn) {
-	grid-column: 1;
+/* View in 3D, in the turn's row (F7, D-483): at the row's start, before the turn. */
+:where(.cbuild__stage .cbuild-3d__open) {
+	margin-inline-end: auto;
 }
 
-:where(.cbuild__stage .cbuild-3d__open) {
-	grid-row: 5;
-	justify-self: start;
-	align-self: start;
-	z-index: 1;
+/* Stacked and upright, the turn's row has no room for View in 3D beside Underside and Top at 320 px, and a row of its
+   own would take the board's height: it goes up beside the heading and the side line, at their end, where the side
+   line leaves room, as the turn does on a short screen. It overhangs the side line's row by what its target needs
+   past the two lines, so neither row grows (F7, D-483). */
+@container cbuild (max-width: 63.99rem) {
+	@media not ((orientation: landscape) and (max-height: 30rem)) {
+		:where(.cbuild__stage .cbuild-picture__controls) {
+			display: contents;
+		}
+
+		:where(.cbuild__stage .cbuild-picture__turn) {
+			grid-row: 5;
+			justify-self: end;
+		}
+
+		:where(.cbuild__stage .cbuild-picture__heading) {
+			grid-area: 1 / 1;
+		}
+
+		:where(.cbuild__stage .cbuild-picture__side) {
+			grid-area: 2 / 1;
+		}
+
+		:where(.cbuild__stage .cbuild-3d__open) {
+			grid-area: 1 / 1 / span 2;
+			justify-self: end;
+			align-self: start;
+			margin-block-end: calc(var(--cbuild-target) * -1 + 2.25rem);
+			margin-inline-end: 0;
+		}
+	}
+}
+
+/* On a phone held sideways the words' column, already full in French, holds View in 3D after the turn, with its 44 px
+   target. The strip has no room for it, so where the kit offers the view the strip grows to hold the column, and the
+   board, its size kept, sits in the middle of the taller strip. It is so in the server's first paint, so nothing moves
+   once the page is ready (F7, D-483). */
+@media (orientation: landscape) and (max-height: 30rem) {
+	@container cbuild (width < 64rem) {
+		.cbuild :where(.cbuild__stage:has(.cbuild-3d__open:not([hidden]))) {
+			block-size: auto;
+			min-block-size: var(--cbuild-stage-height, 34svh);
+		}
+	}
 }
 
 :where(.cbuild-3d__open--waiting) {
@@ -3049,6 +3110,12 @@
 .cbuild-picture--3d > .cbuild-picture__items,
 .cbuild-picture--3d > .cbuild-picture__empty {
 	display: none;
+}
+
+/* The side line names the board's side, which the 3D view's camera does not keep: it goes, its row kept, so the
+   canvas is where the board was (F13, D-484). */
+.cbuild-picture--3d > .cbuild-picture__side {
+	visibility: hidden;
 }
 
 /* Its width is its cell's, never its contents': Firefox sized the picture's column from the 4 by 3 frame's height,

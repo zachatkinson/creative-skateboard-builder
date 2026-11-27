@@ -796,6 +796,199 @@ test.describe( '3D view (milestone 14)', () => {
 		await flat( page );
 	} );
 
+	// The auditor's M14 review, F13: the side line names a side the 3D view's camera does not keep.
+	test( 'hides the side line while the view is open, and shows it again once it closes', async ( {
+		page,
+	} ) => {
+		await open( page );
+		await expect( page.locator( '.cbuild-picture__side' ) ).toBeHidden();
+		await page.getByRole( 'button', { name: 'View in 3D' } ).click();
+		await expect( page.locator( '.cbuild-picture__side' ) ).toBeVisible();
+	} );
+
+	// The auditor's M14 review, F7: View in 3D shared the turn's cell, and covered its buttons at 320 px in French; on
+	// a phone held sideways it took a row of its own, so the board was smaller before the press. Upright it now goes
+	// beside the heading, the board's box as with no 3D view; sideways the strip grows to hold it, the board its size
+	// kept, from the first paint (D-483).
+	for ( const [ name, size ] of [
+		[ '320 px wide', { width: 320, height: 640 } ],
+		[ 'a phone held sideways', { width: 844, height: 390 } ],
+	] as const ) {
+		test( `in French at ${ name }, View in 3D covers nothing, the board keeps its size and the strip holds it all`, async ( {
+			page,
+		} ) => {
+			test.skip(
+				'chromium' !== page.context().browser()?.browserType().name(),
+				'Layout shift entries are Chromium’s; the other engines lay the strip out as their own projects show.'
+			);
+			await page.setViewportSize( size );
+			await page.setExtraHTTPHeaders( {
+				'x-cbuild-e2e-locale': 'fr_CA',
+				'x-cbuild-e2e-translated': '1',
+			} );
+			const measured = async ( address: string ) => {
+				await page.goto( build( address ) );
+				await expect(
+					page.locator( '.cbuild[data-ready]' )
+				).toBeVisible();
+				return page.evaluate(
+					() =>
+						new Promise< {
+							boxes: Record< string, number[] >;
+							turns: number[][];
+							inside: string[];
+							shifts: number;
+						} >( ( done ) => {
+							const box = ( element: Element | null ) => {
+								const r = element?.getBoundingClientRect();
+								return r ? [ r.x, r.y, r.width, r.height ] : [];
+							};
+							// Text kept for screen readers alone, clipped to a pixel, as the stage's caption is.
+							const forReaders = ( element: Element ) => {
+								for (
+									let at: Element | null = element;
+									at;
+									at = at.parentElement
+								) {
+									if (
+										'none' !==
+										getComputedStyle( at ).clipPath
+									) {
+										return true;
+									}
+								}
+								return false;
+							};
+							const stage =
+								document.querySelector( '.cbuild__stage' )!;
+							const edge = stage.getBoundingClientRect();
+							// Every child the stage shows, each whole inside it.
+							const inside = [ ...stage.querySelectorAll( '*' ) ]
+								.filter( ( element ) => {
+									const r = element.getBoundingClientRect();
+									return (
+										r.width > 0 &&
+										r.height > 0 &&
+										'hidden' !==
+											getComputedStyle( element )
+												.visibility &&
+										null ===
+											element.closest(
+												'[hidden], .cbuild-3d__stage'
+											) &&
+										! forReaders( element )
+									);
+								} )
+								.filter( ( element ) => {
+									const r = element.getBoundingClientRect();
+									return (
+										r.top < edge.top - 0.5 ||
+										r.bottom > edge.bottom + 0.5 ||
+										r.left < edge.left - 0.5 ||
+										r.right > edge.right + 0.5
+									);
+								} )
+								.map( ( element ) =>
+									String( element.className )
+								);
+							// The builder's own layout shifts from the first paint to ready.
+							let shifts = 0;
+							new PerformanceObserver( ( list ) => {
+								for ( const entry of list.getEntries() as ( PerformanceEntry & {
+									value: number;
+									hadRecentInput: boolean;
+									sources?: { node?: Node | null }[];
+								} )[] ) {
+									const ours = ( entry.sources ?? [] ).some(
+										( source ) => {
+											const node = source.node;
+											const element =
+												node instanceof Element
+													? node
+													: ( node?.parentElement ??
+														null );
+											return (
+												null !==
+												element?.closest( '.cbuild' )
+											);
+										}
+									);
+									shifts +=
+										entry.hadRecentInput || ! ours
+											? 0
+											: entry.value;
+								}
+							} ).observe( {
+								type: 'layout-shift',
+								buffered: true,
+							} );
+							setTimeout(
+								() =>
+									done( {
+										boxes: {
+											board: box(
+												document.querySelector(
+													'.cbuild__stage .cbuild-board'
+												)
+											),
+											open: box(
+												document.querySelector(
+													'.cbuild-3d__open'
+												)
+											),
+										},
+										turns: [
+											...document.querySelectorAll(
+												'.cbuild-picture__sides .cbuild-button'
+											),
+										].map( box ),
+										inside,
+										shifts,
+									} ),
+								500
+							);
+						} )
+				);
+			};
+			const off = await measured( fixture().page );
+			const on = await measured( fixture().three.page );
+			const [ , , width, height ] = off.boxes.board!;
+			if ( size.width < 700 ) {
+				// Upright, the board's box is the one with no 3D view.
+				expect( on.boxes.board ).toEqual( off.boxes.board );
+			} else {
+				expect( on.boxes.board!.slice( 2 ) ).toEqual( [
+					width,
+					height,
+				] );
+			}
+			const apart = ( one: number[], other: number[] ) =>
+				one[ 0 ]! >= other[ 0 ]! + other[ 2 ]! ||
+				other[ 0 ]! >= one[ 0 ]! + one[ 2 ]! ||
+				one[ 1 ]! >= other[ 1 ]! + other[ 3 ]! ||
+				other[ 1 ]! >= one[ 1 ]! + one[ 3 ]!;
+			expect( on.turns ).toHaveLength( 2 );
+			for ( const turn of on.turns ) {
+				expect(
+					apart( on.boxes.open!, turn ),
+					'View in 3D and a turn button'
+				).toBe( true );
+				expect(
+					apart( on.boxes.board!, turn ),
+					'the board and a turn button'
+				).toBe( true );
+			}
+			expect(
+				apart( on.boxes.open!, on.boxes.board! ),
+				'View in 3D and the board'
+			).toBe( true );
+			expect( on.boxes.open![ 3 ] ).toBeGreaterThanOrEqual( 44 );
+			expect( on.inside, 'outside the stage' ).toEqual( [] );
+			// No shift from the first paint to ready past the page's with no 3D view, as the CLS check below measures.
+			expect( on.shifts ).toBeLessThanOrEqual( off.shifts + 0.001 );
+		} );
+	}
+
 	test( 'with 3D on, the page before the press is the page with it off', async ( {
 		page,
 		context,

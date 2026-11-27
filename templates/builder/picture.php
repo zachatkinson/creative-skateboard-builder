@@ -35,15 +35,19 @@ defined( 'ABSPATH' ) || exit;
 			<span data-wp-bind--class="context.layer.classes" data-wp-bind--style="context.layer.style"></span>
 		</template>
 	</div>
+	<?php // The turn and View in 3D, in one row that wraps (F7, D-483). ?>
+	<div class="cbuild-picture__controls">
+		<div class="cbuild-picture__turn" data-wp-bind--hidden="!state.view.picture.turnable">
+			<?php // A toggle button a side, each named the same whichever is pressed, in a group named by the heading a sighted shopper reads (D-369). ?>
+			<div class="cbuild-picture__sides" role="group" aria-labelledby="cbuild-picture-heading" data-wp-bind--hidden="!state.canTurn">
+				<button class="cbuild-button" type="button" data-wp-bind--aria-pressed="!state.view.picture.turned" data-wp-on--click="actions.under" data-wp-text="state.view.picture.sides.under"></button>
+				<button class="cbuild-button" type="button" data-wp-bind--aria-pressed="state.view.picture.turned" data-wp-on--click="actions.over" data-wp-text="state.view.picture.sides.top"></button>
+			</div>
+		</div>
+		<?php require __DIR__ . '/three-open.php'; ?>
+	</div>
 	<?php // The 3D view, where the kit offers it (1.4.0, #139). ?>
 	<?php require __DIR__ . '/three.php'; ?>
-	<div class="cbuild-picture__turn" data-wp-bind--hidden="!state.view.picture.turnable">
-		<?php // A toggle button a side, each named the same whichever is pressed, in a group named by the heading a sighted shopper reads (D-369). ?>
-		<div class="cbuild-picture__sides" role="group" aria-labelledby="cbuild-picture-heading" data-wp-bind--hidden="!state.canTurn">
-			<button class="cbuild-button" type="button" data-wp-bind--aria-pressed="!state.view.picture.turned" data-wp-on--click="actions.under" data-wp-text="state.view.picture.sides.under"></button>
-			<button class="cbuild-button" type="button" data-wp-bind--aria-pressed="state.view.picture.turned" data-wp-on--click="actions.over" data-wp-text="state.view.picture.sides.top"></button>
-		</div>
-	</div>
 	<ul class="cbuild-picture__items">
 		<template data-wp-each--item="state.view.picture.items" data-wp-each-key="context.item.key">
 			<li data-wp-bind--class="context.item.classes" data-wp-bind--hidden="context.item.drawn">
