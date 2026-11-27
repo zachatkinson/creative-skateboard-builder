@@ -390,6 +390,7 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-352 · A build's add keeps the cart before it answers](#d-352--a-builds-add-keeps-the-cart-before-it-answers--2026-11-24)
 - [D-375 · The kit's assembly time in business days, and the parts and their quantities, for a plugin that dates a delivery](#d-375--the-kits-assembly-time-in-business-days-and-the-parts-and-their-quantities-for-a-plugin-that-dates-a-delivery--2026-11-24)
 - [D-488 · The delivery filters are given the kit line an Edit build would replace, by its cart key](#d-488--the-delivery-filters-are-given-the-kit-line-an-edit-build-would-replace-by-its-cart-key--2026-11-26)
+- [D-489 · Creative Checkout answers the delivery filters for a shopper with no address](#d-489--creative-checkout-answers-the-delivery-filters-for-a-shopper-with-no-address--2026-11-26)
 
 ### Saved builds and privacy
 
@@ -546,6 +547,7 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-431 · Every browser test passes when it runs alone](#d-431--every-browser-test-passes-when-it-runs-alone--2026-11-25)
 - [D-511 · The browser tests' lock reads the clock once to judge a lock and to give up on it](#d-511--the-browser-tests-lock-reads-the-clock-once-to-judge-a-lock-and-to-give-up-on-it--2026-11-26)
 - [D-466 · My builds, the deck page's start button and the bar run their key browser tests on Kadence and Storefront too](#d-466--my-builds-the-deck-pages-start-button-and-the-bar-run-their-key-browser-tests-on-kadence-and-storefront-too--2026-11-26)
+- [D-486 · Two flakes settled: #93 closed on its evidence, and #110's mask taken off](#d-486--two-flakes-settled-93-closed-on-its-evidence-and-110s-mask-taken-off--2026-11-26)
 
 ### Releases and the repository
 
@@ -7339,6 +7341,26 @@ Creative Checkout 1.7.1's ask (#168, approved by Zach for 1.4.0 on 26 November).
 - **Nothing leaks.** The key is given to the filters alone, never put in the answer, and only a line of the visitor's own session can match. A value in the identifiers' shape that names a cart key, a part's line or another shopper's build gives ''.
 - **An addition only.** `replace` comes after 1.2.0's keys, and no key changes. A container an earlier release built gives `Delivery` no cart, and says ''.
 
-**Tests.** DeliveryTest, "both filters are given the cart key of the kit line an edit build would replace": two builds in the cart, the state route asked with each one's `_replace`, none, a build no line holds, a cart key, a part's line, a build removed, the session alone with no cart, and another shopper's session. The 1.2.0 context tests gain `replace` at the end. Red run: "Undefined array key "replace"" (DeliveryTest.php).
+**Tests.** DeliveryTest, "both filters are given the cart key of the kit line an edit build would replace": two builds in the cart, the state route asked with each one's `_replace`, none, a build no line holds, a cart key, a part's line, a build removed, the session alone with no cart, and another shopper's session. The 1.2.0 context tests gain `replace` at the end. Red run: "Undefined array key "replace"" (DeliveryTest.php:333). Deliberate break, the match never true: "Failed asserting that two strings are identical" (DeliveryTest.php:337).
+
+**Status:** Accepted.
+
+### D-486 · Two flakes settled: #93 closed on its evidence, and #110's mask taken off · 2026-11-26
+
+M14's audit, S2: #93 and #110 had evidence written up on their issues, and no commit.
+
+**#93, Firefox never set the builder's ready mark (one CI sighting, run 44845495842, 22 November).** Tried on lane 1 on 24 November (about 4,950 loads), on lane 3 on 25 November (about 350 under load) and on 26 November (about 100 beside a /verify): about 5,400 loads in all, every one setting the mark, and no CI run has shown it since. No plugin defect was found: the trace fits a stop inside the Interactivity runtime's hydration before its first region, not in the builder's script. **Decision:** close it, not quarantine it. "passes axe on every state it shows" is the axe gate and stays in every Firefox run. 1.2.0's diagnostics (`countStart()`, `startSeen()`) stay, so a next sighting says which of the runtime's three waits it stopped in, and opens a new issue with that.
+
+**#110, "Show the parts" drawn a pixel lower in the review shot.** 2 failures in 360 runs on 24 November, before D-415 made the shot wait for a still page; none in 560 on 25 November and none in 180 on 26 November since. **Decision:** the review shot compares `.cbuild-bar__more` again; only the share link, whose words are the site's own IDs, stays masked. The proof: with the link unmasked, the 18 review shots made as baselines in Playwright's container (`tools/visual.sh`), then `--repeat-each=10` over them: 180 of 180 passed on lane 1, beside the other lanes' runs. The scratch baselines were then put back, and none is committed from the lane: on m14-3d the committed start shots no longer match either (507 by 1407 against 1408 on the phones, 768 by 1334 against 1333 on the tablets, before any change of this lane's), and that one pixel is a layout change to be explained on the combined tree's visual run before any baseline is remade (D-162). That run is also CI's check that the unmasked link holds.
+
+**Status:** Accepted.
+
+### D-489 · Creative Checkout answers the delivery filters for a shopper with no address · 2026-11-26
+
+Creative Checkout 1.7.1 answers `cbuild_arrival_estimate` and `cbuild_delivery_line` for any shopper with a session, an address held or not. D-166 had the builder word the line from the shipping zones where nobody answered, and say nothing where the shop held no address. Zach accepted Checkout's change on 26 November.
+
+**Decision:** nothing in the builder changes. With Checkout active, its answer is the line for every shopper with a session, and the builder's own words show only to a visitor with no session, where Checkout has nothing to read. D-166 stands for a shop without Checkout. `docs/HOOKS.md` says so under the filters, with a note on tax: `total` follows the shop's price display (`woocommerce_tax_display_shop`, through `wc_get_price_to_display()`), while the cart and its free-shipping minimum follow the cart's (`woocommerce_tax_display_cart`), so a shop that shows one with tax and the other without sees a plugin's line off by the tax.
+
+**The fallback tests still hold.** DeliveryTest's "a shopper with no address held is not guessed at and a guest is given no session" and "with nobody answering and no address there is nothing to show" have no filter answering, so they test the builder's own words, which is what D-166 still describes. None of them assumes that a plugin says nothing for a shopper with a session.
 
 **Status:** Accepted.
