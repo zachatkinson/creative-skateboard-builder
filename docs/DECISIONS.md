@@ -131,6 +131,7 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-542 · The visual tests' pick waits for its answer](#d-542--the-visual-tests-pick-waits-for-its-answer--2026-11-27)
 - [D-543 · The focus test waits out the pick's crossing, and #178 asks whether a tap in a crossing is lost](#d-543--the-focus-test-waits-out-the-picks-crossing-and-178-asks-whether-a-tap-in-a-crossing-is-lost--2026-11-27)
 - [D-544 · The integration and browser legs get 80 minutes](#d-544--the-integration-and-browser-legs-get-80-minutes--2026-11-27)
+- [D-564 · The ten milestone 13 branches all landed, and their archives are kept until Zach says](#d-564--the-ten-milestone-13-branches-all-landed-and-their-archives-are-kept-until-zach-says--2026-11-27)
 
 ### Kits and their settings
 
@@ -7870,5 +7871,22 @@ The same run's other firefox-phone failure was #93's ready mark, its third sight
 CI run 46063991563 on #173: "Plugin Check, the zip, browser (oldest)" was cancelled at its 60-minute limit, with 704 of its 804 browser tests run and none failed. The same job took 44 and 55 minutes on the two runs before it. Milestone 14's 3D tests made the chromium-desktop and webkit-phone leg longer, and a slow runner took it past the limit. This is D-107 and D-188 again.
 
 **Decision:** the `integration` matrix's legs get 80 minutes. That is their longest time so far plus room for a slow runner. The limit stops a hung job, and no floor moves. The legs' length is for #179's caching and M15's pipeline work to bring down.
+
+**Status:** Accepted.
+
+### D-564 · The ten milestone 13 branches all landed, and their archives are kept until Zach says · 2026-11-27
+
+Issue #175: ten milestone 13 branches (`m13-cards`, `m13-cowork-start`, `m13-cowork-theme`, `m13-early`, `m13-guided`, `m13-land`, `m13-pins`, `m13-tooling`, `m13-upgrade`, `m13-walk2`) had 47 commits that `git cherry` matched to nothing on `main`, since they landed through merges of rebuilt lane branches, not by patch. Kept on `origin` as `archive/m13-*` on 27 November.
+
+**Checked by content,** against `main` at c375d1f: for each commit, the share of the lines it added, translations left out, that `main` holds in the same file, or anywhere in the tree if the file moved. 44 commits are at 90 % or more, and the other three at 50 to 88 %. Every line short of 100 % was rewritten by later work, each looked at:
+
+- version strings, 1.3.0 now 1.4.0;
+- the browser tests' lock, rewritten in 1.4.0;
+- French wording changed in 1.4.0 (« remplacement » for « échange »);
+- the builder page's list of regions and the swap words' tests, extended or reworded since with the same assertions.
+
+The per-commit table is in `docs/reviews/M15.md`.
+
+**Decision:** nothing is landed again. The ten `archive/m13-*` branches stay on `origin` until Zach says to delete them, since deleting them can't be undone. The local branches were deleted on 27 November.
 
 **Status:** Accepted.
