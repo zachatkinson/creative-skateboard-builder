@@ -6983,6 +6983,13 @@ The scene (D-470) carries each drawn part's texture, which another plugin may wa
 - **`cbuild_scene` answers last.** An answer that is no array with a `deck` is passed over, and the domain's scene kept, so a broken plugin can't take the deck away.
 - **The scene is in the view only where the kit's 3D view is on** (D-474) and a deck with a width is picked; otherwise `view.scene` is absent, and nothing is asked of another plugin.
 
+- **Phones get the largest rendition too (the audit's F5, the spec reviewer's S5).** The plan said 1 px/mm on a phone and 2 px/mm on a desktop. The audit asked for both renditions in the scene, with the chunk picking by the canvas's size in device pixels, or the reason here if that cost more than it saved. It does, for three reasons:
+  - **A phone's canvas isn't small in device pixels.** The stage draws at the screen's pixel ratio, capped at 2 (D-492). A 390 px phone's canvas is about 290 CSS pixels across, so about 580 device pixels, near a desktop's 810 at a ratio of 1. A pick by device pixels would give most phones the large one anyway.
+  - **The closer the camera, the more pixels a millimetre takes.** The graphic close-up frames about half the deck. On that phone the deck's bottom is drawn at about 1.2 device pixels to the millimetre, and zoomed in toward the 150 mm floor at several times that. The 1 px/mm rendition would blur exactly where a phone shopper looks closest, and a pick made when the view opens can't follow the zoom without a second download in the middle of a pinch.
+  - **The cost is small and bounded.** An 8.25 in deck's 2 px/mm WebP is 419 by 1,626 pixels: one download of a few hundred kilobytes per textured part, and about 3.6 MB of GPU memory with its mipmaps. A device that says it has 4 GB or less already draws at a ratio of 1.5 (D-492). Two URLs per texture would also widen the scene's public shape (`cbuild_scene`) for a saving most phones wouldn't see.
+
+  So the scene keeps one texture per part, the largest WebP rendition, on every device.
+
 **Status:** Accepted.
 
 ### D-490 · three.js is a chunk of its own, loaded on the press, and budgeted gzipped · 2026-11-26
