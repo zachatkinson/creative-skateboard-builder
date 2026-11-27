@@ -7517,3 +7517,15 @@ The audit's F9. The axle's height was worked out twice: by `Scene::of()` for the
 - **Tests:** `SceneTest` "changing the trucks' height alone moves the trucks and the wheels alike", with the 3 mm the trucks drop; `three-parts.test.ts`, where the trucks follow the scene's centres and a height change alone moves nothing; and the state route's integration test, where the trucks' z is the wheels'.
 
 **Status:** Accepted.
+
+### D-520 · Every Yoast test runs wherever Yoast's tests run, from one filter · 2026-11-27
+
+Milestone 14's full set: `composer test:integration:yoast` failed on `ShareCardYoastTest::test_yoast_prints_the_builds_card_once_with_its_picture_alone`, at tests/Integration/ShareCardYoastTest.php:89. It expected "8.5″ complete: Deck, Trucks, and Wheels" and got "Deck, Trucks and Wheels". D-460 (1.3.0) moved every list to the plugin's own joining words, and changed `ShareCardTest`'s expectation, but not this one's. The test had been red since 1.3.0, and CI never saw it: `tools/integration-variants.sh`'s yoast variant filtered on `KitYoastTest` alone, while `tools/integration-yoast.sh` named all three classes. So `BuilderYoastTest` and `ShareCardYoastTest` ran only in a local full set, and 1.3.0's full set didn't run that command.
+
+**Decision:**
+
+- **One filter.** `bash tools/yoast.sh tests` prints `YoastTest::`, which matches every class whose name ends in YoastTest. `tools/integration-yoast.sh` and the variants script both take it, so a new Yoast test runs in CI without anyone adding it to a list.
+- **The test follows D-460,** as `ShareCardTest` does. Its copy is right: the plugin's own "%1$s and %2$s" with the list separator, no serial comma in English.
+- **Proof.** Before: the yoast command, red at :89 ("Tests: 7, Assertions: 25, Failures: 1"). After: "OK (7 tests, 41 assertions)". The deliberate break, the old expectation put back, is the same red line.
+
+**Status:** Accepted.
