@@ -35,14 +35,15 @@ use function min;
  * between the trucks; x runs toward the nose, y across the deck and z up. The deck's nose and tail are measured from
  * the outer holes to the tips, so the nose, the tail and the outer holes' span make the deck's length. A truck's height
  * runs from its baseplate's bottom to its axle's centre, so the axle and the wheels' centres are at z = -(the deck's
- * thickness + the riser + the truck's height). Where a spec is not known, a usual value stands in and `assumed` names
- * it.
+ * thickness + the riser + the truck's height). That height is measured here alone: each truck's axle's centre is sent
+ * with the trucks, as the wheels' centres are, so the view draws both from the same point (the audit's F9). Where a
+ * spec is not known, a usual value stands in and `assumed` names it.
  *
  * @phpstan-type Point array{int, int}
  * @phpstan-type Shape array{
  *     assumed: list<string>,
  *     deck: array{part: int, width: int, length: int, wheelbase: int, nose: int, tail: int, concave: int, kick: int, thickness: int, plies: int, holes: array{pattern: string, spacing: int, columns: int, points: list<Point>}, texture: array{top: null, bottom: null}},
- *     trucks: array{part: int, axle: int, height: int, hanger: int, baseplate: array{length: int, width: int}, holes: list<Point>, color: null}|null,
+ *     trucks: array{part: int, axle: int, height: int, hanger: int, baseplate: array{length: int, width: int}, holes: list<Point>, centres: list<array{int, int, int}>, color: null}|null,
  *     wheels: array{part: int, diameter: int, width: int, contact: int, texture: null, color: null, places: list<array{int, int, int}>}|null,
  *     risers: array{part: int, thickness: int}|null,
  *     bolts: array{part: int, length: int, points: list<Point>}|null,
@@ -149,6 +150,7 @@ final class Scene {
 		$axle   = self::um( $board->axle );
 		$wide   = self::um( $board->wheelWidth );
 		$under  = -( self::THICKNESS + $riser + $height );
+		$out    = self::um( $board->out );
 		return array(
 			'assumed' => array_map( static fn( SpecKey $key ): string => $key->value, $assumed ),
 			'deck'    => $deck,
@@ -162,6 +164,10 @@ final class Scene {
 					'width'  => self::um( Board::HOLE_COLUMNS + Board::BASEPLATE_MARGIN ),
 				),
 				'holes'     => $holes,
+				'centres'   => array(
+					array( $out, 0, $under ),
+					array( -$out, 0, $under ),
+				),
 				'color'     => null,
 			),
 			'wheels'  => null === $wheels ? null : array(
@@ -171,7 +177,7 @@ final class Scene {
 				'contact'  => intdiv( $wide, 2 ),
 				'texture'  => null,
 				'color'    => null,
-				'places'   => self::places( self::um( $board->out ), Rounding::halfUp( max( $axle, $wide ) - $wide, 2 ), $under ),
+				'places'   => self::places( $out, Rounding::halfUp( max( $axle, $wide ) - $wide, 2 ), $under ),
 			),
 			'risers'  => null === $risers ? null : array(
 				'part'      => $risers->id,

@@ -8,9 +8,9 @@
  *   thickness under the top.
  * - **A wheel:** a lathe profile, the face to the contact band and back, with the 608 bearing's seat and the axle's
  *   hole.
- * - **The trucks:** each centred on its own four holes, its axle the truck's height under the deck and any riser.
+ * - **The trucks:** drawn at the axle centres the scene gives, so their height is the server's alone (F9).
  */
-import type { Deck, Flat, Spot, Trucks, Wheels } from './scene';
+import type { Deck, Flat, Spot, Wheels } from './scene';
 
 /** Millimetres in a micrometre: the scene sends micrometres, and the view draws in millimetres. */
 export const MM = 0.001;
@@ -213,7 +213,9 @@ export function edge( deck: Deck ): Face {
 	for ( let at = 0; at < rim.length; at++ ) {
 		const a = 2 * at;
 		const b = 2 * ( ( at + 1 ) % rim.length );
-		triangles.push( a, a + 1, b, b, a + 1, b + 1 );
+		// The rim runs clockwise seen from above, so top, next top, bottom is counter-clockwise seen from outside
+		// (D-505): wound the other way, three.js culled the band and the deck looked hollow from the side.
+		triangles.push( a, b, a + 1, b, b + 1, a + 1 );
 	}
 	return { points, uvs, triangles };
 }
@@ -258,54 +260,10 @@ export function profile( wheels: Wheels ): [ number, number ][] {
 }
 
 /**
- * Each truck's centre on the deck, in millimetres: the middle of its own four holes, the nose's truck first. A truck
- * with no holes on a side has no centre there.
- *
- * @param trucks The scene's trucks.
- */
-export function centres( trucks: Trucks ): [ number, number ][] {
-	const sides = [
-		trucks.holes.filter( ( point ) => ( point[ 0 ] ?? 0 ) > 0 ),
-		trucks.holes.filter( ( point ) => ( point[ 0 ] ?? 0 ) < 0 ),
-	];
-	return sides
-		.filter( ( holes ) => holes.length > 0 )
-		.map( ( holes ): [ number, number ] => [
-			mean( holes.map( ( point ) => mm( point[ 0 ] ) ) ),
-			mean( holes.map( ( point ) => mm( point[ 1 ] ) ) ),
-		] );
-}
-
-/**
- * The trucks' axle under the deck's top, in millimetres: the deck's thickness, any riser and the truck's height, as
- * a truck is measured from its baseplate to its axle.
- *
- * @param deck   The scene's deck.
- * @param trucks The scene's trucks.
- * @param riser  The riser's thickness, in micrometres, or nothing.
- */
-export function axleHeight(
-	deck: Deck,
-	trucks: Trucks,
-	riser: number
-): number {
-	return -( mm( deck.thickness ) + mm( riser ) + mm( trucks.height ) );
-}
-
-/**
  * A point from the scene in millimetres.
  *
  * @param point The scene's point.
  */
 export function spot( point: Spot | Flat ): [ number, number, number ] {
 	return [ mm( point[ 0 ] ), mm( point[ 1 ] ), mm( point[ 2 ] ) ];
-}
-
-/**
- * The mean of some numbers.
- *
- * @param values The numbers; at least one.
- */
-function mean( values: number[] ): number {
-	return values.reduce( ( sum, value ) => sum + value, 0 ) / values.length;
 }

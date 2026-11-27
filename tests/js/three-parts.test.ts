@@ -146,14 +146,30 @@ describe( 'deck', () => {
 	} );
 
 	it( 'textures the top from the deck’s, or the grip’s, and the bottom from the graphic', () => {
-		const load = vi.fn( ( url: string | null | undefined ) =>
-			url ? new Texture() : null
+		const arrive: ( ( texture: Texture ) => void )[] = [];
+		const load = vi.fn(
+			( url: string | null | undefined, use: ( t: Texture ) => void ) => {
+				if ( ! url ) {
+					return null;
+				}
+				arrive.push( use );
+				return new Texture();
+			}
 		);
 		const textured = scene();
 		textured.deck.texture = { top: '/top.png', bottom: '/bottom.png' };
 		const [ top, bottom ] = meshes( deck( textured, { load } ) );
-		expect( load ).toHaveBeenCalledWith( '/top.png' );
-		expect( load ).toHaveBeenCalledWith( '/bottom.png' );
+		expect( load ).toHaveBeenCalledWith(
+			'/top.png',
+			expect.any( Function )
+		);
+		expect( load ).toHaveBeenCalledWith(
+			'/bottom.png',
+			expect.any( Function )
+		);
+		for ( const use of arrive ) {
+			use( new Texture() );
+		}
 		expect( look( top ).map ).toBeInstanceOf( Texture );
 		expect( look( top ).color.getHexString() ).toBe( 'ffffff' );
 		expect( look( bottom ).map ).toBeInstanceOf( Texture );
@@ -162,7 +178,39 @@ describe( 'deck', () => {
 			grip: { part: 5, texture: '/grip.png' },
 		};
 		deck( gripped, { load } );
-		expect( load ).toHaveBeenCalledWith( '/grip.png' );
+		expect( load ).toHaveBeenCalledWith(
+			'/grip.png',
+			expect.any( Function )
+		);
+	} );
+
+	// F1: a texture's part is drawn in its colour until its image arrives, and stays in it where the image fails.
+	it( 'draws a textured part in its colour until its image arrives, then in the image', () => {
+		let arrive: ( ( texture: Texture ) => void ) | undefined;
+		const pending = new Texture();
+		const load = vi.fn(
+			( url: string | null | undefined, use: ( t: Texture ) => void ) => {
+				if ( ! url ) {
+					return null;
+				}
+				arrive = use;
+				return pending;
+			}
+		);
+		const textured = scene();
+		textured.deck.texture = { top: null, bottom: '/bottom.png' };
+		const [ , bottom ] = meshes( deck( textured, { load } ) );
+		expect( look( bottom ).map ).toBeNull();
+		expect( look( bottom ).color.getHexString() ).toBe(
+			COLOURS.maple.slice( 1 )
+		);
+		// Given back with the material even where its image never arrives.
+		expect( look( bottom ).userData.texture ).toBe( pending );
+		const version = look( bottom ).version;
+		arrive!( pending );
+		expect( look( bottom ).map ).toBe( pending );
+		expect( look( bottom ).color.getHexString() ).toBe( 'ffffff' );
+		expect( look( bottom ).version ).toBeGreaterThan( version );
 	} );
 
 	it( 'is rough on top and smoother underneath', () => {
@@ -181,15 +229,16 @@ describe( 'trucks', () => {
 	} );
 
 	it( 'puts each on its holes, its axle the truck’s height under the deck', () => {
+		// The scene's own centres (F9), between each truck's rows of holes.
 		const group = trucks( scene() );
 		expect( group?.userData ).toEqual( { slot: 'trucks', part: 202 } );
 		const parts = meshes( group );
 		expect( parts ).toHaveLength( 8 );
 		const [ base, block, hanger, axle ] = parts;
-		expect( base!.position.x ).toBeCloseTo( 207.9625, 6 );
+		expect( base!.position.x ).toBeCloseTo( 207.963, 6 );
 		expect( base!.position.y ).toBeCloseTo( 0, 6 );
 		expect( base!.position.z ).toBeCloseTo( -11 - TRUCK.plate / 2, 6 );
-		expect( parts[ 4 ]!.position.x ).toBeCloseTo( -207.9625, 6 );
+		expect( parts[ 4 ]!.position.x ).toBeCloseTo( -207.963, 6 );
 		const plate = ( base!.geometry as BoxGeometry ).parameters;
 		expect( plate ).toMatchObject( { width: 70, height: 55, depth: 6 } );
 		const drop = ( block!.geometry as BoxGeometry ).parameters;
@@ -210,6 +259,46 @@ describe( 'trucks', () => {
 		).toMatchObject( { radiusTop: TRUCK.axle, height: 209.55 } );
 	} );
 
+	// F9: the axle's height is the server's, sent as each truck's centre, as the wheels' places are; nothing here
+	// measures it again, so a truck and its wheels move together.
+	it( 'draws each truck at the scene’s axle centre, and the wheels at theirs alike', () => {
+		const taller = scene();
+		taller.trucks!.centres = [
+			[ 207963, 0, -66000 ],
+			[ -207963, 0, -66000 ],
+		];
+		taller.wheels!.places = taller.wheels!.places.map( ( [ x, y ] ) => [
+			x ?? 0,
+			y ?? 0,
+			-66000,
+		] );
+		const [ base, block, hanger, axle ] = meshes( trucks( taller ) );
+		expect( hanger!.position.z ).toBeCloseTo( -66, 6 );
+		expect( axle!.position.z ).toBeCloseTo( -66, 6 );
+		expect( base!.position.z ).toBeCloseTo( -11 - TRUCK.plate / 2, 6 );
+		expect(
+			( block!.geometry as BoxGeometry ).parameters.depth
+		).toBeCloseTo( 66 - 11 - TRUCK.plate, 6 );
+		expect( meshes( wheels( taller, none ) )[ 0 ]!.position.z ).toBeCloseTo(
+			-66,
+			6
+		);
+		// The truck's height alone, with the centres the same, moves nothing: it is not measured again.
+		const same = scene();
+		same.trucks!.height += 5000;
+		expect( meshes( trucks( same ) )[ 2 ]!.position.z ).toBeCloseTo(
+			-63,
+			6
+		);
+		// A truck on a centre off the line, as another plugin's answer may put it, is drawn there.
+		const moved = scene();
+		moved.trucks!.centres = [ [ 100000, 5000, -63000 ] ];
+		const one = meshes( trucks( moved ) );
+		expect( one ).toHaveLength( 4 );
+		expect( one[ 0 ]!.position.x ).toBeCloseTo( 100, 6 );
+		expect( one[ 0 ]!.position.y ).toBeCloseTo( 5, 6 );
+	} );
+
 	it( 'is the truck’s colour, or the plain metal’s, and metal', () => {
 		const [ base ] = meshes( trucks( scene() ) );
 		expect( look( base ).color.getHexString() ).toBe( 'b8bcc2' );
@@ -228,6 +317,11 @@ describe( 'trucks', () => {
 
 	it( 'stands under a riser', () => {
 		const raised = { ...scene(), risers: { part: 9, thickness: 3175 } };
+		// The server's centres, under the riser too.
+		raised.trucks!.centres = [
+			[ 207963, 0, -66175 ],
+			[ -207963, 0, -66175 ],
+		];
 		const [ base, , hanger ] = meshes( trucks( raised ) );
 		expect( base!.position.z ).toBeCloseTo( -11 - 3.175 - 3, 6 );
 		expect( hanger!.position.z ).toBeCloseTo( -66.175, 6 );
@@ -236,6 +330,10 @@ describe( 'trucks', () => {
 	it( 'has no block where the truck is shorter than its baseplate', () => {
 		const low = scene();
 		low.trucks!.height = 1000;
+		low.trucks!.centres = [
+			[ 207963, 0, -12000 ],
+			[ -207963, 0, -12000 ],
+		];
 		const block = meshes( trucks( low ) )[ 1 ]!;
 		expect( ( block.geometry as BoxGeometry ).parameters.depth ).toBe( 0 );
 	} );
@@ -274,9 +372,20 @@ describe( 'wheels', () => {
 			look( meshes( wheels( plain, none ) )[ 0 ] ).color.getHexString()
 		).toBe( COLOURS.wheel.slice( 1 ) );
 		plain.wheels!.texture = '/wheel.png';
-		const load = vi.fn( () => new Texture() );
+		const load = vi.fn(
+			(
+				_url: string | null | undefined,
+				use: ( t: Texture ) => void
+			) => {
+				use( new Texture() );
+				return null;
+			}
+		);
 		const [ one ] = meshes( wheels( plain, { load } ) );
-		expect( load ).toHaveBeenCalledWith( '/wheel.png' );
+		expect( load ).toHaveBeenCalledWith(
+			'/wheel.png',
+			expect.any( Function )
+		);
 		expect( look( one ).map ).toBeInstanceOf( Texture );
 	} );
 } );
@@ -311,7 +420,7 @@ describe( 'risers', () => {
 			( two[ 0 ]!.geometry as BoxGeometry ).parameters.depth
 		).toBeCloseTo( 3.175, 6 );
 		expect( two[ 0 ]!.position.z ).toBeCloseTo( -11 - 3.175 / 2, 6 );
-		expect( two[ 1 ]!.position.x ).toBeCloseTo( -207.9625, 6 );
+		expect( two[ 1 ]!.position.x ).toBeCloseTo( -207.963, 6 );
 		expect( look( two[ 0 ] ).color.getHexString() ).toBe(
 			COLOURS.riser.slice( 1 )
 		);

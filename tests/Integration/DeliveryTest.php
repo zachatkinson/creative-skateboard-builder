@@ -221,6 +221,8 @@ final class DeliveryTest extends CartTestCase {
 			'lead_days'  => '',
 			'parts'      => array(),
 			'quantities' => array(),
+			// From 1.4.0 (#168): no Edit build, so nothing replaced.
+			'replace'    => '',
 		);
 		self::assertSame(
 			array(
@@ -277,7 +279,7 @@ final class DeliveryTest extends CartTestCase {
 		$ask( true );
 		self::assertSame( $given['cbuild_arrival_estimate'], $given['cbuild_delivery_line'], 'the same for both' );
 		$context = $given['cbuild_delivery_line'];
-		self::assertSame( array( 'kit', 'assembly', 'lead_time', 'total', 'decimals', 'lead_days', 'parts', 'quantities' ), array_keys( $context ), '1.1.0\'s keys first, as they were' );
+		self::assertSame( array( 'kit', 'assembly', 'lead_time', 'total', 'decimals', 'lead_days', 'parts', 'quantities', 'replace' ), array_keys( $context ), '1.1.0\'s keys first, as they were, then 1.2.0\'s and 1.4.0\'s' );
 		self::assertTrue( $context['assembly'] );
 		self::assertSame( '2-4', $context['lead_days'] );
 		self::assertSame( $this->picks(), $context['parts'] );
@@ -298,6 +300,74 @@ final class DeliveryTest extends CartTestCase {
 		$kit->save();
 		$ask( true );
 		self::assertSame( '', $given['cbuild_delivery_line']['lead_days'], 'a kit with no time set has none' );
+	}
+
+	// #168, Creative Checkout 1.7.1's ask: an Edit build's request names the build in the cart it would replace
+	// (`_replace`), and both filters are given that build's kit line's cart key, so a plugin counting the cart leaves it
+	// out. With no `_replace`, or one no line of this shopper's holds, the key is empty.
+	public function test_both_filters_are_given_the_cart_key_of_the_kit_line_an_edit_build_would_replace(): void {
+		self::assertSame( 201, $this->store( array( 'id' => $this->kit, 'cbuild' => array( 'picks' => $this->picks() ) ) )->get_status() );
+		self::assertSame( 201, $this->store( array( 'id' => $this->kit, 'cbuild' => array( 'picks' => $this->picks() ) ) )->get_status() );
+		[ $first, $second ] = self::builds();
+		$given = array();
+		foreach ( array( 'cbuild_arrival_estimate', 'cbuild_delivery_line' ) as $filter ) {
+			add_filter(
+				$filter,
+				static function ( string $said, array $context ) use ( &$given, $filter ): string {
+					$given[ $filter ] = $context;
+					return '';
+				},
+				10,
+				2
+			);
+		}
+		$replacing = function ( ?string $replace ) use ( &$given ): string {
+			$given = array();
+			$link  = array_map( 'strval', $this->picks() ) + array( 'step' => 'review' );
+			if ( null !== $replace ) {
+				$link['_replace'] = $replace;
+			}
+			$request = new \WP_REST_Request( 'GET', '/cbuild/v1/kits/' . $this->kit . '/state' );
+			$request->set_query_params( array( 'cbuild' => $link ) );
+			self::assertSame( 200, rest_get_server()->dispatch( $request )->get_status() );
+			self::assertSame( $given['cbuild_arrival_estimate']['replace'], $given['cbuild_delivery_line']['replace'], 'the same for both' );
+			return $given['cbuild_delivery_line']['replace'];
+		};
+
+		self::assertSame( $second['key'], $replacing( $second['build']->id ) );
+		self::assertSame( $first['key'], $replacing( $first['build']->id ), 'the line of the build named, not the last one' );
+		self::assertSame( '', $replacing( null ), 'no build replaced' );
+		self::assertSame( '', $replacing( 'ffffffff-ffff-4fff-8fff-ffffffffffff' ), 'a build no line holds' );
+		// Hostile: a value in the identifiers' own shape that is no build of this shopper's says nothing. A part's line's
+		// key, the kit line's own key, and a build that was in the cart once.
+		self::assertSame( '', $replacing( $first['key'] ), 'a cart key is no build\'s identifier' );
+		self::assertSame( '', $replacing( (string) WC()->cart->get_cart()[ $first['key'] ][ Options::CART_CHILDREN ][0] ), 'nor a part\'s line\'s' );
+		$gone = $first['build']->id;
+		WC()->cart->remove_cart_item( $first['key'] );
+		self::assertSame( '', $replacing( $gone ), 'a build no longer in the cart' );
+
+		// As the state route has it on a live site: WooCommerce loads no cart for a REST request (D-138), and the line
+		// is read from the session's own copy.
+		WC()->cart->set_session();
+		$cart       = WC()->cart;
+		WC()->cart = null;
+		try {
+			self::assertSame( $second['key'], $replacing( $second['build']->id ), 'read from the session' );
+		} finally {
+			WC()->cart = $cart;
+		}
+
+		// And another shopper, with a session of their own, is given nothing of this one's cart.
+		$session       = WC()->session;
+		WC()->cart     = null;
+		WC()->session  = new \WC_Session_Handler();
+		WC()->session->init();
+		try {
+			self::assertSame( '', $replacing( $second['build']->id ), 'another shopper\'s build' );
+		} finally {
+			WC()->cart    = $cart;
+			WC()->session = $session;
+		}
 	}
 
 	public function test_an_answer_that_is_not_words_is_no_answer(): void {

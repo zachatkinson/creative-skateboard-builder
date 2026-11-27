@@ -188,12 +188,9 @@ for ( const theme of THEMES ) {
 							caret: 'hide',
 							// The link names the parts by their IDs, which are the site's own: a baseline made on one site
 							// failed on CI's where the field is wide enough to show them (CI run 43531285881, Kadence).
-							// And the bar's "Show the parts", quarantined (#110): about one run in 60 to 90 under load it is drawn a
-							// pixel lower, its layout the same to the thousandth of a pixel. The start shot still compares it.
-							mask: [
-								on.locator( '.cbuild-share__link' ),
-								on.locator( '.cbuild-bar__more' ),
-							],
+							// The bar's "Show the parts" is compared again (#110, D-486): drawn a pixel lower in 2 of 360
+							// runs before D-415's wait for a still page, and in none of 920 since.
+							mask: [ on.locator( '.cbuild-share__link' ) ],
 						}
 					);
 				} );

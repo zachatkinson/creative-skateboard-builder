@@ -216,6 +216,28 @@ final class HealthTest extends TestCase {
 		self::assertSame( Health::CHECK_CLEAR, Health::catalogue( array( new CheckFinding( CatalogueCheck::NOT_OFFERED, 10, values: array( 'from' => 'part' ) ) ) )['code'] );
 	}
 
+	public function test_a_size_only_the_3d_view_assumes_is_said_not_counted_as_a_fix(): void {
+		$scene = array(
+			new CheckFinding( CatalogueCheck::ASSUMED, 10, 7, 'deck', 'nose_length', array( 'note' => CatalogueCheck::SCENE_ASSUMED ) ),
+			new CheckFinding( CatalogueCheck::ASSUMED, 11, 7, 'wheels', 'wheel_width', array( 'note' => CatalogueCheck::SCENE_ASSUMED ) ),
+		);
+		self::assertSame(
+			array(
+				'status'   => Health::GOOD,
+				'code'     => Health::CHECK_CLEAR,
+				'findings' => 0,
+				'parts'    => 0,
+				'layers'   => 0,
+			),
+			Health::catalogue( $scene )
+		);
+		// A rule's own assumption is still a thing to fill in.
+		$rule = Health::catalogue( array( ...$scene, new CheckFinding( CatalogueCheck::ASSUMED, 12, 7, 'trucks', 'hole_pattern', array( 'note' => 'pattern_assumed' ) ) ) );
+		self::assertSame( Health::CHECK_FOUND, $rule['code'] );
+		self::assertSame( 1, $rule['findings'] );
+		self::assertSame( 1, $rule['parts'] );
+	}
+
 	public function test_parts_with_no_layer_image_are_counted_apart_from_what_keeps_a_part_out(): void {
 		// Cowork's M7 review, F4 (D-211): a missing layer image leaves the part in the builder, with its photo drawn.
 		$layers = array(

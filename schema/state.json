@@ -916,7 +916,7 @@
 										{ "type": "null" },
 										{
 											"type": "object",
-											"required": ["part", "axle", "height", "hanger", "baseplate", "holes", "color"],
+											"required": ["part", "axle", "height", "hanger", "baseplate", "holes", "centres", "color"],
 											"properties": {
 												"part": { "type": "integer" },
 												"axle": { "description": "The axle's width, end to end.", "type": "integer", "minimum": 0 },
@@ -928,6 +928,11 @@
 													"properties": { "length": { "type": "integer", "minimum": 0 }, "width": { "type": "integer", "minimum": 0 } }
 												},
 												"holes": { "description": "The deck's eight holes, the same points.", "type": "array", "items": { "$ref": "#/definitions/scenePoint" } },
+												"centres": {
+													"description": "From 1.4.0 (F9): each truck's axle's centre, x, y and z, the nose's first: between its rows of holes, on the centre line, at the height its wheels' `places` give. The view draws the trucks from these, so it measures nothing itself.",
+													"type": "array",
+													"items": { "type": "array", "items": { "type": "integer" }, "minItems": 3, "maxItems": 3 }
+												},
 												"color": { "type": ["string", "null"] }
 											}
 										}

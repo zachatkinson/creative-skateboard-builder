@@ -4,8 +4,8 @@ import type { BrowserContext } from '@playwright/test';
 import { test, expect, Page, SITE } from './support/test';
 
 /**
- * Milestone 14: the 3D view's canvas at its fixed places, top, underside, three-quarter and the graphic close-up; on the
- * dark scheme; and with a kickflip held in the air. Each is the scene contract's fixture with its graphic and grip,
+ * Milestone 14: the 3D view's canvas at its fixed places, top, underside, three-quarter and the graphic close-up; side
+ * on, level with the deck's edge; on the dark scheme; and with a kickflip held in the air. Each is the scene contract's fixture with its graphic and grip,
  * pinned through `cbuild_scene` (tests/e2e/mu-plugins/cbuild-e2e-scene.php). Reduced motion puts the camera there at
  * once. Only `bash tools/visual.sh` runs these, in Playwright's Linux container, where Chromium
  * draws WebGL in software (SwiftShader): the same pixels on every run there, and pictures a Mac's GPU would not match.
@@ -113,6 +113,58 @@ test( 'the 3D view at its fixed places', async ( { page, context } ) => {
 			maxDiffPixelRatio: 0.01,
 		} );
 	}
+} );
+
+// 1.4.0: side on, the camera level with the deck's edge, so the plies show between the top and the bottom and nothing
+// shows through them (D-505). From the top, nine of the keys' tilts of 10 degrees bring the camera down level with the
+// point it turns about, 20 mm under the deck's top; the probe holds the board 24 mm lower, so its edge's middle is
+// there too, and 330 mm toward the tail, so eight zooms in frame the nose's kick and its tip.
+test( 'the 3D view side on, level with the deck’s edge', async ( {
+	page,
+	context,
+} ) => {
+	await opened( page, context );
+	const frame = page.locator( '.cbuild-3d__frame' );
+	await page
+		.getByRole( 'group', { name: 'Views of the board' } )
+		.getByRole( 'button', { name: 'Top', exact: true } )
+		.click();
+	await still( page );
+	await page.evaluate( () => {
+		(
+			window as Window & {
+				cbuildProbe?: {
+					hold: (
+						trick: {
+							pose: (
+								board: {
+									position: {
+										set: ( ...at: number[] ) => void;
+									};
+								},
+								progress: number
+							) => void;
+						},
+						progress: number
+					) => void;
+				};
+			}
+		 ).cbuildProbe!.hold(
+			{ pose: ( board ) => board.position.set( -330, 0, -24 ) },
+			0
+		);
+	} );
+	await frame.locator( 'canvas' ).focus();
+	for ( let at = 0; at < 9; at++ ) {
+		await page.keyboard.press( 'ArrowDown' );
+	}
+	for ( let at = 0; at < 8; at++ ) {
+		await page.keyboard.press( '+' );
+	}
+	await still( page );
+	await expect( frame ).toHaveScreenshot( '3d-side.png', {
+		maxDiffPixelRatio: 0.01,
+	} );
 } );
 
 // 1.4.0: the view's ground is the builder's (D-500), so on the dark scheme the board is drawn on the dark ground.

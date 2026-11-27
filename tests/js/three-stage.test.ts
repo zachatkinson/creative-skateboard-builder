@@ -78,6 +78,37 @@ function drawing(): Drawing & {
 }
 
 /**
+ * A pointer event at a place on the page: jsdom's pointer events have no page place, which the controls read of a touch.
+ *
+ * @param type        The event's type.
+ * @param pointerId   Which pointer.
+ * @param x           Across the page.
+ * @param y           Down the page.
+ * @param pointerType A touch or a mouse.
+ */
+function pointer(
+	type: string,
+	pointerId: number,
+	x: number,
+	y: number,
+	pointerType: string
+): PointerEvent {
+	const event = new PointerEvent( type, {
+		pointerId,
+		button: 0,
+		clientX: x,
+		clientY: y,
+		pointerType,
+		bubbles: true,
+	} );
+	Object.defineProperties( event, {
+		pageX: { value: x },
+		pageY: { value: y },
+	} );
+	return event;
+}
+
+/**
  * The stage on a counting renderer.
  *
  * @param more What the test changes.
@@ -240,6 +271,9 @@ describe( 'release', () => {
 		const map = new Texture();
 		const paint = new MeshStandardMaterial( { map } );
 		const plain = new MeshStandardMaterial();
+		// A texture whose image has not arrived is kept on its material, and given back too.
+		const pending = new Texture();
+		plain.userData.texture = pending;
 		const group = new Group();
 		group.add(
 			new Mesh( shape, paint ),
@@ -251,6 +285,7 @@ describe( 'release', () => {
 			vi.spyOn( map, 'dispose' ),
 			vi.spyOn( paint, 'dispose' ),
 			vi.spyOn( plain, 'dispose' ),
+			vi.spyOn( pending, 'dispose' ),
 		];
 		release( group );
 		for ( const spy of given ) {
@@ -333,6 +368,28 @@ describe( 'stage', () => {
 		expect( given ).toHaveBeenCalled();
 		expect( frames() ).toBe( 2 );
 		expect( board().children ).toHaveLength( 4 );
+	} );
+
+	// F13: the bolts stand on the deck's sizes alone, so a grip or a graphic changed redraws the deck and not them.
+	it( 'keeps the bolts’ group when the grip or the deck’s textures change', () => {
+		const { shown } = open();
+		shown.show( scene(), false );
+		frame();
+		const before = shown.probe().groups;
+		const gripped = scene();
+		gripped.grip = { part: 9001, texture: '/grip.png' };
+		gripped.deck.texture = { top: '/grip.png', bottom: '/graphic.png' };
+		shown.show( gripped, false );
+		frame();
+		const now = shown.probe().groups;
+		expect( now.deck ).not.toBe( before.deck );
+		expect( now.bolts ).toBe( before.bolts );
+		// The deck's own sizes still move them.
+		const thicker = scene();
+		thicker.deck.concave += 1000;
+		shown.show( thicker, false );
+		frame();
+		expect( shown.probe().groups.bolts ).not.toBe( now.bolts );
 	} );
 
 	it( 'takes a part out, and keeps an empty slot empty without drawing', () => {
@@ -717,20 +774,68 @@ describe( 'stage', () => {
 
 	it( 'loads a part’s texture, and draws once it arrives', () => {
 		let arrived: ( () => void ) | undefined;
+		const pending = new Texture();
 		const texture = vi.fn( ( _url: string, done: () => void ) => {
 			arrived = done;
-			return new Texture();
+			return pending;
 		} );
-		const { shown, frames } = open( { texture } );
+		const { shown, frames, board } = open( { texture } );
 		const textured = scene();
 		textured.deck.texture = { top: null, bottom: '/graphic.png' };
 		shown.show( textured, false );
 		frame();
 		expect( texture ).toHaveBeenCalledTimes( 1 );
 		expect( texture.mock.calls[ 0 ]![ 0 ] ).toBe( '/graphic.png' );
+		// F1: until the image arrives, the deck's bottom is its colour, with no map to draw black.
+		const bottom = ( board().getObjectByName( 'deck' ) as Group )
+			.children[ 1 ] as Mesh;
+		const paint = bottom.material as MeshStandardMaterial;
+		expect( paint.map ).toBeNull();
+		expect( paint.color.getHexString() ).toBe( 'dcbf8f' );
 		arrived!();
 		frame();
 		expect( frames() ).toBe( 2 );
+		expect( paint.map ).toBe( pending );
+		expect( paint.color.getHexString() ).toBe( 'ffffff' );
+	} );
+
+	it( 'keeps a part’s colour where its image never arrives, and gives the texture back', () => {
+		const pending = new Texture();
+		const given = vi.spyOn( pending, 'dispose' );
+		const { shown, board } = open( { texture: () => pending } );
+		const textured = scene();
+		textured.deck.texture = { top: null, bottom: '/missing.png' };
+		shown.show( textured, false );
+		frame();
+		const bottom = ( board().getObjectByName( 'deck' ) as Group )
+			.children[ 1 ] as Mesh;
+		const paint = bottom.material as MeshStandardMaterial;
+		expect( paint.map ).toBeNull();
+		expect( paint.color.getHexString() ).toBe( 'dcbf8f' );
+		shown.close();
+		expect( given ).toHaveBeenCalledTimes( 1 );
+	} );
+
+	it( 'puts no texture on a part once the view has closed', () => {
+		let arrived: ( () => void ) | undefined;
+		const pending = new Texture();
+		const { shown, board, frames } = open( {
+			texture: ( _url: string, done: () => void ) => {
+				arrived = done;
+				return pending;
+			},
+		} );
+		const textured = scene();
+		textured.deck.texture = { top: null, bottom: '/late.png' };
+		shown.show( textured, false );
+		frame();
+		const bottom = ( board().getObjectByName( 'deck' ) as Group )
+			.children[ 1 ] as Mesh;
+		shown.close();
+		arrived!();
+		frame();
+		expect( ( bottom.material as MeshStandardMaterial ).map ).toBeNull();
+		expect( frames() ).toBe( 1 );
 	} );
 
 	it( 'gives everything back on close, and draws nothing after', () => {
@@ -1018,6 +1123,87 @@ describe( 'play', () => {
 		);
 		frame();
 		expect( camera().distanceTo( landed ) ).toBeGreaterThan( 1 );
+	} );
+
+	// F14: Chrome hands the controls a swipe's first moves before it takes the page's pan.
+	it( 'turns the camera about its upright alone under one finger, and freely under two or a mouse', () => {
+		const { shown, camera, renderer } = open();
+		shown.show( scene(), false );
+		frame();
+		const canvas = renderer.domElement as HTMLCanvasElement & {
+			setPointerCapture: () => void;
+			releasePointerCapture: () => void;
+		};
+		canvas.setPointerCapture = () => undefined;
+		canvas.releasePointerCapture = () => undefined;
+		// The controls turn by a drag's share of the canvas's height.
+		Object.defineProperty( canvas, 'clientHeight', { value: 600 } );
+		const send = (
+			type: string,
+			pointerId: number,
+			x: number,
+			y: number,
+			pointerType = 'touch'
+		) =>
+			canvas.dispatchEvent(
+				pointer( type, pointerId, x, y, pointerType )
+			);
+		const height = (): number => camera().y;
+		// One finger, straight down: the page's swipe. The pitch holds.
+		const before = height();
+		send( 'pointerdown', 1, 100, 100 );
+		send( 'pointermove', 1, 100, 160 );
+		frame();
+		expect( height() ).toBeCloseTo( before, 6 );
+		// Sideways, the same finger turns the board about its upright, at the same height.
+		const turned = camera();
+		send( 'pointermove', 1, 160, 160 );
+		frame();
+		expect( camera().distanceTo( turned ) ).toBeGreaterThan( 1 );
+		expect( height() ).toBeCloseTo( before, 6 );
+		// The browser took the pan: the finger is gone, and a mouse's drag tilts again.
+		send( 'pointercancel', 1, 160, 160 );
+		send( 'pointerdown', 3, 100, 100, 'mouse' );
+		send( 'pointermove', 3, 100, 160, 'mouse' );
+		send( 'pointerup', 3, 100, 160, 'mouse' );
+		frame();
+		expect( Math.abs( height() - before ) ).toBeGreaterThan( 1 );
+		// A finger lifted lets the pitch go too.
+		const tilted = height();
+		send( 'pointerdown', 4, 100, 100 );
+		send( 'pointerup', 4, 100, 100 );
+		send( 'pointerdown', 5, 100, 100, 'mouse' );
+		send( 'pointermove', 5, 100, 40, 'mouse' );
+		send( 'pointerup', 5, 100, 40, 'mouse' );
+		frame();
+		expect( Math.abs( height() - tilted ) ).toBeGreaterThan( 1 );
+	} );
+
+	it( 'lets two fingers pinch the camera in, as before', () => {
+		const { shown, camera, renderer } = open();
+		shown.show( scene(), false );
+		frame();
+		const canvas = renderer.domElement as HTMLCanvasElement & {
+			setPointerCapture: () => void;
+			releasePointerCapture: () => void;
+		};
+		canvas.setPointerCapture = () => undefined;
+		canvas.releasePointerCapture = () => undefined;
+		// The controls turn by a drag's share of the canvas's height.
+		Object.defineProperty( canvas, 'clientHeight', { value: 600 } );
+		const send = (
+			type: string,
+			pointerId: number,
+			x: number,
+			y: number
+		) => canvas.dispatchEvent( pointer( type, pointerId, x, y, 'touch' ) );
+		const before = camera().length();
+		send( 'pointerdown', 1, 150, 100 );
+		send( 'pointerdown', 2, 250, 100 );
+		send( 'pointermove', 1, 100, 100 );
+		send( 'pointermove', 2, 300, 100 );
+		frame();
+		expect( camera().length() ).toBeLessThan( before - 1 );
 	} );
 
 	it( 'lets a drag turn the camera again once the board has landed', async () => {

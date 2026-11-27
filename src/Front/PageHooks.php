@@ -236,36 +236,16 @@ final class PageHooks implements Hookable {
 		if ( (string) get_permalink( $kit ) === $url ) {
 			return null;
 		}
-		$args = self::carried();
+		// The request's arguments, and WordPress's request for the query variables that found the page, are read here
+		// and judged by CarriedArgs (M14's audit, F10). WordPress has no function that gives the request: `wp` hands it
+		// to a listener, which a copy an earlier release's container built would not be (D-208).
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read to be passed on, as requested() says.
+		$args = CarriedArgs::of( wp_unslash( $_GET ), $GLOBALS['wp'] ?? null );
 		$sent = BuilderPage::sent();
 		if ( is_array( $sent ) && array() !== $sent ) {
 			$args[ BuildLink::PARAM ] = urlencode_deep( $sent );
 		}
 		return array() === $args ? $url : add_query_arg( $args, $url );
-	}
-
-	/**
-	 * The request's other arguments, carried to the Builder page as WordPress's own redirects keep them: a newsletter's
-	 * `utm_*` tags and an ad's `gclid` or `fbclid` (F38, #161). Not the build, which is the builder's own, nor the query
-	 * variables that found the kit's page. Each is plain text, encoded for the address; a value that is no text, or a
-	 * name that is no tag's, is left.
-	 *
-	 * @return array<string, string>
-	 */
-	private static function carried(): array {
-		$found = $GLOBALS['wp'] ?? null;
-		$vars  = is_object( $found ) && property_exists( $found, 'query_vars' ) ? $found->query_vars : null;
-		$own   = is_array( $vars ) ? array_keys( $vars ) : array();
-		$args  = array();
-		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read to be passed on, as requested() says.
-		foreach ( wp_unslash( $_GET ) as $key => $value ) {
-			// A name as tags and click IDs are written; any other is left, as is a value that is no text.
-			if ( ! is_string( $key ) || 1 !== preg_match( '/\A[A-Za-z0-9_.-]{1,64}\z/', $key ) || ! is_string( $value ) || BuildLink::PARAM === $key || in_array( $key, $own, true ) ) {
-				continue;
-			}
-			$args[ $key ] = rawurlencode( sanitize_text_field( $value ) );
-		}
-		return $args;
 	}
 
 	/**

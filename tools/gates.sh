@@ -17,6 +17,7 @@
 #  18. An mbstring case change with no function_exists() fallback on its line (#72).
 #  19. .gitattributes' export-ignore lines and .distignore listing different paths, or a tracked dotfile on neither.
 #  20. A merge's conflict marker left in a file.
+#  21. readme.txt's Features naming no feature of the release's minor version (M14's audit, F11).
 # Gate 1 also covers string-built SQL (1b) and the database's clock in a statement (1c). Every gate has snippets it
 # must reject in tests/Fixtures/gates/, run by tools/gates-selftest.sh.
 # Run: composer gates
@@ -243,6 +244,19 @@ else
 fi
 if [ -n "$hits" ]; then
 	echo "Gate 20: a merge's conflict marker left in a file:"; echo "$hits"; status=1
+fi
+
+# 21. readme.txt's Features name what the release's minor version brought: a bullet "from X.Y.0" for the minor its
+# Stable tag is in. 1.4.0's list stopped at 1.3.0 while the 3D view shipped (M14's audit, F11). A tree with no
+# readme.txt, as the self-test's, has nothing to hold.
+if [ -f readme.txt ]; then
+	stable="$(sed -nE 's/^Stable tag:[[:space:]]*([0-9]+\.[0-9]+)\.[0-9]+[[:space:]]*$/\1/p' readme.txt | head -1)"
+	features="$(awk '/^= Features =/{on=1; next} /^=/{on=0} on' readme.txt)"
+	if [ -z "$stable" ]; then
+		echo "Gate 21: readme.txt has no Stable tag of the form X.Y.Z."; status=1
+	elif ! grep -qE "^\* .*from ${stable//./\\.}\.0" <<<"$features"; then
+		echo "Gate 21: readme.txt's Features name nothing from ${stable}.0, the Stable tag's minor release."; status=1
+	fi
 fi
 
 if [ "$status" -eq 0 ]; then echo "Gates: clean."; fi

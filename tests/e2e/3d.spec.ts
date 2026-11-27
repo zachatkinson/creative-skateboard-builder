@@ -338,6 +338,47 @@ test.describe( '3D view (milestone 14)', () => {
 		expect( now.trucks ).toBe( was.trucks );
 	} );
 
+	// F1: a texture whose image fails leaves its part in the part's colour, never black.
+	test( 'a texture that fails to load leaves the part in its colour', async ( {
+		page,
+		context,
+	} ) => {
+		// The visual tests' board, whose textures are the fixture's own files, and each of them not found.
+		await scene( context, 'pinned' );
+		await page.route( '**/tests/e2e/fixtures/layers/**', ( route ) =>
+			route.fulfill( { status: 404, body: '' } )
+		);
+		await open( page );
+		await page
+			.getByRole( 'group', { name: 'Views of the board' } )
+			.getByRole( 'button', { name: 'Underside', exact: true } )
+			.click();
+		await still( page );
+		const canvas = page.locator( '.cbuild-3d__canvas' );
+		const shot = ( await canvas.screenshot() ).toString( 'base64' );
+		// The middle of the underside, between the trucks: the deck's bottom, in maple (#dcbf8f), lit.
+		const [ r, g, b ] = await page.evaluate( async ( png ) => {
+			const image = new Image();
+			image.src = `data:image/png;base64,${ png }`;
+			await image.decode();
+			const sheet = document.createElement( 'canvas' );
+			sheet.width = image.width;
+			sheet.height = image.height;
+			const pen = sheet.getContext( '2d' )!;
+			pen.drawImage( image, 0, 0 );
+			return Array.from(
+				pen.getImageData(
+					Math.floor( image.width / 2 ),
+					Math.floor( image.height / 2 ),
+					1,
+					1
+				).data
+			);
+		}, shot );
+		expect( r! + g! + b! ).toBeGreaterThan( 3 * 110 );
+		expect( r! ).toBeGreaterThan( b! );
+	} );
+
 	test( 'closing gives back every geometry and texture', async ( {
 		page,
 	} ) => {
@@ -628,6 +669,44 @@ test.describe( '3D view (milestone 14)', () => {
 				.locator( '.cbuild-3d__canvas' )
 				.evaluate( ( shown ) => getComputedStyle( shown ).touchAction )
 		).toBe( 'pan-y' );
+	} );
+
+	// The spec reviewer's M14 review, S7: a real swipe, where a phone's touch can be synthesised (Chromium's). It found
+	// the camera turning by the swipe's first moves, before the browser takes the pan (F14).
+	test( 'on a touch screen a vertical swipe over the canvas scrolls the page and leaves the camera', async ( {
+		page,
+	} ) => {
+		await open( page );
+		const canvas = page.locator( '.cbuild-3d__canvas' );
+		test.skip(
+			! test.info().project.use.hasTouch ||
+				'chromium' !== page.context().browser()?.browserType().name(),
+			'A touch swipe is synthesised through Chromium’s protocol, on a touch screen.'
+		);
+		await canvas.evaluate( ( shown ) =>
+			shown.scrollIntoView( { block: 'center' } )
+		);
+		await still( page );
+		const box = ( await canvas.boundingBox() )!;
+		const before = await canvas.screenshot();
+		const board = ( await probe( page ) )?.board;
+		const from = await page.evaluate( () => window.scrollY );
+		const session = await page.context().newCDPSession( page );
+		await session.send( 'Input.synthesizeScrollGesture', {
+			x: Math.round( box.x + box.width / 2 ),
+			y: Math.round( box.y + box.height / 2 ),
+			xDistance: 0,
+			yDistance: -120,
+			gestureSourceType: 'touch',
+			speed: 600,
+		} );
+		await expect
+			.poll( () => page.evaluate( () => window.scrollY ) )
+			.toBeGreaterThan( from + 40 );
+		// The camera did not turn: the view draws the board as it did before the swipe, from where it was.
+		await still( page );
+		expect( await canvas.screenshot() ).toEqual( before );
+		expect( ( await probe( page ) )?.board ).toEqual( board );
 	} );
 
 	// D-468: a plugin blurs the view by class, the deck's from cbuild_part_classes, and puts its veil in the frame,
