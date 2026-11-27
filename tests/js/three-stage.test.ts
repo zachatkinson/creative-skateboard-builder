@@ -370,6 +370,28 @@ describe( 'stage', () => {
 		expect( board().children ).toHaveLength( 4 );
 	} );
 
+	// F13: the bolts stand on the deck's sizes alone, so a grip or a graphic changed redraws the deck and not them.
+	it( 'keeps the bolts’ group when the grip or the deck’s textures change', () => {
+		const { shown } = open();
+		shown.show( scene(), false );
+		frame();
+		const before = shown.probe().groups;
+		const gripped = scene();
+		gripped.grip = { part: 9001, texture: '/grip.png' };
+		gripped.deck.texture = { top: '/grip.png', bottom: '/graphic.png' };
+		shown.show( gripped, false );
+		frame();
+		const now = shown.probe().groups;
+		expect( now.deck ).not.toBe( before.deck );
+		expect( now.bolts ).toBe( before.bolts );
+		// The deck's own sizes still move them.
+		const thicker = scene();
+		thicker.deck.concave += 1000;
+		shown.show( thicker, false );
+		frame();
+		expect( shown.probe().groups.bolts ).not.toBe( now.bolts );
+	} );
+
 	it( 'takes a part out, and keeps an empty slot empty without drawing', () => {
 		const { shown, frames } = open();
 		shown.show( scene(), false );

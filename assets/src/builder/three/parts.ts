@@ -390,7 +390,8 @@ export function drawnFrom( slot: Slot, scene: Scene ): string {
 		trucks: [ scene.trucks ?? null, board.thickness, scene.risers ?? null ],
 		wheels: [ scene.wheels ?? null ],
 		risers: [ scene.risers ?? null, board.thickness, scene.trucks ?? null ],
-		bolts: [ scene.bolts ?? null, board ],
+		// The deck's sizes alone: its textures change with a grip or a graphic, and the bolts stand on neither (F13).
+		bolts: [ scene.bolts ?? null, { ...board, texture: null } ],
 	};
 	return JSON.stringify( of[ slot ] );
 }
