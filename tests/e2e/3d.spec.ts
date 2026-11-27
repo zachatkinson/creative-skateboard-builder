@@ -150,18 +150,63 @@ async function open( page: Page ) {
 }
 
 /**
- * Pick a part on the step shown, and send the step with Next, waiting for the step after.
+ * The state route, which answers each pick and each Next.
+ *
+ * @param url A request's address.
+ */
+const isRoute = ( url: string ): boolean =>
+	/cbuild(%2F|\/)v1(%2F|\/)kits(%2F|\/)\d+(%2F|\/)state/.test( url );
+
+/**
+ * Wait until the builder has done with a press: no answer awaited and no step crossing over, so the next press lands
+ * on the step the shopper sees, as theirs would (D-529).
+ *
+ * @param page The page.
+ */
+async function settled( page: Page ) {
+	await expect( page.locator( 'html.cbuild-crossing' ) ).toHaveCount( 0 );
+	await expect( page.locator( '.cbuild' ) ).not.toHaveAttribute(
+		'aria-busy',
+		'true'
+	);
+}
+
+/**
+ * Press Next and wait for what the press promises: the step after it, its answer drawn and its crossing over done
+ * (D-529). Pressed sooner, a pick or a Next could land in the crossing, or on a step the answer was about to redraw.
+ *
+ * @param page The page.
+ * @param step The next step's heading.
+ */
+async function next( page: Page, step: RegExp ) {
+	await page.getByRole( 'button', { name: /^Next/ } ).click();
+	await expect( page.locator( '#cbuild-heading' ) ).toHaveText( step );
+	await settled( page );
+}
+
+/**
+ * Pick a part on the step shown, and send the step with Next, waiting for the step after. The pick waits for what it
+ * promises before Next is pressed: the radio checked, Next lit, and the route's answer to it in (D-529).
  *
  * @param page The page.
  * @param name The part's product name.
  * @param step The next step's heading.
  */
 async function onward( page: Page, name: string, step: RegExp ) {
-	await page
-		.getByRole( 'radio', { name: `Choose ${ name }`, exact: true } )
-		.check();
-	await page.getByRole( 'button', { name: /^Next/ } ).click();
-	await expect( page.locator( '#cbuild-heading' ) ).toHaveText( step );
+	const radio = page.getByRole( 'radio', {
+		name: `Choose ${ name }`,
+		exact: true,
+	} );
+	await Promise.all( [
+		page.waitForResponse( ( answer ) => isRoute( answer.url() ) ),
+		radio.check(),
+	] );
+	await expect( radio ).toBeChecked();
+	await expect(
+		page.getByRole( 'button', { name: /^Next/ } )
+	).not.toHaveAttribute( 'aria-disabled', 'true' );
+	await settled( page );
+	await next( page, step );
 }
 
 /**
@@ -182,8 +227,8 @@ async function flat( page: Page ) {
 	await expect(
 		page.locator( '.cbuild__stage .cbuild-board' ).first()
 	).toBeVisible();
-	await page.getByRole( 'button', { name: /^Next/ } ).click();
-	await expect( page.locator( '#cbuild-heading' ) ).toHaveText( /bearings/i );
+	await settled( page );
+	await next( page, /bearings/i );
 	await onward( page, 'Builder test bearings', /hardware/i );
 	await onward( page, 'Builder test bolts 1', /grip/i );
 	await onward( page, 'Builder test grip', /check your build/i );

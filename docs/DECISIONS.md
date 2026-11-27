@@ -562,6 +562,7 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-466 · My builds, the deck page's start button and the bar run their key browser tests on Kadence and Storefront too](#d-466--my-builds-the-deck-pages-start-button-and-the-bar-run-their-key-browser-tests-on-kadence-and-storefront-too--2026-11-26)
 - [D-486 · Two flakes settled: #93 closed on its evidence, and #110's mask taken off](#d-486--two-flakes-settled-93-closed-on-its-evidence-and-110s-mask-taken-off--2026-11-26)
 - [D-519 · The test themes get fixed menus and widget areas, and the visual run starts on a reset site](#d-519--the-test-themes-get-fixed-menus-and-widget-areas-and-the-visual-run-starts-on-a-reset-site--2026-11-27)
+- [D-529 · The 3D tests' walk to the cart waits for what each press promises](#d-529--the-3d-tests-walk-to-the-cart-waits-for-what-each-press-promises--2026-11-27)
 
 ### Releases and the repository
 
@@ -7610,5 +7611,21 @@ Milestone 14's full set: "a customer saves, opens, saves over and deletes a buil
 - **Specificity:** the stacked rules lead with the frame, so they outrank WooCommerce's small-screen rules wherever both apply, whatever the stylesheets' order.
 
 **Tests:** `builder.spec.ts` "My builds stays in its column beside the theme's sidebar at a tablet's width", on Twenty Twenty-Five, Storefront and Kadence, at 768 by 1024 px in every project: each of a build's controls, Compare, Open, the name's field, Rename and Delete, is inside the account's column, and the point at its middle is its own. Before the fix, on chromium-desktop, Storefront failed at builder.spec.ts:8967 with `"control": "Open Column setup two"`, `"inColumn": false`. The deliberate break, the container query set to 1rem with the field's rule left in, fails on the same line.
+
+**Status:** Accepted.
+
+### D-529 · The 3D tests' walk to the cart waits for what each press promises · 2026-11-27
+
+Milestone 14's full set: "a lost context goes back to the board" failed once each on webkit-desktop, webkit-phone and firefox-phone, 1 of 6 runs on a rerun, and passed alone. The walk that ends each fallback test, `flat()` in `3d.spec.ts`, pressed Next and took the next step's heading for its answer, then picked and pressed Next again at once. Under load the next press could come while the answer was still being drawn: the step crossing over, or the route's answer to the pick not yet in. The product does what a shopper's press asks; the helper pressed sooner than a shopper can.
+
+**Decision:** each press in the walk waits for what it promises, as the builder's own tests do in `ride()`:
+
+- **Next** (`next()`): the next step's heading, then no crossing over (`html.cbuild-crossing` gone) and no answer awaited (`.cbuild` not `aria-busy`).
+- **A pick** (`onward()`): the route's answer to it, the radio checked and Next lit (no `aria-disabled="true"`, #100), and the builder settled, before Next is pressed.
+- **The first Next** after the view falls back waits for the builder to settle too.
+
+Nothing in the product changes. The three fallback tests share the walk: the lost context, no WebGL and an error thrown.
+
+**Proof:** on chromium-desktop, `--repeat-each=20 --workers=1`, the test passed 20 of 20 with the waits. The flake could not be made to show on this machine before the change: 20 of 20 on chromium-desktop, 10 of 10 on webkit-desktop alone, and on chromium-desktop 10 of 10 with each answer held back 0 to 1.5 s, 3 of 3 with the step's crossing slowed to 2 s (3 of 3 on webkit-desktop too) and 10 of 10 with the processor slowed eightfold. So there is no red line to give, and no deliberate break that fails on a quiet machine. The waits close the window in which a press can come before its answer, whatever the load.
 
 **Status:** Accepted.
