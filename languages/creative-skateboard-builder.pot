@@ -9,7 +9,7 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-11-27T09:59:07+00:00\n"
+"POT-Creation-Date: 2026-11-27T15:14:27+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: creative-skateboard-builder\n"
@@ -164,7 +164,7 @@ msgid "Import and export"
 msgstr ""
 
 #: src/Admin/BuilderHooks.php:71
-#: templates/admin/check.php:34
+#: templates/admin/check.php:36
 msgid "Catalogue check"
 msgstr ""
 
@@ -172,7 +172,7 @@ msgstr ""
 #: src/Admin/BuilderHooks.php:123
 #: src/Admin/SettingsPage.php:75
 #: templates/admin/builder-tabs.php:16
-#: templates/admin/check.php:32
+#: templates/admin/check.php:34
 #: templates/admin/import.php:30
 #: templates/admin/spec-tables.php:24
 msgid "Builder"
@@ -1042,16 +1042,16 @@ msgid "The kit's assembly time in business days was not saved. The Build tab sho
 msgstr ""
 
 #. translators: %s: a product's ID.
-#: src/Admin/CheckScreen.php:200
+#: src/Admin/CheckScreen.php:205
 #, php-format
 msgid "Product %s"
 msgstr ""
 
-#: src/Admin/CheckScreen.php:202
+#: src/Admin/CheckScreen.php:207
 msgid "Background work"
 msgstr ""
 
-#: src/Admin/CheckScreen.php:209
+#: src/Admin/CheckScreen.php:214
 msgid "The kit's Build tab"
 msgstr ""
 
@@ -1206,7 +1206,7 @@ msgid "Concave depth"
 msgstr ""
 
 #: src/Admin/Labels.php:65
-msgid "Kick angle in degrees"
+msgid "Kick angle"
 msgstr ""
 
 #: src/Admin/Labels.php:66
@@ -1249,62 +1249,67 @@ msgstr ""
 msgid "Not rebuilt: it stopped after its failures"
 msgstr ""
 
-#: src/Admin/Labels.php:131
+#: src/Admin/Labels.php:129
+msgctxt "degrees, in the label of a field"
+msgid "°"
+msgstr ""
+
+#: src/Admin/Labels.php:134
 msgctxt "inches, in the label of a field"
 msgid "in"
 msgstr ""
 
-#: src/Admin/Labels.php:132
+#: src/Admin/Labels.php:135
 msgctxt "millimetres, in the label of a field"
 msgid "mm"
 msgstr ""
 
 #. translators: 1: a spec's name, such as Deck width. 2: its unit, such as in or mm.
-#: src/Admin/Labels.php:134
+#: src/Admin/Labels.php:138
 #, php-format
 msgctxt "the label of a field, with its unit"
 msgid "%1$s (%2$s)"
 msgstr ""
 
-#: src/Admin/Labels.php:146
+#: src/Admin/Labels.php:150
 msgid "New school"
 msgstr ""
 
-#: src/Admin/Labels.php:147
+#: src/Admin/Labels.php:151
 msgid "Old school"
 msgstr ""
 
-#: src/Admin/Labels.php:148
+#: src/Admin/Labels.php:152
 msgid "Both"
 msgstr ""
 
-#: src/Admin/Labels.php:149
+#: src/Admin/Labels.php:153
 msgid "Low"
 msgstr ""
 
-#: src/Admin/Labels.php:150
+#: src/Admin/Labels.php:154
 msgid "Mid"
 msgstr ""
 
-#: src/Admin/Labels.php:151
+#: src/Admin/Labels.php:155
 msgid "High"
 msgstr ""
 
 #. translators: %s: a number of inches.
-#: src/Admin/Labels.php:170
+#: src/Admin/Labels.php:174
 #, php-format
 msgctxt "inches"
 msgid "%s in"
 msgstr ""
 
 #. translators: %s: a number of millimetres.
-#: src/Admin/Labels.php:173
+#: src/Admin/Labels.php:177
 #, php-format
 msgctxt "millimetres"
 msgid "%s mm"
 msgstr ""
 
-#: src/Admin/Labels.php:176
+#: src/Admin/Labels.php:180
 #: src/Admin/PartSpecsPanel.php:660
 #: src/Health/SiteHealth.php:404
 #: src/Order/OrderHooks.php:343
@@ -1312,12 +1317,19 @@ msgstr ""
 msgid "Yes"
 msgstr ""
 
-#: src/Admin/Labels.php:176
+#: src/Admin/Labels.php:180
 #: src/Admin/PartSpecsPanel.php:661
 #: src/Health/SiteHealth.php:404
 #: src/Order/OrderHooks.php:343
 #: src/Privacy/PrivacyHooks.php:145
 msgid "No"
+msgstr ""
+
+#. translators: %s: a number of degrees.
+#: src/Admin/Labels.php:184
+#, php-format
+msgctxt "degrees"
+msgid "%s°"
 msgstr ""
 
 #: src/Admin/PartSpecsPanel.php:220
@@ -2219,13 +2231,13 @@ msgid "%1$s: %2$s"
 msgstr ""
 
 #: src/Cli/CheckCommand.php:87
-#: templates/admin/check.php:49
+#: templates/admin/check.php:51
 msgid "The check found nothing to fix."
 msgstr ""
 
 #. translators: %s: a number of findings.
 #: src/Cli/CheckCommand.php:95
-#: templates/admin/check.php:57
+#: templates/admin/check.php:59
 #, php-format
 msgid "The check found %s thing to fix."
 msgid_plural "The check found %s things to fix."
@@ -4304,7 +4316,7 @@ msgstr[1] ""
 
 #. translators: %s: a number of parts.
 #: src/Health/SiteHealth.php:325
-#: templates/admin/check.php:70
+#: templates/admin/check.php:72
 #, php-format
 msgid "%s part the picture draws has no layer image. It is still offered, and the picture shows its labelled photo beside the board until one is chosen on its product page."
 msgid_plural "%s parts the picture draws have no layer image. Each is still offered, and the picture shows its labelled photo beside the board until one is chosen on its product page."
@@ -4557,7 +4569,7 @@ msgid "Builds saved under My builds."
 msgstr ""
 
 #: src/Privacy/PrivacyHooks.php:136
-#: templates/admin/check.php:111
+#: templates/admin/check.php:121
 #: build/builder/index.js:1
 msgid "Kit"
 msgstr ""
@@ -4826,69 +4838,78 @@ msgstr ""
 msgid "\"Use the builder's rows\" is now unticked, so the rows you type are saved."
 msgstr ""
 
-#: templates/admin/check.php:35
+#: templates/admin/check.php:37
 msgid "Finds what keeps a part out of the builder: sources that disagree about a part, values that cannot be read, and background work that failed. It reads every part and changes nothing. It also lists, apart, the parts the picture draws that have no layer image."
 msgstr ""
 
-#: templates/admin/check.php:37
+#: templates/admin/check.php:39
 msgid "The shop has no kit yet. Once it has one, the check also lists each kit's parts that lack a spec, presets that no longer fit and slots with nothing in stock."
 msgstr ""
 
-#: templates/admin/check.php:42
+#: templates/admin/check.php:44
 msgid "Run the check again"
 msgstr ""
 
-#: templates/admin/check.php:42
+#: templates/admin/check.php:44
 msgid "Run the check"
 msgstr ""
 
-#: templates/admin/check.php:46
+#: templates/admin/check.php:48
 msgid "Every part is being read again in the background, 100 at a time. Tools > Site Health shows how far it is."
 msgstr ""
 
-#: templates/admin/check.php:51
+#: templates/admin/check.php:53
 msgid "Nothing the check found keeps a part out of the builder."
 msgstr ""
 
-#: templates/admin/check.php:63
+#: templates/admin/check.php:65
 msgid "What to fix"
 msgstr ""
 
-#: templates/admin/check.php:65
+#: templates/admin/check.php:67
 msgid "What it found"
 msgstr ""
 
-#: templates/admin/check.php:68
+#: templates/admin/check.php:70
 msgid "Parts with no layer image"
 msgstr ""
 
-#: templates/admin/check.php:77
-msgid "Variations that share a card"
+#: templates/admin/check.php:79
+msgid "Sizes the 3D view assumes"
 msgstr ""
 
-#: templates/admin/check.php:78
-msgid "The builder shows a product's variations that share a photo and a layer image as one card, and asks for what tells them apart after the pick. Give a variation a photo of its own to give it a card of its own."
+#: templates/admin/check.php:80
+msgid "These parts leave out a size the 3D view draws, so it draws the usual one. Each is still offered, and needs no fix. Fill the size in on its Part specs to draw the part as it is."
 msgstr ""
 
-#: templates/admin/check.php:81
-#: templates/admin/check.php:89
+#: templates/admin/check.php:83
+#: templates/admin/check.php:91
+#: templates/admin/check.php:99
 msgid "What it says"
 msgstr ""
 
-#: templates/admin/check.php:85
+#: templates/admin/check.php:87
+msgid "Variations that share a card"
+msgstr ""
+
+#: templates/admin/check.php:88
+msgid "The builder shows a product's variations that share a photo and a layer image as one card, and asks for what tells them apart after the pick. Give a variation a photo of its own to give it a card of its own."
+msgstr ""
+
+#: templates/admin/check.php:95
 msgid "Parts kept out of the builder"
 msgstr ""
 
-#: templates/admin/check.php:86
+#: templates/admin/check.php:96
 msgid "Not offered in the builder is ticked on these parts, or on their product, so no kit offers them. They stay in the shop. Untick it on the part's Part specs to offer it again."
 msgstr ""
 
-#: templates/admin/check.php:109
+#: templates/admin/check.php:119
 msgid "Where"
 msgstr ""
 
 #. translators: %s: how many more rows a list has than it shows.
-#: templates/admin/check.php:139
+#: templates/admin/check.php:149
 #: templates/admin/import.php:131
 #: templates/admin/import.php:167
 #, php-format
@@ -4897,12 +4918,12 @@ msgid_plural "And %s more."
 msgstr[0] ""
 msgstr[1] ""
 
-#: templates/admin/check.php:144
-#: templates/admin/check.php:150
+#: templates/admin/check.php:154
+#: templates/admin/check.php:160
 msgid "Read every part again"
 msgstr ""
 
-#: templates/admin/check.php:145
+#: templates/admin/check.php:155
 msgid "The builder keeps an index of each part's specs and updates a part whenever it is saved. Use this when the index was not rebuilt, or stopped part way. It runs in the background, and parts keep what they held until they are reached."
 msgstr ""
 

@@ -134,7 +134,12 @@ final class CheckScreen {
 		$kits  = $this->kits->all();
 		// Parts with no layer image are listed apart, each list cut at its own length: on a large catalogue they would
 		// otherwise fill the page after what keeps a part out (Cowork's M7 review, F4; D-211).
-		$fixes  = array_values( array_filter( $found, static fn( CheckFinding $finding ): bool => ! in_array( $finding->code, array( CatalogueCheck::LAYER_MISSING, CatalogueCheck::LOOK_SHARED, CatalogueCheck::NOT_OFFERED ), true ) ) );
+		// A size only the 3D view assumes leaves the part offered and drawn: listed apart and not counted as a thing to
+		// fix, so the count is Site Health's (D-485, the M14 walkthrough's #7, D-532).
+		$scenic = static fn( CheckFinding $finding ): bool => CatalogueCheck::ASSUMED === $finding->code && CatalogueCheck::SCENE_ASSUMED === ( $finding->values['note'] ?? '' );
+		$fixes  = array_values( array_filter( $found, static fn( CheckFinding $finding ): bool => ! $scenic( $finding ) && ! in_array( $finding->code, array( CatalogueCheck::LAYER_MISSING, CatalogueCheck::LOOK_SHARED, CatalogueCheck::NOT_OFFERED ), true ) ) );
+		$scene  = $this->rows( array_slice( array_values( array_filter( $found, $scenic ) ), 0, self::SHOWN ), $kits );
+		$drawn  = count( array_filter( $found, $scenic ) ) - count( $scene );
 		$layers = array_values( array_filter( $found, static fn( CheckFinding $finding ): bool => CatalogueCheck::LAYER_MISSING === $finding->code ) );
 		// Variations that share a card, in a list of their own after the layers: what the builder does, not a fix (D-281).
 		$looks  = array_values( array_filter( $found, static fn( CheckFinding $finding ): bool => CatalogueCheck::LOOK_SHARED === $finding->code ) );

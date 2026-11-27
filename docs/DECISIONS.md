@@ -121,6 +121,8 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-472 · The 3D view's five optional specs, and a kick angle in whole degrees](#d-472--the-3d-views-five-optional-specs-and-a-kick-angle-in-whole-degrees--2026-11-26)
 - [D-473 · The 3D view's usual values, from published deck and truck specs](#d-473--the-3d-views-usual-values-from-published-deck-and-truck-specs--2026-11-26)
 - [D-485 · Site Health leaves out a size only the 3D view assumes](#d-485--site-health-leaves-out-a-size-only-the-3d-view-assumes--2026-11-26)
+- [D-532 · The Catalogue check lists the 3D view's usual sizes apart, and counts as Site Health does](#d-532--the-catalogue-check-lists-the-3d-views-usual-sizes-apart-and-counts-as-site-health-does--2026-11-27)
+- [D-533 · The kick angle names its unit as a measure does](#d-533--the-kick-angle-names-its-unit-as-a-measure-does--2026-11-27)
 
 ### Kits and their settings
 
@@ -371,7 +373,9 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-506 · A textured part is drawn in its colour until its image arrives](#d-506--a-textured-part-is-drawn-in-its-colour-until-its-image-arrives--2026-11-26)
 - [D-507 · One finger turns the 3D view about its upright alone](#d-507--one-finger-turns-the-3d-view-about-its-upright-alone--2026-11-26)
 - [D-508 · The scene sends each truck's axle centre, and the view measures nothing](#d-508--the-scene-sends-each-trucks-axle-centre-and-the-view-measures-nothing--2026-11-26)
+- [D-509 · A landing runs the fast gates on each of the lane's commits, merges and docs commits included](#d-509--a-landing-runs-the-fast-gates-on-each-of-the-lanes-commits-merges-and-docs-commits-included--2026-11-27)
 - [D-518 · The 3D view's Side place: level with the deck's edge, turned 17 degrees toward the nose](#d-518--the-3d-views-side-place-level-with-the-decks-edge-turned-17-degrees-toward-the-nose--2026-11-26)
+- [D-520 · Every Yoast test runs wherever Yoast's tests run, from one filter](#d-520--every-yoast-test-runs-wherever-yoasts-tests-run-from-one-filter--2026-11-27)
 
 ### Cart, checkout and orders
 
@@ -6742,6 +6746,8 @@ The first CI run of 1.3.0's pull request. F31's test (D-399) holds a deck card u
 
 **Status:** Accepted. Refines D-399's test.
 
+D-437 to D-449 are unused: milestone 13's lanes took their numbers in blocks of ten (D-391 to D-399, D-400 to D-409, D-410 to D-419), and the final run's block from D-420 ended at D-436. The walkthrough's fixes were numbered from D-450 so that no lane could collide with them (#165, F42).
+
 ### D-450 · My builds' and an order page's rules print on a style handle of the plugin's own · 2026-11-26
 
 Found in milestone 13's walkthrough. `SavedBuildHooks::styles()` added My builds' rules to WooCommerce's `woocommerce-general` with `wp_add_inline_style()`, and `EmailHooks::pageStyles()` added the indent of a part's row on an order's page there too. Kadence and Storefront dequeue `woocommerce-general` and load their own WooCommerce styles, and WordPress prints a handle's inline rules only with the handle (`WP_Styles::do_item()`), so on either theme every rule was lost. On a phone the compare had no scroll region: its table was 404 px wide in a 326 px box, and the third build was cut off where no one could reach it. The 14rem columns, the Differs mark, the row tints and D-412's rule that names each row on a phone went too. Twenty Twenty-Five keeps WooCommerce's handle, so the suites, run on it, passed.
@@ -6773,6 +6779,8 @@ Found with D-450, by a search of `src/` for `wp_add_inline_style()` on a handle 
 **Why:** as D-450: a rule the plugin needs is the plugin's to print.
 
 **Status:** Accepted.
+
+D-452 to D-459 are unused: the block from D-450 was kept for the walkthrough's style fixes, which needed two. D-460 started the next block of ten (#165, F42).
 
 ### D-460 · A list is joined in the plugin's own words, never WordPress's translation of them · 2026-11-26
 
@@ -7578,6 +7586,19 @@ Milestone 14's full set: `composer test:integration:yoast` failed on `ShareCardY
 
 **Status:** Accepted.
 
+### D-509 · A landing runs the fast gates on each of the lane's commits, merges and docs commits included · 2026-11-27
+
+The rule "/verify before every commit" (CLAUDE.md) was held by the lane's word, and a landing checked only the lane's final tree. So a commit in the middle of a lane could be red and land behind a green one, leaving `git bisect` and a revert of a later commit on a red tree. Zach's answer on 26 November was "do whatever is best practice": every commit on the main line builds and passes the fast gates, which is how bisect and revert stay usable (Google's and the Linux kernel's rule for a bisectable history).
+
+**Decision:**
+
+- **The handoff's `commit-check.sh`** runs `composer check` and `npm run check` on each commit a lane brings, in a worktree of its own. Merges are included. A commit that touches only Markdown and pictures runs `npm run lint:md` alone. A commit that passed is recorded in `commit-checked` and isn't run again. It's bash 3.2 compatible.
+- **`land.sh` runs it** as the step "the fast gates on each of the lane's commits", before Infection on the changed lines. A red commit stops the landing.
+- **The full /verify stays per tree**, with D-469's receipt. The integration and browser suites take 35 minutes, and on each commit they would cost hours for what the fast gates and the final tree already catch.
+- **Found at once:** 7c40f18, on m14-3d before the check existed, fails markdownlint MD022 at D-468. The cause was the old merge driver's merge commit bba4eaa. It's fixed in `tools/merge-decisions.php` (0925d4e, a blank line restored after the entry, with a landing self-test case), and the commit is left as it is, since m14-3d's history is shared.
+
+**Status:** Accepted.
+
 ### D-521 · The turn's buttons hold their place from the first paint, so the board keeps its size as the store starts · 2026-11-27
 
 D-519's fixed header made `3d.spec.ts` "in French at a phone held sideways" fail every time on chromium-desktop: 0.00274 of shift against an allowance of 0.00244. The allowance is right. The shift is the product's. At 844 by 390 px, the board grew from 122.6 to 130.0 px, and from 482.7 to 512 px long, as the store took over, on the plain page and on the 3D page alike. The old header, a list of every page, had pushed the builder low enough that little of the board was on the screen. The shorter header showed more of it, so more of the grow was counted.
@@ -7644,5 +7665,37 @@ M14's walkthrough, finding 4: on a phone, where the browser could not draw the v
 **Decision:** the message goes in a sixth row, after every row the picture's other pieces use (the stage's template has five; the sixth is implicit and sized to the message), across the full width as before. Nothing shares its lines on a phone or a desktop.
 
 **Tests:** `3d.spec.ts` "on a phone, and on a desktop, the fallback's message has a place of its own", on chromium-desktop and chromium-phone, with the whole build on the grip step as the walkthrough had it. Before the fix, on a phone: `Error: what shares the message's lines`, received the `cbuild-picture__item` and `cbuild-picture__label` of "Bearings" and "Hardware: 1″", at :1162. The desktop case passed before and after; it holds the desktop as it was. The deliberate break, the row put back to 4: the same red line.
+
+**Status:** Accepted.
+
+### D-532 · The Catalogue check lists the 3D view's usual sizes apart, and counts as Site Health does · 2026-11-27
+
+The M14 walkthrough's #7: on the browser site, Site Health said the Catalogue check found 11 things to fix, and the check's own screen said 43. The other 32 were the 3D view's notes, a deck or wheel without one of the sizes only the scene reads (`nose_length`, `tail_length`, `concave_depth`, `kick_angle`, `wheel_width`; D-472, D-473). D-485 left them out of Site Health's count, since the part is still offered and drawn. The check's screen still counted them, among what it found to fix.
+
+**Decision:**
+
+- **A list of their own,** "Sizes the 3D view assumes" (`h3#cbuild-scene`), after the parts with no layer image, as the other lists that need no fix are. Its intro says each part is still offered, needs no fix, and where the size is filled in.
+- **Out of the count.** The screen's "The check found N things to fix" counts what `Service\Health::catalogue` counts for the same findings, and the 3D view's notes alone leave the notice "Nothing the check found keeps a part out of the builder." above their list.
+- **The finding is unchanged.** `CatalogueCheck` still returns each note as `assumed` with `note` `scene_assumed`; only the screen sorts it.
+
+**Tests:** `tests/Integration/CheckScreenTest.php`:
+
+- **"a size only the 3D view assumes is listed apart and not counted as a thing to fix".** Before the fix, it failed at :358, the page not containing "The check found 1 thing to fix.".
+- **"the 3D views notes alone leave nothing to fix".** Before the fix, it failed at :377, the page not containing `<h3 id="cbuild-scene">Sizes the 3D view assumes</h3>`.
+- **The deliberate break,** the notes put back among the fixes with the list kept, failed both: :358 again, and :378, the page matching `/found (\d+ things?|nothing) to fix/`.
+
+**Status:** Accepted.
+
+### D-533 · The kick angle names its unit as a measure does · 2026-11-27
+
+The M14 walkthrough's #8: of the five specs 1.4.0 added, the kick angle alone was labelled "Kick angle in degrees", where its siblings are "Nose length (in)" and "Wheel width (mm)", from the spec's name and the translatable pattern `%1$s (%2$s)`. D-472 made it a count of whole degrees, so `SpecKey::unit()` has no unit for it and the pattern was never used.
+
+**Decision:**
+
+- **The name is "Kick angle",** the field's label "Kick angle (°)", through the same pattern, with `°` translatable as a field's `in` and `mm` are (context "degrees, in the label of a field").
+- **Its value reads "20°",** through `%s°` (context "degrees"), as a measure's reads "8.25 in", in the import's preview, Part specs' sources, the check's sentences and the order's workshop lines.
+- **In `Admin\Labels`, not the domain.** The domain keeps a count, as D-472 chose. An angle unit would reach the parser and the index for one spec, so the label names the degrees alone.
+
+**Tests:** `tests/Unit/Admin/LabelsTest.php`. Before the fix, "every spec has its own name and a measure names its unit in a fields label" failed at :61, `'Kick angle'` expected and `'Kick angle in degrees'` received, and the values "degrees" and "degrees in the thousands" failed at :107, `'20°'` expected and `'20'` received. The deliberate break, `deg` for `°`, failed at :62 with `'Kick angle (deg)'`.
 
 **Status:** Accepted.

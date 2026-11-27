@@ -62,7 +62,7 @@ final class Labels {
 			SpecKey::NoseLength->value       => __( 'Nose length', 'creative-skateboard-builder' ),
 			SpecKey::TailLength->value       => __( 'Tail length', 'creative-skateboard-builder' ),
 			SpecKey::ConcaveDepth->value     => __( 'Concave depth', 'creative-skateboard-builder' ),
-			SpecKey::KickAngle->value        => __( 'Kick angle in degrees', 'creative-skateboard-builder' ),
+			SpecKey::KickAngle->value        => __( 'Kick angle', 'creative-skateboard-builder' ),
 			SpecKey::WheelWidth->value       => __( 'Wheel width', 'creative-skateboard-builder' ),
 		);
 		return $labels[ $key->value ] ?? $key->value;
@@ -115,8 +115,8 @@ final class Labels {
 	}
 
 	/**
-	 * A spec's name with the unit its field is in, for a field's label: "Deck width (in)". A spec that is not a
-	 * measure is its name alone.
+	 * A spec's name with the unit its field is in, for a field's label: "Deck width (in)", and "Kick angle (°)" for
+	 * the one count with a unit. Any other spec that is not a measure is its name alone.
 	 *
 	 * @since 0.3.0
 	 *
@@ -124,12 +124,16 @@ final class Labels {
 	 */
 	public static function field( SpecKey $key ): string {
 		$unit = $key->unit();
-		if ( null === $unit ) {
+		if ( SpecKey::KickAngle === $key ) {
+			// A count of whole degrees (D-472), whose unit is named as a measure's is (the M14 walkthrough's #8, D-533).
+			$short = _x( '°', 'degrees, in the label of a field', 'creative-skateboard-builder' );
+		} elseif ( null === $unit ) {
 			return self::spec( $key );
+		} else {
+			$short = Unit::Inch === $unit
+				? _x( 'in', 'inches, in the label of a field', 'creative-skateboard-builder' )
+				: _x( 'mm', 'millimetres, in the label of a field', 'creative-skateboard-builder' );
 		}
-		$short = Unit::Inch === $unit
-			? _x( 'in', 'inches, in the label of a field', 'creative-skateboard-builder' )
-			: _x( 'mm', 'millimetres, in the label of a field', 'creative-skateboard-builder' );
 		/* translators: 1: a spec's name, such as Deck width. 2: its unit, such as in or mm. */
 		return sprintf( _x( '%1$s (%2$s)', 'the label of a field, with its unit', 'creative-skateboard-builder' ), self::spec( $key ), $short );
 	}
@@ -174,6 +178,10 @@ final class Labels {
 		}
 		if ( SpecKind::Flag === $key->kind() ) {
 			return '1' === $text ? __( 'Yes', 'creative-skateboard-builder' ) : __( 'No', 'creative-skateboard-builder' );
+		}
+		if ( SpecKey::KickAngle === $key ) {
+			/* translators: %s: a number of degrees. */
+			return sprintf( _x( '%s°', 'degrees', 'creative-skateboard-builder' ), number_format_i18n( (int) $text ) );
 		}
 		return SpecKind::Count === $key->kind() ? number_format_i18n( (int) $text ) : self::choice( $text );
 	}
