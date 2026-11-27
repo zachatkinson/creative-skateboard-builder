@@ -2,7 +2,8 @@
 # The visual snapshots (tests/e2e/visual.spec.ts), in Playwright's own Linux image at the version package.json pins,
 # locally and in CI alike, so a baseline made on one is the picture the other takes: the same Chromium and fonts.
 # The image reaches the browser site on the host's network. Arguments go to Playwright, so
-# `bash tools/visual.sh --update-snapshots` writes the baselines, which change only on purpose (D-162).
+# `bash tools/visual.sh --update-snapshots` writes the baselines, which change only on purpose (D-162). The browser site
+# is reset before the run, unless CBUILD_VISUAL_KEEP_SITE=1 (D-519).
 set -euo pipefail
 cd "$(dirname "$0")/.."
 # shellcheck source=tools/ports.sh
@@ -11,6 +12,17 @@ site="${WP_BASE_URL:-http://localhost:$CBUILD_PORT}"
 
 version=$(node -p "require('./node_modules/@playwright/test/package.json').version")
 image="mcr.microsoft.com/playwright:v${version}-noble"
+
+# A used site holds whatever earlier runs of the fixture left, which only ever adds: a page another branch published
+# was in every theme's header and moved each picture by a part of a pixel. So the browser site is reset first, through
+# the lane's own scripts as `npm run env:clean` and `env:start` do it (a raw `wp-env reset` loses the lane's port, and
+# a clean leaves WooCommerce off until the start), and a local run takes its pictures on a site as fresh as CI's
+# (D-519). CI's job has just started its site, and a site given by WP_BASE_URL is not wp-env's. CBUILD_VISUAL_KEEP_SITE=1
+# keeps the site as it is, for a quick rerun.
+if [ -z "${CI:-}" ] && [ -z "${WP_BASE_URL:-}" ] && [ "${CBUILD_VISUAL_KEEP_SITE:-}" != 1 ]; then
+	bash tools/wp-env.sh clean all
+	bash tools/wp-env.sh start
+fi
 
 curl -sf "$site/" > /dev/null || {
 	echo "The browser site is not up: npm run env:start." >&2

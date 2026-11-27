@@ -559,6 +559,7 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-511 · The browser tests' lock reads the clock once to judge a lock and to give up on it](#d-511--the-browser-tests-lock-reads-the-clock-once-to-judge-a-lock-and-to-give-up-on-it--2026-11-26)
 - [D-466 · My builds, the deck page's start button and the bar run their key browser tests on Kadence and Storefront too](#d-466--my-builds-the-deck-pages-start-button-and-the-bar-run-their-key-browser-tests-on-kadence-and-storefront-too--2026-11-26)
 - [D-486 · Two flakes settled: #93 closed on its evidence, and #110's mask taken off](#d-486--two-flakes-settled-93-closed-on-its-evidence-and-110s-mask-taken-off--2026-11-26)
+- [D-519 · The test themes get fixed menus and widget areas, and the visual run starts on a reset site](#d-519--the-test-themes-get-fixed-menus-and-widget-areas-and-the-visual-run-starts-on-a-reset-site--2026-11-27)
 
 ### Releases and the repository
 
@@ -7530,6 +7531,37 @@ Zach's #171, approved for 1.4.0 after the see-through edge (#167, D-505) was fou
 - **Reduced motion** goes there at once, through the same `go()` as the other places.
 - **The probe** also reports the camera's position and the point it turns about (`camera`), so a browser test can read where a place put it. The probe is on only with `data-cbuild-probe`, which no shop page carries.
 - **Tests:** `three-stage.test.ts` ("looks at the side level with the deck's edge", and "sends the camera to the side ... and the probe reads it"); `3d.spec.ts` "Side sends the camera level with the deck's edge, turned a little (#171)", with the places' order, Tab through them, the camera's height and turn within 0.1 mm and 0.01, and axe on the group; and `3d-visual.spec.ts` "the 3D view at its Side place" (`3d-side-place.png`).
+
+**Status:** Accepted.
+
+### D-519 · The test themes get fixed menus and widget areas, and the visual run starts on a reset site · 2026-11-27
+
+On m14-3d the start pictures (tablet on every theme, desktop on Kadence) and Kadence's deck pictures changed by a part of a pixel, at heights such as 1333 against 1334. A bisect named the wrong commits, because the visual suite depended on what earlier runs had left on the site. The fixture only ever adds, and the browser site is never reset between runs. On a site reset with `env:clean` and `env:start`, main (4ba326a) passed all 32 pictures. Once m14-3d's fixture had run on that site, main failed too.
+
+The cause was 4a6282a, which published the page `three-quiet-page` ("Build a complete without tricks"). With no menu set, Twenty Twenty-Five, Storefront and Kadence each list the site's pages in their header. The header gained a link, and the builder below it moved down a part of a pixel. Lane 1 then found a second leak of the same kind: a real switch to Kadence remapped the site's widgets, and Storefront's sidebar stayed empty until the option was put back by hand, so two of its card tests failed.
+
+**Decision:**
+
+- **A fixed header menu for each test theme.** `tests/e2e/fixtures/shop.php` sets one menu with one link, "Shop":
+  - **Twenty Twenty-Five:** its header's Navigation block has no `ref`, so it reads `WP_Navigation_Fallback::get_fallback()`. That returns the newest published `wp_navigation` post (`wp-includes/class-wp-navigation-fallback.php`, lines 79 to 84, with the query at lines 110 to 127, `orderby` date, newest first), called from `block_core_navigation_get_fallback_blocks()` (`wp-includes/blocks/navigation.php`, line 1492). Core makes a Page List the first time, so the fixture keeps its own post, `cbuild-e2e-header`, the newest by a second.
+  - **Storefront and Kadence:** a classic menu, "Test header", at each location their headers show. Those are Storefront's `primary` and `handheld` (`inc/class-storefront.php`, `register_nav_menus`) and Kadence's `primary` and `mobile` (`inc/components/nav_menus/component.php`). Unset, each falls back to a list of pages. The e2e theme cookie filters `stylesheet` but not the option `get_theme_mods()` reads, so the locations go in the active theme's mods. Each classic theme's own mods hold them too.
+  - **Running it again changes nothing.** The post and the menu items are rewritten only when they differ.
+- **Fixed widget areas.** Every run sets `sidebars_widgets` to what `wp_install_defaults()` gives a fresh site: blocks 2 to 4 in `sidebar-1`, and 5 and 6 in `sidebar-2`. A real switch of theme remaps them (`after_switch_theme`, `retrieve_widgets()`), and a switch back leaves them remapped.
+- **`tools/visual.sh` resets the browser site first.** It runs `tools/wp-env.sh clean all`, then `start`, as `npm run env:clean` and `env:start` do, so the lane keeps its port and WooCommerce is active again. A local run then starts from a site as fresh as CI's. The reset is skipped in CI, whose job has just started its site, and when `WP_BASE_URL` names another site. `CBUILD_VISUAL_KEEP_SITE=1` skips it for a quick rerun.
+- **The 3D kit without tricks is made once, after the builder kit.** 4a6282a wrote its block in `shop.php` twice, and the first copy ran before the builder kit existed. On a fresh site that gave it a lower ID than the builder kit, so a deck's "Build a complete with this deck" went to it, and `builder.spec.ts` "the kit's page and a deck's page send a shopper to it" failed on both chromium projects (`Received string: "http://localhost:8902/product/three-quiet-kit/?cbuild%5Bdeck%5D=32"`). Only a site the fixture had run on before hid it. The first copy is gone.
+- **The baselines were remade once,** after both changes. 35 of visual.spec.ts's pictures changed, and none of 3d-visual.spec.ts's. Every difference has one of two causes:
+  - **The header menu.** Twenty Twenty-Five's and Storefront's desktop and tablet starts and reviews, and Twenty Twenty-Five's nine moments. Each is the same size as before, and the differences are only antialiased edges across the whole builder: a sub-pixel move. The phone pictures, the Kadence starts and the Kadence deck picture didn't change, because a collapsed menu or a one-line header kept the builder where it was.
+  - **#110's mask taken off "Show the parts" (D-486).** All 18 reviews, in a small area at the link. On Kadence and on the phones, this is the only difference.
+
+**Proof:**
+
+- With the reset, main passed 32 of 32, then m14-3d failed its 19 header and review pictures, then main passed 32 of 32 again.
+- After the remake, two runs in a row passed 36 of 36. After lane 1's Side view (#171) was merged in, a run passed 37 of 37.
+
+**Tests:** `tests/e2e/theme-header.spec.ts`, on chromium-desktop:
+
+- **"publishing a page leaves each test theme's header as it was".** Without the menus, it failed with `twentytwentyfive: expect(received).not.toContain("A page published after the fixture")`.
+- **"switching the site to Kadence and back leaves Storefront's sidebar as it was, once the fixture has run".** Without the widget areas, it failed at `expect( await sidebar() ).toEqual( before )`, with 3 lines expected and 1 received.
 
 **Status:** Accepted.
 
