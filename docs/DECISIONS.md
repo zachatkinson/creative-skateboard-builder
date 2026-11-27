@@ -359,6 +359,9 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-502 · The trick buttons are the server's, play on a press alone, and wait for each other](#d-502--the-trick-buttons-are-the-servers-play-on-a-press-alone-and-wait-for-each-other--2026-11-26)
 - [D-503 · With reduced motion no trick is offered](#d-503--with-reduced-motion-no-trick-is-offered--2026-11-26)
 - [D-504 · During a trick the camera waits](#d-504--during-a-trick-the-camera-waits--2026-11-26)
+- [D-480 · When the 3D view fails with focus in it, focus goes to View in 3D](#d-480--when-the-3d-view-fails-with-focus-in-it-focus-goes-to-view-in-3d--2026-11-26)
+- [D-481 · A 3D view's failure is warned in the console and sent as cbuild:3d-failed](#d-481--a-3d-views-failure-is-warned-in-the-console-and-sent-as-cbuild3d-failed--2026-11-26)
+- [D-482 · The 3D view closes where the view has no scene](#d-482--the-3d-view-closes-where-the-view-has-no-scene--2026-11-26)
 
 ### Cart, checkout and orders
 
@@ -7316,5 +7319,44 @@ The auditor's M14 review, F3. D-516 kept Show builds' and Skip's press in one va
 
 - **Red runs:** "expected '' to be '1 part no longer fits.'" (store.test.ts, both picks); "expected <h3 …(2)></h3> to be <h2 class="cbuild__heading" …(1)></h2>" (Back).
 - **Deliberate break:** the navigator not handing the press on fails the press's own test: "expected '1 part no longer fits.' to be ''".
+
+**Status:** Accepted.
+
+### D-480 · When the 3D view fails with focus in it, focus goes to View in 3D · 2026-11-26
+
+The auditor's M14 review, F2. `fell()` hid the view and moved no focus, so a lost context or a draw error while the canvas or a camera button had focus left focus on `<body>` (WCAG 2.4.3).
+
+**Decision:** where focus was in `.cbuild-3d__stage` when the view fails, it goes to View in 3D on the next frame, the control that opened the view and now shows it closed. The board itself is not focusable, and the message under it is said once by the status region (D-494). Focus anywhere else is left where it is.
+
+**Tests.** three-store.test.ts, "gives focus in the view to View in 3D once it fails, and leaves focus elsewhere where it is"; 3d.spec.ts, "a lost context goes back to the board" now focuses the canvas first and expects View in 3D focused.
+
+- **Red runs:** "expected <canvas …(2)></canvas> to be <button type="button" …(1)></button>" (three-store.test.ts); "expect(locator).toBeFocused() failed … Received: inactive" (3d.spec.ts, chromium-desktop and chromium-phone).
+- **Deliberate break:** with the focus left out, the store test fails with the same line.
+
+**Status:** Accepted.
+
+### D-481 · A 3D view's failure is warned in the console and sent as cbuild:3d-failed · 2026-11-26
+
+The auditor's M14 review, F8. A failure logged nothing, so neither a developer nor a shop could tell how often, or why, shoppers got the flat board.
+
+**Decision:** `fell()` warns in the console with what failed, and sends `cbuild:3d-failed` on `.cbuild`, bubbling, with `{ kit, reason }`. The reason is one of four codes the store can tell apart: `load` (the chunk's import rejected), `webgl` (`open()` threw, as it does without WebGL 2), `lost` (a `webglcontextlost` event) and `error` (anything else thrown while it drew, or by its first draw). Like the other events it carries IDs and codes alone, and the plugin sends nothing anywhere itself. It is a new public item: in `docs/HOOKS.md`'s events with `@since 1.4.0`, in the snapshot and in the changelog.
+
+**Tests.** three-store.test.ts, "warns and sends each reason: no WebGL 2, a lost context, an error"; 3d.spec.ts, the lost context hears `lost`, and the script that throws hears `load` and its warning.
+
+- **Red runs:** "expected last "warn" call to have been called with [ Array(2) ]" (three-store.test.ts); 3d.spec.ts "an error thrown in the view goes back to the board": "expect(received).toEqual(expected) … Received + 1" (no event).
+- **Deliberate break:** the event sent under another name: "expected [] to deeply equal [ { kit: 7, reason: 'webgl' }, …(4) ]".
+
+**Status:** Accepted.
+
+### D-482 · The 3D view closes where the view has no scene · 2026-11-26
+
+The auditor's M14 review, F6. With the view open, an answer with no scene, such as a deck sold out or Back to a step before a deck, left the canvas blank and View in 3D hidden with it, so nothing closed the view.
+
+**Decision:** `callbacks.scene` closes the view, as a second press of View in 3D does, where the view has no scene and the 3D view is open or loading. Its message does not show: nothing failed. A view that is loading stays closed when its script arrives, as one pressed again does. One existing assertion, that an open view was told to draw no scene, is replaced by these tests.
+
+**Tests.** three-store.test.ts, "the scene gone": an open view closes, a loading one stays closed, and with the view closed nothing is drawn or closed.
+
+- **Red runs:** "expected "vi.fn()" to be called 1 times, but got 0 times" (the close) and "expected true to be false" (`loading`).
+- **Deliberate break:** with the check left out, both fail with the same lines.
 
 **Status:** Accepted.

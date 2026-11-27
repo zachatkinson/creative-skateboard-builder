@@ -217,6 +217,7 @@
         "cbuild__stage"
     ],
     "dom_events": [
+        "cbuild:3d-failed",
         "cbuild:added",
         "cbuild:pick",
         "cbuild:rendered"

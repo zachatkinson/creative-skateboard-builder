@@ -1562,16 +1562,42 @@ function flatten( state: State ): void {
 }
 
 /**
- * The 3D view could not be shown, or stopped: the board comes back, the message shows under it, and the status
- * region says it once, in the server's words.
- *
- * @param state The store's state.
+ * Why the 3D view could not be shown, or stopped, as `cbuild:3d-failed` says it (F8, D-481): its script did not load,
+ * the browser draws no WebGL 2, its context was lost, or anything else was thrown while it drew.
  */
-function fell( state: State ): void {
+export type Fall = 'load' | 'webgl' | 'lost' | 'error';
+
+/**
+ * The 3D view could not be shown, or stopped: the board comes back, the message shows under it, and the status
+ * region says it once, in the server's words. The reason goes to the console and in `cbuild:3d-failed`, for a shop's
+ * analytics (F8, D-481). Focus that was in the view, which is now hidden, goes to View in 3D on the next frame, not to
+ * the page (F2, D-480).
+ *
+ * @param state  The store's state.
+ * @param reason Why, as the event says it.
+ * @param why    What failed, for the console.
+ */
+function fell( state: State, reason: Fall, why: unknown ): void {
+	const view3d = root?.querySelector( '.cbuild-3d__stage' );
+	const within =
+		view3d?.contains( view3d.ownerDocument.activeElement ) ?? false;
 	flatten( state );
 	state.three.failed = true;
 	state.status =
 		root?.querySelector( '.cbuild-3d__failed' )?.textContent?.trim() ?? '';
+	// eslint-disable-next-line no-console
+	console.warn( `The 3D view stopped (${ reason }).`, why );
+	root?.dispatchEvent(
+		new CustomEvent( 'cbuild:3d-failed', {
+			bubbles: true,
+			detail: { kit: state.view.kit, reason },
+		} )
+	);
+	if ( within ) {
+		window.requestAnimationFrame( () => {
+			root?.querySelector< HTMLElement >( '.cbuild-3d__open' )?.focus();
+		} );
+	}
 }
 
 /**
@@ -1589,27 +1615,44 @@ async function rise( state: State ): Promise< void > {
 	const ticket = ++opening;
 	state.three.loading = true;
 	state.three.failed = false;
+	let chunk: typeof import( './three/index' );
 	try {
-		const chunk = await import(
+		chunk = await import(
 			/* webpackChunkName: "builder/three" */ './three/index'
 		);
-		const { open } = chunk;
-		tricks = chunk.tricks;
-		if ( ticket !== opening ) {
-			return;
-		}
-		state.three.open = true;
-		renderer = open( {
+	} catch ( error ) {
+		fell( state, 'load', error );
+		return;
+	}
+	tricks = chunk.tricks;
+	if ( ticket !== opening ) {
+		return;
+	}
+	state.three.open = true;
+	try {
+		renderer = chunk.open( {
 			canvas,
 			reduced: () => calm( root ),
-			failed: () => fell( state ),
+			failed: ( why ) =>
+				fell(
+					state,
+					why instanceof Event && 'webglcontextlost' === why.type
+						? 'lost'
+						: 'error',
+					why
+				),
 		} );
+	} catch ( error ) {
+		fell( state, 'webgl', error );
+		return;
+	}
+	try {
 		renderer.show(
 			scened( state.view ),
 			true === state.view.picture?.turned
 		);
-	} catch {
-		fell( state );
+	} catch ( error ) {
+		fell( state, 'error', error );
 		return;
 	}
 	state.three.loading = false;
@@ -1848,6 +1891,15 @@ const { state } = store(
 			 * swaps that part alone. The board's renderer has nothing to draw.
 			 */
 			scene(): void {
+				// A view with no scene, a deck sold out or a step back to before one, closes the view: the board is
+				// shown again, and View in 3D, hidden with the scene, is not left pressed (F6, D-482).
+				if (
+					null === scened( state.view ) &&
+					( state.three.open || state.three.loading )
+				) {
+					flatten( state );
+					return;
+				}
 				renderer.show(
 					scened( state.view ),
 					true === state.view.picture?.turned

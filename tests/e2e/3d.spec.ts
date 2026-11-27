@@ -149,7 +149,23 @@ async function open( page: Page ) {
 }
 
 /**
- * The 2D board is back, the message under it, and the build goes on: Next still takes the shopper on.
+ * Pick a part on the step shown, and send the step with Next, waiting for the step after.
+ *
+ * @param page The page.
+ * @param name The part's product name.
+ * @param step The next step's heading.
+ */
+async function onward( page: Page, name: string, step: RegExp ) {
+	await page
+		.getByRole( 'radio', { name: `Choose ${ name }`, exact: true } )
+		.check();
+	await page.getByRole( 'button', { name: /^Next/ } ).click();
+	await expect( page.locator( '#cbuild-heading' ) ).toHaveText( step );
+}
+
+/**
+ * The 2D board is back, the message under it, and the build goes on: Next takes the shopper to the review, and Add to
+ * cart puts the build in the cart (the spec reviewer's M14 review, S6).
  *
  * @param page The page.
  */
@@ -167,7 +183,51 @@ async function flat( page: Page ) {
 	).toBeVisible();
 	await page.getByRole( 'button', { name: /^Next/ } ).click();
 	await expect( page.locator( '#cbuild-heading' ) ).toHaveText( /bearings/i );
+	await onward( page, 'Builder test bearings', /hardware/i );
+	await onward( page, 'Builder test bolts 1', /grip/i );
+	await onward( page, 'Builder test grip', /check your build/i );
+	await page
+		.locator( '.cbuild' )
+		.getByRole( 'button', { name: 'Add to cart' } )
+		.click();
+	await expect
+		.poll( async () => {
+			const cart = await (
+				await page.request.get( '/wp-json/wc/store/v1/cart' )
+			).json();
+			return cart.items.map( ( item: { name: string } ) => item.name );
+		} )
+		.toEqual(
+			expect.arrayContaining( [
+				'Builder test deck 8.0',
+				'Builder test bearings',
+				'Builder test grip',
+			] )
+		);
 }
+
+/**
+ * Hear the builder's `cbuild:3d-failed` events, from before the page's scripts run.
+ *
+ * @param page The page.
+ */
+async function hearFailures( page: Page ) {
+	await page.addInitScript( () => {
+		const heard: unknown[] = [];
+		( window as Window & { cbuildFailed?: unknown[] } ).cbuildFailed =
+			heard;
+		document.addEventListener( 'cbuild:3d-failed', ( event ) =>
+			heard.push( ( event as CustomEvent ).detail )
+		);
+	} );
+}
+
+const failures = ( page: Page ): Promise< unknown[] > =>
+	page.evaluate(
+		() =>
+			( window as Window & { cbuildFailed?: unknown[] } ).cbuildFailed ??
+			[]
+	);
 
 test.describe( '3D view (milestone 14)', () => {
 	test.skip(
@@ -688,7 +748,10 @@ test.describe( '3D view (milestone 14)', () => {
 	} );
 
 	test( 'a lost context goes back to the board', async ( { page } ) => {
+		await hearFailures( page );
 		await open( page );
+		// The auditor's M14 review, F2: focus in the view, which hides, goes to View in 3D, not to the page.
+		await page.locator( '.cbuild-3d__canvas' ).focus();
 		await page.evaluate( () =>
 			document
 				.querySelector< HTMLCanvasElement >( '.cbuild-3d__canvas' )
@@ -696,6 +759,13 @@ test.describe( '3D view (milestone 14)', () => {
 				?.getExtension( 'WEBGL_lose_context' )
 				?.loseContext()
 		);
+		await expect(
+			page.getByRole( 'button', { name: 'View in 3D' } )
+		).toBeFocused();
+		// F8: the reason is told, for a shop's analytics.
+		expect( await failures( page ) ).toEqual( [
+			{ kit: fixture().three.kit, reason: 'lost' },
+		] );
 		await flat( page );
 	} );
 
@@ -708,8 +778,21 @@ test.describe( '3D view (milestone 14)', () => {
 				body: 'throw new Error( "A test’s error." );',
 			} )
 		);
+		await hearFailures( page );
+		const warned: string[] = [];
+		page.on( 'console', ( message ) => {
+			if ( 'warning' === message.type() ) {
+				warned.push( message.text() );
+			}
+		} );
 		await page.goto( build( fixture().three.page ) );
 		await page.getByRole( 'button', { name: 'View in 3D' } ).click();
+		await expect
+			.poll( () => failures( page ) )
+			.toEqual( [ { kit: fixture().three.kit, reason: 'load' } ] );
+		expect( warned ).toContainEqual(
+			expect.stringContaining( 'The 3D view stopped (load).' )
+		);
 		await flat( page );
 	} );
 
