@@ -132,6 +132,7 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-543 · The focus test waits out the pick's crossing, and #178 asks whether a tap in a crossing is lost](#d-543--the-focus-test-waits-out-the-picks-crossing-and-178-asks-whether-a-tap-in-a-crossing-is-lost--2026-11-27)
 - [D-544 · The integration and browser legs get 80 minutes](#d-544--the-integration-and-browser-legs-get-80-minutes--2026-11-27)
 - [D-564 · The ten milestone 13 branches all landed, and their archives are deleted](#d-564--the-ten-milestone-13-branches-all-landed-and-their-archives-are-deleted--2026-11-27)
+- [D-565 · CI tries a wp-env start again when a download fails, and caches nothing](#d-565--ci-tries-a-wp-env-start-again-when-a-download-fails-and-caches-nothing--2026-11-27)
 
 ### Kits and their settings
 
@@ -7890,3 +7891,18 @@ The per-commit table is in `docs/reviews/M15.md`.
 **Decision:** nothing is landed again. The ten `archive/m13-*` branches were deleted from `origin` on Zach's word (27 November: "if its safe to remove them and cleans things up go ahead"). The local branches were deleted on 27 November.
 
 **Status:** Accepted.
+
+### D-565 · CI tries a wp-env start again when a download fails, and caches nothing · 2026-11-27
+
+Issue #179: twice on 27 November a CI job failed before any test ran because wp-env's first start could not download from wordpress.org. One was a timeout at TLS connect (run 46049772113) and one a `429 Too Many Requests` 16 ms after the request (run 46063991563). Some twenty jobs start at once, from GitHub's shared addresses.
+
+The issue offered two fixes: cache wp-env's downloads with `actions/cache`, or try the start again.
+
+- **Not the cache.** wp-env's folder (`~/.wp-env/<hash>/`) holds the downloads and also each site's own files, which a run writes: `wp-config.php`, uploads and `debug.log`. A cache saved after a run would bring one run's state into the next, and a test passing on another run's leftovers costs more than a rerun.
+- **The retry.** Under CI (`CI` set), `tools/wp-env.sh start` runs wp-env, keeps its output, and on a failure whose output names a download error tries again: `RequestError`, `HTTPError` 429 or 5xx, `ETIMEDOUT`, `ECONNRESET` or `EAI_AGAIN`. It makes three tries in all, 20 then 60 seconds apart. Any other failure, our own included, fails at once, and outside CI nothing is tried again.
+
+CI's three direct `npx wp-env start` calls now go through the wrapper, as `npm run env:start` and the canary already did.
+
+**Tests:** `tools/wp-env-retry-selftest.sh`, in `composer gates`, runs the wrapper with a stand-in for wp-env. A 429 then a success passes on the second try, and two timeouts on the third. Three download failures fail with no fourth try, a failure of our own gets no second try, and outside CI there is none. Each break was tried: a fourth try allowed, then every failure retried; each turned its case red.
+
+**Status:** Accepted (Zach approved #179's fix with the plan on 27 November).

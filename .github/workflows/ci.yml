@@ -334,10 +334,10 @@ jobs:
       # its own. The newest pair's integration suite, with Xdebug in coverage mode, is the `suite` job's (D-323).
       - name: The integration site
         if: matrix.site == 'tests'
-        run: npx wp-env start --config=.wp-env.tests.json
+        run: bash tools/wp-env.sh start --config=.wp-env.tests.json
       - name: The browser site
         if: matrix.site == 'browser'
-        run: npx wp-env start
+        run: bash tools/wp-env.sh start
       # The POT is made in the browser site's CLI.
       - name: The i18n check (the POT current, the translations complete)
         if: matrix.pair == 'newest' && matrix.part == 'browser'
@@ -458,7 +458,7 @@ jobs:
       - run: npm ci
       - run: npm run build
       - name: The integration site, with Xdebug in coverage mode
-        run: npx wp-env start --config=.wp-env.tests.json --xdebug=coverage
+        run: bash tools/wp-env.sh start --config=.wp-env.tests.json --xdebug=coverage
       - name: The shard's part of the integration suite, with coverage
         env:
           CBUILD_SHARD: ${{ matrix.shard }}

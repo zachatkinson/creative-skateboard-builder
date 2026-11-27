@@ -39,4 +39,30 @@ case "${1:-}" in
 		done
 		;;
 esac
-WP_ENV_PORT="$port" exec npx wp-env "$@"
+read -r -a wp_env <<< "${CBUILD_WP_ENV_COMMAND:-npx wp-env}"
+# Under CI, a start that fails on a download is tried again: wp-env fetches WordPress and the pinned plugins from
+# wordpress.org on each job's first start, and twenty jobs at once from GitHub's addresses meet its rate limit and
+# timeouts (#179, D-565). Three tries in all, 20 then 60 s apart. Any other failure, our own, fails at once.
+if [ "start" = "${1:-}" ] && [ -n "${CI:-}" ]; then
+	read -r -a waits <<< "${CBUILD_WP_ENV_WAITS:-20 60}"
+	log="$(mktemp)"
+	trap 'rm -f "$log"' EXIT
+	try=1
+	while true; do
+		set +e
+		WP_ENV_PORT="$port" "${wp_env[@]}" "$@" 2>&1 | tee "$log"
+		code="${PIPESTATUS[0]}"
+		set -e
+		if [ "$code" = 0 ]; then
+			exit 0
+		fi
+		if [ "$try" -ge 3 ] || ! grep -Eq 'RequestError|HTTPError: Response code (429|5[0-9][0-9])|ETIMEDOUT|ECONNRESET|EAI_AGAIN' "$log"; then
+			exit "$code"
+		fi
+		wait="${waits[$((try - 1))]:-60}"
+		echo "wp-env's start: a download failed; trying again in ${wait} s (try $((try + 1)) of 3)." >&2
+		sleep "$wait"
+		try=$((try + 1))
+	done
+fi
+WP_ENV_PORT="$port" exec "${wp_env[@]}" "$@"

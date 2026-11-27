@@ -59,6 +59,7 @@
 			"bash tools/focused-selftest.sh",
 			"bash tools/upgrade-releases-selftest.sh",
 			"bash tools/landing-selftest.sh",
+			"bash tools/wp-env-retry-selftest.sh",
 			"bash tools/shellcheck.sh",
 			"@php tools/changelog.php --check"
 		],
