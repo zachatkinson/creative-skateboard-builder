@@ -282,6 +282,10 @@ describe( 'cues', () => {
 		expect(
 			cues( [ deck ], [ deck, { key: 'grip-1', src: 'g.png' } ] )
 		).toEqual( [ { moment: 'grip', index: 1, delay: 0 } ] );
+		// A layer's number of two digits names its slot as one does (#176).
+		expect(
+			cues( [ deck ], [ deck, { key: 'grip-12', src: 'g.png' } ] )
+		).toEqual( [ { moment: 'grip', index: 1, delay: 0 } ] );
 		expect(
 			cues(
 				[ deck, ...trucks ],

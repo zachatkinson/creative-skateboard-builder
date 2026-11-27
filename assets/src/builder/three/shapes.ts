@@ -44,9 +44,10 @@ export function mm( micrometres: number | undefined ): number {
  */
 export function ends( deck: Deck ): { nose: number; tail: number } {
 	const xs = deck.holes.points.map( ( point ) => mm( point[ 0 ] ) );
-	const outer = xs.length > 0 ? Math.max( ...xs ) : mm( deck.length ) / 2;
 	const nose =
-		xs.length > 0 ? outer + mm( deck.nose ) : mm( deck.length ) / 2;
+		xs.length > 0
+			? Math.max( ...xs ) + mm( deck.nose )
+			: mm( deck.length ) / 2;
 	return { nose, tail: nose - mm( deck.length ) };
 }
 

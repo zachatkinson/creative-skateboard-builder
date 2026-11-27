@@ -10,6 +10,7 @@ import { scene } from './support/scene';
 const made = vi.hoisted( () => ( {
 	renderers: [] as Record< string, unknown >[],
 	generators: [] as {
+		target: { dispose: ReturnType< typeof vi.fn > };
 		fromScene: ReturnType< typeof vi.fn >;
 		dispose: ReturnType< typeof vi.fn >;
 	}[],
@@ -155,6 +156,8 @@ describe( 'open', () => {
 		expect( made.rooms ).toBe( 0 );
 		view.close();
 		expect( generator!.dispose ).toHaveBeenCalled();
+		// The lit room's render target too, which holds its own GPU memory (#176).
+		expect( generator!.target.dispose ).toHaveBeenCalled();
 	} );
 
 	it( 'loads the shop’s own textures in sRGB, and draws once each arrives', () => {

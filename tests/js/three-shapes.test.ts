@@ -106,6 +106,8 @@ describe( 'rise', () => {
 
 	it( 'curves over its bend, then runs straight at its slope', () => {
 		expect( rise( KICK.bend / 2, 1 ) ).toBeCloseTo( KICK.bend / 8, 9 );
+		// A slope of other than 1, so the curve is seen to scale by it, not divide (#176).
+		expect( rise( KICK.bend / 2, 0.5 ) ).toBeCloseTo( KICK.bend / 16, 9 );
 		expect( rise( KICK.bend, 1 ) ).toBeCloseTo( KICK.bend / 2, 9 );
 		expect( rise( KICK.bend + 10, 0.5 ) ).toBeCloseTo(
 			( KICK.bend / 2 + 10 ) * 0.5,
@@ -239,6 +241,13 @@ describe( 'edge', () => {
 			expect(
 				band.points[ at * 6 + 2 ]! - band.points[ at * 6 + 5 ]!
 			).toBeCloseTo( 11, 9 );
+			// The texture's u runs once round the band, top and bottom alike, v across it (#176).
+			expect( band.uvs.slice( at * 4, at * 4 + 4 ) ).toEqual( [
+				at / rim,
+				1,
+				at / rim,
+				0,
+			] );
 		}
 		// The last quad closes the band on its first points, wound to look out (D-505).
 		expect( band.triangles.slice( -6 ) ).toEqual( [
