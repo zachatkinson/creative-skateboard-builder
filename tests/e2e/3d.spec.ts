@@ -949,6 +949,48 @@ test.describe( '3D view (milestone 14)', () => {
 		await expect( page.locator( '.cbuild-picture__side' ) ).toBeVisible();
 	} );
 
+	// M14's walkthrough, finding 3: the flat board's Underside and Top stayed beside the view's own Top and Underside,
+	// two buttons of each name, and "Top" stayed pressed whatever the camera showed (D-522).
+	test( 'while open, one Top and one Underside show, the view’s, and the board’s come back on close as they were', async ( {
+		page,
+	} ) => {
+		const named = ( name: string ) =>
+			page
+				.locator( '.cbuild' )
+				.getByRole( 'button', { name, exact: true } );
+		const turn = page.locator( '.cbuild-picture__sides' );
+		const pressed = () =>
+			turn
+				.getByRole( 'button' )
+				.evaluateAll( ( buttons ) =>
+					buttons.map( ( button ) =>
+						button.getAttribute( 'aria-pressed' )
+					)
+				);
+		await page.goto( build( fixture().three.page ) );
+		const before = await pressed();
+		expect( before ).toHaveLength( 2 );
+		await open( page );
+		for ( const name of [ 'Top', 'Underside' ] ) {
+			await expect( named( name ), name ).toHaveCount( 1 );
+			await expect(
+				page
+					.getByRole( 'group', { name: 'Views of the board' } )
+					.getByRole( 'button', { name, exact: true } )
+			).toBeVisible();
+		}
+		await expect( turn ).toHaveAttribute( 'hidden', '' );
+		const toggle = page.getByRole( 'button', { name: 'View in 3D' } );
+		await expect( toggle ).toHaveAttribute( 'aria-pressed', 'true' );
+		await toggle.click();
+		await expect( toggle ).toHaveAttribute( 'aria-pressed', 'false' );
+		await expect( turn ).toBeVisible();
+		for ( const name of [ 'Top', 'Underside' ] ) {
+			await expect( named( name ), name ).toHaveCount( 1 );
+		}
+		expect( await pressed() ).toEqual( before );
+	} );
+
 	// The auditor's M14 review, F7: View in 3D shared the turn's cell, and covered its buttons at 320 px in French; on
 	// a phone held sideways it took a row of its own, so the board was smaller before the press. Upright it now goes
 	// beside the heading, the board's box as with no 3D view; sideways the strip grows to hold it, the board its size

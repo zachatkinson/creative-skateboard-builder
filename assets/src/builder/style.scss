@@ -3129,6 +3129,13 @@
 	visibility: hidden;
 }
 
+/* While the view is open the turn's buttons are hidden, since the view's own Top and Underside move its camera, and
+   their row, empty, takes no room (M14's walkthrough, D-522). */
+.cbuild-picture--3d .cbuild-picture__turn {
+	min-block-size: 0;
+	padding-block-end: 0;
+}
+
 /* Its width is its cell's, never its contents': Firefox sized the picture's column from the 4 by 3 frame's height,
    and the canvas ran past the edge of a phone's screen. */
 :where(.cbuild-3d__stage:not([hidden])) {

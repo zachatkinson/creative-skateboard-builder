@@ -36,6 +36,8 @@ interface Defined {
 	state: {
 		view: Record< string, unknown >;
 		status: string;
+		canTurn: boolean;
+		readonly turns: boolean;
 		three: {
 			open: boolean;
 			loading: boolean;
@@ -152,6 +154,19 @@ describe( 'View in 3D', () => {
 		await actions.three();
 		expect( state.three.open ).toBe( true );
 		expect( opened.open ).toHaveBeenCalledTimes( 2 );
+	} );
+
+	// M14's walkthrough, finding 3 (D-522): the view's own Top and Underside move its camera, so the board's are hidden.
+	it( 'hides the board’s turn while open, and shows it again once closed, where the store can turn it', async () => {
+		page();
+		expect( state.canTurn ).toBe( true );
+		expect( state.turns ).toBe( true );
+		await actions.three();
+		expect( state.turns ).toBe( false );
+		await actions.three();
+		expect( state.turns ).toBe( true );
+		state.canTurn = false;
+		expect( state.turns ).toBe( false );
 	} );
 
 	it( 'stays closed where it was pressed again while it loaded', async () => {

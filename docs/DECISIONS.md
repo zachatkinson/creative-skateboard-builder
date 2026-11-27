@@ -7595,3 +7595,18 @@ The cause is the turn's two buttons, Underside and Top. The store shows them by 
 - **Repeated runs.** After the fix, that test and the two F7 layout tests ran 3 times each on chromium-desktop, chromium-phone and webkit-phone: 30 passed, and the 6 skips are the Chromium-only shift test on WebKit.
 
 **Status:** Accepted.
+
+### D-522 · While the 3D view is open, the flat board's turn is hidden · 2026-11-27
+
+M14's walkthrough, finding 3: with the view open, the flat board's Underside and Top stayed beside the view's own Top and Underside. The page had two buttons of each name, and the board's "Top" stayed pressed whatever the camera showed.
+
+**Decision:** the turn's two buttons show where `state.turns` is true: the store can turn the board (`canTurn`) and the 3D view is closed. The view's own Top and Underside, in "Views of the board", are the only ones while it is open. On close the board's come back, pressed as they were, since closing the view changes no side. Their row, empty while the view is open, takes no room (`.cbuild-picture--3d .cbuild-picture__turn`). The server's state has `turns` false, as it has `canTurn` false, so a page without the script shows neither.
+
+- **Why hide, not join them.** The flat board shows one of two sides; the camera has five places, and Side and the close-ups are neither. A pressed "Top" that followed the camera would be wrong at three of them.
+
+**Tests:**
+
+- **`three-store.test.ts` "hides the board's turn while open, and shows it again once closed, where the store can turn it".** Before the fix: `AssertionError: expected undefined to be true`. The deliberate break, the getter as `canTurn` alone: `expected true to be false`, at :165.
+- **`3d.spec.ts` "while open, one Top and one Underside show, the view's, and the board's come back on close as they were",** on chromium-desktop and chromium-phone. Before the fix, and with the same break: `Error: Top`, `toHaveCount` expected 1, received 2, at :975.
+
+**Status:** Accepted.

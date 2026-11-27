@@ -92,6 +92,8 @@ interface State {
 	added: boolean;
 	canCopy: boolean;
 	canTurn: boolean;
+	/** Whether the turn's two buttons show: once the store runs, and not while the 3D view is open, whose own Top and Underside move its camera (D-522). */
+	readonly turns: boolean;
 	live: boolean;
 	turning: boolean;
 	/** The route's rate limit, in its words, while the step waits to be asked again; empty otherwise. */
@@ -1809,6 +1811,9 @@ const { state } = store(
 				playing: false,
 			},
 			missing: '',
+			get turns(): boolean {
+				return state.canTurn && ! state.three.open;
+			},
 			get dimmed(): boolean {
 				return state.live && false === state.view.bar?.next.ready;
 			},

@@ -179,6 +179,9 @@ final class BuilderPage {
 					// Set by the store, which turns the board over with the button by it; without the script the
 					// step's own side is shown (#46).
 					'canTurn' => false,
+					// Whether the turn's two buttons show: once the store runs, and not while the 3D view is open, whose
+					// own Top and Underside move its camera (D-522). The store works it out; the server's page has neither.
+					'turns'   => false,
 					// Set by the store once it runs: the shelf's chips and Sort then send themselves, and their Apply
 					// buttons, for a page with no script, are hidden (D-266).
 					'live'    => false,

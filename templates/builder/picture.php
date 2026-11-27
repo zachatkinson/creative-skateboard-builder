@@ -38,8 +38,8 @@ defined( 'ABSPATH' ) || exit;
 	<?php // The turn and View in 3D, in one row that wraps (F7, D-483). ?>
 	<div class="cbuild-picture__controls">
 		<div class="cbuild-picture__turn" data-wp-bind--hidden="!state.view.picture.turnable">
-			<?php // A toggle button a side, each named the same whichever is pressed, in a group named by the heading a sighted shopper reads (D-369). ?>
-			<div class="cbuild-picture__sides" role="group" aria-labelledby="cbuild-picture-heading" data-wp-bind--hidden="!state.canTurn">
+			<?php // A toggle button a side, each named the same whichever is pressed, in a group named by the heading a sighted shopper reads (D-369). Hidden while the 3D view is open, whose own Top and Underside move its camera (D-522). ?>
+			<div class="cbuild-picture__sides" role="group" aria-labelledby="cbuild-picture-heading" data-wp-bind--hidden="!state.turns">
 				<button class="cbuild-button" type="button" data-wp-bind--aria-pressed="!state.view.picture.turned" data-wp-on--click="actions.under" data-wp-text="state.view.picture.sides.under"></button>
 				<button class="cbuild-button" type="button" data-wp-bind--aria-pressed="state.view.picture.turned" data-wp-on--click="actions.over" data-wp-text="state.view.picture.sides.top"></button>
 			</div>
