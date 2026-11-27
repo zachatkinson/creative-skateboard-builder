@@ -563,6 +563,7 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-466 · My builds, the deck page's start button and the bar run their key browser tests on Kadence and Storefront too](#d-466--my-builds-the-deck-pages-start-button-and-the-bar-run-their-key-browser-tests-on-kadence-and-storefront-too--2026-11-26)
 - [D-486 · Two flakes settled: #93 closed on its evidence, and #110's mask taken off](#d-486--two-flakes-settled-93-closed-on-its-evidence-and-110s-mask-taken-off--2026-11-26)
 - [D-519 · The test themes get fixed menus and widget areas, and the visual run starts on a reset site](#d-519--the-test-themes-get-fixed-menus-and-widget-areas-and-the-visual-run-starts-on-a-reset-site--2026-11-27)
+- [D-527 · The axe states test brings a control cut by the stacked bar or stage into view before each check](#d-527--the-axe-states-test-brings-a-control-cut-by-the-stacked-bar-or-stage-into-view-before-each-check--2026-11-27)
 - [D-529 · The 3D tests' walk to the cart waits for what each press promises](#d-529--the-3d-tests-walk-to-the-cart-waits-for-what-each-press-promises--2026-11-27)
 
 ### Releases and the repository
@@ -7650,5 +7651,15 @@ The same held on Twenty Twenty-Five, Kadence and Storefront, at the grip step wi
 The board's box is read from a screenshot of the canvas: each pixel unlike the frame's ground at the canvas's top right corner, where no place draws.
 
 **Tests:** `3d.spec.ts` "Side puts the board in the canvas's middle, and the close-up holds the whole nose (walkthrough #5, #6)". It passes on chromium-desktop and chromium-phone. It has no red line, since neither finding shows on this branch. Deliberate breaks: the point the camera turns about raised from 20 mm under the deck's top to 40 mm over it fails "Side: in the middle, 168 px above and 119 px below" (Received 49, expected at most 17.1, chromium-desktop); the close-up framing a quarter of the deck in place of half fails "the close-up: the nose clear of the side" (Received 0, chromium-phone).
+
+**Status:** Accepted.
+
+### D-527 · The axe states test brings a control cut by the stacked bar or stage into view before each check · 2026-11-27
+
+Milestone 14's full set: "passes axe on every state it shows" failed 3 of 3 on webkit-tablet at the blank start. axe's `target-size` named "Not sure of your width?", the bar's total and a width's chip, each partly under the stacked bar. D-519's fixed menus made the test themes' header shorter, so the builder stands higher on the iPad mini's 768 by 1024 screen and the width question's foot falls where the bar sticks over the window's foot. D-288 met the same on a Firefox tablet, and the test brought the width question into view for one state alone. A shopper scrolls a control into view before pressing it; axe counts a target the bar covers in part as too small wherever the page happens to stand.
+
+**Decision:** before each state's check, the test brings any control cut by the edge of a sticky cover, the stacked bar or the stage, into view, as a shopper scrolls to it (`scrollIntoView( { block: 'nearest' } )`, clear of both by the page's scroll padding), until none is cut, at most 8 times. A control inside a cover is its own, and is not counted. One that stays cut wherever the page stands, as a control the bar covers for good would, still fails, so the check is not weakened: it measures each target where a shopper can press it. Nothing in the product changes.
+
+**Tests:** `builder.spec.ts` "passes axe on every state it shows (Accessibility: axe on every state)". Without the helper, on webkit-tablet, it fails at tests/e2e/support/axe.ts:81, "webkit-tablet: the blank start", with `target-size` on `<summary …>Not sure of your width?</summary>`, the bar's `<summary class="cbuild-bar__total">` and the 8″ chip. With it, 3 of 3 passed on webkit-tablet, and it passes on chromium-desktop and chromium-phone. The run without the helper is the deliberate break.
 
 **Status:** Accepted.

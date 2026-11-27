@@ -2432,8 +2432,61 @@ test.describe( 'The builder with JavaScript', () => {
 		// Axe on a dozen states: over the 60 s a test has on a slow WebKit runner (CI run 43461092467).
 		test.slow();
 		const region = '.cbuild';
-		const check = ( state: string ) =>
-			axe( page, `${ info.project.name }: ${ state }`, region );
+		// Stacked, the bar sticks at the window's foot and the stage at its top, so wherever the page happens to stand a
+		// control can be cut by one's edge, and axe counts a target it covers in part as too small: "Not sure of your
+		// width?" on a tablet (D-288, and at the blank start since D-519's shorter header, D-527). Before each state, a
+		// control cut by either edge is brought into view as a shopper scrolls to it, clear of both by the page's scroll
+		// padding, until none is. One that stays cut, as one the bar covers wherever the page stands would, still fails.
+		const clear = () =>
+			page.evaluate( () => {
+				const covers = [ '.cbuild-bar', '.cbuild__stage' ]
+					.map( ( selector ) =>
+						document.querySelector< HTMLElement >( selector )
+					)
+					.filter(
+						( cover ): cover is HTMLElement =>
+							null !== cover &&
+							cover.checkVisibility() &&
+							'sticky' === getComputedStyle( cover ).position
+					);
+				const cut = () =>
+					Array.from(
+						document.querySelectorAll< HTMLElement >(
+							'.cbuild :is(a[href], button, input, select, textarea, summary, [tabindex]:not([tabindex="-1"]))'
+						)
+					).find( ( target ) => {
+						if (
+							! target.checkVisibility() ||
+							covers.some( ( cover ) => cover.contains( target ) )
+						) {
+							return false;
+						}
+						const box = target.getBoundingClientRect();
+						return covers.some( ( cover ) => {
+							const edge = cover.getBoundingClientRect();
+							const across =
+								box.left < edge.right && box.right > edge.left;
+							return (
+								across &&
+								( ( box.top < edge.top &&
+									box.bottom > edge.top ) ||
+									( box.top < edge.bottom &&
+										box.bottom > edge.bottom ) )
+							);
+						} );
+					} );
+				for ( let tries = 0; tries < 8; tries++ ) {
+					const target = cut();
+					if ( ! target ) {
+						return;
+					}
+					target.scrollIntoView( { block: 'nearest' } );
+				}
+			} );
+		const check = async ( state: string ) => {
+			await clear();
+			await axe( page, `${ info.project.name }: ${ state }`, region );
+		};
 
 		// Stacked, the bar sticks over the screen's foot from the builder's top (D-382), so on a short phone
 		// (webkit-phone, 390 by 664) a page's first screen ends with "Back to the shop" partly under it, and axe counts a
