@@ -1667,6 +1667,66 @@ describe( 'the store', () => {
 		expect( state.status ).toBe( '2 parts no longer fit.' );
 	} );
 
+	// #135, D-397: a smart swap stays on the step and may take away the control pressed, so focus goes to its notice, and
+	// after the notice's Undo back to the swap that made it; the region says the build and total. #176.
+	it( "puts focus on a swap's notice, and after its Undo back on the swap pressed", async () => {
+		const div = builder();
+		div.insertAdjacentHTML(
+			'beforeend',
+			`<div class="cbuild-swapped" tabindex="-1">Swapped: trucks.
+				<a class="cbuild-swapped__undo" href="/?cbuild%5Bstep%5D=deck&_undo=1">Undo swap</a></div>
+			<a id="cbuild-swap-7" class="cbuild-swap" href="/?cbuild%5Bstep%5D=deck&swap=7">Swap</a>
+			<a class="cbuild-plain" href="/?cbuild%5Bstep%5D=deck&w=1">Width</a>`
+		);
+		const notice = div.querySelector< HTMLElement >( '.cbuild-swapped' )!;
+		const swap = div.querySelector< HTMLElement >( '#cbuild-swap-7' )!;
+		swap.tabIndex = 0;
+		const swappedView = {
+			...START,
+			status: 'Swapped: trucks. Total: $97.00.',
+			swapped: { shown: true },
+		};
+		reply = () => answer( swappedView );
+		setElement( swap );
+		await move();
+		expect( state.status ).toBe( 'Swapped: trucks. Total: $97.00.' );
+		vi.advanceTimersToNextFrame();
+		expect( div.ownerDocument.activeElement, 'the notice' ).toBe( notice );
+
+		// Undo: the notice is gone, and focus goes back to the swap that made it.
+		reply = () =>
+			answer( {
+				...START,
+				status: 'Undone.',
+				swapped: { shown: false },
+			} );
+		setElement( div.querySelector( '.cbuild-swapped__undo' ) );
+		await move();
+		expect( state.status ).toBe( 'Undone.' );
+		vi.advanceTimersToNextFrame();
+		expect( div.ownerDocument.activeElement, 'the swap pressed' ).toBe(
+			swap
+		);
+
+		// A swap pressed whose answer shows no notice: focus goes to the step's heading, not back to the swap.
+		reply = () => answer( { ...START, swapped: { shown: false } } );
+		div.ownerDocument.body.focus();
+		setElement( swap );
+		await move();
+		vi.advanceTimersToNextFrame();
+		expect( div.ownerDocument.activeElement, 'the heading' ).toBe(
+			div.querySelector( '.cbuild__heading' )
+		);
+
+		// A plain link that stays on the step is no swap: focus is left where it was.
+		swap.focus();
+		reply = () => answer( { ...START, swapped: { shown: true } } );
+		setElement( div.querySelector( '.cbuild-plain' ) );
+		await move();
+		vi.advanceTimersToNextFrame();
+		expect( div.ownerDocument.activeElement, 'left alone' ).toBe( swap );
+	} );
+
 	it( "takes a pick that opens the change panel as a step: a new entry, the panel's heading focused, the title", async () => {
 		const { radio } = form();
 		document.body.insertAdjacentHTML(
@@ -1805,6 +1865,32 @@ describe( 'the store', () => {
 			div.ownerDocument.activeElement,
 			'the shopper keeps their place, on the line that says the width'
 		).toBe( chosen!.querySelector( 'summary' ) );
+
+		// A browser drops focus to the page as the fold hides the button, before the frame: the line takes it all the
+		// same (#176).
+		chosen!.open = true;
+		width.focus();
+		await move();
+		width.blur();
+		expect( div.ownerDocument.activeElement ).toBe(
+			div.ownerDocument.body
+		);
+		vi.advanceTimersToNextFrame();
+		expect(
+			div.ownerDocument.activeElement,
+			'from the page, too, to the line that says the width'
+		).toBe( chosen!.querySelector( 'summary' ) );
+
+		// Focus the view has put elsewhere before the frame stays there (F35, D-516).
+		chosen!.open = true;
+		width.focus();
+		await move();
+		const heading = div.querySelector< HTMLElement >( '.cbuild__heading' )!;
+		heading.focus();
+		vi.advanceTimersToNextFrame();
+		expect( div.ownerDocument.activeElement, 'left where it was put' ).toBe(
+			heading
+		);
 	} );
 
 	it( 'puts focus on the first new card after Show more, and says how many were added', async () => {
