@@ -3178,8 +3178,10 @@
 	font-size: var(--cbuild-small);
 }
 
+/* A row of its own, after the picture's others: in the labels' row, as it was, it took the picture's one column and
+   pushed the labels into a column of their own beside it, where it ran into them (M14's walkthrough, D-525). */
 :where(.cbuild__stage .cbuild-3d__failed) {
-	grid-row: 4;
+	grid-row: 6;
 	grid-column: 1 / -1;
 }
 

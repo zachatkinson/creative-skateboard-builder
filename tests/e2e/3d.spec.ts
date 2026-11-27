@@ -1101,6 +1101,68 @@ test.describe( '3D view (milestone 14)', () => {
 		} );
 	}
 
+	// M14's walkthrough, finding 4: on a phone the fallback's message shared the parts' labels' row, squeezed into a
+	// column beside them that ended where "Bearings" began (D-525). Upright on a phone and on a desktop, it has a row of
+	// its own: no label, part or button shares its lines, or lies over it.
+	for ( const [ name, size ] of [
+		[ 'a phone', { width: 390, height: 844 } ],
+		[ 'a desktop', { width: 1440, height: 900 } ],
+	] as const ) {
+		test( `on ${ name } the fallback’s message has a place of its own`, async ( {
+			page,
+		} ) => {
+			await page.setViewportSize( size );
+			await page.addInitScript( () => {
+				HTMLCanvasElement.prototype.getContext = ( () =>
+					null ) as typeof HTMLCanvasElement.prototype.getContext;
+			} );
+			// The whole build, on the grip step, as the walkthrough had it: bearings and hardware have no layer image, so
+			// their labels are under the board.
+			const url = new URL( build( fixture().three.page ) );
+			for ( const [ slot, sku ] of [
+				[ 'bearings', 'builder-test-bearings' ],
+				[ 'hardware', 'builder-test-bolts-1' ],
+				[ 'grip', 'builder-test-grip' ],
+			] as const ) {
+				url.searchParams.set(
+					`cbuild[${ slot }]`,
+					String( fixture().parts[ sku ] )
+				);
+			}
+			url.searchParams.set( 'cbuild[step]', 'grip' );
+			await page.goto( url.toString() );
+			await page.locator( '.cbuild-3d__open' ).click();
+			const message = page.locator( '.cbuild-3d__failed' );
+			await expect( message ).toBeVisible();
+			const over = await message.evaluate( ( shown ) => {
+				const a = shown.getBoundingClientRect();
+				return [
+					...shown
+						.closest( '.cbuild__stage' )!
+						.querySelectorAll(
+							'.cbuild-picture__item, .cbuild-picture__label, button, .cbuild-board'
+						),
+				]
+					.filter(
+						( other ) =>
+							0 !== other.getClientRects().length &&
+							'hidden' !== getComputedStyle( other ).visibility
+					)
+					.filter( ( other ) => {
+						const b = other.getBoundingClientRect();
+						return (
+							b.width > 0 && a.top < b.bottom && a.bottom > b.top
+						);
+					} )
+					.map(
+						( other ) =>
+							`${ String( other.className ) } ${ other.textContent?.trim() }`
+					);
+			} );
+			expect( over, 'what shares the message’s lines' ).toEqual( [] );
+		} );
+	}
+
 	// The auditor's M14 review, F7: View in 3D shared the turn's cell, and covered its buttons at 320 px in French; on
 	// a phone held sideways it took a row of its own, so the board was smaller before the press. Upright it now goes
 	// beside the heading, the board's box as with no 3D view; sideways the strip grows to hold it, the board its size

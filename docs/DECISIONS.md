@@ -7636,3 +7636,13 @@ M14's walkthrough, finding 2: on a phone held sideways with the view open, the f
 **Tests:** `3d.spec.ts` "on a phone held sideways in English, and in French, the open view covers none of the controls, and View in 3D closes it", on chromium-desktop and chromium-phone. Before the fix: `Error: controls under View in 3D`, with `DIV cbuild-3d__frame` and `CANVAS cbuild-3d__canvas` received, at :1096. The deliberate break, the `grid-area` line alone taken out: the same red line.
 
 **Status:** Accepted.
+
+### D-525 · The 3D view's fallback message has a row of its own, under the picture's others · 2026-11-27
+
+M14's walkthrough, finding 4: on a phone, where the browser could not draw the view, the message "The 3D view can't be shown here, so the board is drawn flat" ran into the board's "Bearings" label. It was placed in the stage's fourth row, the parts' labels' row. There it took the picture's one column, and the grid put the labels in a column of their own beside it, where the two met.
+
+**Decision:** the message goes in a sixth row, after every row the picture's other pieces use (the stage's template has five; the sixth is implicit and sized to the message), across the full width as before. Nothing shares its lines on a phone or a desktop.
+
+**Tests:** `3d.spec.ts` "on a phone, and on a desktop, the fallback's message has a place of its own", on chromium-desktop and chromium-phone, with the whole build on the grip step as the walkthrough had it. Before the fix, on a phone: `Error: what shares the message's lines`, received the `cbuild-picture__item` and `cbuild-picture__label` of "Bearings" and "Hardware: 1″", at :1162. The desktop case passed before and after; it holds the desktop as it was. The deliberate break, the row put back to 4: the same red line.
+
+**Status:** Accepted.
