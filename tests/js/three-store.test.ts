@@ -62,8 +62,11 @@ function page( canvas = true ): HTMLCanvasElement | null {
 	document.body.innerHTML = `
 		<div class="cbuild">
 			<p class="cbuild__status"></p>
+			<button type="button" class="cbuild-3d__open">View in 3D</button>
 			<div class="cbuild-3d">
-				${ canvas ? '<canvas class="cbuild-3d__canvas"></canvas>' : '' }
+				<div class="cbuild-3d__stage">
+				${ canvas ? '<canvas class="cbuild-3d__canvas" tabindex="0"></canvas>' : '' }
+				</div>
 				<button type="button" value="top">Top</button>
 				<button type="button" value="nowhere">Nowhere</button>
 				<button type="button" value="kickflip">Kickflip</button>
@@ -99,6 +102,8 @@ beforeEach( () => {
 
 afterEach( () => {
 	document.body.innerHTML = '';
+	vi.restoreAllMocks();
+	vi.useRealTimers();
 } );
 
 describe( 'View in 3D', () => {
@@ -233,9 +238,7 @@ describe( 'each view in 3D', () => {
 		};
 		callbacks.scene();
 		expect( drawn.show ).toHaveBeenLastCalledWith( next, true );
-		state.view = { step: { slot: 'deck' } };
-		callbacks.scene();
-		expect( drawn.show ).toHaveBeenLastCalledWith( null, false );
+		// A view with no scene closes the view (F6, below), so the view never draws none.
 	} );
 } );
 
@@ -372,5 +375,123 @@ describe( 'the picture’s renderers', () => {
 		}
 		expect( trickOf( 'nollie' ) ).toBeNull();
 		expect( trickOf( undefined ) ).toBeNull();
+	} );
+} );
+
+// The auditor's M14 review, F6: a view whose scene went, a deck sold out or a step back to before one, left the view
+// open on a blank canvas with View in 3D hidden. It closes, and the board is shown again (D-482).
+describe( 'the scene gone', () => {
+	it( 'closes the open view where the view has no scene', async () => {
+		page();
+		await actions.three();
+		state.view = { step: { slot: 'deck' }, scene: null };
+		callbacks.scene();
+		expect( drawn.close ).toHaveBeenCalledTimes( 1 );
+		expect( state.three.open ).toBe( false );
+		expect( state.three.failed ).toBe( false );
+		expect( drawn.show ).toHaveBeenCalledTimes( 1 );
+	} );
+
+	it( 'leaves a view still loading closed where its scene goes', async () => {
+		page();
+		const pressed = actions.three();
+		state.view = { step: { slot: 'deck' } };
+		callbacks.scene();
+		expect( state.three.loading ).toBe( false );
+		await pressed;
+		expect( opened.open ).not.toHaveBeenCalled();
+		expect( state.three.open ).toBe( false );
+	} );
+
+	it( 'draws nothing and closes nothing with the view closed', () => {
+		page();
+		state.view = { step: { slot: 'deck' } };
+		callbacks.scene();
+		expect( drawn.close ).not.toHaveBeenCalled();
+		expect( drawn.show ).not.toHaveBeenCalled();
+	} );
+} );
+
+// The auditor's M14 review, F8: a failure said nothing to a developer or a shop. It is warned in the console with
+// what failed, and sent as `cbuild:3d-failed` with the kit and why (D-481).
+describe( 'a failure told', () => {
+	/**
+	 * Hear the builder's cbuild:3d-failed events.
+	 */
+	function heard(): unknown[] {
+		const details: unknown[] = [];
+		document
+			.querySelector( '.cbuild' )!
+			.addEventListener( 'cbuild:3d-failed', ( event ) =>
+				details.push( ( event as CustomEvent ).detail )
+			);
+		return details;
+	}
+
+	it( 'warns and sends each reason: no WebGL 2, a lost context, an error', async () => {
+		const warned = vi
+			.spyOn( console, 'warn' )
+			.mockImplementation( () => undefined );
+		page();
+		state.view = { ...state.view, kit: 7 };
+		const details = heard();
+		const thrown = new Error( 'Error creating WebGL context.' );
+		opened.open.mockImplementationOnce( () => {
+			throw thrown;
+		} );
+		await actions.three();
+		expect( warned ).toHaveBeenLastCalledWith(
+			'The 3D view stopped (webgl).',
+			thrown
+		);
+		await actions.three();
+		const lost = new Event( 'webglcontextlost' );
+		opened.open.mock.calls[ 1 ]![ 0 ].failed( lost );
+		expect( warned ).toHaveBeenLastCalledWith(
+			'The 3D view stopped (lost).',
+			lost
+		);
+		await actions.three();
+		const drawing = new Error( 'a shader' );
+		opened.open.mock.calls[ 2 ]![ 0 ].failed( drawing );
+		await actions.three();
+		opened.open.mock.calls[ 3 ]![ 0 ].failed( new Event( 'error' ) );
+		drawn.show.mockImplementationOnce( () => {
+			throw drawing;
+		} );
+		await actions.three();
+		expect( warned ).toHaveBeenLastCalledWith(
+			'The 3D view stopped (error).',
+			drawing
+		);
+		expect( details ).toEqual( [
+			{ kit: 7, reason: 'webgl' },
+			{ kit: 7, reason: 'lost' },
+			{ kit: 7, reason: 'error' },
+			{ kit: 7, reason: 'error' },
+			{ kit: 7, reason: 'error' },
+		] );
+		expect( state.three.failed ).toBe( true );
+	} );
+
+	it( 'gives focus in the view to View in 3D once it fails, and leaves focus elsewhere where it is', async () => {
+		vi.useFakeTimers( { toFake: [ 'requestAnimationFrame' ] } );
+		vi.spyOn( console, 'warn' ).mockImplementation( () => undefined );
+		const canvas = page()!;
+		await actions.three();
+		canvas.focus();
+		opened.open.mock.calls[ 0 ]![ 0 ].failed( new Error( 'lost' ) );
+		vi.advanceTimersToNextFrame();
+		const open = document.querySelector( '.cbuild-3d__open' );
+		expect( canvas.ownerDocument.activeElement ).toBe( open );
+		const other = document.querySelector< HTMLElement >( '[value=top]' )!;
+		other.focus();
+		await actions.three();
+		document.body.append( other );
+		other.focus();
+		opened.open.mock.calls[ 1 ]![ 0 ].failed( new Error( 'lost' ) );
+		vi.advanceTimersToNextFrame();
+		expect( canvas.ownerDocument.activeElement ).toBe( other );
+		vi.useRealTimers();
 	} );
 } );

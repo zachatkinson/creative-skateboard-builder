@@ -120,6 +120,7 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-287 · The specs CSV reads and writes a part's Layer image, by ID or file name, by the field's rules](#d-287--the-specs-csv-reads-and-writes-a-parts-layer-image-by-id-or-file-name-by-the-fields-rules--2026-11-19)
 - [D-472 · The 3D view's five optional specs, and a kick angle in whole degrees](#d-472--the-3d-views-five-optional-specs-and-a-kick-angle-in-whole-degrees--2026-11-26)
 - [D-473 · The 3D view's usual values, from published deck and truck specs](#d-473--the-3d-views-usual-values-from-published-deck-and-truck-specs--2026-11-26)
+- [D-485 · Site Health leaves out a size only the 3D view assumes](#d-485--site-health-leaves-out-a-size-only-the-3d-view-assumes--2026-11-26)
 
 ### Kits and their settings
 
@@ -163,6 +164,7 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-407 · A place just above the step's cards for another plugin's element](#d-407--a-place-just-above-the-steps-cards-for-another-plugins-element--2026-11-25)
 - [D-478 · A ready build drawn from the layers is marked drawn, and Help me choose's builds get a place](#d-478--a-ready-build-drawn-from-the-layers-is-marked-drawn-and-help-me-chooses-builds-get-a-place--2026-11-26)
 - [D-517 · cbuild:rendered is sent in the task that draws the answer, not a frame later](#d-517--cbuildrendered-is-sent-in-the-task-that-draws-the-answer-not-a-frame-later--2026-11-26)
+- [D-487 · The state route's view stays private, but for its scene and its 3D switches](#d-487--the-state-routes-view-stays-private-but-for-its-scene-and-its-3d-switches--2026-11-26)
 
 ### The builder page
 
@@ -295,6 +297,7 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-432 · After a swap the notice says the swap and the status the build alone, so a screen reader hears it once](#d-432--after-a-swap-the-notice-says-the-swap-and-the-status-the-build-alone-so-a-screen-reader-hears-it-once--2026-11-25)
 - [D-514 · Focused, the start button keeps the outline's ground and words, and gives up only its ring](#d-514--focused-the-start-button-keeps-the-outlines-ground-and-words-and-gives-up-only-its-ring--2026-11-26)
 - [D-516 · Show builds takes focus to the builds, and Skip shuts the questions and takes it to the step](#d-516--show-builds-takes-focus-to-the-builds-and-skip-shuts-the-questions-and-takes-it-to-the-step--2026-11-26)
+- [D-479 · Help me choose's press is the move's own, handed back with its answer alone](#d-479--help-me-chooses-press-is-the-moves-own-handed-back-with-its-answer-alone--2026-11-26)
 - [D-388 · Focus is kept clear of what the bar says over itself, in Firefox too](#d-388--focus-is-kept-clear-of-what-the-bar-says-over-itself-in-firefox-too--2026-11-24)
 
 ### Motion
@@ -358,6 +361,11 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-502 · The trick buttons are the server's, play on a press alone, and wait for each other](#d-502--the-trick-buttons-are-the-servers-play-on-a-press-alone-and-wait-for-each-other--2026-11-26)
 - [D-503 · With reduced motion no trick is offered](#d-503--with-reduced-motion-no-trick-is-offered--2026-11-26)
 - [D-504 · During a trick the camera waits](#d-504--during-a-trick-the-camera-waits--2026-11-26)
+- [D-480 · When the 3D view fails with focus in it, focus goes to View in 3D](#d-480--when-the-3d-view-fails-with-focus-in-it-focus-goes-to-view-in-3d--2026-11-26)
+- [D-481 · A 3D view's failure is warned in the console and sent as cbuild:3d-failed](#d-481--a-3d-views-failure-is-warned-in-the-console-and-sent-as-cbuild3d-failed--2026-11-26)
+- [D-482 · The 3D view closes where the view has no scene](#d-482--the-3d-view-closes-where-the-view-has-no-scene--2026-11-26)
+- [D-483 · View in 3D shares a row with the turn, goes by the heading when upright, and the sideways strip grows to hold it](#d-483--view-in-3d-shares-a-row-with-the-turn-goes-by-the-heading-when-upright-and-the-sideways-strip-grows-to-hold-it--2026-11-26)
+- [D-484 · The 3D view's note says where usual sizes stood in, and the side line hides over the view](#d-484--the-3d-views-note-says-where-usual-sizes-stood-in-and-the-side-line-hides-over-the-view--2026-11-26)
 - [D-505 · Every generated face is wound to look out, the deck's edge among them](#d-505--every-generated-face-is-wound-to-look-out-the-decks-edge-among-them--2026-11-26)
 - [D-506 · A textured part is drawn in its colour until its image arrives](#d-506--a-textured-part-is-drawn-in-its-colour-until-its-image-arrives--2026-11-26)
 - [D-507 · One finger turns the 3D view about its upright alone](#d-507--one-finger-turns-the-3d-view-about-its-upright-alone--2026-11-26)
@@ -392,6 +400,8 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-335 · Add to cart leaves the Mini-Cart's count to WooCommerce, and three choices from milestone 11's audit](#d-335--add-to-cart-leaves-the-mini-carts-count-to-woocommerce-and-three-choices-from-milestone-11s-audit--2026-11-23)
 - [D-352 · A build's add keeps the cart before it answers](#d-352--a-builds-add-keeps-the-cart-before-it-answers--2026-11-24)
 - [D-375 · The kit's assembly time in business days, and the parts and their quantities, for a plugin that dates a delivery](#d-375--the-kits-assembly-time-in-business-days-and-the-parts-and-their-quantities-for-a-plugin-that-dates-a-delivery--2026-11-24)
+- [D-488 · The delivery filters are given the kit line an Edit build would replace, by its cart key](#d-488--the-delivery-filters-are-given-the-kit-line-an-edit-build-would-replace-by-its-cart-key--2026-11-26)
+- [D-489 · Creative Checkout answers the delivery filters for a shopper with no address](#d-489--creative-checkout-answers-the-delivery-filters-for-a-shopper-with-no-address--2026-11-26)
 
 ### Saved builds and privacy
 
@@ -548,6 +558,7 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-431 · Every browser test passes when it runs alone](#d-431--every-browser-test-passes-when-it-runs-alone--2026-11-25)
 - [D-511 · The browser tests' lock reads the clock once to judge a lock and to give up on it](#d-511--the-browser-tests-lock-reads-the-clock-once-to-judge-a-lock-and-to-give-up-on-it--2026-11-26)
 - [D-466 · My builds, the deck page's start button and the bar run their key browser tests on Kadence and Storefront too](#d-466--my-builds-the-deck-pages-start-button-and-the-bar-run-their-key-browser-tests-on-kadence-and-storefront-too--2026-11-26)
+- [D-486 · Two flakes settled: #93 closed on its evidence, and #110's mask taken off](#d-486--two-flakes-settled-93-closed-on-its-evidence-and-110s-mask-taken-off--2026-11-26)
 
 ### Releases and the repository
 
@@ -7330,6 +7341,148 @@ Cowork's review of 1.3.0, F39 (#162). A 118 px element put in `.cbuild-step__abo
 
 **Status:** Accepted.
 
+### D-479 · Help me choose's press is the move's own, handed back with its answer alone · 2026-11-26
+
+The auditor's M14 review, F3. D-516 kept Show builds' and Skip's press in one variable, set at the press and cleared only when an answer was said. A press that never answered left it set: a later move overtook it, the route's limit answered it, or the request was given up. A pick's own answer replaces the history entry and never read it, so the auditor's case of a plain pick showed nothing. The next answer that moved did: a pick that opened the change panel emptied the status, so its count went unsaid, and Back went to the builds' heading in place of the step's.
+
+**Decision:** the press goes with the move. `Move` has an optional `press`, Show builds or Skip, and the navigator hands it to `show()` with that move's answer alone. An answer dropped, refused or given up takes its press with it, and no other move's answer can read one. The store's navigator is private (D-148), so this changes no public API item.
+
+**Tests.** store.test.ts, "Show builds overtaken": a pick that overtakes the press and opens the change panel; the same pick after a press a 429 answered; Back after a 429; and the press's own answers, Show builds to the builds and Skip to the step with the questions shut.
+
+- **Red runs:** "expected '' to be '1 part no longer fits.'" (store.test.ts, both picks); "expected <h3 …(2)></h3> to be <h2 class="cbuild__heading" …(1)></h2>" (Back).
+- **Deliberate break:** the navigator not handing the press on fails the press's own test: "expected '1 part no longer fits.' to be ''".
+
+**Status:** Accepted.
+
+### D-480 · When the 3D view fails with focus in it, focus goes to View in 3D · 2026-11-26
+
+The auditor's M14 review, F2. `fell()` hid the view and moved no focus, so a lost context or a draw error while the canvas or a camera button had focus left focus on `<body>` (WCAG 2.4.3).
+
+**Decision:** where focus was in `.cbuild-3d__stage` when the view fails, it goes to View in 3D on the next frame, the control that opened the view and now shows it closed. The board itself is not focusable, and the message under it is said once by the status region (D-494). Focus anywhere else is left where it is.
+
+**Tests.** three-store.test.ts, "gives focus in the view to View in 3D once it fails, and leaves focus elsewhere where it is"; 3d.spec.ts, "a lost context goes back to the board" now focuses the canvas first and expects View in 3D focused.
+
+- **Red runs:** "expected <canvas …(2)></canvas> to be <button type="button" …(1)></button>" (three-store.test.ts); "expect(locator).toBeFocused() failed … Received: inactive" (3d.spec.ts, chromium-desktop and chromium-phone).
+- **Deliberate break:** with the focus left out, the store test fails with the same line.
+
+**Status:** Accepted.
+
+### D-481 · A 3D view's failure is warned in the console and sent as cbuild:3d-failed · 2026-11-26
+
+The auditor's M14 review, F8. A failure logged nothing, so neither a developer nor a shop could tell how often, or why, shoppers got the flat board.
+
+**Decision:** `fell()` warns in the console with what failed, and sends `cbuild:3d-failed` on `.cbuild`, bubbling, with `{ kit, reason }`. The reason is one of four codes the store can tell apart: `load` (the chunk's import rejected), `webgl` (`open()` threw, as it does without WebGL 2), `lost` (a `webglcontextlost` event) and `error` (anything else thrown while it drew, or by its first draw). Like the other events it carries IDs and codes alone, and the plugin sends nothing anywhere itself. It is a new public item: in `docs/HOOKS.md`'s events with `@since 1.4.0`, in the snapshot and in the changelog.
+
+**Tests.** three-store.test.ts, "warns and sends each reason: no WebGL 2, a lost context, an error"; 3d.spec.ts, the lost context hears `lost`, and the script that throws hears `load` and its warning.
+
+- **Red runs:** "expected last "warn" call to have been called with [ Array(2) ]" (three-store.test.ts); 3d.spec.ts "an error thrown in the view goes back to the board": "expect(received).toEqual(expected) … Received + 1" (no event).
+- **Deliberate break:** the event sent under another name: "expected [] to deeply equal [ { kit: 7, reason: 'webgl' }, …(4) ]".
+
+**Status:** Accepted.
+
+### D-482 · The 3D view closes where the view has no scene · 2026-11-26
+
+The auditor's M14 review, F6. With the view open, an answer with no scene, such as a deck sold out or Back to a step before a deck, left the canvas blank and View in 3D hidden with it, so nothing closed the view.
+
+**Decision:** `callbacks.scene` closes the view, as a second press of View in 3D does, where the view has no scene and the 3D view is open or loading. Its message does not show: nothing failed. A view that is loading stays closed when its script arrives, as one pressed again does. One existing assertion, that an open view was told to draw no scene, is replaced by these tests.
+
+**Tests.** three-store.test.ts, "the scene gone": an open view closes, a loading one stays closed, and with the view closed nothing is drawn or closed.
+
+- **Red runs:** "expected "vi.fn()" to be called 1 times, but got 0 times" (the close) and "expected true to be false" (`loading`).
+- **Deliberate break:** with the check left out, both fail with the same lines.
+
+**Status:** Accepted.
+
+### D-483 · View in 3D shares a row with the turn, goes by the heading when upright, and the sideways strip grows to hold it · 2026-11-26
+
+The auditor's M14 review, F7. View in 3D shared the turn's grid cell, at its start, with Underside and Top at its end. At 320 px in French it covered Underside (WCAG 2.5.8). On a phone held sideways it took a fifth row, so the board was smaller before the press than with 3D off.
+
+**Decision:**
+
+- **The markup.** View in 3D leaves `.cbuild-3d` for a template of its own, `three-open.php`. It sits with the turn in `.cbuild-picture__controls`, a row that wraps, after the turn in the page, so a press of View in 3D is followed by the canvas it opens (the keyboard test that tabs from it to the canvas still holds). It shows only where the view has a scene, as `.cbuild-3d` does. The wrapper is not a public class.
+- **Desktop, and a short screen at 64rem or wider.** The row wraps, View in 3D at its start and the turn at its end.
+- **Stacked and upright.** At 320 px there is no room in the turn's row for View in 3D beside Underside and Top, in English or French. A row of its own would take the board's height. So View in 3D goes beside the heading and the side line, at their end, where the side line leaves room, as the turn does on a short screen. It overhangs the side line's row by what its 44 px target needs past the two lines, so neither row grows. The board's box is identical with 3D on and off.
+- **A phone held sideways.** The strip is about 133 px high, and its words column is 13rem. In French the heading, the side line and Dessous/Dessus, which wrap to two lines, already take 134.6 px with no 3D view. No place in the column holds a fourth 44 px target without the column growing. The target is not shrunk, and nothing covers the board or hides the side line (the coordinator's call). Where the kit offers the view, the strip's height is `auto`, at least its usual height, so it holds View in 3D after the turn. The board keeps its size and sits in the middle of the taller strip, 24 px lower: 193 px in place of 133 px at 844 by 390.
+
+**Why the sideways board may move under D-498.** D-498 compares the page with the view on and off for files, LCP and layout shift, so that the view costs nothing before the press. Nothing shifts here: View in 3D is in the server's first paint, its place kept while the script loads, so the strip is taller from the start. The page scrolls in landscape anyway. The board's size is the same, and every child of the strip is inside it, so nothing overlaps what is below or is clipped.
+
+**Tests.** 3d.spec.ts, "in French at 320 px wide…" and "in French at a phone held sideways, View in 3D covers nothing, the board keeps its size and the strip holds it all". Each checks that View in 3D, the turn's buttons and the board are apart, View in 3D at least 44 px high, every child box inside the stage, and no more layout shift from the first paint to ready than with 3D off. Upright the board's box is identical to the one with 3D off; sideways its size is.
+
+- **Red runs** on the old stylesheet and templates (chromium-desktop and chromium-phone): "View in 3D and a turn button: Expected: true, Received: false" at 320 px; the board's box "Expected - 2, Received + 2" sideways.
+
+**Status:** Accepted.
+
+### D-484 · The 3D view's note says where usual sizes stood in, and the side line hides over the view · 2026-11-26
+
+The auditor's M14 review, F13. The note under the canvas said "Sizes true to scale, shapes simplified." even where `scene.assumed` listed specs a usual value stood in for. The side line, such as "Seen from underneath", stayed over the 3D view, whose camera keeps no side.
+
+**Decision:**
+
+- **The note.** The template writes both sentences, the second "Sizes to scale, with usual sizes where a part lists none. Shapes simplified." It picks one by whether the scene assumed anything, and the store shows the one each view calls for. The binding reads `state.view.scene.assumed.0`, the first key or nothing. A spec key is never "0", so the path is true in PHP and in the store alike. An empty list would be true in one and false in the other, and `length` would set `hidden="0"` on the server. The note's paragraph keeps its ID for the canvas's description, which leaves out the hidden sentence.
+- **The side line.** It is hidden under `.cbuild-picture--3d`, its row kept so the canvas is where the board was, and shows again once the view closes.
+
+**Tests.** ThreeViewTest, "the note says usual sizes stood in where any was assumed": the template with a deck missing its wheelbase, and with nothing assumed, checked as written and as WordPress processes the directives. 3d.spec.ts, "hides the side line while the view is open, and shows it again once it closes".
+
+- **Red runs:** "Failed asserting that '<div class="cbuild-3d" …' matches PCRE pattern" (ThreeViewTest.php:195); "expect(locator).toBeHidden() failed … Received: visible" (3d.spec.ts:804, chromium-desktop and chromium-phone).
+- **Deliberate break:** the template's choice inverted: "Failed asserting that '<button class="cbuild-button cbuild-3d__open" …' matches PCRE pattern" (ThreeViewTest.php:196).
+
+**Status:** Accepted.
+
+### D-485 · Site Health leaves out a size only the 3D view assumes · 2026-11-26
+
+M14's audit, F4. Every new kit has the 3D view on (D-476), and the Catalogue check lists each deck or wheel the view assumes a usual size for (D-473). `Health::catalogue()` counted each of those as a thing to fix, so after an update Site Health said "found N things to fix" for specs no part had before 1.4.0, though every one of those parts is offered and drawn.
+
+**Decision:** `Health::catalogue()` skips an `spec_assumed` finding whose note is `scene_assumed`, as it skips `look_shared` and `part_not_offered`: said on the Catalogue check, not counted as a fix. A rule's own assumption (a hole pattern, an axle) is still counted, since a fit was judged without it.
+
+**Test.** HealthTest, "a size only the 3d view assumes is said not counted as a fix": two scene findings give GOOD and nothing counted, and a rule's assumption beside them gives one finding on one part. Red run: "Failed asserting that two arrays are identical" (HealthTest.php:224).
+
+**Status:** Accepted.
+
+### D-486 · Two flakes settled: #93 closed on its evidence, and #110's mask taken off · 2026-11-26
+
+M14's audit, S2: #93 and #110 had evidence written up on their issues, and no commit.
+
+**#93, Firefox never set the builder's ready mark (one CI sighting, run 44845495842, 22 November).** Tried on lane 1 on 24 November (about 4,950 loads), on lane 3 on 25 November (about 350 under load) and on 26 November (about 100 beside a /verify): about 5,400 loads in all, every one setting the mark, and no CI run has shown it since. No plugin defect was found: the trace fits a stop inside the Interactivity runtime's hydration before its first region, not in the builder's script. **Decision:** close it, not quarantine it. "passes axe on every state it shows" is the axe gate and stays in every Firefox run. 1.2.0's diagnostics (`countStart()`, `startSeen()`) stay, so a next sighting says which of the runtime's three waits it stopped in, and opens a new issue with that.
+
+**#110, "Show the parts" drawn a pixel lower in the review shot.** 2 failures in 360 runs on 24 November, before D-415 made the shot wait for a still page; none in 560 on 25 November and none in 180 on 26 November since. **Decision:** the review shot compares `.cbuild-bar__more` again; only the share link, whose words are the site's own IDs, stays masked. The proof: with the link unmasked, the 18 review shots made as baselines in Playwright's container (`tools/visual.sh`), then `--repeat-each=10` over them: 180 of 180 passed on lane 1, beside the other lanes' runs. The scratch baselines were then put back, and none is committed from the lane: on m14-3d the committed start shots no longer match either (507 by 1407 against 1408 on the phones, 768 by 1334 against 1333 on the tablets, before any change of this lane's), and that one pixel is a layout change to be explained on the combined tree's visual run before any baseline is remade (D-162). That run is also CI's check that the unmasked link holds.
+
+**Status:** Accepted.
+
+### D-487 · The state route's view stays private, but for its scene and its 3D switches · 2026-11-26
+
+M14's audit, S3. `docs/HOOKS.md` says the state route's `view` is the builder's own and may change in any release, yet 1.4.0 documents `view.scene` (as `cbuild_scene` answers it) and `view.three` (for a theme styling the 3D view) as `@since 1.4.0`. A reader could not tell which rule held.
+
+**Decision:** `view` stays private, with one stated exception: `view.scene` and `view.three` are public from 1.4.0, each with a row in the state route's table, and follow Semantic Versioning as every other public item does. Nothing else under `view` is. They are not renamed or moved out of `view`, since both are already published in `schema/state.json` and renaming a public item is Zach's call.
+
+**Gate.** `composer api:check` holds HOOKS.md's rows against the snapshot.
+
+**Status:** Accepted.
+
+### D-488 · The delivery filters are given the kit line an Edit build would replace, by its cart key · 2026-11-26
+
+Creative Checkout 1.7.1's ask (#168, approved by Zach for 1.4.0 on 26 November). Checkout counts the cart to say how far a build is from free shipping. On an Edit build it counted the build being edited beside the new one, so the line said less was needed than was. Checkout already reads a `replace` key in both filters' `$context` and leaves that line out.
+
+**Decision:**
+
+- **What it holds.** Cowork's note asked for "the cart key of the kit line a build would replace". The builder's private `_replace` is the build's own identifier (`_cbuild_id`), not WooCommerce's cart key, so `Front\Delivery` finds the kit line whose build has that identifier and sends that line's cart key. Only a kit line carries a build. With no `_replace`, or one no kit line of this shopper's holds, it sends ''.
+- **Where the cart comes from.** WooCommerce loads no cart for a REST request, and the state route does not load one (D-138). `Port\Cart::held()` reads the lines from the cart where the request loaded it, and otherwise from the session's own copy (`cart`, includes/class-wc-cart-session.php:125 and :304, WooCommerce 11.3.1), making the session as `shopper()` does: the cookie is read and none is set. It is asked only where a `_replace` is sent.
+- **Nothing leaks.** The key is given to the filters alone, never put in the answer, and only a line of the visitor's own session can match. A value in the identifiers' shape that names a cart key, a part's line or another shopper's build gives ''.
+- **An addition only.** `replace` comes after 1.2.0's keys, and no key changes. A container an earlier release built gives `Delivery` no cart, and says ''.
+
+**Tests.** DeliveryTest, "both filters are given the cart key of the kit line an edit build would replace": two builds in the cart, the state route asked with each one's `_replace`, none, a build no line holds, a cart key, a part's line, a build removed, the session alone with no cart, and another shopper's session. The 1.2.0 context tests gain `replace` at the end. Red run: "Undefined array key "replace"" (DeliveryTest.php:333). Deliberate break, the match never true: "Failed asserting that two strings are identical" (DeliveryTest.php:337).
+
+**Status:** Accepted.
+
+### D-489 · Creative Checkout answers the delivery filters for a shopper with no address · 2026-11-26
+
+Creative Checkout 1.7.1 answers `cbuild_arrival_estimate` and `cbuild_delivery_line` for any shopper with a session, an address held or not. D-166 had the builder word the line from the shipping zones where nobody answered, and say nothing where the shop held no address. Zach accepted Checkout's change on 26 November.
+
+**Decision:** nothing in the builder changes. With Checkout active, its answer is the line for every shopper with a session, and the builder's own words show only to a visitor with no session, where Checkout has nothing to read. D-166 stands for a shop without Checkout. `docs/HOOKS.md` says so under the filters, with a note on tax: `total` follows the shop's price display (`woocommerce_tax_display_shop`, through `wc_get_price_to_display()`), while the cart and its free-shipping minimum follow the cart's (`woocommerce_tax_display_cart`), so a shop that shows one with tax and the other without sees a plugin's line off by the tax.
+
+**The fallback tests still hold.** DeliveryTest's "a shopper with no address held is not guessed at and a guest is given no session" and "with nobody answering and no address there is nothing to show" have no filter answering, so they test the builder's own words, which is what D-166 still describes. None of them assumes that a plugin says nothing for a shopper with a session.
+
+**Status:** Accepted.
+
 ### D-506 · A textured part is drawn in its colour until its image arrives · 2026-11-26
 
 The audit's F1, and the spec reviewer's S1. `material()` in `parts.ts` set a part white with its texture as the map as soon as the texture object existed, and `TextureLoader.load()` in `index.ts` was given no way to say an image failed. A texture with no image draws black in three.js. So the deck's graphic, the grip and a wheel drew black until their images arrived, and stayed black on a 404.
@@ -7347,6 +7500,9 @@ The audit's F14, found by lane 3's real swipe test for S7. With `touch-action: p
 The finding offered two fixes: lock the polar angle while one finger is down, or ignore a one-finger move that is mostly vertical. The second needs a threshold, and a slow diagonal drag would still tilt the board on its first moves. The first is exact.
 
 **Decision:** while exactly one touch pointer is down on the canvas, the stage sets OrbitControls' `minPolarAngle` and `maxPolarAngle` to the camera's present polar angle, so one finger turns the board about its upright and never tilts it. A second finger, the finger lifting, or the browser cancelling it for the pan lets the range go back to 0 to π. Two fingers pinch as before. A mouse, the keys and the camera buttons still tilt.
+
+- **One finger's drag is also held back until it shows its way.** A capture listener on the window, ahead of the controls' own on the canvas, keeps the finger's moves from them until the drag has gone `SWIPE` (8 CSS pixels). If it went further sideways than up or down, it's a turn, and the controls get the rest. Otherwise it's the page's swipe to the end, and they get none of it. A real finger drifts sideways as it swipes, and the pitch lock alone would let that drift turn the board.
+- **The browser test reads the camera, not the pixels.** The probe reports the camera's position and the point it turns about, and the swipe test holds each to a hundredth of a millimetre. Its first byte-exact comparison of the canvas failed now and then under load, with the camera unmoved.
 
 - **Tests:** lane 3's `3d.spec.ts` "on a touch screen a vertical swipe over the canvas scrolls the page and leaves the camera", on chromium-phone; and `three-stage.test.ts` for one finger, two, a mouse and a cancel.
 

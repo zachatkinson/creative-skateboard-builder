@@ -32,6 +32,7 @@ This is version 1.4.0.
 * **Parts kept out, from 1.2.0.** A part's Part specs can keep it out of the builder while it stays in the shop.
 * **Compare, from 1.3.0.** Under My builds, a customer can see up to three saved builds side by side at today's prices, with what differs said in words.
 * **Help me choose, from 1.3.0.** At the builder's start, a shopper can answer a shoe size, where they skate and a budget, each optional, and see up to three ready builds from parts in stock that fit, with why.
+* **The 3D view, from 1.4.0.** Where a kit turns it on, the shopper can turn and zoom the build in 3D, drawn to scale from the parts' sizes, and see it from the top, the underside or close to the graphic. Where the browser can't draw it, the board is drawn flat as before.
 
 = Accessibility and languages =
 
@@ -40,6 +41,10 @@ It works with a keyboard and a screen reader, on a phone, without JavaScript, in
 = Requirements =
 
 The plugin needs WooCommerce 11.2 or newer, WordPress 7.0 or newer and PHP 8.5 or newer. Below any of them it does nothing and says so on the Plugins screen.
+
+= Third-party code =
+
+The 3D view uses three.js 0.187.0 (https://threejs.org), copyright 2010 to 2026 the three.js authors, under the MIT License, which is compatible with the GPL. Its license is in `licenses/three.js.txt`.
 
 == Installation ==
 

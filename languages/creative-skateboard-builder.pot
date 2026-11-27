@@ -9,7 +9,7 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-11-26T22:35:08+00:00\n"
+"POT-Creation-Date: 2026-11-27T05:04:15+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: creative-skateboard-builder\n"
@@ -3333,11 +3333,11 @@ msgstr ""
 msgid "A saved build"
 msgstr ""
 
-#: src/Front/PageHooks.php:329
+#: src/Front/PageHooks.php:309
 msgid "Skateboard kit"
 msgstr ""
 
-#: src/Front/PageHooks.php:330
+#: src/Front/PageHooks.php:310
 msgid "A kit product: its builder at the page's width, then its description, specs and reviews."
 msgstr ""
 
@@ -5316,71 +5316,75 @@ msgstr ""
 msgid "View cart"
 msgstr ""
 
-#: templates/builder/three.php:24
+#: templates/builder/three-open.php:17
 msgid "View in 3D"
 msgstr ""
 
-#: templates/builder/three.php:30
+#: templates/builder/three.php:34
 msgid "Sizes true to scale, shapes simplified."
 msgstr ""
 
-#: templates/builder/three.php:31
+#: templates/builder/three.php:34
+msgid "Sizes to scale, with usual sizes where a part lists none. Shapes simplified."
+msgstr ""
+
+#: templates/builder/three.php:35
 msgid "Drag or use the arrow keys to turn the board, and + and − to zoom."
 msgstr ""
 
-#: templates/builder/three.php:32
+#: templates/builder/three.php:36
 msgid "Views of the board"
 msgstr ""
 
-#: templates/builder/three.php:33
+#: templates/builder/three.php:37
 msgid "Reset view"
 msgstr ""
 
-#: templates/builder/three.php:34
+#: templates/builder/three.php:38
 msgctxt "a view of the board in 3D"
 msgid "Top"
 msgstr ""
 
-#: templates/builder/three.php:35
+#: templates/builder/three.php:39
 msgctxt "a view of the board in 3D"
 msgid "Underside"
 msgstr ""
 
-#: templates/builder/three.php:36
+#: templates/builder/three.php:40
 msgid "Graphic close-up"
-msgstr ""
-
-#: templates/builder/three.php:43
-msgctxt "a skateboard trick"
-msgid "Ollie"
-msgstr ""
-
-#: templates/builder/three.php:44
-msgctxt "a skateboard trick"
-msgid "Kickflip"
-msgstr ""
-
-#: templates/builder/three.php:45
-msgctxt "a skateboard trick"
-msgid "Heelflip"
-msgstr ""
-
-#: templates/builder/three.php:46
-msgctxt "a skateboard trick"
-msgid "Pop shove-it"
 msgstr ""
 
 #: templates/builder/three.php:47
 msgctxt "a skateboard trick"
-msgid "360 flip"
+msgid "Ollie"
+msgstr ""
+
+#: templates/builder/three.php:48
+msgctxt "a skateboard trick"
+msgid "Kickflip"
+msgstr ""
+
+#: templates/builder/three.php:49
+msgctxt "a skateboard trick"
+msgid "Heelflip"
 msgstr ""
 
 #: templates/builder/three.php:50
+msgctxt "a skateboard trick"
+msgid "Pop shove-it"
+msgstr ""
+
+#: templates/builder/three.php:51
+msgctxt "a skateboard trick"
+msgid "360 flip"
+msgstr ""
+
+#: templates/builder/three.php:54
 msgctxt "skateboard tricks the 3D view plays"
 msgid "Tricks"
 msgstr ""
 
-#: templates/builder/three.php:57
+#: templates/builder/three.php:61
 msgid "The 3D view can’t be shown here, so the board is drawn flat."
 msgstr ""
 

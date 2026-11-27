@@ -94,6 +94,7 @@ final class ThreeViewTest extends IntegrationTestCase {
 	private static function rendered( array $view ): string {
 		$shown = array( 'view' => $view );
 		ob_start();
+		require CBUILD_PATH . 'templates/builder/three-open.php';
 		require CBUILD_PATH . 'templates/builder/three.php';
 		return (string) ob_get_clean();
 	}
@@ -171,5 +172,35 @@ final class ThreeViewTest extends IntegrationTestCase {
 		self::assertStringContainsString( '>View in 3D</button>', $off );
 		self::assertStringNotContainsString( 'cbuild-3d__tricks', $off );
 		self::assertStringNotContainsString( 'actions.trick', $off );
+	}
+
+	/**
+	 * The auditor's M14 review, F13: the note said "Sizes true to scale" where a usual value stood in for a size. The
+	 * server picks the words by whether anything was assumed, and the store's path for them reads the same in PHP as
+	 * in the browser (D-484).
+	 */
+	public function test_the_note_says_usual_sizes_stood_in_where_any_was_assumed(): void {
+		$true    = 'Sizes true to scale, shapes simplified.';
+		$usual   = 'Sizes to scale, with usual sizes where a part lists none. Shapes simplified.';
+		$view    = $this->view( array( 'view_3d' => true ), array( 'deck' => (string) $this->deck ) );
+		$assumed = $view['scene']['assumed'] ?? array();
+		self::assertIsArray( $assumed );
+		self::assertNotSame( array(), $assumed, 'The deck has no wheelbase, so its usual one stands in.' );
+		$exact                     = $view;
+		$exact['scene']['assumed'] = array();
+		foreach ( array(
+			'assumed' => array( $view, $usual, $true ),
+			'exact'   => array( $exact, $true, $usual ),
+		) as $case => [ $shown_view, $said, $unsaid ] ) {
+			$html = self::rendered( $shown_view );
+			self::assertMatchesRegularExpression( '~<span data-wp-bind--hidden="!?state\.view\.scene\.assumed\.0">' . preg_quote( $said, '~' ) . '</span>~', $html, $case );
+			self::assertMatchesRegularExpression( '~<span hidden data-wp-bind--hidden="!?state\.view\.scene\.assumed\.0">' . preg_quote( $unsaid, '~' ) . '</span>~', $html, $case );
+			// The directives, as WordPress processes them on the page, keep the server's choice.
+			// A store of its own a case: WordPress merges each state given into the one before.
+			wp_interactivity_state( 'cbuild-note-' . $case, array( 'view' => $shown_view ) );
+			$processed = wp_interactivity_process_directives( '<div data-wp-interactive="cbuild-note-' . $case . '">' . $html . '</div>' );
+			self::assertMatchesRegularExpression( '~<span\s+data-wp-bind--hidden="[^"]*">' . preg_quote( $said, '~' ) . '</span>~', $processed, $case );
+			self::assertMatchesRegularExpression( '~<span hidden[^>]*>' . preg_quote( $unsaid, '~' ) . '</span>~', $processed, $case );
+		}
 	}
 }

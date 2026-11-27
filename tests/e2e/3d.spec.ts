@@ -150,7 +150,23 @@ async function open( page: Page ) {
 }
 
 /**
- * The 2D board is back, the message under it, and the build goes on: Next still takes the shopper on.
+ * Pick a part on the step shown, and send the step with Next, waiting for the step after.
+ *
+ * @param page The page.
+ * @param name The part's product name.
+ * @param step The next step's heading.
+ */
+async function onward( page: Page, name: string, step: RegExp ) {
+	await page
+		.getByRole( 'radio', { name: `Choose ${ name }`, exact: true } )
+		.check();
+	await page.getByRole( 'button', { name: /^Next/ } ).click();
+	await expect( page.locator( '#cbuild-heading' ) ).toHaveText( step );
+}
+
+/**
+ * The 2D board is back, the message under it, and the build goes on: Next takes the shopper to the review, and Add to
+ * cart puts the build in the cart (the spec reviewer's M14 review, S6).
  *
  * @param page The page.
  */
@@ -168,7 +184,51 @@ async function flat( page: Page ) {
 	).toBeVisible();
 	await page.getByRole( 'button', { name: /^Next/ } ).click();
 	await expect( page.locator( '#cbuild-heading' ) ).toHaveText( /bearings/i );
+	await onward( page, 'Builder test bearings', /hardware/i );
+	await onward( page, 'Builder test bolts 1', /grip/i );
+	await onward( page, 'Builder test grip', /check your build/i );
+	await page
+		.locator( '.cbuild' )
+		.getByRole( 'button', { name: 'Add to cart' } )
+		.click();
+	await expect
+		.poll( async () => {
+			const cart = await (
+				await page.request.get( '/wp-json/wc/store/v1/cart' )
+			).json();
+			return cart.items.map( ( item: { name: string } ) => item.name );
+		} )
+		.toEqual(
+			expect.arrayContaining( [
+				'Builder test deck 8.0',
+				'Builder test bearings',
+				'Builder test grip',
+			] )
+		);
 }
+
+/**
+ * Hear the builder's `cbuild:3d-failed` events, from before the page's scripts run.
+ *
+ * @param page The page.
+ */
+async function hearFailures( page: Page ) {
+	await page.addInitScript( () => {
+		const heard: unknown[] = [];
+		( window as Window & { cbuildFailed?: unknown[] } ).cbuildFailed =
+			heard;
+		document.addEventListener( 'cbuild:3d-failed', ( event ) =>
+			heard.push( ( event as CustomEvent ).detail )
+		);
+	} );
+}
+
+const failures = ( page: Page ): Promise< unknown[] > =>
+	page.evaluate(
+		() =>
+			( window as Window & { cbuildFailed?: unknown[] } ).cbuildFailed ??
+			[]
+	);
 
 test.describe( '3D view (milestone 14)', () => {
 	test.skip(
@@ -685,8 +745,7 @@ test.describe( '3D view (milestone 14)', () => {
 		);
 		await still( page );
 		const box = ( await canvas.boundingBox() )!;
-		const before = await canvas.screenshot();
-		const board = ( await probe( page ) )?.board;
+		const shown = ( await probe( page ) )!;
 		const from = await page.evaluate( () => window.scrollY );
 		const session = await page.context().newCDPSession( page );
 		await session.send( 'Input.synthesizeScrollGesture', {
@@ -700,10 +759,18 @@ test.describe( '3D view (milestone 14)', () => {
 		await expect
 			.poll( () => page.evaluate( () => window.scrollY ) )
 			.toBeGreaterThan( from + 40 );
-		// The camera did not turn: the view draws the board as it did before the swipe, from where it was.
+		// The camera did not turn: its place and the point it turns about are where they were, to a hundredth of a
+		// millimetre, and the board has not moved. Read from the probe, not the pixels, which a late frame changes.
 		await still( page );
-		expect( await canvas.screenshot() ).toEqual( before );
-		expect( ( await probe( page ) )?.board ).toEqual( board );
+		const now = ( await probe( page ) )!;
+		expect( now.camera ).toHaveLength( 6 );
+		now.camera.forEach( ( at, axis ) =>
+			expect( at, `the camera's ${ axis }` ).toBeCloseTo(
+				shown.camera[ axis ]!,
+				2
+			)
+		);
+		expect( now.board ).toEqual( shown.board );
 	} );
 
 	// D-468: a plugin blurs the view by class, the deck's from cbuild_part_classes, and puts its veil in the frame,
@@ -824,7 +891,10 @@ test.describe( '3D view (milestone 14)', () => {
 	} );
 
 	test( 'a lost context goes back to the board', async ( { page } ) => {
+		await hearFailures( page );
 		await open( page );
+		// The auditor's M14 review, F2: focus in the view, which hides, goes to View in 3D, not to the page.
+		await page.locator( '.cbuild-3d__canvas' ).focus();
 		await page.evaluate( () =>
 			document
 				.querySelector< HTMLCanvasElement >( '.cbuild-3d__canvas' )
@@ -832,6 +902,13 @@ test.describe( '3D view (milestone 14)', () => {
 				?.getExtension( 'WEBGL_lose_context' )
 				?.loseContext()
 		);
+		await expect(
+			page.getByRole( 'button', { name: 'View in 3D' } )
+		).toBeFocused();
+		// F8: the reason is told, for a shop's analytics.
+		expect( await failures( page ) ).toEqual( [
+			{ kit: fixture().three.kit, reason: 'lost' },
+		] );
 		await flat( page );
 	} );
 
@@ -844,10 +921,216 @@ test.describe( '3D view (milestone 14)', () => {
 				body: 'throw new Error( "A test’s error." );',
 			} )
 		);
+		await hearFailures( page );
+		const warned: string[] = [];
+		page.on( 'console', ( message ) => {
+			if ( 'warning' === message.type() ) {
+				warned.push( message.text() );
+			}
+		} );
 		await page.goto( build( fixture().three.page ) );
 		await page.getByRole( 'button', { name: 'View in 3D' } ).click();
+		await expect
+			.poll( () => failures( page ) )
+			.toEqual( [ { kit: fixture().three.kit, reason: 'load' } ] );
+		expect( warned ).toContainEqual(
+			expect.stringContaining( 'The 3D view stopped (load).' )
+		);
 		await flat( page );
 	} );
+
+	// The auditor's M14 review, F13: the side line names a side the 3D view's camera does not keep.
+	test( 'hides the side line while the view is open, and shows it again once it closes', async ( {
+		page,
+	} ) => {
+		await open( page );
+		await expect( page.locator( '.cbuild-picture__side' ) ).toBeHidden();
+		await page.getByRole( 'button', { name: 'View in 3D' } ).click();
+		await expect( page.locator( '.cbuild-picture__side' ) ).toBeVisible();
+	} );
+
+	// The auditor's M14 review, F7: View in 3D shared the turn's cell, and covered its buttons at 320 px in French; on
+	// a phone held sideways it took a row of its own, so the board was smaller before the press. Upright it now goes
+	// beside the heading, the board's box as with no 3D view; sideways the strip grows to hold it, the board its size
+	// kept, from the first paint (D-483).
+	for ( const [ name, size ] of [
+		[ '320 px wide', { width: 320, height: 640 } ],
+		[ 'a phone held sideways', { width: 844, height: 390 } ],
+	] as const ) {
+		test( `in French at ${ name }, View in 3D covers nothing, the board keeps its size and the strip holds it all`, async ( {
+			page,
+		} ) => {
+			test.skip(
+				'chromium' !== page.context().browser()?.browserType().name(),
+				'Layout shift entries are Chromium’s; the other engines lay the strip out as their own projects show.'
+			);
+			await page.setViewportSize( size );
+			await page.setExtraHTTPHeaders( {
+				'x-cbuild-e2e-locale': 'fr_CA',
+				'x-cbuild-e2e-translated': '1',
+			} );
+			const measured = async ( address: string ) => {
+				await page.goto( build( address ) );
+				await expect(
+					page.locator( '.cbuild[data-ready]' )
+				).toBeVisible();
+				return page.evaluate(
+					() =>
+						new Promise< {
+							boxes: Record< string, number[] >;
+							turns: number[][];
+							inside: string[];
+							shifts: number;
+						} >( ( done ) => {
+							const box = ( element: Element | null ) => {
+								const r = element?.getBoundingClientRect();
+								return r ? [ r.x, r.y, r.width, r.height ] : [];
+							};
+							// Text kept for screen readers alone, clipped to a pixel, as the stage's caption is.
+							const forReaders = ( element: Element ) => {
+								for (
+									let at: Element | null = element;
+									at;
+									at = at.parentElement
+								) {
+									if (
+										'none' !==
+										getComputedStyle( at ).clipPath
+									) {
+										return true;
+									}
+								}
+								return false;
+							};
+							const stage =
+								document.querySelector( '.cbuild__stage' )!;
+							const edge = stage.getBoundingClientRect();
+							// Every child the stage shows, each whole inside it.
+							const inside = [ ...stage.querySelectorAll( '*' ) ]
+								.filter( ( element ) => {
+									const r = element.getBoundingClientRect();
+									return (
+										r.width > 0 &&
+										r.height > 0 &&
+										'hidden' !==
+											getComputedStyle( element )
+												.visibility &&
+										null ===
+											element.closest(
+												'[hidden], .cbuild-3d__stage'
+											) &&
+										! forReaders( element )
+									);
+								} )
+								.filter( ( element ) => {
+									const r = element.getBoundingClientRect();
+									return (
+										r.top < edge.top - 0.5 ||
+										r.bottom > edge.bottom + 0.5 ||
+										r.left < edge.left - 0.5 ||
+										r.right > edge.right + 0.5
+									);
+								} )
+								.map( ( element ) =>
+									String( element.className )
+								);
+							// The builder's own layout shifts from the first paint to ready.
+							let shifts = 0;
+							new PerformanceObserver( ( list ) => {
+								for ( const entry of list.getEntries() as ( PerformanceEntry & {
+									value: number;
+									hadRecentInput: boolean;
+									sources?: { node?: Node | null }[];
+								} )[] ) {
+									const ours = ( entry.sources ?? [] ).some(
+										( source ) => {
+											const node = source.node;
+											const element =
+												node instanceof Element
+													? node
+													: ( node?.parentElement ??
+														null );
+											return (
+												null !==
+												element?.closest( '.cbuild' )
+											);
+										}
+									);
+									shifts +=
+										entry.hadRecentInput || ! ours
+											? 0
+											: entry.value;
+								}
+							} ).observe( {
+								type: 'layout-shift',
+								buffered: true,
+							} );
+							setTimeout(
+								() =>
+									done( {
+										boxes: {
+											board: box(
+												document.querySelector(
+													'.cbuild__stage .cbuild-board'
+												)
+											),
+											open: box(
+												document.querySelector(
+													'.cbuild-3d__open'
+												)
+											),
+										},
+										turns: [
+											...document.querySelectorAll(
+												'.cbuild-picture__sides .cbuild-button'
+											),
+										].map( box ),
+										inside,
+										shifts,
+									} ),
+								500
+							);
+						} )
+				);
+			};
+			const off = await measured( fixture().page );
+			const on = await measured( fixture().three.page );
+			const [ , , width, height ] = off.boxes.board!;
+			if ( size.width < 700 ) {
+				// Upright, the board's box is the one with no 3D view.
+				expect( on.boxes.board ).toEqual( off.boxes.board );
+			} else {
+				expect( on.boxes.board!.slice( 2 ) ).toEqual( [
+					width,
+					height,
+				] );
+			}
+			const apart = ( one: number[], other: number[] ) =>
+				one[ 0 ]! >= other[ 0 ]! + other[ 2 ]! ||
+				other[ 0 ]! >= one[ 0 ]! + one[ 2 ]! ||
+				one[ 1 ]! >= other[ 1 ]! + other[ 3 ]! ||
+				other[ 1 ]! >= one[ 1 ]! + one[ 3 ]!;
+			expect( on.turns ).toHaveLength( 2 );
+			for ( const turn of on.turns ) {
+				expect(
+					apart( on.boxes.open!, turn ),
+					'View in 3D and a turn button'
+				).toBe( true );
+				expect(
+					apart( on.boxes.board!, turn ),
+					'the board and a turn button'
+				).toBe( true );
+			}
+			expect(
+				apart( on.boxes.open!, on.boxes.board! ),
+				'View in 3D and the board'
+			).toBe( true );
+			expect( on.boxes.open![ 3 ] ).toBeGreaterThanOrEqual( 44 );
+			expect( on.inside, 'outside the stage' ).toEqual( [] );
+			// No shift from the first paint to ready past the page's with no 3D view, as the CLS check below measures.
+			expect( on.shifts ).toBeLessThanOrEqual( off.shifts + 0.001 );
+		} );
+	}
 
 	test( 'with 3D on, the page before the press is the page with it off', async ( {
 		page,

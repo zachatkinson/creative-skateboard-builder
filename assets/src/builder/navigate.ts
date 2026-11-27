@@ -39,6 +39,11 @@ export interface Move {
 	history?: 'push' | 'replace';
 	/** What happens without JavaScript: the form sent, the link followed, the page reloaded. */
 	fallback: () => void;
+	/**
+	 * Help me choose's press that made the move, if one did: Show builds or Skip. Handed back with the move's own
+	 * answer alone, so an answer to a later move, or none, never takes it (the auditor's M14 review, F3; D-479).
+	 */
+	press?: 'show' | 'skip';
 }
 
 /**
@@ -54,9 +59,14 @@ export interface Deps {
 	fetch: ( input: string, init?: RequestInit ) => Promise< Response >;
 	/**
 	 * Shows a view, told how the move that brought it treats history: a pick replaces, a step pushes. Answers how
-	 * history treats the view as shown, which is the move's unless the view is a step of its own.
+	 * history treats the view as shown, which is the move's unless the view is a step of its own. The move's press
+	 * comes with its answer.
 	 */
-	show: ( view: View, history: Move[ 'history' ] ) => Move[ 'history' ];
+	show: (
+		view: View,
+		history: Move[ 'history' ],
+		press?: Move[ 'press' ]
+	) => Move[ 'history' ];
 	pending: ( on: boolean ) => void;
 	/** Says the route's rate limit is reached, in its own words, which say when to try again. */
 	limited: ( message: string ) => void;
@@ -295,7 +305,7 @@ export class Navigator {
 				this.deps.limited( view.message );
 				return;
 			}
-			const history = this.deps.show( view, move.history );
+			const history = this.deps.show( view, move.history, move.press );
 			if ( 'push' === history ) {
 				this.deps.push( view.url );
 			} else if ( 'replace' === history ) {

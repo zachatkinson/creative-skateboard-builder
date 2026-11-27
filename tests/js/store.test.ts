@@ -5175,3 +5175,163 @@ describe( 'what the stage plays as a view comes in', () => {
 		}
 	} );
 } );
+
+// The auditor's M14 review, F3: Show builds' press was held until an answer came, so a pick that overtook it, or a
+// limit that answered it, left it set. A pick's own answer replaces the entry and so never read it, but the next answer
+// that moves did: a pick that opens the change panel lost its count, and Back went to the guide's builds. The press is
+// the move's own, and only the move's answer acts on it.
+describe( 'Show builds overtaken', () => {
+	const PANEL = {
+		...START,
+		url: window.location.origin + '/?changes',
+		isChanges: true,
+		status: '1 part no longer fits.',
+	};
+	const BACK = {
+		...START,
+		url: window.location.origin + '/?back',
+		step: { slot: 'wheels' },
+		guide: { shown: true, asked: true },
+	};
+
+	/**
+	 * The guide's questions and the step's cards in a builder, its init run on it.
+	 */
+	function guided(): {
+		guide: HTMLFormElement;
+		show: HTMLButtonElement;
+		radio: HTMLInputElement;
+	} {
+		document.body.innerHTML = `
+			<div class="cbuild">
+				<h2 class="cbuild__heading" tabindex="-1">Step</h2>
+				<h3 class="cbuild-changes__heading" tabindex="-1">Changes</h3>
+				<h3 class="cbuild-guide__heading" tabindex="-1">Builds</h3>
+				<form class="cbuild-guide__form" method="get" action="/">
+					<input type="hidden" name="cbuild[guide][budget]" value="150">
+					<button type="submit" name="cbuild[step]" value="deck">Show builds</button>
+				</form>
+				<form method="get" action="/">
+					<input type="radio" name="cbuild[deck]" value="11">
+				</form>
+			</div>`;
+		setElement( document.querySelector< HTMLElement >( '.cbuild' ) );
+		(
+			defined.definition as { callbacks: { init: () => void } }
+		 ).callbacks.init();
+		return {
+			guide: document.querySelector( '.cbuild-guide__form' )!,
+			show: document.querySelector( '.cbuild-guide__form button' )!,
+			radio: document.querySelector( 'input[type=radio]' )!,
+		};
+	}
+
+	/**
+	 * Press Show builds.
+	 *
+	 * @param guide The guide's form.
+	 * @param show  Its button.
+	 */
+	function press( guide: HTMLFormElement, show: HTMLButtonElement ): void {
+		setElement( guide );
+		actions.submit(
+			new SubmitEvent( 'submit', { submitter: show, cancelable: true } )
+		);
+	}
+
+	/**
+	 * Pick the card, its answer the change panel, and wait for it and the frame after.
+	 *
+	 * @param radio The card's radio.
+	 */
+	async function pick( radio: HTMLInputElement ): Promise< void > {
+		reply = () => answer( PANEL );
+		radio.checked = true;
+		actions.pick( { target: radio } as unknown as Event );
+		vi.advanceTimersByTime( WAIT );
+		await settle();
+		vi.advanceTimersToNextFrame();
+	}
+
+	it( 'takes Show builds’ own answer to the builds, and Skip’s to the step with the questions shut', async () => {
+		const { guide, show } = guided();
+		document
+			.querySelector( '.cbuild' )!
+			.insertAdjacentHTML(
+				'beforeend',
+				'<details class="cbuild-guide__ask" open><summary>Ask</summary></details><a class="cbuild-guide__skip" href="/?cbuild%5Bstep%5D=deck">Skip</a>'
+			);
+		reply = () =>
+			answer( {
+				...PANEL,
+				isChanges: false,
+				guide: { shown: true, asked: true },
+			} );
+		press( guide, show );
+		await settle();
+		vi.advanceTimersToNextFrame();
+		expect( state.status ).toBe( '' );
+		expect( guide.ownerDocument.activeElement ).toBe(
+			document.querySelector( '.cbuild-guide__heading' )
+		);
+		reply = () =>
+			answer( { ...BACK, guide: { shown: true, asked: true } } );
+		setElement( document.querySelector( '.cbuild-guide__skip' ) );
+		actions.follow(
+			new MouseEvent( 'click', { cancelable: true, button: 0 } )
+		);
+		await settle();
+		vi.advanceTimersToNextFrame();
+		expect(
+			document
+				.querySelector( '.cbuild-guide__ask' )!
+				.hasAttribute( 'open' )
+		).toBe( false );
+		expect( guide.ownerDocument.activeElement ).toBe(
+			document.querySelector( '.cbuild__heading' )
+		);
+	} );
+
+	it( 'says the count of a pick that overtakes the press and opens the change panel', async () => {
+		const { guide, show, radio } = guided();
+		reply = () => new Promise< Response >( () => undefined );
+		press( guide, show );
+		await pick( radio );
+		expect( state.status ).toBe( PANEL.status );
+		expect( radio.ownerDocument.activeElement ).toBe(
+			document.querySelector( '.cbuild-changes__heading' )
+		);
+	} );
+
+	it( 'says the count of the pick after a press a limit answered', async () => {
+		const { guide, show, radio } = guided();
+		reply = () =>
+			new Response( JSON.stringify( { message: 'Wait a moment.' } ), {
+				status: 429,
+				headers: { 'Content-Type': 'application/json' },
+			} );
+		press( guide, show );
+		await settle();
+		expect( state.limited ).toBe( 'Wait a moment.' );
+		await pick( radio );
+		expect( state.status ).toBe( PANEL.status );
+	} );
+
+	it( 'takes Back after a press a limit answered to the step’s heading, not the builds', async () => {
+		const { guide, show } = guided();
+		reply = () =>
+			new Response( JSON.stringify( { message: 'Wait a moment.' } ), {
+				status: 429,
+				headers: { 'Content-Type': 'application/json' },
+			} );
+		press( guide, show );
+		await settle();
+		reply = () => answer( BACK );
+		actions.back();
+		await settle();
+		vi.advanceTimersToNextFrame();
+		expect( guide.ownerDocument.activeElement ).toBe(
+			document.querySelector( '.cbuild__heading' )
+		);
+	} );
+} );

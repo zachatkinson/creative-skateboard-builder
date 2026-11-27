@@ -557,7 +557,7 @@ final class StateAnswer {
 				'estimate' => null === $state->estimate ? null : $money( $state->estimate->total ),
 			),
 			'picture'           => $this->picture( $state, $counted, $labels, $brands, $cards ),
-			'delivery'          => $this->delivery->said( $state->id, $state->quote->assembly, $state->quote->total, $decimals, $state->quote->lines ),
+			'delivery'          => $this->delivery->said( $state->id, $state->quote->assembly, $state->quote->total, $decimals, $state->quote->lines, $link->replace ),
 			'notes'             => self::notes( $state, $decimals ),
 			// The shelf is the step's, so a view comes with the step it lists.
 			'shelf'             => null === $view || null === $current ? null : self::shelf( $view, $state->step, static fn( Option $shown ): array => $option( $shown, $state->step, $current ), $current ),

@@ -180,6 +180,7 @@
         "creative-skateboard-builder"
     ],
     "css_classes": [
+        "cbuild-3d",
         "cbuild-3d__canvas",
         "cbuild-3d__failed",
         "cbuild-3d__frame",
@@ -205,6 +206,7 @@
         "cbuild-part",
         "cbuild-part__slot",
         "cbuild-picture",
+        "cbuild-picture--3d",
         "cbuild-picture__item",
         "cbuild-preset__photo",
         "cbuild-preset__photo--drawn",
@@ -217,6 +219,7 @@
         "cbuild__stage"
     ],
     "dom_events": [
+        "cbuild:3d-failed",
         "cbuild:added",
         "cbuild:pick",
         "cbuild:rendered"

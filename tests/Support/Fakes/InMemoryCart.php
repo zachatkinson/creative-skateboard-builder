@@ -85,6 +85,10 @@ final class InMemoryCart implements Cart {
 		return $this->lines;
 	}
 
+	public function held(): array {
+		return $this->lines;
+	}
+
 	public function add( int $part, int $quantity, string $kit, string $slot ): ?string {
 		if ( in_array( $part, $this->refuses, true ) ) {
 			return null;

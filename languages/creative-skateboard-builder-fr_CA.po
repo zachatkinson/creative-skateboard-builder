@@ -4077,11 +4077,11 @@ msgstr "%s de moins"
 msgid "Also in %s"
 msgstr "Aussi en %s"
 
-#: src/Front/PageHooks.php:329
+#: src/Front/PageHooks.php:309
 msgid "Skateboard kit"
 msgstr "Planche en kit"
 
-#: src/Front/PageHooks.php:330
+#: src/Front/PageHooks.php:310
 msgid "A kit product: its builder at the page's width, then its description, specs and reviews."
 msgstr "Un produit en kit : son configurateur sur toute la largeur de la page, puis sa description, ses caractéristiques et ses avis."
 
@@ -5298,32 +5298,32 @@ msgctxt "the last two items in a list"
 msgid "%1$s and %2$s"
 msgstr "%1$s et %2$s"
 
-#: templates/builder/three.php:24
+#: templates/builder/three-open.php:17
 msgid "View in 3D"
 msgstr "Voir en 3D"
 
-#: templates/builder/three.php:30
+#: templates/builder/three.php:34
 msgid "Sizes true to scale, shapes simplified."
 msgstr "Tailles à l’échelle, formes simplifiées."
 
-#: templates/builder/three.php:31
+#: templates/builder/three.php:35
 msgid "Drag or use the arrow keys to turn the board, and + and − to zoom."
 msgstr "Faites glisser ou utilisez les flèches pour tourner la planche, et + et − pour zoomer."
 
-#: templates/builder/three.php:32
+#: templates/builder/three.php:36
 msgid "Views of the board"
 msgstr "Vues de la planche"
 
-#: templates/builder/three.php:33
+#: templates/builder/three.php:37
 msgid "Reset view"
 msgstr "Vue de départ"
 
-#: templates/builder/three.php:34
+#: templates/builder/three.php:38
 msgctxt "a view of the board in 3D"
 msgid "Top"
 msgstr "Dessus"
 
-#: templates/builder/three.php:35
+#: templates/builder/three.php:39
 msgctxt "a view of the board in 3D"
 msgid "Underside"
 msgstr "Dessous"
@@ -5420,3 +5420,7 @@ msgstr "Le champ %s est vide, donc la vue 3D dessine la valeur habituelle. La pi
 #, php-format
 msgid "No %s deck is in stock right now."
 msgstr "Aucune planche de %s n’est en stock en ce moment."
+
+#: templates/builder/three.php:34
+msgid "Sizes to scale, with usual sizes where a part lists none. Shapes simplified."
+msgstr "Tailles à l’échelle, avec des tailles courantes là où une pièce n’en indique pas. Formes simplifiées."

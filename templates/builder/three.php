@@ -1,7 +1,7 @@
 <?php
 /**
- * The 3D view (1.4.0, #139): "View in 3D" by the board, and, once pressed, the canvas in the board's place with the
- * camera's buttons under it. Only where the kit turns the view on; until a deck is picked there is no scene, and none
+ * The 3D view (1.4.0, #139): once "View in 3D" is pressed (three-open.php, in the row with the turn), the canvas in
+ * the board's place with the camera's buttons under it. Only where the kit turns the view on; until a deck is picked there is no scene, and none
  * of it shows. The store loads the 3D script on the press alone, so until then the page is the page without it.
  *
  * The canvas is named with the build's sentence, as the board's caption says it, and described by how to move it.
@@ -20,14 +20,18 @@ if ( true !== ( $shown['view']['three']['shown'] ?? false ) ) {
 }
 ?>
 <div class="cbuild-3d" data-wp-bind--hidden="!state.view.scene" data-wp-watch="callbacks.scene">
-	<?php // Without the script the button does nothing, so it shows once the store runs; its place is kept until then. ?>
-	<button class="cbuild-button cbuild-3d__open" type="button" data-wp-class--cbuild-3d__open--waiting="!state.live" data-wp-bind--aria-pressed="state.three.open" data-wp-bind--aria-busy="state.three.loading" data-wp-on--click="actions.three"><?php esc_html_e( 'View in 3D', 'creative-skateboard-builder' ); ?></button>
 	<div class="cbuild-3d__stage" data-wp-bind--hidden="!state.three.open">
 		<?php // The frame holds the canvas's place, so the size the canvas is drawn at never changes the page's layout. ?>
 		<div class="cbuild-3d__frame">
 			<canvas class="cbuild-3d__canvas" tabindex="0" role="img" aria-describedby="cbuild-3d-keys cbuild-3d-scale" data-wp-bind--class="state.view.three.canvas" data-wp-bind--aria-label="state.view.picture.description"></canvas>
 		</div>
-		<p class="cbuild-3d__note" id="cbuild-3d-scale"><?php esc_html_e( 'Sizes true to scale, shapes simplified.', 'creative-skateboard-builder' ); ?></p>
+		<?php
+		// Whether a usual value stood in for any size: the server picks the words, and the store shows the one the
+		// view's scene calls for. A spec key is never "0", so its first key read as a path is true in PHP and in the
+		// store alike, where an empty list would be true in one and false in the other (F13, D-484).
+		$cbuild_assumed = array() !== ( $shown['view']['scene']['assumed'] ?? array() );
+		?>
+		<p class="cbuild-3d__note" id="cbuild-3d-scale"><span<?php echo $cbuild_assumed ? ' hidden' : ''; ?> data-wp-bind--hidden="state.view.scene.assumed.0"><?php esc_html_e( 'Sizes true to scale, shapes simplified.', 'creative-skateboard-builder' ); ?></span><span<?php echo $cbuild_assumed ? '' : ' hidden'; ?> data-wp-bind--hidden="!state.view.scene.assumed.0"><?php esc_html_e( 'Sizes to scale, with usual sizes where a part lists none. Shapes simplified.', 'creative-skateboard-builder' ); ?></span></p>
 		<p class="cbuild-3d__keys" id="cbuild-3d-keys"><?php esc_html_e( 'Drag or use the arrow keys to turn the board, and + and − to zoom.', 'creative-skateboard-builder' ); ?></p>
 		<div class="cbuild-3d__places" role="group" aria-label="<?php esc_attr_e( 'Views of the board', 'creative-skateboard-builder' ); ?>">
 			<button class="cbuild-button" type="button" value="reset" data-wp-on--click="actions.look"><?php esc_html_e( 'Reset view', 'creative-skateboard-builder' ); ?></button>
