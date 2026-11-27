@@ -262,6 +262,7 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-477 · The kit page carries every other argument of the request, by a name a tag's would be](#d-477--the-kit-page-carries-every-other-argument-of-the-request-by-a-name-a-tags-would-be--2026-11-26)
 - [D-510 · On a phone the bar's buttons stay beside the total, Next's words breaking inside it](#d-510--on-a-phone-the-bars-buttons-stay-beside-the-total-nexts-words-breaking-inside-it--2026-11-26)
 - [D-512 · Next's press shows what its answer will: the deck step's width line goes, and the first step's bar takes the next step's Back](#d-512--nexts-press-shows-what-its-answer-will-the-deck-steps-width-line-goes-and-the-first-steps-bar-takes-the-next-steps-back--2026-11-26)
+- [D-521 · The turn's buttons hold their place from the first paint, so the board keeps its size as the store starts](#d-521--the-turns-buttons-hold-their-place-from-the-first-paint-so-the-board-keeps-its-size-as-the-store-starts--2026-11-27)
 
 ### Accessibility
 
@@ -7574,5 +7575,23 @@ Milestone 14's full set: `composer test:integration:yoast` failed on `ShareCardY
 - **One filter.** `bash tools/yoast.sh tests` prints `YoastTest::`, which matches every class whose name ends in YoastTest. `tools/integration-yoast.sh` and the variants script both take it, so a new Yoast test runs in CI without anyone adding it to a list.
 - **The test follows D-460,** as `ShareCardTest` does. Its copy is right: the plugin's own "%1$s and %2$s" with the list separator, no serial comma in English.
 - **Proof.** Before: the yoast command, red at :89 ("Tests: 7, Assertions: 25, Failures: 1"). After: "OK (7 tests, 41 assertions)". The deliberate break, the old expectation put back, is the same red line.
+
+**Status:** Accepted.
+
+### D-521 · The turn's buttons hold their place from the first paint, so the board keeps its size as the store starts · 2026-11-27
+
+D-519's fixed header made `3d.spec.ts` "in French at a phone held sideways" fail every time on chromium-desktop: 0.00274 of shift against an allowance of 0.00244. The allowance is right. The shift is the product's. At 844 by 390 px, the board grew from 122.6 to 130.0 px, and from 482.7 to 512 px long, as the store took over, on the plain page and on the 3D page alike. The old header, a list of every page, had pushed the builder low enough that little of the board was on the screen. The shorter header showed more of it, so more of the grow was counted.
+
+The cause is the turn's two buttons, Underside and Top. The store shows them by setting `canTurn` as it starts. Before that, the server's `hidden` keeps them out of the flow. On a phone held sideways, the controls share the heading's rows (D-483), so their height sets the board's row: 44 px before the store and 92 px after, since in this strip the two buttons stack. The board is sized from that row.
+
+**Decision:** on a page that will run the script (`@media (scripting: enabled)`), the buttons hold their place, unseen, until the builder is ready (`.cbuild:not([data-ready]) .cbuild-picture__sides[hidden]`, shown as `inline-flex` with `visibility: hidden`). The first paint then has the final size, set by the stylesheet alone, with no measuring in script. Without the script, scripting is `none` and the buttons take no room, as before.
+
+- **Why compare with the store held back, not with scripts off.** With scripts off, the buttons never show, and the board's 122.6 px is the right size for that page. A shopper with scripts sees the page with scripting on and the store not yet run. The test makes that page by aborting the store's file, then loads it again with the store and compares.
+- **No baseline moved.** The visual pictures are taken once the builder is ready.
+
+**Tests:**
+
+- **`3d.spec.ts` "on a phone held sideways in English, and in French, the board is the size before the store runs that it is after, with 3D off and on".** This holds the board's box to 0.5 px on the plain page and the 3D page. Before the fix, it failed with `[[289.64,323.70,482.70,122.58]] before, [[275,326,512,130.03]] after`, `Received: 14.640625`.
+- **Repeated runs.** After the fix, that test and the two F7 layout tests ran 3 times each on chromium-desktop, chromium-phone and webkit-phone: 30 passed, and the 6 skips are the Chromium-only shift test on WebKit.
 
 **Status:** Accepted.

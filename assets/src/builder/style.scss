@@ -1885,6 +1885,17 @@
 	visibility: hidden;
 }
 
+/* The turn's two buttons are the store's to show (it sets canTurn as it starts), and in a strip as short as a phone's
+   held sideways their row sizes the board: it grew from 122.6 to 130.0 px as the store took over (D-521). On a page
+   that will run the script they hold their place, unseen, from the first paint, so the store's showing them moves
+   nothing. Without the script, scripting is none and they take no room. */
+@media (scripting: enabled) {
+	.cbuild:not([data-ready]) .cbuild-picture__sides[hidden] {
+		display: inline-flex;
+		visibility: hidden;
+	}
+}
+
 /* Stacked, on a tablet as on a phone, the stage is a short strip on top: the board turned fills its width (D-280). */
 @container cbuild (max-width: 63.99rem) {
 	/* As long as the stage is wide, less its edges, at most 32rem, and never thicker on its side than its row is
