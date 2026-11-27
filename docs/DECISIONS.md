@@ -370,7 +370,9 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-506 · A textured part is drawn in its colour until its image arrives](#d-506--a-textured-part-is-drawn-in-its-colour-until-its-image-arrives--2026-11-26)
 - [D-507 · One finger turns the 3D view about its upright alone](#d-507--one-finger-turns-the-3d-view-about-its-upright-alone--2026-11-26)
 - [D-508 · The scene sends each truck's axle centre, and the view measures nothing](#d-508--the-scene-sends-each-trucks-axle-centre-and-the-view-measures-nothing--2026-11-26)
+- [D-509 · A landing runs the fast gates on each of the lane's commits, merges and docs commits included](#d-509--a-landing-runs-the-fast-gates-on-each-of-the-lanes-commits-merges-and-docs-commits-included--2026-11-27)
 - [D-518 · The 3D view's Side place: level with the deck's edge, turned 17 degrees toward the nose](#d-518--the-3d-views-side-place-level-with-the-decks-edge-turned-17-degrees-toward-the-nose--2026-11-26)
+- [D-520 · Every Yoast test runs wherever Yoast's tests run, from one filter](#d-520--every-yoast-test-runs-wherever-yoasts-tests-run-from-one-filter--2026-11-27)
 
 ### Cart, checkout and orders
 
@@ -6740,6 +6742,8 @@ The first CI run of 1.3.0's pull request. F31's test (D-399) holds a deck card u
 
 **Status:** Accepted. Refines D-399's test.
 
+D-437 to D-449 are unused: milestone 13's lanes took their numbers in blocks of ten (D-391 to D-399, D-400 to D-409, D-410 to D-419), and the final run's block from D-420 ended at D-436. The walkthrough's fixes were numbered from D-450 so that no lane could collide with them (#165, F42).
+
 ### D-450 · My builds' and an order page's rules print on a style handle of the plugin's own · 2026-11-26
 
 Found in milestone 13's walkthrough. `SavedBuildHooks::styles()` added My builds' rules to WooCommerce's `woocommerce-general` with `wp_add_inline_style()`, and `EmailHooks::pageStyles()` added the indent of a part's row on an order's page there too. Kadence and Storefront dequeue `woocommerce-general` and load their own WooCommerce styles, and WordPress prints a handle's inline rules only with the handle (`WP_Styles::do_item()`), so on either theme every rule was lost. On a phone the compare had no scroll region: its table was 404 px wide in a 326 px box, and the third build was cut off where no one could reach it. The 14rem columns, the Differs mark, the row tints and D-412's rule that names each row on a phone went too. Twenty Twenty-Five keeps WooCommerce's handle, so the suites, run on it, passed.
@@ -6771,6 +6775,8 @@ Found with D-450, by a search of `src/` for `wp_add_inline_style()` on a handle 
 **Why:** as D-450: a rule the plugin needs is the plugin's to print.
 
 **Status:** Accepted.
+
+D-452 to D-459 are unused: the block from D-450 was kept for the walkthrough's style fixes, which needed two. D-460 started the next block of ten (#165, F42).
 
 ### D-460 · A list is joined in the plugin's own words, never WordPress's translation of them · 2026-11-26
 
@@ -7542,5 +7548,18 @@ Milestone 14's full set: `composer test:integration:yoast` failed on `ShareCardY
 - **One filter.** `bash tools/yoast.sh tests` prints `YoastTest::`, which matches every class whose name ends in YoastTest. `tools/integration-yoast.sh` and the variants script both take it, so a new Yoast test runs in CI without anyone adding it to a list.
 - **The test follows D-460,** as `ShareCardTest` does. Its copy is right: the plugin's own "%1$s and %2$s" with the list separator, no serial comma in English.
 - **Proof.** Before: the yoast command, red at :89 ("Tests: 7, Assertions: 25, Failures: 1"). After: "OK (7 tests, 41 assertions)". The deliberate break, the old expectation put back, is the same red line.
+
+**Status:** Accepted.
+
+### D-509 · A landing runs the fast gates on each of the lane's commits, merges and docs commits included · 2026-11-27
+
+The rule "/verify before every commit" (CLAUDE.md) was held by the lane's word, and a landing checked only the lane's final tree. So a commit in the middle of a lane could be red and land behind a green one, leaving `git bisect` and a revert of a later commit on a red tree. Zach's answer on 26 November was "do whatever is best practice": every commit on the main line builds and passes the fast gates, which is how bisect and revert stay usable (Google's and the Linux kernel's rule for a bisectable history).
+
+**Decision:**
+
+- **The handoff's `commit-check.sh`** runs `composer check` and `npm run check` on each commit a lane brings, in a worktree of its own. Merges are included. A commit that touches only Markdown and pictures runs `npm run lint:md` alone. A commit that passed is recorded in `commit-checked` and isn't run again. It's bash 3.2 compatible.
+- **`land.sh` runs it** as the step "the fast gates on each of the lane's commits", before Infection on the changed lines. A red commit stops the landing.
+- **The full /verify stays per tree**, with D-469's receipt. The integration and browser suites take 35 minutes, and on each commit they would cost hours for what the fast gates and the final tree already catch.
+- **Found at once:** 7c40f18, on m14-3d before the check existed, fails markdownlint MD022 at D-468. The cause was the old merge driver's merge commit bba4eaa. It's fixed in `tools/merge-decisions.php` (0925d4e, a blank line restored after the entry, with a landing self-test case), and the commit is left as it is, since m14-3d's history is shared.
 
 **Status:** Accepted.
