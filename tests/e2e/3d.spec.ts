@@ -1029,6 +1029,78 @@ test.describe( '3D view (milestone 14)', () => {
 		} );
 	}
 
+	// M14's walkthrough, finding 2: on a phone held sideways the open view's 609 px frame lay over the words' column,
+	// View in 3D, which closes it, and the turn's buttons with it (D-524).
+	for ( const language of [ 'English', 'French' ] as const ) {
+		test( `on a phone held sideways in ${ language }, the open view covers none of the controls, and View in 3D closes it`, async ( {
+			page,
+		} ) => {
+			await page.setViewportSize( { width: 844, height: 390 } );
+			if ( 'French' === language ) {
+				await page.setExtraHTTPHeaders( {
+					'x-cbuild-e2e-locale': 'fr_CA',
+					'x-cbuild-e2e-translated': '1',
+				} );
+			}
+			await page.goto( build( fixture().three.page ) );
+			test.skip(
+				! ( await drawsWebGL( page ) ),
+				'This browser has no WebGL 2 here; the fallback tests cover it.'
+			);
+			const toggle = page.locator( '.cbuild-3d__open' );
+			await toggle.click();
+			await expect( toggle ).toHaveAttribute( 'aria-pressed', 'true' );
+			await expect( page.locator( '.cbuild-3d__canvas' ) ).toBeVisible();
+			await still( page );
+			await toggle.evaluate( ( shown ) =>
+				shown.scrollIntoView( { block: 'center' } )
+			);
+			const found = await toggle.evaluate( ( shown ) => {
+				const box = ( element: Element ) => {
+					const r = element.getBoundingClientRect();
+					return [ r.left, r.top, r.right, r.bottom ];
+				};
+				const [ left, top, right, bottom ] = box( shown );
+				const others = [
+					...shown
+						.closest( '.cbuild__stage' )!
+						.querySelectorAll(
+							'button, a, canvas, .cbuild-3d__frame'
+						),
+				]
+					.filter(
+						( other ) =>
+							other !== shown &&
+							0 !== other.getClientRects().length &&
+							'hidden' !== getComputedStyle( other ).visibility
+					)
+					.filter( ( other ) => {
+						const [ l, t, r, b ] = box( other );
+						return (
+							l! < right! &&
+							r! > left! &&
+							t! < bottom! &&
+							b! > top!
+						);
+					} )
+					.map(
+						( other ) =>
+							`${ other.tagName } ${ String( other.className ) } ${ other.textContent?.trim() }`
+					);
+				const hit = document.elementFromPoint(
+					( left! + right! ) / 2,
+					( top! + bottom! ) / 2
+				);
+				return { others, hit: hit === shown || shown.contains( hit ) };
+			} );
+			expect( found.others, 'controls under View in 3D' ).toEqual( [] );
+			expect( found.hit, 'View in 3D at its own centre' ).toBe( true );
+			await toggle.click( { timeout: 5000 } );
+			await expect( toggle ).toHaveAttribute( 'aria-pressed', 'false' );
+			await expect( page.locator( '.cbuild-3d__stage' ) ).toBeHidden();
+		} );
+	}
+
 	// The auditor's M14 review, F7: View in 3D shared the turn's cell, and covered its buttons at 320 px in French; on
 	// a phone held sideways it took a row of its own, so the board was smaller before the press. Upright it now goes
 	// beside the heading, the board's box as with no 3D view; sideways the strip grows to hold it, the board its size

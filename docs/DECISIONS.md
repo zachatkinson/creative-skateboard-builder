@@ -7626,3 +7626,13 @@ M14's walkthrough, finding 1: on a phone, a tap on View in 3D left the page abou
 - **`3d.spec.ts` "on a phone a tap on View in 3D, 0, 150 and 500 px down the page, leaves the canvas on the screen",** on the touch projects. Before the fix, and with the break, from 500 px on chromium-phone: `Error: the canvas's top`, expected >= -0.5, received -20.359375, at :1026. On the e2e site's theme the jump is shorter than the walkthrough's 404 px; the test holds that the canvas's top is on the screen, whatever the theme.
 
 **Status:** Accepted.
+
+### D-524 · On a phone held sideways, the open 3D view takes the board's column, as high as the screen leaves room for · 2026-11-27
+
+M14's walkthrough, finding 2: on a phone held sideways with the view open, the frame covered View in 3D and the flat board's turn, so none could be tapped, and the view could not be closed. Its stage spanned the stage's full width in the board's row, and its 4 by 3 frame, as wide as an 844 px screen, was 609 px high on a screen 390 px high.
+
+**Decision:** where the stage is a phone's held sideways (the D-483 media query, `(orientation: landscape) and (max-height: 30rem)`, with the builder's container under 64rem), the view's stage goes where the board was, in the second column, through every row (`grid-area: 1 / 2 / -1 / 3`), beside the words' column and View in 3D, never across them. Its frame gives up its aspect ratio and is as high as the screen leaves room for, `max(10rem, 100svh - 8rem)`, with the camera's row under it. The camera's buttons stay reachable: each was checked at its centre, on Twenty Twenty-Five and Kadence.
+
+**Tests:** `3d.spec.ts` "on a phone held sideways in English, and in French, the open view covers none of the controls, and View in 3D closes it", on chromium-desktop and chromium-phone. Before the fix: `Error: controls under View in 3D`, with `DIV cbuild-3d__frame` and `CANVAS cbuild-3d__canvas` received, at :1096. The deliberate break, the `grid-area` line alone taken out: the same red line.
+
+**Status:** Accepted.
