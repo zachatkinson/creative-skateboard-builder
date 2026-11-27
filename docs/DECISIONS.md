@@ -417,6 +417,7 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-412 · My builds names each build on a phone too](#d-412--my-builds-names-each-build-on-a-phone-too--2026-11-25)
 - [D-450 · My builds' and an order page's rules print on a style handle of the plugin's own](#d-450--my-builds-and-an-order-pages-rules-print-on-a-style-handle-of-the-plugins-own--2026-11-26)
 - [D-515 · The compare's row headers stay at the region's start on a phone](#d-515--the-compares-row-headers-stay-at-the-regions-start-on-a-phone--2026-11-26)
+- [D-528 · My builds stays in the account's column: its rows stack where the column is narrow](#d-528--my-builds-stays-in-the-accounts-column-its-rows-stack-where-the-column-is-narrow--2026-11-27)
 
 ### SEO and sharing
 
@@ -7593,5 +7594,21 @@ The cause is the turn's two buttons, Underside and Top. The store shows them by 
 
 - **`3d.spec.ts` "on a phone held sideways in English, and in French, the board is the size before the store runs that it is after, with 3D off and on".** This holds the board's box to 0.5 px on the plain page and the 3D page. Before the fix, it failed with `[[289.64,323.70,482.70,122.58]] before, [[275,326,512,130.03]] after`, `Received: 14.640625`.
 - **Repeated runs.** After the fix, that test and the two F7 layout tests ran 3 times each on chromium-desktop, chromium-phone and webkit-phone: 30 passed, and the 6 skips are the Chromium-only shift test on WebKit.
+
+**Status:** Accepted.
+
+### D-528 · My builds stays in the account's column: its rows stack where the column is narrow · 2026-11-27
+
+Milestone 14's full set: "a customer saves, opens, saves over and deletes a build under My builds, on storefront" failed 3 of 3 on webkit-tablet. The theme's sidebar covered My builds' Open, and the press fell on a widget. It is a product defect that the sidebar's emptiness had hidden: since D-519, the test themes have their fresh-install widgets, as a real shop's Storefront does. On an iPad mini's 768 px, Storefront puts its sidebar beside the content, and inside that, My account's navigation beside My builds, which leaves My builds a column of 387 px. The table's four columns, each with Storefront's cell padding, need 458 px at the least, with the name's field at its own 20 characters more still. So the table ran out of its column and under the sidebar. Chromium drew the sidebar's words over it and took the press; WebKit gave the press to the widget.
+
+**Decision:** My builds stays in its column, at any width a theme gives it.
+
+- **A frame of its own.** The table sits in `div.cbuild-my-builds__frame`, a size container (`container-type: inline-size`), so the rules read the column's width, not the screen's. A theme's sidebar and the account's navigation take their share before the plugin sees it.
+- **Under 32rem the rows stack**, as WooCommerce's own small-screen table does: the header row goes, each cell takes its line, and each says its column's name above it, from the `data-title` the template already gives every cell for WooCommerce's phone rules. The row header, the build's picture and name, heads each build's group as before (D-412). 32rem is 512 px, past the 458 px the table needs, so Storefront at 1024 px (531 px) keeps its table. Twenty Twenty-Five never stacks (628 px and wider), Kadence does at 768 px (459 px) and not at 1024 px (638 px).
+- **The name's field** takes its cell's width, up to its 20 characters, and no more, so it no longer sets the column's width.
+- **Not WooCommerce's breakpoint.** WooCommerce's small-screen styles key on the screen's 768 px, and Storefront dequeues them. A column beside a sidebar can be as narrow as a phone's on a screen twice as wide.
+- **Specificity:** the stacked rules lead with the frame, so they outrank WooCommerce's small-screen rules wherever both apply, whatever the stylesheets' order.
+
+**Tests:** `builder.spec.ts` "My builds stays in its column beside the theme's sidebar at a tablet's width", on Twenty Twenty-Five, Storefront and Kadence, at 768 by 1024 px in every project: each of a build's controls, Compare, Open, the name's field, Rename and Delete, is inside the account's column, and the point at its middle is its own. Before the fix, on chromium-desktop, Storefront failed at builder.spec.ts:8967 with `"control": "Open Column setup two"`, `"inColumn": false`. The deliberate break, the container query set to 1rem with the field's rule left in, fails on the same line.
 
 **Status:** Accepted.

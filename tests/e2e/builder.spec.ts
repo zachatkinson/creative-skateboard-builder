@@ -8830,6 +8830,95 @@ test.describe( 'Saved builds', () => {
 			);
 		} );
 	}
+
+	// Milestone 14's full set (D-528): on Storefront at an iPad mini's 768 px, the theme's sidebar sits beside the
+	// narrowest account column, and with its fresh-install widgets (D-519) it covered My builds' Open, which had run
+	// out of the column under it. Each build's controls stay in the column, and each takes its own press.
+	const columnNames = [ 'Column setup', 'Column setup two' ];
+	const clearColumn = () =>
+		runPhp(
+			`$u = get_user_by( 'login', 'e2e-saver' ); if ( $u ) { $s = CreativeBranding\\SkateboardBuilder\\Plugin::container()->get( CreativeBranding\\SkateboardBuilder\\Service\\SavedBuilds::class ); foreach ( $s->of( $u->ID ) as $b ) { if ( in_array( $b->name, ${ JSON.stringify(
+				columnNames
+			) }, true ) ) { $s->delete( $u->ID, $b->uuid ); } } }`
+		);
+	for ( const theme of [ 'twentytwentyfive', 'storefront', 'kadence' ] ) {
+		test( `My builds stays in its column beside the theme's sidebar at a tablet's width, on ${ theme }`, async ( {
+			page,
+			context,
+			baseURL,
+		} ) => {
+			await context.addCookies( [
+				{
+					name: 'cbuild_e2e_theme',
+					value: theme,
+					url: baseURL || SITE,
+				},
+			] );
+			await page.setViewportSize( { width: 768, height: 1024 } );
+			await customer( page );
+			clearColumn();
+			const picks = {
+				deck: id( 'builder-test-deck-8-0' ),
+				trucks: id( 'builder-test-trucks-139' ),
+				wheels: id( 'builder-test-wheels-54' ),
+				bearings: id( 'builder-test-bearings' ),
+				hardware: id( 'builder-test-bolts-1-25' ),
+				grip: id( 'builder-test-grip' ),
+			};
+			// Two builds, so each row has its Compare box too: the row at its widest.
+			runPhp(
+				`$u = get_user_by( 'login', 'e2e-saver' ); $s = CreativeBranding\\SkateboardBuilder\\Plugin::container()->get( CreativeBranding\\SkateboardBuilder\\Service\\SavedBuilds::class ); foreach ( json_decode( '${ JSON.stringify(
+					columnNames
+				) }', true ) as $n ) { if ( 'saved' !== $s->save( $u->ID, ${
+					fixture().kit
+				}, json_decode( '${ JSON.stringify(
+					picks
+				) }', true ), true, $n )['code'] ) { throw new RuntimeException( $n ); } }`
+			);
+			try {
+				await page.goto( '/my-account/my-builds/' );
+				const row = page
+					.locator( '.cbuild-my-builds__build' )
+					.filter( { hasText: columnNames[ 1 ]! } );
+				await expect( row ).toHaveCount( 1 );
+				const placed = await row.evaluate( ( shown ) => {
+					const column = shown
+						.closest( '.woocommerce-MyAccount-content' )!
+						.getBoundingClientRect();
+					return Array.from(
+						shown.querySelectorAll< HTMLElement >(
+							'a, button, input:not([type=hidden])'
+						)
+					).map( ( control ) => {
+						control.scrollIntoView( { block: 'center' } );
+						const box = control.getBoundingClientRect();
+						const hit = document.elementFromPoint(
+							box.left + box.width / 2,
+							box.top + box.height / 2
+						);
+						return {
+							control:
+								control.getAttribute( 'aria-label' ) ??
+								control.textContent?.trim(),
+							inColumn:
+								box.left >= Math.floor( column.left ) &&
+								box.right <= Math.ceil( column.right ),
+							pressed: null !== hit && control.contains( hit ),
+						};
+					} );
+				} );
+				expect( placed.length ).toBeGreaterThanOrEqual( 5 );
+				for ( const { control, inColumn, pressed } of placed ) {
+					expect(
+						{ control, inColumn, pressed },
+						'in the column, and its own press'
+					).toEqual( { control, inColumn: true, pressed: true } );
+				}
+			} finally {
+				clearColumn();
+			}
+		} );
+	}
 } );
 
 // #136 (D-411): up to three saved builds side by side under My builds, chosen by keyboard, in a real table whose

@@ -46,6 +46,8 @@ $cbuild_compare = null !== $compare && count( $rows ) > 1;
 <?php if ( array() === $rows ) : ?>
 	<p class="cbuild-my-builds__none"><?php esc_html_e( 'You have no saved builds yet. Save one from the review step of the builder, and it waits for you here.', 'creative-skateboard-builder' ); ?></p>
 <?php else : ?>
+	<?php /* The table's own frame, whose width the rules read, so its rows stack where the account's column is narrow (D-528). */ ?>
+<div class="cbuild-my-builds__frame">
 <table class="cbuild-my-builds shop_table shop_table_responsive">
 	<thead>
 		<tr>
@@ -110,6 +112,7 @@ $cbuild_compare = null !== $compare && count( $rows ) > 1;
 	<?php endforeach; ?>
 	</tbody>
 </table>
+</div>
 	<?php if ( $cbuild_compare && null !== $compare ) : ?>
 		<form id="cbuild-compare" class="cbuild-my-builds__compare" method="get" action="<?php echo esc_url( $compare['action'] ); ?>">
 			<?php foreach ( $compare['fields'] as $cbuild_key => $cbuild_value ) : ?>
