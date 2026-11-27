@@ -282,7 +282,14 @@ final class Container {
 				);
 			},
 			Front\Delivery::class                         => static function ( Container $c ): object {
-				return new Front\Delivery( $c->get( Port\Kits::class ), $c->get( Port\ShippingZones::class ), new Front\ShippingWords( $c->get( Port\Money::class ) ) );
+				return new Front\Delivery(
+					$c->get( Port\Kits::class ),
+					$c->get( Port\ShippingZones::class ),
+					new Front\ShippingWords( $c->get( Port\Money::class ) ),
+					static function () use ( $c ): Port\Cart {
+						return $c->get( Port\Cart::class );
+					}
+				);
 			},
 			Cart\ShowHooks::class                         => static function ( Container $c ): object {
 				return new Cart\ShowHooks(

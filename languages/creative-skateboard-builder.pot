@@ -9,7 +9,7 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-11-26T22:35:08+00:00\n"
+"POT-Creation-Date: 2026-11-27T02:58:58+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: creative-skateboard-builder\n"
@@ -3333,11 +3333,11 @@ msgstr ""
 msgid "A saved build"
 msgstr ""
 
-#: src/Front/PageHooks.php:329
+#: src/Front/PageHooks.php:309
 msgid "Skateboard kit"
 msgstr ""
 
-#: src/Front/PageHooks.php:330
+#: src/Front/PageHooks.php:310
 msgid "A kit product: its builder at the page's width, then its description, specs and reviews."
 msgstr ""
 

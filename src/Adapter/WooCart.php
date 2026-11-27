@@ -18,6 +18,7 @@ use WC_Cart;
 use WC_Customer;
 use WC_Product;
 use WC_Product_Variation;
+use WC_Session;
 use WC_Session_Handler;
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -41,8 +42,39 @@ final class WooCart implements Cart {
 	 * @return array<string, CartLine>
 	 */
 	public function lines(): array {
+		return self::read( self::cart()?->get_cart() ?? array() );
+	}
+
+	/**
+	 * Every line the shopper's session holds: the cart's where the request loaded it, and otherwise the session's
+	 * own copy, `cart` (includes/class-wc-cart-session.php:125 and :304, WooCommerce 11.3.1). The session is made as
+	 * `shopper()` makes it, so its cookie is read and none is set, and the cart is not loaded (D-138).
+	 *
+	 * @since 1.4.0
+	 *
+	 * @return array<string, CartLine>
+	 */
+	public function held(): array {
+		$cart = self::cart();
+		if ( null !== $cart ) {
+			return self::read( $cart->get_cart() );
+		}
+		if ( ! ( get_object_vars( WC() )['session'] ?? null ) instanceof WC_Session ) {
+			WC()->initialize_session();
+		}
+		$session = get_object_vars( WC() )['session'] ?? null;
+		return $session instanceof WC_Session ? self::read( Cast::map( $session->get( 'cart', null ) ) ) : array();
+	}
+
+	/**
+	 * The lines, from the cart's items as WooCommerce keeps them.
+	 *
+	 * @param array<mixed> $items The items, by cart key.
+	 * @return array<string, CartLine>
+	 */
+	private static function read( array $items ): array {
 		$lines = array();
-		foreach ( self::cart()?->get_cart() ?? array() as $key => $item ) {
+		foreach ( $items as $key => $item ) {
 			$item          = Cast::map( $item );
 			$key           = (string) $key;
 			$lines[ $key ] = new CartLine(

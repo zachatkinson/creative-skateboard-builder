@@ -199,6 +199,22 @@ final class StateRouteBenchmarkTest extends IntegrationTestCase {
 				),
 			)
 		)->get_id();
+		// The same kit with its 3D view on, as a kit saved from 1.4.0 has it (D-476): a move's answer to a build with a
+		// deck also measures the board's scene and looks up its textures (M14's audit, F12).
+		$three = KitFactory::kit(
+			'Complete in 3D',
+			array(
+				Options::META_KIT_SLOTS    => $slots,
+				Options::META_KIT_PRESETS  => array(
+					'schema_version' => 1,
+					'presets'        => $presets,
+				),
+				Options::META_KIT_SETTINGS => array(
+					'schema_version' => 1,
+					'view_3d'        => true,
+				),
+			)
+		)->get_id();
 		self::assertSame( 2000, array_sum( array_map( 'count', $ids ) ) );
 		// Milestone 7's plan: "the route's benchmark with layers held to 80 ms". The decks the runs pick have layer
 		// images and their renditions, so each answer draws the board and reads its attachments.
@@ -229,8 +245,9 @@ final class StateRouteBenchmarkTest extends IntegrationTestCase {
 			'review' => array( $picked, 'review' ),
 			'truck'  => array( array( 'trucks' => $ids['trucks'][30] ), 'trucks' ),
 		);
-		$ask      = static function ( int $deck, bool $move = false, bool $narrow = false, string $swap = '' ) use ( $kit, $narrowed, $swapping ): array {
-			$request = new WP_REST_Request( 'GET', "/cbuild/v1/kits/{$kit}/state" );
+		$ask      = static function ( int $deck, bool $move = false, bool $narrow = false, string $swap = '', ?int $on = null ) use ( $kit, $narrowed, $swapping ): array {
+			$on    ??= $kit;
+			$request = new WP_REST_Request( 'GET', "/cbuild/v1/kits/{$on}/state" );
 			[ $more, $step ] = $swapping[ $swap ] ?? array( array(), '' );
 			if ( '' !== $swap ) {
 				// As a swap's link or the review's own reaches the route: the build's own fields, every pick and the step.
@@ -242,7 +259,7 @@ final class StateRouteBenchmarkTest extends IntegrationTestCase {
 							'deck' => (string) $deck,
 							'step' => 'trucks',
 						),
-						'page'   => $kit,
+						'page'   => $on,
 					) : array(
 						'picks' => array( 'deck' => $deck ),
 						'step'  => 'trucks',
@@ -271,6 +288,8 @@ final class StateRouteBenchmarkTest extends IntegrationTestCase {
 
 		$view = $ask( $ids['deck'][0], true )[2];
 		self::assertSame( 'Step 2 of 7: Trucks', $view['view']['title'] ?? null, 'a move answers with the view' );
+		self::assertNull( $view['view']['scene'] ?? null, 'no scene where the 3D view is off' );
+		self::assertNotNull( $ask( $ids['deck'][0], true, false, '', $three )[2]['view']['scene'] ?? null, 'and the scene where it is on' );
 		// #89: a move's answer as JSON, whole and as the store asks for it, its view alone (`_fields=view`): the raw
 		// shelf and options repeated the step's cards beside the view's own.
 		$sized = static function ( array $query ) use ( $kit ): int {
@@ -306,8 +325,10 @@ final class StateRouteBenchmarkTest extends IntegrationTestCase {
 			'narrowed' => array( false, true, '' ),
 			'review'   => array( false, false, 'review' ),
 			'truck'    => array( false, false, 'truck' ),
+			'three'    => array( true, false, '' ),
 		);
 		foreach ( $shapes as $shape => [ $move, $narrow, $swap ] ) {
+			$on = 'three' === $shape ? $three : $kit;
 			// Each shape from an address of its own: the runs are as many requests as one address may make in a minute.
 			$_SERVER['REMOTE_ADDR'] = array(
 				'plain'    => '203.0.113.7',
@@ -315,12 +336,13 @@ final class StateRouteBenchmarkTest extends IntegrationTestCase {
 				'narrowed' => '203.0.113.11',
 				'review'   => '203.0.113.13',
 				'truck'    => '203.0.113.15',
+				'three'    => '203.0.113.17',
 			)[ $shape ];
 			// The parts table as a shop's is between changes: each deck's answer asked once, so its looks and cards are
 			// kept beside their facts, as the facts were by the first answer (D-289). "Cold" empties the object cache
 			// alone; the first request after a change is timed below.
 			foreach ( array_slice( $ids['deck'], 0, 7 ) as $deck ) {
-				$ask( $deck, $move, $narrow, $swap );
+				$ask( $deck, $move, $narrow, $swap, $on );
 			}
 			foreach ( array( 'cold' => true, 'warm' => false ) as $run => $flush ) {
 				$times   = array();
@@ -330,7 +352,7 @@ final class StateRouteBenchmarkTest extends IntegrationTestCase {
 						// A request on a site with no persistent object cache starts with nothing kept.
 						wp_cache_flush();
 					}
-					[ $took, $asked ] = $ask( $ids['deck'][ $request % 7 ], $move, $narrow, $swap );
+					[ $took, $asked ] = $ask( $ids['deck'][ $request % 7 ], $move, $narrow, $swap, $on );
 					$times[]          = $took;
 					$queries[]        = $asked;
 				}
@@ -342,6 +364,7 @@ final class StateRouteBenchmarkTest extends IntegrationTestCase {
 					'narrowed' => 'a search with a chip and a sort, ',
 					'review'   => 'the review with six slots picked and their swaps, ',
 					'truck'    => 'the trucks step with a truck picked and its swaps, ',
+					'three'    => 'a move with the 3D view on, ',
 				)[ $shape ] . $run;
 				self::say( sprintf( 'state route, %s, 500 candidates in the step, 2,000 parts in the kit: p95 %.1f ms, median %.1f ms, slowest %.1f ms, %d queries at most', $name, $p95, $times[ (int) ( count( $times ) / 2 ) ], max( $times ), max( $queries ) ) );
 				self::assertLessThanOrEqual( self::QUERIES[ $run ] + ( 'review' === $shape ? self::REVIEW_QUERIES : 0 ), max( $queries ), "The state route's queries, {$name}." );

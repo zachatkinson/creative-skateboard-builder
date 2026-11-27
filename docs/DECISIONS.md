@@ -120,6 +120,7 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-287 · The specs CSV reads and writes a part's Layer image, by ID or file name, by the field's rules](#d-287--the-specs-csv-reads-and-writes-a-parts-layer-image-by-id-or-file-name-by-the-fields-rules--2026-11-19)
 - [D-472 · The 3D view's five optional specs, and a kick angle in whole degrees](#d-472--the-3d-views-five-optional-specs-and-a-kick-angle-in-whole-degrees--2026-11-26)
 - [D-473 · The 3D view's usual values, from published deck and truck specs](#d-473--the-3d-views-usual-values-from-published-deck-and-truck-specs--2026-11-26)
+- [D-485 · Site Health leaves out a size only the 3D view assumes](#d-485--site-health-leaves-out-a-size-only-the-3d-view-assumes--2026-11-26)
 
 ### Kits and their settings
 
@@ -163,6 +164,7 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-407 · A place just above the step's cards for another plugin's element](#d-407--a-place-just-above-the-steps-cards-for-another-plugins-element--2026-11-25)
 - [D-478 · A ready build drawn from the layers is marked drawn, and Help me choose's builds get a place](#d-478--a-ready-build-drawn-from-the-layers-is-marked-drawn-and-help-me-chooses-builds-get-a-place--2026-11-26)
 - [D-517 · cbuild:rendered is sent in the task that draws the answer, not a frame later](#d-517--cbuildrendered-is-sent-in-the-task-that-draws-the-answer-not-a-frame-later--2026-11-26)
+- [D-487 · The state route's view stays private, but for its scene and its 3D switches](#d-487--the-state-routes-view-stays-private-but-for-its-scene-and-its-3d-switches--2026-11-26)
 
 ### The builder page
 
@@ -391,6 +393,8 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-335 · Add to cart leaves the Mini-Cart's count to WooCommerce, and three choices from milestone 11's audit](#d-335--add-to-cart-leaves-the-mini-carts-count-to-woocommerce-and-three-choices-from-milestone-11s-audit--2026-11-23)
 - [D-352 · A build's add keeps the cart before it answers](#d-352--a-builds-add-keeps-the-cart-before-it-answers--2026-11-24)
 - [D-375 · The kit's assembly time in business days, and the parts and their quantities, for a plugin that dates a delivery](#d-375--the-kits-assembly-time-in-business-days-and-the-parts-and-their-quantities-for-a-plugin-that-dates-a-delivery--2026-11-24)
+- [D-488 · The delivery filters are given the kit line an Edit build would replace, by its cart key](#d-488--the-delivery-filters-are-given-the-kit-line-an-edit-build-would-replace-by-its-cart-key--2026-11-26)
+- [D-489 · Creative Checkout answers the delivery filters for a shopper with no address](#d-489--creative-checkout-answers-the-delivery-filters-for-a-shopper-with-no-address--2026-11-26)
 
 ### Saved builds and privacy
 
@@ -547,6 +551,7 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-431 · Every browser test passes when it runs alone](#d-431--every-browser-test-passes-when-it-runs-alone--2026-11-25)
 - [D-511 · The browser tests' lock reads the clock once to judge a lock and to give up on it](#d-511--the-browser-tests-lock-reads-the-clock-once-to-judge-a-lock-and-to-give-up-on-it--2026-11-26)
 - [D-466 · My builds, the deck page's start button and the bar run their key browser tests on Kadence and Storefront too](#d-466--my-builds-the-deck-pages-start-button-and-the-bar-run-their-key-browser-tests-on-kadence-and-storefront-too--2026-11-26)
+- [D-486 · Two flakes settled: #93 closed on its evidence, and #110's mask taken off](#d-486--two-flakes-settled-93-closed-on-its-evidence-and-110s-mask-taken-off--2026-11-26)
 
 ### Releases and the repository
 
@@ -7326,6 +7331,61 @@ Cowork's review of 1.3.0, F39 (#162). A 118 px element put in `.cbuild-step__abo
 
 - **Red run** on chromium-phone: "the answer's layout shift: 0.034 +1172 ms 0.034 [cbuild-cards 545→0]" (shelf.spec.ts:965). The desktop measured 0.000 here.
 - **After:** 0.000 on both, and the cards at the event are the answer's. The #143 tests and the F30 width tests pass.
+
+**Status:** Accepted.
+
+### D-485 · Site Health leaves out a size only the 3D view assumes · 2026-11-26
+
+M14's audit, F4. Every new kit has the 3D view on (D-476), and the Catalogue check lists each deck or wheel the view assumes a usual size for (D-473). `Health::catalogue()` counted each of those as a thing to fix, so after an update Site Health said "found N things to fix" for specs no part had before 1.4.0, though every one of those parts is offered and drawn.
+
+**Decision:** `Health::catalogue()` skips an `spec_assumed` finding whose note is `scene_assumed`, as it skips `look_shared` and `part_not_offered`: said on the Catalogue check, not counted as a fix. A rule's own assumption (a hole pattern, an axle) is still counted, since a fit was judged without it.
+
+**Test.** HealthTest, "a size only the 3d view assumes is said not counted as a fix": two scene findings give GOOD and nothing counted, and a rule's assumption beside them gives one finding on one part. Red run: "Failed asserting that two arrays are identical" (HealthTest.php:224).
+
+**Status:** Accepted.
+
+### D-486 · Two flakes settled: #93 closed on its evidence, and #110's mask taken off · 2026-11-26
+
+M14's audit, S2: #93 and #110 had evidence written up on their issues, and no commit.
+
+**#93, Firefox never set the builder's ready mark (one CI sighting, run 44845495842, 22 November).** Tried on lane 1 on 24 November (about 4,950 loads), on lane 3 on 25 November (about 350 under load) and on 26 November (about 100 beside a /verify): about 5,400 loads in all, every one setting the mark, and no CI run has shown it since. No plugin defect was found: the trace fits a stop inside the Interactivity runtime's hydration before its first region, not in the builder's script. **Decision:** close it, not quarantine it. "passes axe on every state it shows" is the axe gate and stays in every Firefox run. 1.2.0's diagnostics (`countStart()`, `startSeen()`) stay, so a next sighting says which of the runtime's three waits it stopped in, and opens a new issue with that.
+
+**#110, "Show the parts" drawn a pixel lower in the review shot.** 2 failures in 360 runs on 24 November, before D-415 made the shot wait for a still page; none in 560 on 25 November and none in 180 on 26 November since. **Decision:** the review shot compares `.cbuild-bar__more` again; only the share link, whose words are the site's own IDs, stays masked. The proof: with the link unmasked, the 18 review shots made as baselines in Playwright's container (`tools/visual.sh`), then `--repeat-each=10` over them: 180 of 180 passed on lane 1, beside the other lanes' runs. The scratch baselines were then put back, and none is committed from the lane: on m14-3d the committed start shots no longer match either (507 by 1407 against 1408 on the phones, 768 by 1334 against 1333 on the tablets, before any change of this lane's), and that one pixel is a layout change to be explained on the combined tree's visual run before any baseline is remade (D-162). That run is also CI's check that the unmasked link holds.
+
+**Status:** Accepted.
+
+### D-487 · The state route's view stays private, but for its scene and its 3D switches · 2026-11-26
+
+M14's audit, S3. `docs/HOOKS.md` says the state route's `view` is the builder's own and may change in any release, yet 1.4.0 documents `view.scene` (as `cbuild_scene` answers it) and `view.three` (for a theme styling the 3D view) as `@since 1.4.0`. A reader could not tell which rule held.
+
+**Decision:** `view` stays private, with one stated exception: `view.scene` and `view.three` are public from 1.4.0, each with a row in the state route's table, and follow Semantic Versioning as every other public item does. Nothing else under `view` is. They are not renamed or moved out of `view`, since both are already published in `schema/state.json` and renaming a public item is Zach's call.
+
+**Gate.** `composer api:check` holds HOOKS.md's rows against the snapshot.
+
+**Status:** Accepted.
+
+### D-488 · The delivery filters are given the kit line an Edit build would replace, by its cart key · 2026-11-26
+
+Creative Checkout 1.7.1's ask (#168, approved by Zach for 1.4.0 on 26 November). Checkout counts the cart to say how far a build is from free shipping. On an Edit build it counted the build being edited beside the new one, so the line said less was needed than was. Checkout already reads a `replace` key in both filters' `$context` and leaves that line out.
+
+**Decision:**
+
+- **What it holds.** Cowork's note asked for "the cart key of the kit line a build would replace". The builder's private `_replace` is the build's own identifier (`_cbuild_id`), not WooCommerce's cart key, so `Front\Delivery` finds the kit line whose build has that identifier and sends that line's cart key. Only a kit line carries a build. With no `_replace`, or one no kit line of this shopper's holds, it sends ''.
+- **Where the cart comes from.** WooCommerce loads no cart for a REST request, and the state route does not load one (D-138). `Port\Cart::held()` reads the lines from the cart where the request loaded it, and otherwise from the session's own copy (`cart`, includes/class-wc-cart-session.php:125 and :304, WooCommerce 11.3.1), making the session as `shopper()` does: the cookie is read and none is set. It is asked only where a `_replace` is sent.
+- **Nothing leaks.** The key is given to the filters alone, never put in the answer, and only a line of the visitor's own session can match. A value in the identifiers' shape that names a cart key, a part's line or another shopper's build gives ''.
+- **An addition only.** `replace` comes after 1.2.0's keys, and no key changes. A container an earlier release built gives `Delivery` no cart, and says ''.
+
+**Tests.** DeliveryTest, "both filters are given the cart key of the kit line an edit build would replace": two builds in the cart, the state route asked with each one's `_replace`, none, a build no line holds, a cart key, a part's line, a build removed, the session alone with no cart, and another shopper's session. The 1.2.0 context tests gain `replace` at the end. Red run: "Undefined array key "replace"" (DeliveryTest.php:333). Deliberate break, the match never true: "Failed asserting that two strings are identical" (DeliveryTest.php:337).
+
+**Status:** Accepted.
+
+### D-489 · Creative Checkout answers the delivery filters for a shopper with no address · 2026-11-26
+
+Creative Checkout 1.7.1 answers `cbuild_arrival_estimate` and `cbuild_delivery_line` for any shopper with a session, an address held or not. D-166 had the builder word the line from the shipping zones where nobody answered, and say nothing where the shop held no address. Zach accepted Checkout's change on 26 November.
+
+**Decision:** nothing in the builder changes. With Checkout active, its answer is the line for every shopper with a session, and the builder's own words show only to a visitor with no session, where Checkout has nothing to read. D-166 stands for a shop without Checkout. `docs/HOOKS.md` says so under the filters, with a note on tax: `total` follows the shop's price display (`woocommerce_tax_display_shop`, through `wc_get_price_to_display()`), while the cart and its free-shipping minimum follow the cart's (`woocommerce_tax_display_cart`), so a shop that shows one with tax and the other without sees a plugin's line off by the tax.
+
+**The fallback tests still hold.** DeliveryTest's "a shopper with no address held is not guessed at and a guest is given no session" and "with nobody answering and no address there is nothing to show" have no filter answering, so they test the builder's own words, which is what D-166 still describes. None of them assumes that a plugin says nothing for a shopper with a session.
 
 **Status:** Accepted.
 
