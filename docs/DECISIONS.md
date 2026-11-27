@@ -7500,6 +7500,9 @@ The finding offered two fixes: lock the polar angle while one finger is down, or
 
 **Decision:** while exactly one touch pointer is down on the canvas, the stage sets OrbitControls' `minPolarAngle` and `maxPolarAngle` to the camera's present polar angle, so one finger turns the board about its upright and never tilts it. A second finger, the finger lifting, or the browser cancelling it for the pan lets the range go back to 0 to π. Two fingers pinch as before. A mouse, the keys and the camera buttons still tilt.
 
+- **One finger's drag is also held back until it shows its way.** A capture listener on the window, ahead of the controls' own on the canvas, keeps the finger's moves from them until the drag has gone `SWIPE` (8 CSS pixels). If it went further sideways than up or down, it's a turn, and the controls get the rest. Otherwise it's the page's swipe to the end, and they get none of it. A real finger drifts sideways as it swipes, and the pitch lock alone would let that drift turn the board.
+- **The browser test reads the camera, not the pixels.** The probe reports the camera's position and the point it turns about, and the swipe test holds each to a hundredth of a millimetre. Its first byte-exact comparison of the canvas failed now and then under load, with the camera unmoved.
+
 - **Tests:** lane 3's `3d.spec.ts` "on a touch screen a vertical swipe over the canvas scrolls the page and leaves the camera", on chromium-phone; and `three-stage.test.ts` for one finger, two, a mouse and a cancel.
 
 **Status:** Accepted.

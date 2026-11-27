@@ -28,6 +28,7 @@ interface Probe {
 	closed: boolean;
 	playing: boolean;
 	board: number[];
+	camera: number[];
 }
 
 const fixture = (): Fixture =>
@@ -688,8 +689,7 @@ test.describe( '3D view (milestone 14)', () => {
 		);
 		await still( page );
 		const box = ( await canvas.boundingBox() )!;
-		const before = await canvas.screenshot();
-		const board = ( await probe( page ) )?.board;
+		const shown = ( await probe( page ) )!;
 		const from = await page.evaluate( () => window.scrollY );
 		const session = await page.context().newCDPSession( page );
 		await session.send( 'Input.synthesizeScrollGesture', {
@@ -703,10 +703,18 @@ test.describe( '3D view (milestone 14)', () => {
 		await expect
 			.poll( () => page.evaluate( () => window.scrollY ) )
 			.toBeGreaterThan( from + 40 );
-		// The camera did not turn: the view draws the board as it did before the swipe, from where it was.
+		// The camera did not turn: its place and the point it turns about are where they were, to a hundredth of a
+		// millimetre, and the board has not moved. Read from the probe, not the pixels, which a late frame changes.
 		await still( page );
-		expect( await canvas.screenshot() ).toEqual( before );
-		expect( ( await probe( page ) )?.board ).toEqual( board );
+		const now = ( await probe( page ) )!;
+		expect( now.camera ).toHaveLength( 6 );
+		now.camera.forEach( ( at, axis ) =>
+			expect( at, `the camera's ${ axis }` ).toBeCloseTo(
+				shown.camera[ axis ]!,
+				2
+			)
+		);
+		expect( now.board ).toEqual( shown.board );
 	} );
 
 	// D-468: a plugin blurs the view by class, the deck's from cbuild_part_classes, and puts its veil in the frame,
