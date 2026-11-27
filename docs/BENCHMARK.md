@@ -19,6 +19,9 @@ The spec's budgets are tests: a build fails when one is missed. The numbers from
   - [A press with its answer held back (#118, #121)](#a-press-with-its-answer-held-back-118-121)
 - [v1.3.0](#v130)
   - [Smart swaps on the state route (#135, D-434)](#smart-swaps-on-the-state-route-135-d-434)
+- [v1.4.0](#v140)
+  - [The state route with the 3D view on (#139, F12)](#the-state-route-with-the-3d-view-on-139-f12)
+  - [The 3D view's script (D-490)](#the-3d-views-script-d-490)
 
 ## Budgets (spec: Quality bar, Performance)
 
@@ -34,6 +37,7 @@ The spec's budgets are tests: a build fails when one is missed. The numbers from
 | My builds with a customer's 100 saved builds, p95 of 10 views with the caches emptied | Under 600 ms and 130 queries, the same queries as for one build (D-222) | `composer test:benchmark:integration` (`MyBuildsBenchmarkTest`) | Milestone 8 |
 | The builder's script, compressed (Brotli, quality 11) | Under 15 kB | `npm run budget` | Milestone 6 |
 | The builder's styles, compressed (Brotli, quality 11) | Under 10 kB | `npm run budget` | Milestone 6 |
+| The 3D view's script, `build/builder/three.js`, three.js with it, compressed with gzip | Under 200 kB (D-490); loaded only on the press of View in 3D | `npm run budget` | Milestone 14 |
 | LCP on the builder page, mobile profile, median of five (three before 1.2.0) | 2.5 s or less | `npm run lhci` | Milestone 1 (the front page until milestone 6) |
 | CLS, the same run | Under 0.1; 0 is the target | `npm run lhci` | Milestone 1 |
 | TBT, the same run | Under 200 ms | `npm run lhci` | Milestone 1 |
@@ -418,3 +422,65 @@ The store's script is 7,604 B compressed (7,133 B in 1.1.0), and 7,760 B with th
 | The trucks step, nothing picked (the budget's own) | 82.4 ms, 44 queries | 75.0 ms, 44 queries | 64.2 ms, 20 queries | 64.4 ms, 20 queries |
 
 The "before" run's own shape was over its budget too, at 82.4 ms: the machine was busier then, and the same shape measured 68.3 ms in a quieter run that day. Broken on purpose, with `BuildSwaps` asking the ranks by ID again, the review measured 581.3 ms cold and 49 queries, and the benchmark failed.
+
+## v1.4.0
+
+**Machine:** Apple M1 Max, PHP 8.5.12 in wp-env on OrbStack, WordPress 7.1.5, WooCommerce 11.3.1, wp-env's own database server, Xdebug off. Measured 27 November 2026 on lane 2's integration site, on the milestone 14 branch, the machine quiet: the runner's fixed work took 7.54 ms against 7.05 ms on the reference run, a scale of 1.07, and the budgets were not scaled. The catalogue is v0.7.0's: seven slots over 2,000 simple products, 500 of them in the step.
+
+### The state route with the 3D view on (#139, F12)
+
+M14's audit, F12, asked that the query count and the benchmark be run with the kit's 3D view on, since an answer to a build with a deck then also measures the board's scene and looks up its textures (D-470, D-475). Since v1.3.0:
+
+- **The query count.** `StateRouteTest::test_the_route_asks_the_same_number_of_queries_however_many_parts_a_step_has` runs twice, with the data sets "3D view off" and "3D view on", and with it on asserts that the step's answer and the review's carry a scene.
+- **The benchmark.** `StateRouteBenchmarkTest` makes a second kit, "Complete in 3D", the same slots and ready builds with `view_3d` true, as a kit saved from 1.4.0 has it (D-476), and times a sixth shape on it, a move with the 3D view on, cold and warm. It first asserts that the plain kit's move has no scene and the 3D kit's has one, so the shape measures what it says.
+
+`composer test:benchmark:integration`, p95 of 40 requests, with the queries at most:
+
+| The state route, 500 candidates in the step, no persistent cache | p95 | Median | Slowest | Queries | Budget |
+| --- | --- | --- | --- | --- | --- |
+| Cold: the cache emptied before each request | 71.6 ms | 66.8 ms | 75.5 ms | 44 | 80 ms |
+| Warm | 62.1 ms | 58.5 ms | 70.3 ms | 20 | 80 ms |
+| A move to the next step, cold | 73.0 ms | 69.3 ms | 74.2 ms | 44 | 80 ms |
+| A move to the next step, warm | 57.8 ms | 52.5 ms | 63.8 ms | 20 | 80 ms |
+| **A move with the 3D view on, cold** | 77.3 ms | 72.1 ms | 78.0 ms | 44 | 80 ms |
+| **A move with the 3D view on, warm** | 67.1 ms | 56.7 ms | 68.9 ms | 20 | 80 ms |
+| A search with a chip and a sort, cold | 66.6 ms | 61.6 ms | 67.8 ms | 44 | 80 ms |
+| A search with a chip and a sort, warm | 58.4 ms | 51.8 ms | 61.2 ms | 20 | 80 ms |
+| The review, six slots picked, with its swaps, cold | 61.7 ms | 55.8 ms | 65.3 ms | 44 | 80 ms |
+| The review, six slots picked, with its swaps, warm | 51.7 ms | 48.8 ms | 54.7 ms | 21 | 80 ms |
+| The trucks step, a truck picked, with its swaps, cold | 71.0 ms | 66.4 ms | 83.3 ms | 44 | 80 ms |
+| The trucks step, a truck picked, with its swaps, warm | 63.4 ms | 57.0 ms | 66.1 ms | 20 | 80 ms |
+| The first request after one part moves | 66.9 ms | 62.5 ms | 70.1 ms | 44 | 80 ms |
+| The first request after a reindex of 2,000 parts | 64.2 ms | | | 44 | 80 ms |
+| With no row kept at all | 739 ms | | | 120 | Printed, not held |
+| A visitor whose session holds a 7-part build | 9.3 ms | | | 47 | Recorded |
+
+**Every row is inside the budget.** The scene asks no query of its own: the move with the 3D view on asks the same 44 cold and 20 warm as the move with it off, and costs 4.3 ms cold and 9.3 ms warm at p95 in this run: the domain's measuring and the textures' lookups after `cbuild_composed_layer` (D-470, D-475). The trucks step's slowest single request, 83.3 ms, is one of 40; its p95 is 71.0 ms. A move's answer to the plain kit is 110,896 bytes whole and 57,285 bytes as the store asks for it, the view alone (102,648 and 51,240 in 1.1.0).
+
+**A run on a loaded machine.** The milestone's full set, earlier the same night on lane 2 with the machine loaded, measured the cold route at 83.3 ms at p95 (median 75.4 ms, slowest 84.1 ms, 44 queries) and failed it: "Failed asserting that 83.312443 is less than 80.0." (`StateRouteBenchmarkTest.php:371`, `/tmp/fullset-l2.log`). The runner's fixed work took 8.94 ms there, a scale of 1.27 against 1.07 in the quiet run, and every other figure of that run was slower in step: the cart's add at 56.9 ms against 42.0, a session's state at 14.7 ms against 9.3. The cold route asks the same 44 queries in both runs, so the difference is load alone, as in v1.1.0's run under three lanes (D-340). The quiet rerun above passed, all eight tests. The budget did not move.
+
+| The rest, no persistent cache | Result | Budget |
+| --- | --- | --- |
+| Adding a 7-part build to the cart by the Store API | p95 42.0 ms, 58 queries | 300 ms, 58 queries |
+| A Store API cart read with the build in it | p95 28.9 ms, 28 queries | Recorded |
+| My builds with 100 saved builds, caches emptied | p95 504 ms, 105 queries | 600 ms, 130 queries |
+| Reindex of 2,000 parts | 22 batches, 1.16 s in all; a batch 66 ms and 319 queries at most | Each batch under 10 s and 400 queries |
+| The specs export, 2,000 rows | 0.54 s | 10 s |
+| The Catalogue check, 2,000 parts | 0.64 s, peak memory 189 MB | 10 s |
+| The import's dry run, 5,000 rows read; an export with layer images read back | 0.31 s planned; 0.51 s planned | 10 s |
+| The import, 1,800 parts written | 20 jobs, 843 ms at the slowest | 10 s a job |
+| A build's three composed pictures, GD | 0.39 s, 19.2 MB; 23 kB a build | 4 s, 64 MB |
+
+Not measured here: Lighthouse on the builder page, and the route with Redis. Milestone 14 changed no query, so v1.0.0's Redis figures stand, with D-294.
+
+### The 3D view's script (D-490)
+
+`npm run budget` on 27 November 2026, after `npm run build` on this tree:
+
+| File | Result | Budget |
+| --- | --- | --- |
+| `build/builder/three.js`, the 3D view with three.js 0.187.0 | 143,372 B gzipped; 117,467 B with Brotli | 204,800 B gzipped |
+| `build/builder/view.js`, the store, Brotli 11 | 10,022 B (7,760 B in 1.2.0) | 15,360 B |
+| The styles, and their RTL twin, Brotli 11 | 7,823 B and 7,828 B | 10,240 B |
+
+The chunk is held to its budget with gzip, as a server without Brotli sends it; the Brotli budgets of the store and the styles do not move. It loads only on the press of View in 3D: before it, the page with the 3D view on fetches the same files at the same sizes as with it off, three.js not among them, and its HTML is larger only by the view's elements and the scene, under 6 kB (D-498; `3d.spec.ts`, "with 3D on, the page before the press is the page with it off", and "opens only on the press: its script and nothing else of it loads before"). Once open, the view draws a frame only when something changes, none off the screen or with the tab hidden (D-492; `3d.spec.ts`, "draws nothing over 5 s left alone").

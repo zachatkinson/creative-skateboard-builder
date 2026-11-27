@@ -39,6 +39,15 @@ The plugin sets no cookie of its own, sends nothing about a shopper anywhere, an
 - **"Not offered in the builder"** (#116) is a part's `_cbuild_not_offered` meta, the shop's own choice, which uninstall removes too.
 - **A part's rank in its slot** (#135) is its `_cbuild_rank` meta, the shop's own number, which uninstall removes too. Smart swaps keep nothing: each is worked out for the answer it is in.
 
+**1.4.0 stores nothing new about a person.**
+
+- **Its two kit settings,** `view_3d` (whether the builder offers the 3D view) and `tricks` (whether the view offers its trick buttons), are keys in a kit's `_cbuild_settings`, the shop's own choices, each a boolean (D-474, D-476; `schema/kit-settings.json`). No new document, meta key, option or table is added: the diff since v1.3.0 changes nothing in `src/Repository/` or `src/Install/`.
+- **The five new specs,** `nose_length`, `tail_length`, `concave_depth`, `kick_angle` and `wheel_width` (D-472), are spec keys like the 21 before them (`src/Domain/Spec/SpecKey.php`), so they are kept where every spec is: a part's `_cbuild_specs` meta, a row each in `{prefix}cbuild_specs`, and the specs column of `{prefix}cbuild_parts` (the table below). They are a part's sizes, the shop's catalogue, about no one, and uninstall removes them with the rest.
+- **The 3D view's scene** is measured by the domain for each answer of the state route where the kit's 3D view is on and a deck is picked, and handed to the page in that answer's `view.scene` (D-470, D-475; `Front/SceneView.php`). It holds the parts' IDs, sizes and places, the spec keys a usual value stood in for, and texture addresses: nothing of the shopper's. It is stored nowhere, neither on the server nor in the browser.
+- **The textures** are the plugin's own renditions of the shop's layer images, the largest WebP rendition made, on the shop's own origin (D-475, D-496). The browser asks for them as for any image on the page, and the view loads no address on another origin (`own()`, `assets/src/builder/three/index.ts:39`).
+- **`cbuild:3d-failed`** (D-481), sent where the view can't be shown, carries the kit's ID and one of four reason codes, and goes only to scripts on the same page, as the builder's other events do; the reason is also warned in the browser's own console. The plugin sends it nowhere, logs it nowhere and keeps no count of it.
+- **No browser storage.** A search of `assets/src` for `localStorage`, `sessionStorage`, `indexedDB` and `document.cookie` finds none on 27 November 2026: the 3D view, like the rest of the builder's script, keeps nothing in the browser. The camera's place and the view's being open last for that page view alone.
+
 ## Personal data
 
 From 0.8.0, saved builds are the only personal data the plugin keeps (spec: Privacy and data handling; D-217, D-220): the customer's user ID, the picks, assembly, the name they give the build, and when it was made and last saved.
