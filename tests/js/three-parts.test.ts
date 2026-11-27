@@ -229,15 +229,16 @@ describe( 'trucks', () => {
 	} );
 
 	it( 'puts each on its holes, its axle the truck’s height under the deck', () => {
+		// The scene's own centres (F9), between each truck's rows of holes.
 		const group = trucks( scene() );
 		expect( group?.userData ).toEqual( { slot: 'trucks', part: 202 } );
 		const parts = meshes( group );
 		expect( parts ).toHaveLength( 8 );
 		const [ base, block, hanger, axle ] = parts;
-		expect( base!.position.x ).toBeCloseTo( 207.9625, 6 );
+		expect( base!.position.x ).toBeCloseTo( 207.963, 6 );
 		expect( base!.position.y ).toBeCloseTo( 0, 6 );
 		expect( base!.position.z ).toBeCloseTo( -11 - TRUCK.plate / 2, 6 );
-		expect( parts[ 4 ]!.position.x ).toBeCloseTo( -207.9625, 6 );
+		expect( parts[ 4 ]!.position.x ).toBeCloseTo( -207.963, 6 );
 		const plate = ( base!.geometry as BoxGeometry ).parameters;
 		expect( plate ).toMatchObject( { width: 70, height: 55, depth: 6 } );
 		const drop = ( block!.geometry as BoxGeometry ).parameters;
@@ -258,6 +259,46 @@ describe( 'trucks', () => {
 		).toMatchObject( { radiusTop: TRUCK.axle, height: 209.55 } );
 	} );
 
+	// F9: the axle's height is the server's, sent as each truck's centre, as the wheels' places are; nothing here
+	// measures it again, so a truck and its wheels move together.
+	it( 'draws each truck at the scene’s axle centre, and the wheels at theirs alike', () => {
+		const taller = scene();
+		taller.trucks!.centres = [
+			[ 207963, 0, -66000 ],
+			[ -207963, 0, -66000 ],
+		];
+		taller.wheels!.places = taller.wheels!.places.map( ( [ x, y ] ) => [
+			x ?? 0,
+			y ?? 0,
+			-66000,
+		] );
+		const [ base, block, hanger, axle ] = meshes( trucks( taller ) );
+		expect( hanger!.position.z ).toBeCloseTo( -66, 6 );
+		expect( axle!.position.z ).toBeCloseTo( -66, 6 );
+		expect( base!.position.z ).toBeCloseTo( -11 - TRUCK.plate / 2, 6 );
+		expect(
+			( block!.geometry as BoxGeometry ).parameters.depth
+		).toBeCloseTo( 66 - 11 - TRUCK.plate, 6 );
+		expect( meshes( wheels( taller, none ) )[ 0 ]!.position.z ).toBeCloseTo(
+			-66,
+			6
+		);
+		// The truck's height alone, with the centres the same, moves nothing: it is not measured again.
+		const same = scene();
+		same.trucks!.height += 5000;
+		expect( meshes( trucks( same ) )[ 2 ]!.position.z ).toBeCloseTo(
+			-63,
+			6
+		);
+		// A truck on a centre off the line, as another plugin's answer may put it, is drawn there.
+		const moved = scene();
+		moved.trucks!.centres = [ [ 100000, 5000, -63000 ] ];
+		const one = meshes( trucks( moved ) );
+		expect( one ).toHaveLength( 4 );
+		expect( one[ 0 ]!.position.x ).toBeCloseTo( 100, 6 );
+		expect( one[ 0 ]!.position.y ).toBeCloseTo( 5, 6 );
+	} );
+
 	it( 'is the truck’s colour, or the plain metal’s, and metal', () => {
 		const [ base ] = meshes( trucks( scene() ) );
 		expect( look( base ).color.getHexString() ).toBe( 'b8bcc2' );
@@ -276,6 +317,11 @@ describe( 'trucks', () => {
 
 	it( 'stands under a riser', () => {
 		const raised = { ...scene(), risers: { part: 9, thickness: 3175 } };
+		// The server's centres, under the riser too.
+		raised.trucks!.centres = [
+			[ 207963, 0, -66175 ],
+			[ -207963, 0, -66175 ],
+		];
 		const [ base, , hanger ] = meshes( trucks( raised ) );
 		expect( base!.position.z ).toBeCloseTo( -11 - 3.175 - 3, 6 );
 		expect( hanger!.position.z ).toBeCloseTo( -66.175, 6 );
@@ -284,6 +330,10 @@ describe( 'trucks', () => {
 	it( 'has no block where the truck is shorter than its baseplate', () => {
 		const low = scene();
 		low.trucks!.height = 1000;
+		low.trucks!.centres = [
+			[ 207963, 0, -12000 ],
+			[ -207963, 0, -12000 ],
+		];
 		const block = meshes( trucks( low ) )[ 1 ]!;
 		expect( ( block.geometry as BoxGeometry ).parameters.depth ).toBe( 0 );
 	} );
@@ -370,7 +420,7 @@ describe( 'risers', () => {
 			( two[ 0 ]!.geometry as BoxGeometry ).parameters.depth
 		).toBeCloseTo( 3.175, 6 );
 		expect( two[ 0 ]!.position.z ).toBeCloseTo( -11 - 3.175 / 2, 6 );
-		expect( two[ 1 ]!.position.x ).toBeCloseTo( -207.9625, 6 );
+		expect( two[ 1 ]!.position.x ).toBeCloseTo( -207.963, 6 );
 		expect( look( two[ 0 ] ).color.getHexString() ).toBe(
 			COLOURS.riser.slice( 1 )
 		);

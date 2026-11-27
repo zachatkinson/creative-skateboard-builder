@@ -19,17 +19,7 @@ import {
 	Vector2,
 	type Texture,
 } from 'three';
-import {
-	axleHeight,
-	centres,
-	edge,
-	face,
-	mm,
-	profile,
-	spot,
-	surface,
-	type Face,
-} from './shapes';
+import { edge, face, mm, profile, spot, surface, type Face } from './shapes';
 import type { Scene, Slot } from './scene';
 
 /**
@@ -200,9 +190,9 @@ export function deck( scene: Scene, textures: Textures ): Group {
 }
 
 /**
- * The trucks, each on its own holes: a baseplate under the deck and any riser, a block to the hanger, the hanger
- * across, and the axle out to its own width. The casting is simplified; the axle's width and the height are the
- * truck's.
+ * The trucks, each at its axle's centre as the scene gives it (F9): a baseplate under the deck and any riser, a block
+ * to the hanger, the hanger across, and the axle out to its own width. The casting is simplified; the axle's width and
+ * its centre are the scene's, so nothing here measures the truck's height again.
  *
  * @param scene The scene.
  */
@@ -216,12 +206,12 @@ export function trucks( scene: Scene ): Group | null {
 	const under = -(
 		mm( scene.deck.thickness ) + mm( scene.risers?.thickness )
 	);
-	const axle = axleHeight( scene.deck, truck, scene.risers?.thickness ?? 0 );
 	const plate = {
 		length: mm( truck.baseplate.length ),
 		width: mm( truck.baseplate.width ),
 	};
-	for ( const [ x, y ] of centres( truck ) ) {
+	for ( const centre of truck.centres ) {
+		const [ x, y, axle ] = spot( centre );
 		const base = new Mesh(
 			new BoxGeometry( plate.length, plate.width, TRUCK.plate ),
 			metal
@@ -305,7 +295,8 @@ export function risers( scene: Scene ): Group | null {
 	const made = group( 'risers', riser.part );
 	const pad = material( null, COLOURS.riser, 0.8 );
 	const thick = mm( riser.thickness );
-	for ( const [ x, y ] of centres( truck ) ) {
+	for ( const centre of truck.centres ) {
+		const [ x, y ] = spot( centre );
 		const one = new Mesh(
 			new BoxGeometry(
 				mm( truck.baseplate.length ),

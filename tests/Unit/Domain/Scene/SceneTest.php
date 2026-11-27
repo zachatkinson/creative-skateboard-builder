@@ -235,6 +235,12 @@ final class SceneTest extends TestCase {
 					'width'  => 63500,
 				),
 				'holes'     => self::holes( self::scene( self::whole() ) )['points'],
+				// Each truck's axle's centre: between its rows, on the centre line, under the deck, the riser and its
+				// height. The nose's first.
+				'centres'   => array(
+					array( 207963, 0, -66175 ),
+					array( -207963, 0, -66175 ),
+				),
 				'color'     => null,
 			),
 			self::part( self::scene( self::whole() ), 'trucks' )
@@ -275,6 +281,28 @@ final class SceneTest extends TestCase {
 			self::assertSame( $z, $place[2], 'wheel ' . $at . ' is on the axle\'s centre' );
 		}
 		self::assertSame( array( -1, 1, -1, 1 ), array_map( static fn( array $place ): int => $place[1] <=> 0, $wheels['places'] ), 'each pair\'s left first' );
+	}
+
+	// The audit's F9: the axle's height is measured once, here, and the trucks and the wheels are drawn from it alike.
+	public function test_changing_the_trucks_height_alone_moves_the_trucks_and_the_wheels_alike(): void {
+		$low  = self::scene( self::whole() );
+		$high = self::scene( self::whole( array( SlotKey::TRUCKS => Parts::indy( '144', array( 'truck_height' => '55' ) ) ) ) );
+
+		foreach ( array( $low, $high ) as $scene ) {
+			$trucks = self::part( $scene, 'trucks' )['centres'];
+			$wheels = self::part( $scene, 'wheels' )['places'];
+			self::assertIsArray( $trucks );
+			self::assertIsArray( $wheels );
+			foreach ( array( 0, 1 ) as $at ) {
+				self::assertIsArray( $trucks[ $at ] );
+				self::assertIsArray( $wheels[ 2 * $at ] );
+				self::assertSame( $wheels[ 2 * $at ][0], $trucks[ $at ][0], 'truck ' . $at . ' is on its wheels\' axle' );
+				self::assertSame( $wheels[ 2 * $at ][2], $trucks[ $at ][2], 'truck ' . $at . '\'s axle is at its wheels\' height' );
+			}
+		}
+		$z = static fn( array $scene ): mixed => self::part( $scene, 'trucks' )['centres'][0][2] ?? null;
+		self::assertSame( -3000, $z( $high ) - $z( $low ), '3 mm taller, 3 mm lower' );
+		self::assertSame( self::part( $low, 'trucks' )['centres'][0][0] ?? null, self::part( $high, 'trucks' )['centres'][0][0] ?? null );
 	}
 
 	public function test_without_risers_the_axle_is_the_trucks_height_under_the_deck(): void {

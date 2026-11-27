@@ -361,6 +361,7 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-505 · Every generated face is wound to look out, the deck's edge among them](#d-505--every-generated-face-is-wound-to-look-out-the-decks-edge-among-them--2026-11-26)
 - [D-506 · A textured part is drawn in its colour until its image arrives](#d-506--a-textured-part-is-drawn-in-its-colour-until-its-image-arrives--2026-11-26)
 - [D-507 · One finger turns the 3D view about its upright alone](#d-507--one-finger-turns-the-3d-view-about-its-upright-alone--2026-11-26)
+- [D-508 · The scene sends each truck's axle centre, and the view measures nothing](#d-508--the-scene-sends-each-trucks-axle-centre-and-the-view-measures-nothing--2026-11-26)
 
 ### Cart, checkout and orders
 
@@ -7347,5 +7348,16 @@ The finding offered two fixes: lock the polar angle while one finger is down, or
 **Decision:** while exactly one touch pointer is down on the canvas, the stage sets OrbitControls' `minPolarAngle` and `maxPolarAngle` to the camera's present polar angle, so one finger turns the board about its upright and never tilts it. A second finger, the finger lifting, or the browser cancelling it for the pan lets the range go back to 0 to π. Two fingers pinch as before. A mouse, the keys and the camera buttons still tilt.
 
 - **Tests:** lane 3's `3d.spec.ts` "on a touch screen a vertical swipe over the canvas scrolls the page and leaves the camera", on chromium-phone; and `three-stage.test.ts` for one finger, two, a mouse and a cancel.
+
+**Status:** Accepted.
+
+### D-508 · The scene sends each truck's axle centre, and the view measures nothing · 2026-11-26
+
+The audit's F9. The axle's height was worked out twice: by `Scene::of()` for the wheels' `places`, and again by `axleHeight()` in `shapes.ts` for the trucks. And `centres()` re-derived each truck's centre from the holes, as a mean, half a micrometre off the wheels' axle. Two sums of one size can drift apart. CLAUDE.md's "one engine" rule wants the browser to decide nothing.
+
+**Decision:** `trucks` in the scene gains `centres`: each truck's axle centre, x, y and z, the nose's first. x is `Board::$out`, the same as the wheels' x, on the centre line, at the wheels' z. The chunk draws each truck from its own centre, the hanger and the axle at its z and the baseplate under the deck and any riser, and the risers from the same x and y. `axleHeight()` and `centres()` are gone from `shapes.ts`. A truck's `height` stays in the scene, for a plugin to read.
+
+- **It's an addition** to `view.scene` and `cbuild_scene`'s shape, in the same unreleased 1.4.0: `schema/state.json`, the generated types, `cbuild_scene`'s entry in `docs/HOOKS.md`, and the API snapshot.
+- **Tests:** `SceneTest` "changing the trucks' height alone moves the trucks and the wheels alike", with the 3 mm the trucks drop; `three-parts.test.ts`, where the trucks follow the scene's centres and a height change alone moves nothing; and the state route's integration test, where the trucks' z is the wheels'.
 
 **Status:** Accepted.

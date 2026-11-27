@@ -813,6 +813,10 @@ export interface CbuildState {
 				 * The deck's eight holes, the same points.
 				 */
 				holes: ScenePoint[];
+				/**
+				 * From 1.4.0 (F9): each truck's axle's centre, x, y and z, the nose's first: between its rows of holes, on the centre line, at the height its wheels' `places` give. The view draws the trucks from these, so it measures nothing itself.
+				 */
+				centres: number[][];
 				color: string | null;
 			};
 			wheels: null | {

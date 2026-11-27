@@ -1761,6 +1761,7 @@ final class StateRouteTest extends IntegrationTestCase {
 		$view = $scene( $on );
 		self::assertSame( $this->parts['deck 8.0'], $view['scene']['deck']['part'] );
 		self::assertSame( -( 11000 + $view['scene']['trucks']['height'] ), $view['scene']['wheels']['places'][0][2], 'no risers: the axle under the deck' );
+		self::assertSame( $view['scene']['wheels']['places'][0][2], $view['scene']['trucks']['centres'][0][2], 'the trucks\' axle is the wheels\' (F9)' );
 		self::assertContains( 'nose_length', $view['scene']['assumed'] );
 		add_filter( 'cbuild_scene', static fn(): string => 'no scene' );
 		$kept = $scene( $on )['scene'];

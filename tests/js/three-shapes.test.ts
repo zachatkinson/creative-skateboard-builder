@@ -8,8 +8,6 @@ import {
 	BEARING,
 	GRID,
 	KICK,
-	axleHeight,
-	centres,
 	edge,
 	ends,
 	face,
@@ -319,47 +317,20 @@ describe( 'profile', () => {
 	} );
 } );
 
-describe( 'centres', () => {
-	it( 'puts each truck at the middle of its own holes, the nose’s first', () => {
-		const [ front, back ] = centres( scene().trucks! );
-		expect( front![ 0 ] ).toBeCloseTo( ( 180.975 + 234.95 ) / 2, 9 );
-		expect( front![ 1 ] ).toBeCloseTo( 0, 9 );
-		expect( back![ 0 ] ).toBeCloseTo( -( 180.975 + 234.95 ) / 2, 9 );
-		expect( back![ 1 ] ).toBeCloseTo( 0, 9 );
-	} );
-
-	it( 'leaves out a side with no holes', () => {
-		const trucks = scene().trucks!;
-		expect(
-			centres( {
-				...trucks,
-				holes: trucks.holes.filter( ( point ) => point[ 0 ]! > 0 ),
-			} )
-		).toHaveLength( 1 );
-		expect( centres( { ...trucks, holes: [ [ 0, 5000 ] ] } ) ).toEqual(
-			[]
-		);
-	} );
-
-	it( 'meets the deck’s own holes', () => {
+describe( 'the scene’s trucks', () => {
+	it( 'meet the deck’s own holes', () => {
 		const { deck: board, trucks } = scene();
 		expect( trucks!.holes ).toEqual( board.holes.points );
 	} );
-} );
 
-describe( 'axleHeight', () => {
-	it( 'is the deck, the riser and the truck’s height under the top', () => {
-		const { deck: board, trucks } = scene();
-		expect( axleHeight( board, trucks!, 0 ) ).toBeCloseTo( -63, 9 );
-		expect( axleHeight( board, trucks!, 3175 ) ).toBeCloseTo( -66.175, 9 );
-	} );
-
-	it( 'is where the scene puts the wheels', () => {
-		const { deck: board, trucks, wheels } = scene();
-		expect( mm( wheels!.places[ 0 ]![ 2 ] ) ).toBeCloseTo(
-			axleHeight( board, trucks!, 0 ),
-			9
-		);
+	// F9: the server sends each truck's axle centre, on its wheels' axle, so the view measures neither.
+	it( 'are centred on their wheels’ axles, the nose’s first', () => {
+		const { trucks, wheels } = scene();
+		const [ front, back ] = trucks!.centres;
+		expect( front ).toEqual( [ 207963, 0, -63000 ] );
+		expect( back![ 0 ] ).toBe( -front![ 0 ]! );
+		expect( wheels!.places[ 0 ]![ 0 ] ).toBe( front![ 0 ] );
+		expect( wheels!.places[ 0 ]![ 2 ] ).toBe( front![ 2 ] );
 	} );
 } );
 
