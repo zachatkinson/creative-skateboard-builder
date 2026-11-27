@@ -9379,6 +9379,9 @@ test.describe( 'Compare saved builds (#136)', () => {
  * @param titled The heading the step it leads to has.
  */
 async function moveTo( page: Page, name: string | RegExp, titled: RegExp ) {
+	// A press while the last step still crosses over is not taken, as the 3D tests found (D-529): firefox-phone on CI
+	// stayed on hardware after Next: Grip tape (#173, D-540).
+	await expect( page.locator( 'html.cbuild-crossing' ) ).toHaveCount( 0 );
 	await page.getByRole( 'button', { name, exact: true } ).click();
 	await expect( heading( page ) ).toHaveText( titled );
 	await expect( page.locator( '.cbuild' ) ).not.toHaveAttribute(

@@ -131,12 +131,6 @@ const drawsWebGL = ( page: Page ): Promise< boolean > =>
 	);
 
 /**
- * How long the view may take to open after its press: the three.js chunk is fetched and parsed only then, which took
- * over 5 s, Playwright's default, on CI's Firefox phone runner (#173, D-538). `still()` already allows 20 s.
- */
-const LOADED = { timeout: 20_000 };
-
-/**
  * Open the 3D view on the 3D kit's page and wait until it is still.
  *
  * @param page The page.
@@ -151,7 +145,7 @@ async function open( page: Page ) {
 	await expect(
 		page.getByRole( 'button', { name: 'View in 3D' } )
 	).toHaveAttribute( 'aria-pressed', 'true' );
-	await expect( page.locator( '.cbuild-3d__canvas' ) ).toBeVisible( LOADED );
+	await expect( page.locator( '.cbuild-3d__canvas' ) ).toBeVisible();
 	await still( page );
 }
 
@@ -298,14 +292,18 @@ test.describe( '3D view (milestone 14)', () => {
 		const asked: string[] = [];
 		page.on( 'request', ( request ) => asked.push( request.url() ) );
 		await page.goto( build( fixture().three.page ) );
+		// Without WebGL 2 the chunk still loads on the press, then the view goes back to the board, so the stage never
+		// shows: CI's Linux Firefox has none (#173, D-538). The fallback tests cover that path.
+		test.skip(
+			! ( await drawsWebGL( page ) ),
+			'This browser has no WebGL 2 here; the fallback tests cover it.'
+		);
 		await expect( page.locator( '.cbuild-3d__stage' ) ).toBeHidden();
 		expect(
 			asked.filter( ( url ) => url.includes( '/build/builder/three' ) )
 		).toEqual( [] );
 		await page.getByRole( 'button', { name: 'View in 3D' } ).click();
-		await expect( page.locator( '.cbuild-3d__stage' ) ).toBeVisible(
-			LOADED
-		);
+		await expect( page.locator( '.cbuild-3d__stage' ) ).toBeVisible();
 		expect(
 			asked.filter( ( url ) => url.includes( '/build/builder/three.js' ) )
 		).toHaveLength( 1 );
@@ -894,6 +892,29 @@ test.describe( '3D view (milestone 14)', () => {
 				'chromium' !== page.context().browser()?.browserType().name(),
 			'A touch swipe is synthesised through Chromium’s protocol, on a touch screen.'
 		);
+		// A control first: the same swipe over the page's heading. Linux's headless Chromium, CI's, scrolls no page with a
+		// synthesised touch swipe, over the canvas or not, so there the test has nothing to show (#173, D-540).
+		const swipes = await page.context().newCDPSession( page );
+		await page.evaluate( () => window.scrollTo( 0, 0 ) );
+		const heading = ( await page.locator( 'h1' ).first().boundingBox() )!;
+		await swipes.send( 'Input.synthesizeScrollGesture', {
+			x: Math.round( heading.x + 20 ),
+			y: Math.round( heading.y + heading.height / 2 ),
+			xDistance: 0,
+			yDistance: -120,
+			gestureSourceType: 'touch',
+			speed: 600,
+		} );
+		const scrolled = await page
+			.waitForFunction( () => window.scrollY >= 40, undefined, {
+				timeout: 2000,
+			} )
+			.then( () => true )
+			.catch( () => false );
+		test.skip(
+			! scrolled,
+			'This browser’s synthesised touch swipe scrolls no page, over the canvas or not.'
+		);
 		await canvas.evaluate( ( shown ) =>
 			shown.scrollIntoView( { block: 'center' } )
 		);
@@ -992,9 +1013,7 @@ test.describe( '3D view (milestone 14)', () => {
 		await page.getByRole( 'button', { name: 'View in 3D' } ).click();
 		await expect( page.locator( '.cbuild-3d__stage' ) ).toBeHidden();
 		await page.getByRole( 'button', { name: 'View in 3D' } ).click();
-		await expect( page.locator( '.cbuild-3d__stage' ) ).toBeVisible(
-			LOADED
-		);
+		await expect( page.locator( '.cbuild-3d__stage' ) ).toBeVisible();
 		await kept( 'closed and opened again' );
 		// The plugin's reveal lifts its blur, by its own class on the page's root.
 		expect(
@@ -1206,9 +1225,7 @@ test.describe( '3D view (milestone 14)', () => {
 			const toggle = page.locator( '.cbuild-3d__open' );
 			await toggle.click();
 			await expect( toggle ).toHaveAttribute( 'aria-pressed', 'true' );
-			await expect( page.locator( '.cbuild-3d__canvas' ) ).toBeVisible(
-				LOADED
-			);
+			await expect( page.locator( '.cbuild-3d__canvas' ) ).toBeVisible();
 			await still( page );
 			await toggle.evaluate( ( shown ) =>
 				shown.scrollIntoView( { block: 'center' } )

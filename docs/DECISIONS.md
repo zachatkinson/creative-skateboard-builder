@@ -124,8 +124,9 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-532 · The Catalogue check lists the 3D view's usual sizes apart, and counts as Site Health does](#d-532--the-catalogue-check-lists-the-3d-views-usual-sizes-apart-and-counts-as-site-health-does--2026-11-27)
 - [D-533 · The kick angle names its unit as a measure does](#d-533--the-kick-angle-names-its-unit-as-a-measure-does--2026-11-27)
 - [D-537 · The browser fixture makes its own folder, and a write it cannot make stops it](#d-537--the-browser-fixture-makes-its-own-folder-and-a-write-it-cannot-make-stops-it--2026-11-27)
-- [D-538 · The 3D tests give the view 20 s to open after its press](#d-538--the-3d-tests-give-the-view-20-s-to-open-after-its-press--2026-11-27)
+- [D-538 · A 3D test that needs the view to draw skips where WebGL 2 is missing](#d-538--a-3d-test-that-needs-the-view-to-draw-skips-where-webgl-2-is-missing--2026-11-27)
 - [D-539 · The update test stops where an old release's fixture made no kit](#d-539--the-update-test-stops-where-an-old-releases-fixture-made-no-kit--2026-11-27)
+- [D-540 · The swipe test checks the browser can swipe, and the builder tests wait out a crossing before a press](#d-540--the-swipe-test-checks-the-browser-can-swipe-and-the-builder-tests-wait-out-a-crossing-before-a-press--2026-11-27)
 
 ### Kits and their settings
 
@@ -7784,13 +7785,16 @@ CI's visual and Lighthouse jobs failed on #173: every spec that reads `tmp/e2e-b
 
 **Status:** Accepted.
 
-### D-538 · The 3D tests give the view 20 s to open after its press · 2026-11-27
+### D-538 · A 3D test that needs the view to draw skips where WebGL 2 is missing · 2026-11-27
 
-CI's firefox-phone job failed "opens only on the press" on #173: `.cbuild-3d__stage` was still hidden 5 s after View in 3D was pressed. The view opens once the three.js chunk is fetched and parsed (`view.ts`, `rise()`), and the tests waited Playwright's default 5 s for it, where `still()` already allows 20 s for the view's first frames.
+CI's firefox-phone job failed "opens only on the press" on #173: `.cbuild-3d__stage` stayed hidden after View in 3D. It was first taken for a slow chunk, and the waits were made 20 s; the next run failed the same at 20 s. CI's Linux Firefox has no WebGL 2, so the chunk loads on the press and the view goes back to the board, as it should. Every other 3D test skips there through `open()`; this one opened the page itself and had no such check.
 
-**Decision:** every wait in `tests/e2e/3d.spec.ts` for the stage or canvas to show after the press takes `LOADED`, 20 s. The test still fails if the view never opens.
+**Decision:**
 
-**Tests:** a probe that held the chunk's requests 6 s failed with the 5 s wait and passed with 20 s, on chromium-desktop in lane 3. The builder itself waits for the chunk however long it takes.
+- **The test skips without WebGL 2,** as `open()` does, with the same reason. The fallback tests cover that path.
+- **The 20 s waits are taken out.** No run showed a chunk slower than 5 s.
+
+**Tests:** in Playwright's Linux image (`tools/visual.sh --project=firefox-phone`), the test now skips. On the Mac it runs and passes.
 
 **Status:** Accepted.
 
@@ -7801,3 +7805,19 @@ CI's updates job failed on #173 at "the grip with a layer image was not made on 
 **Decision:** `tools/upgrade.sh` fails as soon as a release from 0.4.0 on, the first with kits, reads no kit after its own fixture, and prints what the fixture said, or that its fixture was not found.
 
 **Status:** Accepted. The cause is open until CI's next run says it.
+
+### D-540 · The swipe test checks the browser can swipe, and the builder tests wait out a crossing before a press · 2026-11-27
+
+Two more of CI's failures on #173:
+
+- **chromium-phone's "a vertical swipe over the canvas scrolls the page"** stayed at `scrollY` 115 on both runs, and passed 20 of 20 on the Mac. In Playwright's Linux image the same CDP `Input.synthesizeScrollGesture` scrolled the page over plain text no more than over the canvas, with 1,798 px of room and the canvas's `touch-action` `pan-y`. The builder is not at fault; the browser there does not scroll from a synthesised touch swipe.
+- **firefox-phone's "wheels sold with their bearings skip the bearings step"** stayed on hardware after Next: Grip tape. `builder.spec.ts`'s `moveTo` pressed once the last answer was in, while the step could still be crossing over, the race D-529 closed in the 3D tests.
+
+**Decision:**
+
+- **The swipe test first makes the same swipe over the page's heading.** If the page has not scrolled 40 px within 2 s, it skips: the browser cannot show what the test asks. Where it can, the canvas is tested as before.
+- **`moveTo` waits for `html.cbuild-crossing` to go** before each press, as D-529's `settled()` does.
+
+**Tests:** the swipe test passed 10 of 10 on chromium-phone on the Mac and skipped in the Linux image. The crossing race was not seen locally; the wait is D-529's, proven there by 20 runs.
+
+**Status:** Accepted.
