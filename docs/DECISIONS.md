@@ -123,6 +123,7 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-485 · Site Health leaves out a size only the 3D view assumes](#d-485--site-health-leaves-out-a-size-only-the-3d-view-assumes--2026-11-26)
 - [D-532 · The Catalogue check lists the 3D view's usual sizes apart, and counts as Site Health does](#d-532--the-catalogue-check-lists-the-3d-views-usual-sizes-apart-and-counts-as-site-health-does--2026-11-27)
 - [D-533 · The kick angle names its unit as a measure does](#d-533--the-kick-angle-names-its-unit-as-a-measure-does--2026-11-27)
+- [D-537 · The browser fixture makes its own folder, and a write it cannot make stops it](#d-537--the-browser-fixture-makes-its-own-folder-and-a-write-it-cannot-make-stops-it--2026-11-27)
 
 ### Kits and their settings
 
@@ -7765,5 +7766,18 @@ The M14 walkthrough's #8: of the five specs 1.4.0 added, the kick angle alone wa
 - **In `Admin\Labels`, not the domain.** The domain keeps a count, as D-472 chose. An angle unit would reach the parser and the index for one spec, so the label names the degrees alone.
 
 **Tests:** `tests/Unit/Admin/LabelsTest.php`. Before the fix, "every spec has its own name and a measure names its unit in a fields label" failed at :61, `'Kick angle'` expected and `'Kick angle in degrees'` received, and the values "degrees" and "degrees in the thousands" failed at :107, `'20°'` expected and `'20'` received. The deliberate break, `deg` for `°`, failed at :62 with `'Kick angle (deg)'`.
+
+**Status:** Accepted.
+
+### D-537 · The browser fixture makes its own folder, and a write it cannot make stops it · 2026-11-27
+
+CI's visual and Lighthouse jobs failed on #173: every spec that reads `tmp/e2e-builder.json` found no file. D-519 (`2b77af3`) had taken `wp_mkdir_p( CBUILD_PATH . 'tmp' )` out of `tests/e2e/fixtures/shop.php`. A fresh checkout, as CI's, has no `tmp/`, so both of the fixture's `file_put_contents()` calls only warned, `wp eval-file` still exited 0, and `tools/e2e-site.sh` sends the fixture's output to `/dev/null`. Every local lane already had `tmp/`, and an old fixture file in it, so no local run showed it.
+
+**Decision:**
+
+- **The fixture makes `tmp/` again** before it writes.
+- **A folder it cannot make, or a file it cannot write, stops it** with `WP_CLI::error()`, so `e2e-site.sh`, which runs under `set -e`, fails where the fault is, not in every spec after it.
+
+**Tests:** on lane 3 with `tmp/` moved aside, before the fix, `bash tools/e2e-site.sh` exited 0 with two `file_put_contents(...): Failed to open stream` warnings and no `tmp/e2e-builder.json`. After it, both files were written. The deliberate break, a plain file where `tmp/` goes, stopped it with "Error: The fixture could not make …/tmp."
 
 **Status:** Accepted.

@@ -179,8 +179,13 @@ if ( array() === $cbuild_zone->get_shipping_methods() ) {
 	$cbuild_zone->add_shipping_method( 'free_shipping' );
 }
 
+// A fresh checkout, as CI's, has no tmp/: without it the writes below only warn, and every spec then finds no fixture
+// (D-519 took this line out; CI's visual and Lighthouse jobs failed on #173, D-537). A write that fails stops the run.
+if ( ! wp_mkdir_p( CBUILD_PATH . 'tmp' ) ) {
+	WP_CLI::error( 'The fixture could not make ' . CBUILD_PATH . 'tmp.' );
+}
 // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents -- a test fixture, writing where the tests read.
-file_put_contents(
+$cbuild_written = file_put_contents(
 	CBUILD_PATH . 'tmp/e2e-cart.json',
 	(string) wp_json_encode(
 		array(
@@ -189,6 +194,9 @@ file_put_contents(
 		)
 	)
 );
+if ( false === $cbuild_written ) {
+	WP_CLI::error( 'The fixture could not write tmp/e2e-cart.json.' );
+}
 
 // The builder's shop (milestone 6): three widths of deck and the trucks for each, wheels that fit and one that wants a
 // riser, two risers, two lengths of bolt, bearings and grip, under two brands, with one part sold out. A wider deck
@@ -694,7 +702,7 @@ $cbuild_quiet_page = (int) wp_insert_post(
 );
 
 // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents -- a test fixture, writing where the tests read.
-file_put_contents(
+$cbuild_written = file_put_contents(
 	CBUILD_PATH . 'tmp/e2e-builder.json',
 	(string) wp_json_encode(
 		array(
@@ -720,6 +728,9 @@ file_put_contents(
 		)
 	)
 );
+if ( false === $cbuild_written ) {
+	WP_CLI::error( 'The fixture could not write tmp/e2e-builder.json.' );
+}
 
 // wp-env's uploads folder does not hold the placeholder image WooCommerce's installer recorded, so every product
 // without a photo asked for a file that is not there. With no attachment set, WooCommerce serves the one it ships.
