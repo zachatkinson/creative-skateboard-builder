@@ -5,3 +5,4 @@
 ### Changed
 
 - **Development:** the 3D view's fallback tests walk to the cart pressing each Next and each pick only once the last press's answer is drawn, as a shopper does; a press under load had come before it (D-529).
+- **Development:** a browser test holds the 3D view's Side place to the canvas's middle and the Graphic close-up to the whole nose, read from the canvas's pixels (D-530).

@@ -372,6 +372,7 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-507 · One finger turns the 3D view about its upright alone](#d-507--one-finger-turns-the-3d-view-about-its-upright-alone--2026-11-26)
 - [D-508 · The scene sends each truck's axle centre, and the view measures nothing](#d-508--the-scene-sends-each-trucks-axle-centre-and-the-view-measures-nothing--2026-11-26)
 - [D-518 · The 3D view's Side place: level with the deck's edge, turned 17 degrees toward the nose](#d-518--the-3d-views-side-place-level-with-the-decks-edge-turned-17-degrees-toward-the-nose--2026-11-26)
+- [D-530 · The 3D view's places are held to their framing by the pixels a shopper sees](#d-530--the-3d-views-places-are-held-to-their-framing-by-the-pixels-a-shopper-sees--2026-11-27)
 
 ### Cart, checkout and orders
 
@@ -7627,5 +7628,27 @@ Milestone 14's full set: "a lost context goes back to the board" failed once eac
 Nothing in the product changes. The three fallback tests share the walk: the lost context, no WebGL and an error thrown.
 
 **Proof:** on chromium-desktop, `--repeat-each=20 --workers=1`, the test passed 20 of 20 with the waits. The flake could not be made to show on this machine before the change: 20 of 20 on chromium-desktop, 10 of 10 on webkit-desktop alone, and on chromium-desktop 10 of 10 with each answer held back 0 to 1.5 s, 3 of 3 with the step's crossing slowed to 2 s (3 of 3 on webkit-desktop too) and 10 of 10 with the processor slowed eightfold. So there is no red line to give, and no deliberate break that fails on a quiet machine. The waits close the window in which a press can come before its answer, whatever the load.
+
+**Status:** Accepted.
+
+### D-530 · The 3D view's places are held to their framing by the pixels a shopper sees · 2026-11-27
+
+Milestone 14's walkthrough found Side's board "at the bottom of the canvas" (#5) and the phone's Graphic close-up with "the tail and nose" cut (#6). Measured on this branch (`m14-3d` with every lane merged) from the canvas's own picture, neither shows:
+
+| Place | 1440 by 900 | 390 by 844 |
+| --- | --- | --- |
+| Side, px above and below the board | 200 and 198 | 105 and 104 |
+| Graphic close-up, px past the nose (top, side) | 55, 208 | 29, 64 |
+
+The same held on Twenty Twenty-Five, Kadence and Storefront, at the grip step with every part and at the wheels step, with the server's scene and the test scene, at device pixel ratios 1 and 3, with motion and with it reduced, and pressed in the walkthrough's order (Top, Underside, Side, Graphic close-up, Reset view). Neither `aim()` nor `distance()` has changed since lane 2 wrote them, bar D-518's Side. Lane 2's close-up picture with the nose cut could not be made again; the likeliest reading is a frame taken before the camera's eased move had ended. The close-up frames the nose's half of the deck by design, so its tail runs past the canvas's edge.
+
+**Decision:** no change to the camera. A browser test holds each finding where a shopper sees it, so a later change can't bring either back:
+
+- **Side**: the board clear of all four edges, and as far from the top as from the foot, within 5 % of the canvas's height.
+- **Graphic close-up**: the nose clear of the top and of the side.
+
+The board's box is read from a screenshot of the canvas: each pixel unlike the frame's ground at the canvas's top right corner, where no place draws.
+
+**Tests:** `3d.spec.ts` "Side puts the board in the canvas's middle, and the close-up holds the whole nose (walkthrough #5, #6)". It passes on chromium-desktop and chromium-phone. It has no red line, since neither finding shows on this branch. Deliberate breaks: the point the camera turns about raised from 20 mm under the deck's top to 40 mm over it fails "Side: in the middle, 168 px above and 119 px below" (Received 49, expected at most 17.1, chromium-desktop); the close-up framing a quarter of the deck in place of half fails "the close-up: the nose clear of the side" (Received 0, chromium-phone).
 
 **Status:** Accepted.

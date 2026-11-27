@@ -561,6 +561,107 @@ test.describe( '3D view (milestone 14)', () => {
 		);
 	} );
 
+	// Milestone 14's walkthrough, #5 and #6 (D-530): Side was seen with the board at the canvas's foot, and the phone's
+	// Graphic close-up with the nose cut. Read from the pixels a shopper sees: Side puts the board in the canvas's
+	// middle, clear of every edge, and the close-up holds the whole nose, its tail going past the edge as a close-up's
+	// does.
+	test( 'Side puts the board in the canvas’s middle, and the close-up holds the whole nose (walkthrough #5, #6)', async ( {
+		page,
+	} ) => {
+		await page.emulateMedia( { reducedMotion: 'reduce' } );
+		await open( page );
+		const canvas = page.locator( '.cbuild-3d__canvas' );
+		// The board's box in the canvas's picture: every pixel that is not the frame's ground, read at its top right
+		// corner, which no place draws on.
+		const drawn = async () => {
+			await still( page );
+			await canvas.evaluate( ( shown ) =>
+				shown.scrollIntoView( { block: 'center' } )
+			);
+			const shot = ( await canvas.screenshot() ).toString( 'base64' );
+			return page.evaluate( async ( png ) => {
+				const image = await createImageBitmap(
+					await (
+						await fetch( `data:image/png;base64,${ png }` )
+					).blob()
+				);
+				const paper = new OffscreenCanvas( image.width, image.height );
+				const pen = paper.getContext( '2d' )!;
+				pen.drawImage( image, 0, 0 );
+				const { data } = pen.getImageData(
+					0,
+					0,
+					image.width,
+					image.height
+				);
+				const at = ( image.width - 1 ) * 4;
+				const ground = [
+					data[ at ]!,
+					data[ at + 1 ]!,
+					data[ at + 2 ]!,
+				];
+				let [ left, top, right, bottom ] = [
+					image.width,
+					image.height,
+					-1,
+					-1,
+				];
+				for ( let y = 0; y < image.height; y++ ) {
+					for ( let x = 0; x < image.width; x++ ) {
+						const i = ( y * image.width + x ) * 4;
+						if (
+							Math.abs( data[ i ]! - ground[ 0 ]! ) +
+								Math.abs( data[ i + 1 ]! - ground[ 1 ]! ) +
+								Math.abs( data[ i + 2 ]! - ground[ 2 ]! ) >
+							24
+						) {
+							left = Math.min( left, x );
+							right = Math.max( right, x );
+							top = Math.min( top, y );
+							bottom = Math.max( bottom, y );
+						}
+					}
+				}
+				return {
+					height: image.height,
+					above: top,
+					below: image.height - 1 - bottom,
+					before: left,
+					after: image.width - 1 - right,
+				};
+			}, shot );
+		};
+		const places = page.getByRole( 'group', {
+			name: 'Views of the board',
+		} );
+
+		await places
+			.getByRole( 'button', { name: 'Side', exact: true } )
+			.click();
+		const side = await drawn();
+		expect( side.above, 'Side: clear of the top' ).toBeGreaterThan( 0 );
+		expect( side.below, 'Side: clear of the foot' ).toBeGreaterThan( 0 );
+		expect( side.before, 'Side: the tail inside' ).toBeGreaterThan( 0 );
+		expect( side.after, 'Side: the nose inside' ).toBeGreaterThan( 0 );
+		expect(
+			Math.abs( side.above - side.below ),
+			`Side: in the middle, ${ side.above } px above and ${ side.below } px below`
+		).toBeLessThanOrEqual( Math.max( 4, side.height * 0.05 ) );
+
+		await places
+			.getByRole( 'button', { name: 'Graphic close-up', exact: true } )
+			.click();
+		const close = await drawn();
+		expect(
+			close.above,
+			'the close-up: the nose clear of the top'
+		).toBeGreaterThan( 0 );
+		expect(
+			close.after,
+			'the close-up: the nose clear of the side'
+		).toBeGreaterThan( 0 );
+	} );
+
 	test( 'offers no trick where the kit’s Trick buttons is off', async ( {
 		page,
 	} ) => {
