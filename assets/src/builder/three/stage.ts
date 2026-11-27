@@ -154,8 +154,12 @@ export function release( root: Object3D ): void {
 		for ( const one of materials ) {
 			given.add( one );
 			const map = ( one as Material & { map?: Texture | null } ).map;
-			if ( map ) {
-				given.add( map );
+			// A texture whose image has not arrived waits on its material, not as its map (F1).
+			const waiting = one.userData.texture as Texture | null | undefined;
+			for ( const texture of [ map, waiting ] ) {
+				if ( texture ) {
+					given.add( texture );
+				}
 			}
 		}
 	} );
@@ -213,8 +217,20 @@ export function stage( needs: Needs ): Renderer & {
 	const drawn = new Map< Slot, { from: string; group: Group | null } >();
 	// A texture is drawn once it has arrived; until then, and where it fails, the part's colour shows.
 	const textures: Textures = {
-		load: ( url ) =>
-			url && ! closed ? needs.texture( url, () => invalidate() ) : null,
+		load: ( url, use ) => {
+			if ( ! url || closed ) {
+				return null;
+			}
+			const texture = needs.texture( url, () => {
+				// An image that arrives after the view has closed is put on nothing.
+				if ( closed || ! texture ) {
+					return;
+				}
+				use( texture );
+				invalidate();
+			} );
+			return texture;
+		},
 	};
 	let length = 800;
 	let top = false;

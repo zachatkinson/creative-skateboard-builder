@@ -278,6 +278,47 @@ test.describe( '3D view (milestone 14)', () => {
 		expect( now.trucks ).toBe( was.trucks );
 	} );
 
+	// F1: a texture whose image fails leaves its part in the part's colour, never black.
+	test( 'a texture that fails to load leaves the part in its colour', async ( {
+		page,
+		context,
+	} ) => {
+		// The visual tests' board, whose textures are the fixture's own files, and each of them not found.
+		await scene( context, 'pinned' );
+		await page.route( '**/tests/e2e/fixtures/layers/**', ( route ) =>
+			route.fulfill( { status: 404, body: '' } )
+		);
+		await open( page );
+		await page
+			.getByRole( 'group', { name: 'Views of the board' } )
+			.getByRole( 'button', { name: 'Underside', exact: true } )
+			.click();
+		await still( page );
+		const canvas = page.locator( '.cbuild-3d__canvas' );
+		const shot = ( await canvas.screenshot() ).toString( 'base64' );
+		// The middle of the underside, between the trucks: the deck's bottom, in maple (#dcbf8f), lit.
+		const [ r, g, b ] = await page.evaluate( async ( png ) => {
+			const image = new Image();
+			image.src = `data:image/png;base64,${ png }`;
+			await image.decode();
+			const sheet = document.createElement( 'canvas' );
+			sheet.width = image.width;
+			sheet.height = image.height;
+			const pen = sheet.getContext( '2d' )!;
+			pen.drawImage( image, 0, 0 );
+			return Array.from(
+				pen.getImageData(
+					Math.floor( image.width / 2 ),
+					Math.floor( image.height / 2 ),
+					1,
+					1
+				).data
+			);
+		}, shot );
+		expect( r! + g! + b! ).toBeGreaterThan( 3 * 110 );
+		expect( r! ).toBeGreaterThan( b! );
+	} );
+
 	test( 'closing gives back every geometry and texture', async ( {
 		page,
 	} ) => {

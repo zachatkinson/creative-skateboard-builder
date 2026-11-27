@@ -32,9 +32,15 @@ import {
 } from './shapes';
 import type { Scene, Slot } from './scene';
 
-/** What a part asks for its textures: the texture at an address, or null where there is none to draw. */
+/**
+ * What a part asks for its textures: the texture at an address, handed to `use` once its image has arrived, or null
+ * where there is none to draw. Where the image fails, `use` is never called.
+ */
 export interface Textures {
-	load: ( url: string | null | undefined ) => Texture | null;
+	load: (
+		url: string | null | undefined,
+		use: ( texture: Texture ) => void
+	) => Texture | null;
 }
 
 /** The colours of a part with no texture, and of the parts that never have one. */
@@ -102,7 +108,7 @@ export function rgb( hex: string ): [ number, number, number ] {
 }
 
 /**
- * A material in a texture, or in the colour where there is none.
+ * A material in a texture that is ready, or in the colour where there is none.
  *
  * @param texture   The part's texture, or null.
  * @param colour    The colour without one.
@@ -121,6 +127,31 @@ function material(
 		roughness,
 		metalness,
 	} );
+}
+
+/**
+ * A material in a part's colour, which takes the part's texture once its image arrives (F1): until then, and where it
+ * fails, the colour shows, where a map with no image would draw black. The texture is kept on the material, so it is
+ * given back with it whether or not its image came.
+ *
+ * @param textures  Where the texture comes from.
+ * @param url       The texture's address, or none.
+ * @param colour    The part's colour.
+ * @param roughness How rough the surface is.
+ */
+function textured(
+	textures: Textures,
+	url: string | null | undefined,
+	colour: string,
+	roughness: number
+): MeshStandardMaterial {
+	const made = material( null, colour, roughness );
+	made.userData.texture = textures.load( url, ( arrived ) => {
+		made.map = arrived;
+		made.color.set( '#ffffff' );
+		made.needsUpdate = true;
+	} );
+	return made;
 }
 
 /**
@@ -145,20 +176,20 @@ function group( slot: Slot, id: number ): Group {
 export function deck( scene: Scene, textures: Textures ): Group {
 	const board = scene.deck;
 	const made = group( 'deck', board.part );
-	const top = textures.load( board.texture.top ?? scene.grip?.texture );
 	const gripped = null !== ( scene.grip ?? null );
 	made.add(
 		new Mesh(
 			geometry( face( board, 'top' ) ),
-			material( top, gripped ? COLOURS.grip : COLOURS.maple, 0.85 )
+			textured(
+				textures,
+				board.texture.top ?? scene.grip?.texture,
+				gripped ? COLOURS.grip : COLOURS.maple,
+				0.85
+			)
 		),
 		new Mesh(
 			geometry( face( board, 'bottom' ) ),
-			material(
-				textures.load( board.texture.bottom ),
-				COLOURS.maple,
-				0.6
-			)
+			textured( textures, board.texture.bottom, COLOURS.maple, 0.6 )
 		),
 		new Mesh(
 			geometry( edge( board ) ),
@@ -246,8 +277,9 @@ export function wheels( scene: Scene, textures: Textures ): Group | null {
 		profile( wheel ).map( ( [ r, y ] ) => new Vector2( r, y ) ),
 		48
 	);
-	const urethane = material(
-		textures.load( wheel.texture ),
+	const urethane = textured(
+		textures,
+		wheel.texture,
 		wheel.color ?? COLOURS.wheel,
 		0.55
 	);

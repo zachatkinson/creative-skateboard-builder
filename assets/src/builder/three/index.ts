@@ -79,6 +79,7 @@ export function open( opening: Opening ): Renderer {
 			if ( ! own( url, page ) ) {
 				return null;
 			}
+			// Only an image that loads is put on its part; one that fails leaves the part in its colour (F1).
 			const texture: Texture = loader.load( url, arrived );
 			texture.colorSpace = SRGBColorSpace;
 			texture.anisotropy = 4;

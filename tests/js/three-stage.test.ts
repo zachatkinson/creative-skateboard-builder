@@ -240,6 +240,9 @@ describe( 'release', () => {
 		const map = new Texture();
 		const paint = new MeshStandardMaterial( { map } );
 		const plain = new MeshStandardMaterial();
+		// A texture whose image has not arrived is kept on its material, and given back too.
+		const pending = new Texture();
+		plain.userData.texture = pending;
 		const group = new Group();
 		group.add(
 			new Mesh( shape, paint ),
@@ -251,6 +254,7 @@ describe( 'release', () => {
 			vi.spyOn( map, 'dispose' ),
 			vi.spyOn( paint, 'dispose' ),
 			vi.spyOn( plain, 'dispose' ),
+			vi.spyOn( pending, 'dispose' ),
 		];
 		release( group );
 		for ( const spy of given ) {
@@ -717,20 +721,68 @@ describe( 'stage', () => {
 
 	it( 'loads a part’s texture, and draws once it arrives', () => {
 		let arrived: ( () => void ) | undefined;
+		const pending = new Texture();
 		const texture = vi.fn( ( _url: string, done: () => void ) => {
 			arrived = done;
-			return new Texture();
+			return pending;
 		} );
-		const { shown, frames } = open( { texture } );
+		const { shown, frames, board } = open( { texture } );
 		const textured = scene();
 		textured.deck.texture = { top: null, bottom: '/graphic.png' };
 		shown.show( textured, false );
 		frame();
 		expect( texture ).toHaveBeenCalledTimes( 1 );
 		expect( texture.mock.calls[ 0 ]![ 0 ] ).toBe( '/graphic.png' );
+		// F1: until the image arrives, the deck's bottom is its colour, with no map to draw black.
+		const bottom = ( board().getObjectByName( 'deck' ) as Group )
+			.children[ 1 ] as Mesh;
+		const paint = bottom.material as MeshStandardMaterial;
+		expect( paint.map ).toBeNull();
+		expect( paint.color.getHexString() ).toBe( 'dcbf8f' );
 		arrived!();
 		frame();
 		expect( frames() ).toBe( 2 );
+		expect( paint.map ).toBe( pending );
+		expect( paint.color.getHexString() ).toBe( 'ffffff' );
+	} );
+
+	it( 'keeps a part’s colour where its image never arrives, and gives the texture back', () => {
+		const pending = new Texture();
+		const given = vi.spyOn( pending, 'dispose' );
+		const { shown, board } = open( { texture: () => pending } );
+		const textured = scene();
+		textured.deck.texture = { top: null, bottom: '/missing.png' };
+		shown.show( textured, false );
+		frame();
+		const bottom = ( board().getObjectByName( 'deck' ) as Group )
+			.children[ 1 ] as Mesh;
+		const paint = bottom.material as MeshStandardMaterial;
+		expect( paint.map ).toBeNull();
+		expect( paint.color.getHexString() ).toBe( 'dcbf8f' );
+		shown.close();
+		expect( given ).toHaveBeenCalledTimes( 1 );
+	} );
+
+	it( 'puts no texture on a part once the view has closed', () => {
+		let arrived: ( () => void ) | undefined;
+		const pending = new Texture();
+		const { shown, board, frames } = open( {
+			texture: ( _url: string, done: () => void ) => {
+				arrived = done;
+				return pending;
+			},
+		} );
+		const textured = scene();
+		textured.deck.texture = { top: null, bottom: '/late.png' };
+		shown.show( textured, false );
+		frame();
+		const bottom = ( board().getObjectByName( 'deck' ) as Group )
+			.children[ 1 ] as Mesh;
+		shown.close();
+		arrived!();
+		frame();
+		expect( ( bottom.material as MeshStandardMaterial ).map ).toBeNull();
+		expect( frames() ).toBe( 1 );
 	} );
 
 	it( 'gives everything back on close, and draws nothing after', () => {

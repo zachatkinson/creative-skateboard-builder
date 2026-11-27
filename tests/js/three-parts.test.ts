@@ -146,14 +146,30 @@ describe( 'deck', () => {
 	} );
 
 	it( 'textures the top from the deck’s, or the grip’s, and the bottom from the graphic', () => {
-		const load = vi.fn( ( url: string | null | undefined ) =>
-			url ? new Texture() : null
+		const arrive: ( ( texture: Texture ) => void )[] = [];
+		const load = vi.fn(
+			( url: string | null | undefined, use: ( t: Texture ) => void ) => {
+				if ( ! url ) {
+					return null;
+				}
+				arrive.push( use );
+				return new Texture();
+			}
 		);
 		const textured = scene();
 		textured.deck.texture = { top: '/top.png', bottom: '/bottom.png' };
 		const [ top, bottom ] = meshes( deck( textured, { load } ) );
-		expect( load ).toHaveBeenCalledWith( '/top.png' );
-		expect( load ).toHaveBeenCalledWith( '/bottom.png' );
+		expect( load ).toHaveBeenCalledWith(
+			'/top.png',
+			expect.any( Function )
+		);
+		expect( load ).toHaveBeenCalledWith(
+			'/bottom.png',
+			expect.any( Function )
+		);
+		for ( const use of arrive ) {
+			use( new Texture() );
+		}
 		expect( look( top ).map ).toBeInstanceOf( Texture );
 		expect( look( top ).color.getHexString() ).toBe( 'ffffff' );
 		expect( look( bottom ).map ).toBeInstanceOf( Texture );
@@ -162,7 +178,39 @@ describe( 'deck', () => {
 			grip: { part: 5, texture: '/grip.png' },
 		};
 		deck( gripped, { load } );
-		expect( load ).toHaveBeenCalledWith( '/grip.png' );
+		expect( load ).toHaveBeenCalledWith(
+			'/grip.png',
+			expect.any( Function )
+		);
+	} );
+
+	// F1: a texture's part is drawn in its colour until its image arrives, and stays in it where the image fails.
+	it( 'draws a textured part in its colour until its image arrives, then in the image', () => {
+		let arrive: ( ( texture: Texture ) => void ) | undefined;
+		const pending = new Texture();
+		const load = vi.fn(
+			( url: string | null | undefined, use: ( t: Texture ) => void ) => {
+				if ( ! url ) {
+					return null;
+				}
+				arrive = use;
+				return pending;
+			}
+		);
+		const textured = scene();
+		textured.deck.texture = { top: null, bottom: '/bottom.png' };
+		const [ , bottom ] = meshes( deck( textured, { load } ) );
+		expect( look( bottom ).map ).toBeNull();
+		expect( look( bottom ).color.getHexString() ).toBe(
+			COLOURS.maple.slice( 1 )
+		);
+		// Given back with the material even where its image never arrives.
+		expect( look( bottom ).userData.texture ).toBe( pending );
+		const version = look( bottom ).version;
+		arrive!( pending );
+		expect( look( bottom ).map ).toBe( pending );
+		expect( look( bottom ).color.getHexString() ).toBe( 'ffffff' );
+		expect( look( bottom ).version ).toBeGreaterThan( version );
 	} );
 
 	it( 'is rough on top and smoother underneath', () => {
@@ -274,9 +322,20 @@ describe( 'wheels', () => {
 			look( meshes( wheels( plain, none ) )[ 0 ] ).color.getHexString()
 		).toBe( COLOURS.wheel.slice( 1 ) );
 		plain.wheels!.texture = '/wheel.png';
-		const load = vi.fn( () => new Texture() );
+		const load = vi.fn(
+			(
+				_url: string | null | undefined,
+				use: ( t: Texture ) => void
+			) => {
+				use( new Texture() );
+				return null;
+			}
+		);
 		const [ one ] = meshes( wheels( plain, { load } ) );
-		expect( load ).toHaveBeenCalledWith( '/wheel.png' );
+		expect( load ).toHaveBeenCalledWith(
+			'/wheel.png',
+			expect.any( Function )
+		);
 		expect( look( one ).map ).toBeInstanceOf( Texture );
 	} );
 } );

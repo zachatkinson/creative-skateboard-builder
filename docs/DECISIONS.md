@@ -359,6 +359,7 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-503 · With reduced motion no trick is offered](#d-503--with-reduced-motion-no-trick-is-offered--2026-11-26)
 - [D-504 · During a trick the camera waits](#d-504--during-a-trick-the-camera-waits--2026-11-26)
 - [D-505 · Every generated face is wound to look out, the deck's edge among them](#d-505--every-generated-face-is-wound-to-look-out-the-decks-edge-among-them--2026-11-26)
+- [D-506 · A textured part is drawn in its colour until its image arrives](#d-506--a-textured-part-is-drawn-in-its-colour-until-its-image-arrives--2026-11-26)
 
 ### Cart, checkout and orders
 
@@ -7316,5 +7317,15 @@ Cowork's review of 1.3.0, F39 (#162). A 118 px element put in `.cbuild-step__abo
 
 - **Red run** on chromium-phone: "the answer's layout shift: 0.034 +1172 ms 0.034 [cbuild-cards 545→0]" (shelf.spec.ts:965). The desktop measured 0.000 here.
 - **After:** 0.000 on both, and the cards at the event are the answer's. The #143 tests and the F30 width tests pass.
+
+**Status:** Accepted.
+
+### D-506 · A textured part is drawn in its colour until its image arrives · 2026-11-26
+
+The audit's F1, and the spec reviewer's S1. `material()` in `parts.ts` set a part white with its texture as the map as soon as the texture object existed, and `TextureLoader.load()` in `index.ts` was given no way to say an image failed. A texture with no image draws black in three.js. So the deck's graphic, the grip and a wheel drew black until their images arrived, and stayed black on a 404.
+
+**Decision:** a textured part's material starts in the part's colour, with no map. The stage hands each part's texture to the part once its image has loaded: the map goes on, the colour turns white, the material is marked for update, and a frame is asked for. An image that fails never arrives, so the part keeps its colour. An image that arrives after the view has closed is put on nothing. The texture waits on its material's `userData.texture`, and `release()` gives it back from there too, so a texture whose image never came isn't kept.
+
+- **Tests:** `three-parts.test.ts` (before and after the image), `three-stage.test.ts` (an image that never arrives, and one that arrives after the close), and `3d.spec.ts` "a texture that fails to load leaves the part in its colour", which routes the fixture's textures to 404 and samples the canvas's middle from underneath.
 
 **Status:** Accepted.
