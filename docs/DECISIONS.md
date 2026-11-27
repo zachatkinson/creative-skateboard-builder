@@ -131,7 +131,7 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-542 · The visual tests' pick waits for its answer](#d-542--the-visual-tests-pick-waits-for-its-answer--2026-11-27)
 - [D-543 · The focus test waits out the pick's crossing, and #178 asks whether a tap in a crossing is lost](#d-543--the-focus-test-waits-out-the-picks-crossing-and-178-asks-whether-a-tap-in-a-crossing-is-lost--2026-11-27)
 - [D-544 · The integration and browser legs get 80 minutes](#d-544--the-integration-and-browser-legs-get-80-minutes--2026-11-27)
-- [D-564 · The ten milestone 13 branches all landed, and their archives are kept until Zach says](#d-564--the-ten-milestone-13-branches-all-landed-and-their-archives-are-kept-until-zach-says--2026-11-27)
+- [D-564 · The ten milestone 13 branches all landed, and their archives are deleted](#d-564--the-ten-milestone-13-branches-all-landed-and-their-archives-are-deleted--2026-11-27)
 
 ### Kits and their settings
 
@@ -7874,7 +7874,7 @@ CI run 46063991563 on #173: "Plugin Check, the zip, browser (oldest)" was cancel
 
 **Status:** Accepted.
 
-### D-564 · The ten milestone 13 branches all landed, and their archives are kept until Zach says · 2026-11-27
+### D-564 · The ten milestone 13 branches all landed, and their archives are deleted · 2026-11-27
 
 Issue #175: ten milestone 13 branches (`m13-cards`, `m13-cowork-start`, `m13-cowork-theme`, `m13-early`, `m13-guided`, `m13-land`, `m13-pins`, `m13-tooling`, `m13-upgrade`, `m13-walk2`) had 47 commits that `git cherry` matched to nothing on `main`, since they landed through merges of rebuilt lane branches, not by patch. Kept on `origin` as `archive/m13-*` on 27 November.
 
@@ -7887,6 +7887,6 @@ Issue #175: ten milestone 13 branches (`m13-cards`, `m13-cowork-start`, `m13-cow
 
 The per-commit table is in `docs/reviews/M15.md`.
 
-**Decision:** nothing is landed again. The ten `archive/m13-*` branches stay on `origin` until Zach says to delete them, since deleting them can't be undone. The local branches were deleted on 27 November.
+**Decision:** nothing is landed again. The ten `archive/m13-*` branches were deleted from `origin` on Zach's word (27 November: "if its safe to remove them and cleans things up go ahead"). The local branches were deleted on 27 November.
 
 **Status:** Accepted.
