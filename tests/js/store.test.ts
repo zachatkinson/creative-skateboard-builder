@@ -5360,6 +5360,24 @@ describe( 'Show builds overtaken', () => {
 		expect( guide.ownerDocument.activeElement ).toBe(
 			document.querySelector( '.cbuild-guide__heading' )
 		);
+		const ask = document.querySelector( '.cbuild-guide__ask' )!;
+		expect(
+			ask.hasAttribute( 'open' ),
+			'Show builds leaves them open'
+		).toBe( true );
+		// Show builds with nothing asked yet: no builds to go to, so the step's heading (#176).
+		reply = () =>
+			answer( {
+				...PANEL,
+				isChanges: false,
+				guide: { shown: true, asked: false },
+			} );
+		press( guide, show );
+		await settle();
+		vi.advanceTimersToNextFrame();
+		expect( guide.ownerDocument.activeElement ).toBe(
+			document.querySelector( '.cbuild__heading' )
+		);
 		reply = () =>
 			answer( { ...BACK, guide: { shown: true, asked: true } } );
 		setElement( document.querySelector( '.cbuild-guide__skip' ) );
@@ -5373,6 +5391,21 @@ describe( 'Show builds overtaken', () => {
 				.querySelector( '.cbuild-guide__ask' )!
 				.hasAttribute( 'open' )
 		).toBe( false );
+		expect( guide.ownerDocument.activeElement ).toBe(
+			document.querySelector( '.cbuild__heading' )
+		);
+		// Skip where the questions are gone already: the step's heading all the same.
+		ask.remove();
+		document.body.focus();
+		await expect(
+			( async () => {
+				actions.follow(
+					new MouseEvent( 'click', { cancelable: true, button: 0 } )
+				);
+				await settle();
+				vi.advanceTimersToNextFrame();
+			} )()
+		).resolves.toBeUndefined();
 		expect( guide.ownerDocument.activeElement ).toBe(
 			document.querySelector( '.cbuild__heading' )
 		);
