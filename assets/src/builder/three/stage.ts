@@ -76,6 +76,9 @@ export const KEYS = {
 	zoom: 1.2,
 } as const;
 
+/** How far, in CSS pixels, one finger's drag goes before it is a turn of the board or the page's swipe (F14). */
+export const SWIPE = 8;
+
 /** The highest pixel ratio drawn, and the highest on a device with little memory. */
 export const RATIO = { most: 2, low: 1.5, lowMemory: 4 } as const;
 
@@ -185,6 +188,8 @@ export function stage( needs: Needs ): Renderer & {
 		playing: boolean;
 		/** The board's position, in millimetres, and its turns about x, y and z, in radians, in the scene's axes. */
 		board: number[];
+		/** The camera's position and the point it turns about, in millimetres, in three's axes. */
+		camera: number[];
 	};
 	/** For a test's picture: the board held at a moment of a trick, or at rest. */
 	hold: ( trick: Trick | null, progress: number ) => void;
@@ -539,17 +544,25 @@ export function stage( needs: Needs ): Renderer & {
 	controls.addEventListener( 'start', taken );
 	controls.addEventListener( 'change', invalidate );
 	// A finger on the canvas turns the board about its upright alone (F14): Chrome hands the controls a swipe's first
-	// moves before it takes the page's pan, which turned the camera's pitch as the page scrolled. Two fingers pinch and
-	// turn as before; the buttons and the keys are the stage's own and unchanged.
-	const fingers = new Set< number >();
+	// moves before it takes the page's pan, which turned the camera as the page scrolled. So under one finger the pitch
+	// is held, and a drag is the controls' only once it has gone further sideways than up or down: until it has gone
+	// `SWIPE` pixels it is no one's, and one that goes up or down is the page's to the end. Two fingers pinch as before;
+	// the buttons and the keys are the stage's own and unchanged.
+	const fingers = new Map< number, { x: number; y: number } >();
+	// Whether one finger's drag turns the board: not known until it has gone `SWIPE` pixels.
+	let turning: boolean | undefined;
 	const pitch = (): void => {
 		const one = 1 === fingers.size;
 		controls.minPolarAngle = one ? controls.getPolarAngle() : 0;
 		controls.maxPolarAngle = one ? controls.getPolarAngle() : Math.PI;
+		turning = undefined;
 	};
 	const down = ( event: PointerEvent ): void => {
 		if ( 'touch' === event.pointerType ) {
-			fingers.add( event.pointerId );
+			fingers.set( event.pointerId, {
+				x: event.clientX,
+				y: event.clientY,
+			} );
 			pitch();
 		}
 	};
@@ -558,10 +571,26 @@ export function stage( needs: Needs ): Renderer & {
 			pitch();
 		}
 	};
+	// Ahead of the controls, which listen on the canvas itself: a move held here never reaches them.
+	const sideways = ( event: PointerEvent ): void => {
+		const from = fingers.get( event.pointerId );
+		if ( ! from || 1 !== fingers.size ) {
+			return;
+		}
+		const across = Math.abs( event.clientX - from.x );
+		const along = Math.abs( event.clientY - from.y );
+		if ( undefined === turning && Math.max( across, along ) >= SWIPE ) {
+			turning = across > along;
+		}
+		if ( ! turning ) {
+			event.stopPropagation();
+		}
+	};
 	canvas.addEventListener( 'pointerdown', down );
 	for ( const ended of [ 'pointerup', 'pointercancel' ] as const ) {
 		canvas.addEventListener( ended, up );
 	}
+	view.addEventListener( 'pointermove', sideways, { capture: true } );
 	size();
 
 	/**
@@ -585,6 +614,9 @@ export function stage( needs: Needs ): Renderer & {
 		controls.removeEventListener( 'start', taken );
 		controls.removeEventListener( 'change', invalidate );
 		canvas.removeEventListener( 'pointerdown', down );
+		view.removeEventListener( 'pointermove', sideways, {
+			capture: true,
+		} );
 		for ( const ended of [ 'pointerup', 'pointercancel' ] as const ) {
 			canvas.removeEventListener( ended, up );
 		}
@@ -706,6 +738,10 @@ export function stage( needs: Needs ): Renderer & {
 					board.rotation.x,
 					board.rotation.y,
 					board.rotation.z,
+				],
+				camera: [
+					...camera.position.toArray(),
+					...controls.target.toArray(),
 				],
 			};
 		},

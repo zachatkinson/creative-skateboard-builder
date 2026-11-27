@@ -19,6 +19,7 @@ import {
 	FOV,
 	KEYS,
 	MOVE,
+	SWIPE,
 	RATIO,
 	aim,
 	distance,
@@ -838,6 +839,44 @@ describe( 'stage', () => {
 		expect( frames() ).toBe( 1 );
 	} );
 
+	it( 'takes every listener it put on the canvas off it on close, the fingers’ among them', () => {
+		const { shown, renderer } = open();
+		shown.show( scene(), false );
+		frame();
+		const canvas = renderer.domElement;
+		const added = vi.spyOn( canvas, 'addEventListener' );
+		const taken = vi.spyOn( canvas, 'removeEventListener' );
+		const window = canvas.ownerDocument.defaultView!;
+		const unheld = vi.spyOn( window, 'removeEventListener' );
+		shown.close();
+		// The finger's drag held back on the window, ahead of the controls, is let go too.
+		expect( unheld ).toHaveBeenCalledWith(
+			'pointermove',
+			expect.any( Function ),
+			{ capture: true }
+		);
+		expect( added ).not.toHaveBeenCalled();
+		const off = taken.mock.calls.map( ( [ type ] ) => type );
+		for ( const type of [
+			'keydown',
+			'webglcontextlost',
+			'pointerdown',
+			'pointerup',
+			'pointercancel',
+		] ) {
+			expect( off ).toContain( type );
+		}
+		// Each with the stage's own listener, which a finger's press no longer reaches.
+		const fingers = taken.mock.calls.filter( ( [ type ] ) =>
+			[ 'pointerup', 'pointercancel' ].includes( type )
+		);
+		expect( fingers[ 0 ]![ 1 ] ).toBe( fingers[ 1 ]![ 1 ] );
+		// The press's: the stage's own, and the controls' as they are disposed.
+		expect( off.filter( ( type ) => 'pointerdown' === type ) ).toHaveLength(
+			2
+		);
+	} );
+
 	it( 'gives everything back on close, and draws nothing after', () => {
 		const { shown, renderer, frames, board } = open();
 		shown.show( scene(), false );
@@ -877,7 +916,21 @@ describe( 'stage', () => {
 			closed: false,
 			playing: false,
 			board: [ 0, 0, 0, 0, 0, 0 ],
+			camera: [ 0, 0, 0, 0, 0, 0 ],
 		} );
+	} );
+
+	it( 'reads the camera’s place and the point it turns about', () => {
+		const { shown, camera, reduce } = open();
+		reduce( true );
+		shown.show( scene(), false );
+		frame();
+		shown.look( 'top' );
+		frame();
+		const [ x, y, z, ...target ] = shown.probe().camera;
+		expect( [ x, y, z ] ).toEqual( camera().toArray() );
+		expect( y ).toBeGreaterThan( 1000 );
+		expect( target ).toEqual( [ 0, -20, 0 ] );
 	} );
 
 	it( 'reads the board’s pose and whether a trick plays', async () => {
@@ -1149,18 +1202,48 @@ describe( 'play', () => {
 				pointer( type, pointerId, x, y, pointerType )
 			);
 		const height = (): number => camera().y;
-		// One finger, straight down: the page's swipe. The pitch holds.
+		// One finger, down with a little drift sideways, as Chrome's swipe gives: the page's. The camera holds, its
+		// turn as well as its pitch, from the first move under `SWIPE` pixels to the last.
 		const before = height();
+		const still = camera();
 		send( 'pointerdown', 1, 100, 100 );
-		send( 'pointermove', 1, 100, 160 );
+		send( 'pointermove', 1, 101, 100 + SWIPE - 1 );
 		frame();
-		expect( height() ).toBeCloseTo( before, 6 );
-		// Sideways, the same finger turns the board about its upright, at the same height.
-		const turned = camera();
+		expect( camera().distanceTo( still ) ).toBeLessThan( 1e-9 );
+		send( 'pointermove', 1, 103, 160 );
 		send( 'pointermove', 1, 160, 160 );
 		frame();
-		expect( camera().distanceTo( turned ) ).toBeGreaterThan( 1 );
+		expect( camera().distanceTo( still ) ).toBeLessThan( 1e-9 );
+		send( 'pointerup', 1, 160, 160 );
+		// A finger that goes sideways first turns the board about its upright, at the same height, and up or down
+		// after that still tilts nothing.
+		send( 'pointerdown', 2, 100, 100 );
+		send( 'pointermove', 2, 100 + SWIPE, 100 );
+		send( 'pointermove', 2, 160, 130 );
+		frame();
+		expect( camera().distanceTo( still ) ).toBeGreaterThan( 1 );
 		expect( height() ).toBeCloseTo( before, 6 );
+		const turned = camera();
+		send( 'pointermove', 2, 160, 190 );
+		frame();
+		expect( camera().distanceTo( turned ) ).toBeLessThan( 1e-6 );
+		send( 'pointerup', 2, 160, 190 );
+		// Under `SWIPE` pixels a drag is still no one's, whichever way it began, and a drag as far one way as the other
+		// is the page's.
+		send( 'pointerdown', 6, 100, 100 );
+		send( 'pointermove', 6, 100, 102 );
+		send( 'pointermove', 6, 130, 102 );
+		frame();
+		expect( camera().distanceTo( turned ) ).toBeGreaterThan( 1 );
+		send( 'pointerup', 6, 130, 102 );
+		const diagonal = camera();
+		send( 'pointerdown', 7, 100, 100 );
+		send( 'pointermove', 7, 100 + SWIPE, 100 + SWIPE );
+		send( 'pointermove', 7, 160, 110 );
+		frame();
+		expect( camera().distanceTo( diagonal ) ).toBeLessThan( 1e-9 );
+		send( 'pointerup', 7, 160, 110 );
+		send( 'pointerdown', 1, 160, 160 );
 		// The browser took the pan: the finger is gone, and a mouse's drag tilts again.
 		send( 'pointercancel', 1, 160, 160 );
 		send( 'pointerdown', 3, 100, 100, 'mouse' );
@@ -1197,11 +1280,12 @@ describe( 'play', () => {
 			x: number,
 			y: number
 		) => canvas.dispatchEvent( pointer( type, pointerId, x, y, 'touch' ) );
+		// Spread up and down, which one finger's drag would leave to the page.
 		const before = camera().length();
-		send( 'pointerdown', 1, 150, 100 );
-		send( 'pointerdown', 2, 250, 100 );
+		send( 'pointerdown', 1, 100, 150 );
+		send( 'pointerdown', 2, 100, 250 );
 		send( 'pointermove', 1, 100, 100 );
-		send( 'pointermove', 2, 300, 100 );
+		send( 'pointermove', 2, 100, 300 );
 		frame();
 		expect( camera().length() ).toBeLessThan( before - 1 );
 	} );
