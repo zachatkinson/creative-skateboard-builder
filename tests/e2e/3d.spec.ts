@@ -1132,6 +1132,64 @@ test.describe( '3D view (milestone 14)', () => {
 		} );
 	}
 
+	// On a phone held sideways the board grew from 122.6 to 130.0 px as the store took over (D-521): the turn's two
+	// buttons, which only the store shows, came into the strip and resized the board's row. The page a shopper sees
+	// first is the page with scripting on and the store not yet run, which the store's own file held back gives.
+	for ( const language of [ 'English', 'French' ] as const ) {
+		test( `on a phone held sideways in ${ language }, the board is the size before the store runs that it is after, with 3D off and on`, async ( {
+			page,
+		} ) => {
+			await page.setViewportSize( { width: 844, height: 390 } );
+			if ( 'French' === language ) {
+				await page.setExtraHTTPHeaders( {
+					'x-cbuild-e2e-locale': 'fr_CA',
+					'x-cbuild-e2e-translated': '1',
+				} );
+			}
+			const board = () =>
+				// The side shown: the other board is in the page, and not drawn.
+				page
+					.locator( '.cbuild__stage .cbuild-board' )
+					.evaluateAll( ( boards ) =>
+						boards
+							.map( ( element ) =>
+								element.getBoundingClientRect()
+							)
+							.filter( ( r ) => r.width > 0 )
+							.map( ( r ) => [ r.x, r.y, r.width, r.height ] )
+					);
+			for ( const address of [ fixture().page, fixture().three.page ] ) {
+				const store = /\/build\/builder\/view\.js/;
+				await page.route( store, ( route ) => route.abort() );
+				// Not page.goto(), which waits for the ready mark the held-back store never sets.
+				const url = build( address );
+				await page.evaluate(
+					( to ) => window.location.assign( to ),
+					url
+				);
+				await page.waitForURL( url, { waitUntil: 'load' } );
+				const before = await board();
+				await expect( page.locator( '.cbuild' ) ).not.toHaveAttribute(
+					'data-ready'
+				);
+				await page.unroute( store );
+				await page.goto( build( address ) );
+				await expect(
+					page.locator( '.cbuild[data-ready]' )
+				).toBeVisible();
+				const after = await board();
+				expect( after ).toHaveLength( 1 );
+				expect( before ).toHaveLength( 1 );
+				for ( const [ at, value ] of after[ 0 ]!.entries() ) {
+					expect(
+						Math.abs( value - before[ 0 ]![ at ]! ),
+						`${ address }: ${ JSON.stringify( before ) } before, ${ JSON.stringify( after ) } after`
+					).toBeLessThanOrEqual( 0.5 );
+				}
+			}
+		} );
+	}
+
 	test( 'with 3D on, the page before the press is the page with it off', async ( {
 		page,
 		context,

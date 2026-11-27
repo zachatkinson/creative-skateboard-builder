@@ -262,6 +262,7 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-477 · The kit page carries every other argument of the request, by a name a tag's would be](#d-477--the-kit-page-carries-every-other-argument-of-the-request-by-a-name-a-tags-would-be--2026-11-26)
 - [D-510 · On a phone the bar's buttons stay beside the total, Next's words breaking inside it](#d-510--on-a-phone-the-bars-buttons-stay-beside-the-total-nexts-words-breaking-inside-it--2026-11-26)
 - [D-512 · Next's press shows what its answer will: the deck step's width line goes, and the first step's bar takes the next step's Back](#d-512--nexts-press-shows-what-its-answer-will-the-deck-steps-width-line-goes-and-the-first-steps-bar-takes-the-next-steps-back--2026-11-26)
+- [D-521 · The turn's buttons hold their place from the first paint, so the board keeps its size as the store starts](#d-521--the-turns-buttons-hold-their-place-from-the-first-paint-so-the-board-keeps-its-size-as-the-store-starts--2026-11-27)
 
 ### Accessibility
 
@@ -559,6 +560,7 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-511 · The browser tests' lock reads the clock once to judge a lock and to give up on it](#d-511--the-browser-tests-lock-reads-the-clock-once-to-judge-a-lock-and-to-give-up-on-it--2026-11-26)
 - [D-466 · My builds, the deck page's start button and the bar run their key browser tests on Kadence and Storefront too](#d-466--my-builds-the-deck-pages-start-button-and-the-bar-run-their-key-browser-tests-on-kadence-and-storefront-too--2026-11-26)
 - [D-486 · Two flakes settled: #93 closed on its evidence, and #110's mask taken off](#d-486--two-flakes-settled-93-closed-on-its-evidence-and-110s-mask-taken-off--2026-11-26)
+- [D-519 · The test themes get fixed menus and widget areas, and the visual run starts on a reset site](#d-519--the-test-themes-get-fixed-menus-and-widget-areas-and-the-visual-run-starts-on-a-reset-site--2026-11-27)
 
 ### Releases and the repository
 
@@ -7533,6 +7535,37 @@ Zach's #171, approved for 1.4.0 after the see-through edge (#167, D-505) was fou
 
 **Status:** Accepted.
 
+### D-519 · The test themes get fixed menus and widget areas, and the visual run starts on a reset site · 2026-11-27
+
+On m14-3d the start pictures (tablet on every theme, desktop on Kadence) and Kadence's deck pictures changed by a part of a pixel, at heights such as 1333 against 1334. A bisect named the wrong commits, because the visual suite depended on what earlier runs had left on the site. The fixture only ever adds, and the browser site is never reset between runs. On a site reset with `env:clean` and `env:start`, main (4ba326a) passed all 32 pictures. Once m14-3d's fixture had run on that site, main failed too.
+
+The cause was 4a6282a, which published the page `three-quiet-page` ("Build a complete without tricks"). With no menu set, Twenty Twenty-Five, Storefront and Kadence each list the site's pages in their header. The header gained a link, and the builder below it moved down a part of a pixel. Lane 1 then found a second leak of the same kind: a real switch to Kadence remapped the site's widgets, and Storefront's sidebar stayed empty until the option was put back by hand, so two of its card tests failed.
+
+**Decision:**
+
+- **A fixed header menu for each test theme.** `tests/e2e/fixtures/shop.php` sets one menu with one link, "Shop":
+  - **Twenty Twenty-Five:** its header's Navigation block has no `ref`, so it reads `WP_Navigation_Fallback::get_fallback()`. That returns the newest published `wp_navigation` post (`wp-includes/class-wp-navigation-fallback.php`, lines 79 to 84, with the query at lines 110 to 127, `orderby` date, newest first), called from `block_core_navigation_get_fallback_blocks()` (`wp-includes/blocks/navigation.php`, line 1492). Core makes a Page List the first time, so the fixture keeps its own post, `cbuild-e2e-header`, the newest by a second.
+  - **Storefront and Kadence:** a classic menu, "Test header", at each location their headers show. Those are Storefront's `primary` and `handheld` (`inc/class-storefront.php`, `register_nav_menus`) and Kadence's `primary` and `mobile` (`inc/components/nav_menus/component.php`). Unset, each falls back to a list of pages. The e2e theme cookie filters `stylesheet` but not the option `get_theme_mods()` reads, so the locations go in the active theme's mods. Each classic theme's own mods hold them too.
+  - **Running it again changes nothing.** The post and the menu items are rewritten only when they differ.
+- **Fixed widget areas.** Every run sets `sidebars_widgets` to what `wp_install_defaults()` gives a fresh site: blocks 2 to 4 in `sidebar-1`, and 5 and 6 in `sidebar-2`. A real switch of theme remaps them (`after_switch_theme`, `retrieve_widgets()`), and a switch back leaves them remapped.
+- **`tools/visual.sh` resets the browser site first.** It runs `tools/wp-env.sh clean all`, then `start`, as `npm run env:clean` and `env:start` do, so the lane keeps its port and WooCommerce is active again. A local run then starts from a site as fresh as CI's. The reset is skipped in CI, whose job has just started its site, and when `WP_BASE_URL` names another site. `CBUILD_VISUAL_KEEP_SITE=1` skips it for a quick rerun.
+- **The 3D kit without tricks is made once, after the builder kit.** 4a6282a wrote its block in `shop.php` twice, and the first copy ran before the builder kit existed. On a fresh site that gave it a lower ID than the builder kit, so a deck's "Build a complete with this deck" went to it, and `builder.spec.ts` "the kit's page and a deck's page send a shopper to it" failed on both chromium projects (`Received string: "http://localhost:8902/product/three-quiet-kit/?cbuild%5Bdeck%5D=32"`). Only a site the fixture had run on before hid it. The first copy is gone.
+- **The baselines were remade once,** after both changes. 35 of visual.spec.ts's pictures changed, and none of 3d-visual.spec.ts's. Every difference has one of two causes:
+  - **The header menu.** Twenty Twenty-Five's and Storefront's desktop and tablet starts and reviews, and Twenty Twenty-Five's nine moments. Each is the same size as before, and the differences are only antialiased edges across the whole builder: a sub-pixel move. The phone pictures, the Kadence starts and the Kadence deck picture didn't change, because a collapsed menu or a one-line header kept the builder where it was.
+  - **#110's mask taken off "Show the parts" (D-486).** All 18 reviews, in a small area at the link. On Kadence and on the phones, this is the only difference.
+
+**Proof:**
+
+- With the reset, main passed 32 of 32, then m14-3d failed its 19 header and review pictures, then main passed 32 of 32 again.
+- After the remake, two runs in a row passed 36 of 36. After lane 1's Side view (#171) was merged in, a run passed 37 of 37.
+
+**Tests:** `tests/e2e/theme-header.spec.ts`, on chromium-desktop:
+
+- **"publishing a page leaves each test theme's header as it was".** Without the menus, it failed with `twentytwentyfive: expect(received).not.toContain("A page published after the fixture")`.
+- **"switching the site to Kadence and back leaves Storefront's sidebar as it was, once the fixture has run".** Without the widget areas, it failed at `expect( await sidebar() ).toEqual( before )`, with 3 lines expected and 1 received.
+
+**Status:** Accepted.
+
 ### D-520 · Every Yoast test runs wherever Yoast's tests run, from one filter · 2026-11-27
 
 Milestone 14's full set: `composer test:integration:yoast` failed on `ShareCardYoastTest::test_yoast_prints_the_builds_card_once_with_its_picture_alone`, at tests/Integration/ShareCardYoastTest.php:89. It expected "8.5″ complete: Deck, Trucks, and Wheels" and got "Deck, Trucks and Wheels". D-460 (1.3.0) moved every list to the plugin's own joining words, and changed `ShareCardTest`'s expectation, but not this one's. The test had been red since 1.3.0, and CI never saw it: `tools/integration-variants.sh`'s yoast variant filtered on `KitYoastTest` alone, while `tools/integration-yoast.sh` named all three classes. So `BuilderYoastTest` and `ShareCardYoastTest` ran only in a local full set, and 1.3.0's full set didn't run that command.
@@ -7542,5 +7575,23 @@ Milestone 14's full set: `composer test:integration:yoast` failed on `ShareCardY
 - **One filter.** `bash tools/yoast.sh tests` prints `YoastTest::`, which matches every class whose name ends in YoastTest. `tools/integration-yoast.sh` and the variants script both take it, so a new Yoast test runs in CI without anyone adding it to a list.
 - **The test follows D-460,** as `ShareCardTest` does. Its copy is right: the plugin's own "%1$s and %2$s" with the list separator, no serial comma in English.
 - **Proof.** Before: the yoast command, red at :89 ("Tests: 7, Assertions: 25, Failures: 1"). After: "OK (7 tests, 41 assertions)". The deliberate break, the old expectation put back, is the same red line.
+
+**Status:** Accepted.
+
+### D-521 · The turn's buttons hold their place from the first paint, so the board keeps its size as the store starts · 2026-11-27
+
+D-519's fixed header made `3d.spec.ts` "in French at a phone held sideways" fail every time on chromium-desktop: 0.00274 of shift against an allowance of 0.00244. The allowance is right. The shift is the product's. At 844 by 390 px, the board grew from 122.6 to 130.0 px, and from 482.7 to 512 px long, as the store took over, on the plain page and on the 3D page alike. The old header, a list of every page, had pushed the builder low enough that little of the board was on the screen. The shorter header showed more of it, so more of the grow was counted.
+
+The cause is the turn's two buttons, Underside and Top. The store shows them by setting `canTurn` as it starts. Before that, the server's `hidden` keeps them out of the flow. On a phone held sideways, the controls share the heading's rows (D-483), so their height sets the board's row: 44 px before the store and 92 px after, since in this strip the two buttons stack. The board is sized from that row.
+
+**Decision:** on a page that will run the script (`@media (scripting: enabled)`), the buttons hold their place, unseen, until the builder is ready (`.cbuild:not([data-ready]) .cbuild-picture__sides[hidden]`, shown as `inline-flex` with `visibility: hidden`). The first paint then has the final size, set by the stylesheet alone, with no measuring in script. Without the script, scripting is `none` and the buttons take no room, as before.
+
+- **Why compare with the store held back, not with scripts off.** With scripts off, the buttons never show, and the board's 122.6 px is the right size for that page. A shopper with scripts sees the page with scripting on and the store not yet run. The test makes that page by aborting the store's file, then loads it again with the store and compares.
+- **No baseline moved.** The visual pictures are taken once the builder is ready.
+
+**Tests:**
+
+- **`3d.spec.ts` "on a phone held sideways in English, and in French, the board is the size before the store runs that it is after, with 3D off and on".** This holds the board's box to 0.5 px on the plain page and the 3D page. Before the fix, it failed with `[[289.64,323.70,482.70,122.58]] before, [[275,326,512,130.03]] after`, `Received: 14.640625`.
+- **Repeated runs.** After the fix, that test and the two F7 layout tests ran 3 times each on chromium-desktop, chromium-phone and webkit-phone: 30 passed, and the 6 skips are the Chromium-only shift test on WebKit.
 
 **Status:** Accepted.

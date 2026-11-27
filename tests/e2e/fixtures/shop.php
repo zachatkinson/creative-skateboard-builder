@@ -179,39 +179,6 @@ if ( array() === $cbuild_zone->get_shipping_methods() ) {
 	$cbuild_zone->add_shipping_method( 'free_shipping' );
 }
 
-wp_mkdir_p( CBUILD_PATH . 'tmp' );
-// The 3D kit with its Trick buttons off (1.4.0): the same parts, View in 3D on, and no trick offered.
-$cbuild_post      = get_page_by_path( 'three-quiet-kit', OBJECT, 'product' );
-$cbuild_quiet_kit = new CreativeBranding\SkateboardBuilder\Adapter\KitProduct( $cbuild_post instanceof WP_Post ? $cbuild_post->ID : 0 );
-$cbuild_quiet_kit->set_name( '3D test kit without tricks' );
-$cbuild_quiet_kit->set_slug( 'three-quiet-kit' );
-$cbuild_quiet_kit->set_status( 'publish' );
-foreach ( $cbuild_kit->documents() as $cbuild_key => $cbuild_document ) {
-	if ( is_array( $cbuild_document ) ) {
-		$cbuild_quiet_kit->setDocument( $cbuild_key, $cbuild_document );
-	}
-}
-$cbuild_quiet_kit->setDocument(
-	'_cbuild_settings',
-	array(
-		'schema_version' => 1,
-		'view_3d'        => true,
-		'tricks'         => false,
-	)
-);
-$cbuild_quiet_kit->save();
-$cbuild_quiet_page = get_page_by_path( 'three-quiet-page' );
-$cbuild_quiet_page = (int) wp_insert_post(
-	array(
-		'ID'           => $cbuild_quiet_page instanceof WP_Post ? $cbuild_quiet_page->ID : 0,
-		'post_type'    => 'page',
-		'post_status'  => 'publish',
-		'post_name'    => 'three-quiet-page',
-		'post_title'   => 'Build a complete without tricks',
-		'post_content' => '<!-- wp:creative-skateboard-builder/builder {"kit":' . $cbuild_quiet_kit->get_id() . '} /-->',
-	)
-);
-
 // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents -- a test fixture, writing where the tests read.
 file_put_contents(
 	CBUILD_PATH . 'tmp/e2e-cart.json',
@@ -761,3 +728,102 @@ $cbuild_file        = $cbuild_placeholder > 0 ? get_attached_file( $cbuild_place
 if ( $cbuild_placeholder > 0 && ( ! is_string( $cbuild_file ) || ! file_exists( $cbuild_file ) ) ) {
 	update_option( 'woocommerce_placeholder_image', 0 );
 }
+
+// Each test theme's header shows one fixed menu, so a page a later fixture publishes changes no header (D-519). Left
+// to themselves, the three list the site's pages: Twenty Twenty-Five's Navigation block falls back to the newest
+// published `wp_navigation` post, which core first makes as a Page List; Storefront's and Kadence's menus fall back to
+// a list of pages. The 3D kit's second page put a link in each header, and the builder moved down a part of a pixel.
+$cbuild_menu_links = array( 'Shop' => (string) wc_get_page_permalink( 'shop' ) );
+
+// Twenty Twenty-Five: a Navigation post of its own, the newest published one each run, which the block's fallback
+// reads (wp-includes/class-wp-navigation-fallback.php, WP_Navigation_Fallback::get_fallback()).
+$cbuild_navigation_blocks = '';
+foreach ( $cbuild_menu_links as $cbuild_label => $cbuild_url ) {
+	$cbuild_navigation_blocks .= '<!-- wp:navigation-link ' . wp_json_encode(
+		array(
+			'label' => $cbuild_label,
+			'url'   => $cbuild_url,
+			'kind'  => 'custom',
+		),
+		JSON_UNESCAPED_SLASHES
+	) . ' /-->';
+}
+$cbuild_navigation = get_page_by_path( 'cbuild-e2e-header', OBJECT, 'wp_navigation' );
+$cbuild_newest     = get_posts(
+	array(
+		'post_type'      => 'wp_navigation',
+		'post_status'    => 'publish',
+		'orderby'        => 'date',
+		'order'          => 'DESC',
+		'posts_per_page' => 1,
+	)
+);
+$cbuild_is_newest  = $cbuild_navigation instanceof WP_Post && array() !== $cbuild_newest && $cbuild_newest[0]->ID === $cbuild_navigation->ID;
+if ( ! $cbuild_is_newest || $cbuild_navigation_blocks !== $cbuild_navigation->post_content ) {
+	wp_insert_post(
+		array(
+			'ID'            => $cbuild_navigation instanceof WP_Post ? $cbuild_navigation->ID : 0,
+			'post_type'     => 'wp_navigation',
+			'post_status'   => 'publish',
+			'post_name'     => 'cbuild-e2e-header',
+			'post_title'    => 'Test header',
+			'post_content'  => wp_slash( $cbuild_navigation_blocks ),
+		)
+		// A second newer than the newest other, so the fallback reads this one even when the other was made this second.
+		+ ( $cbuild_is_newest || array() === $cbuild_newest ? array() : array( 'post_date_gmt' => gmdate( 'Y-m-d H:i:s', 1 + (int) strtotime( $cbuild_newest[0]->post_date_gmt . ' UTC' ) ) ) )
+	);
+}
+
+// Storefront and Kadence: a classic menu at each location their headers show (Storefront's `primary` and `handheld`,
+// Kadence's `primary` and `mobile`). The cookie that picks the theme filters `stylesheet` alone, so the locations are
+// read from the active theme's mods; each classic theme's own mods hold them too, for a site that activates it.
+$cbuild_menu = wp_get_nav_menu_object( 'Test header' );
+$cbuild_menu = $cbuild_menu instanceof WP_Term ? $cbuild_menu->term_id : (int) wp_create_nav_menu( 'Test header' );
+$cbuild_have = array();
+foreach ( (array) wp_get_nav_menu_items( $cbuild_menu ) as $cbuild_item ) {
+	if ( $cbuild_item instanceof WP_Post ) {
+		$cbuild_have[ $cbuild_item->title ] = $cbuild_item->url;
+	}
+}
+if ( $cbuild_have !== $cbuild_menu_links ) {
+	foreach ( (array) wp_get_nav_menu_items( $cbuild_menu ) as $cbuild_item ) {
+		if ( $cbuild_item instanceof WP_Post ) {
+			wp_delete_post( $cbuild_item->ID, true );
+		}
+	}
+	foreach ( $cbuild_menu_links as $cbuild_label => $cbuild_url ) {
+		wp_update_nav_menu_item(
+			$cbuild_menu,
+			0,
+			array(
+				'menu-item-title'  => $cbuild_label,
+				'menu-item-url'    => $cbuild_url,
+				'menu-item-type'   => 'custom',
+				'menu-item-status' => 'publish',
+			)
+		);
+	}
+}
+foreach ( array_unique( array( (string) get_option( 'stylesheet' ), 'storefront', 'kadence' ) ) as $cbuild_theme ) {
+	$cbuild_mods = get_option( 'theme_mods_' . $cbuild_theme );
+	$cbuild_mods = is_array( $cbuild_mods ) ? $cbuild_mods : array();
+	$cbuild_mods['nav_menu_locations'] = array_merge(
+		is_array( $cbuild_mods['nav_menu_locations'] ?? null ) ? $cbuild_mods['nav_menu_locations'] : array(),
+		array_fill_keys( array( 'primary', 'handheld', 'mobile' ), $cbuild_menu )
+	);
+	update_option( 'theme_mods_' . $cbuild_theme, $cbuild_mods );
+}
+
+// Each theme's widget areas as a fresh site has them (D-519): WordPress's own install puts its block widgets in
+// `sidebar-1` and `sidebar-2` (wp-admin/includes/upgrade.php, wp_install_defaults()). A real switch of the site's theme
+// remaps them to the new theme's areas (`after_switch_theme`, retrieve_widgets()), and a switch back does not undo it:
+// once Kadence was activated, Storefront's sidebar was empty and two of its card tests failed. Set on every run.
+update_option(
+	'sidebars_widgets',
+	array(
+		'wp_inactive_widgets' => array(),
+		'sidebar-1'           => array( 'block-2', 'block-3', 'block-4' ),
+		'sidebar-2'           => array( 'block-5', 'block-6' ),
+		'array_version'       => 3,
+	)
+);
