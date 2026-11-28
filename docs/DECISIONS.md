@@ -8224,6 +8224,8 @@ A lane serves its own checkout's code (wp-env names a site by its config's path,
 
 The halves themselves are checked by their first real run, before M15's next push. Its times are added here.
 
+**First run, 27 November.** M15's push of the admin kit and the wheel faces (9859763), from csb-g on lane 3 split with csb-d on lane 2: 34 minutes in all, against D-567's 45. Before its browser step it ran every other step in about 17 minutes. Then chromium-desktop took 16.9 minutes here (380 passed), and chromium-phone took 15.9 minutes in the other lane (360 passed), at the same time. Both halves passed. One lesson: a split runs from a checkout whose lane has its own sites up. Run from the main checkout on lane 1, whose sites belong to another checkout, the integration step stopped at once with "The integration site was not found".
+
 **Status:** Accepted.
 
 ### D-571 · The admin kit's mount: the server's form stays the page, and DataForm stands in front of it · 2026-11-27
