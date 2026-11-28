@@ -135,6 +135,8 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-548 · Every start checks its site's WordPress and WooCommerce against the pins, and env:oldest can start both sites](#d-548--every-start-checks-its-sites-wordpress-and-woocommerce-against-the-pins-and-envoldest-can-start-both-sites--2026-11-27)
 - [D-549 · The upgrade runs follow a support floor: unset, the previous release alone](#d-549--the-upgrade-runs-follow-a-support-floor-unset-the-previous-release-alone--2026-11-27)
 - [D-550 · The browser tests' lock is taken only from a dead holder, and cleared in place under a clearer's lock](#d-550--the-browser-tests-lock-is-taken-only-from-a-dead-holder-and-cleared-in-place-under-a-clearers-lock--2026-11-27)
+- [D-551 · The lane practices, in one place](#d-551--the-lane-practices-in-one-place--2026-11-27)
+- [D-553 · The admin pins @wordpress/dataviews 22.0.0, which calls no private API, and takes wp-components from WordPress](#d-553--the-admin-pins-wordpressdataviews-2200-which-calls-no-private-api-and-takes-wp-components-from-wordpress--2026-11-27)
 - [D-564 · The ten milestone 13 branches all landed, and their archives are deleted](#d-564--the-ten-milestone-13-branches-all-landed-and-their-archives-are-deleted--2026-11-27)
 - [D-565 · CI tries a wp-env start again when a download fails, and caches nothing](#d-565--ci-tries-a-wp-env-start-again-when-a-download-fails-and-caches-nothing--2026-11-27)
 - [D-566 · A press while a step crosses over is taken: it ends the crossing, and its control is the one it comes up over](#d-566--a-press-while-a-step-crosses-over-is-taken-it-ends-the-crossing-and-its-control-is-the-one-it-comes-up-over--2026-11-27)
@@ -7976,6 +7978,74 @@ The old test "takes a lock older than its limit from a holder still running" ass
 Part 2 of #172, the three timing tests that fail only under load, stays open on the issue.
 
 **Status:** Accepted.
+
+### D-551 · The lane practices, in one place · 2026-11-27
+
+Milestones 11 to 14 learned how three lanes (D-311, `tools/lane.sh`) work on one Mac, each lesson recorded where it was learned. Here they are once, for M15's screens and after:
+
+- **The PHP and JavaScript steps run on three lanes at once.** Three lanes take about 7.6 minutes a tree, against 18 at one (measured in M12). Stagger the lanes at the JavaScript step, the heaviest.
+- **Browser runs: at most two lanes when nobody is watching,** and never WebKit on two lanes at once. On 27 November three lanes of WebKit crashed the Mac's login session overnight, and 1.4.0 lost a day. WebKit and Firefox run on separate lanes. A lane's work is committed before a long run.
+- **Long runs are started in the background, never inside a watcher with a time limit.** A Monitor's expiry (30 minutes) kills its whole process group, the run with it.
+- **A walkthrough per lane before it lands, and one of the whole milestone before the reviews.** M11's last-step walkthrough found four defects the suites missed.
+- **The full project set before a release push,** on the lanes: every engine and width, tablets included, plus no-js, fr-ca, rtl, visual and the upgrade. A failure that shows only under load is rerun alone before it is counted.
+- **CI's diff-lines Infection** (`composer infection:diff`) on each lane against the milestone branch before it lands (D-465), and the tablet projects before a release push, since CI runs both and local runs had not.
+- **A lane's checkout is told by its sites.** A start in a lane a checkout's sites don't run in is refused (`tools/wp-env.sh`), and every start checks the pins (D-548).
+
+**Status:** Accepted.
+
+### D-553 · The admin pins @wordpress/dataviews 22.0.0, which calls no private API, and takes wp-components from WordPress · 2026-11-27
+
+Zach approved the dependency on 26 November (#156). M15's plan asked for a spike to pin a release and run it on both legs before any screen is built.
+
+**What each release ships.** Read from wordpress-develop's `package.json` at each tag, then Gutenberg's packages at that commit:
+
+| WordPress | `@wordpress/components` | `@wordpress/dataviews` alongside |
+| --- | --- | --- |
+| 7.0.8 | 32.2.1 | 12.0.1 |
+| 7.1.5 | 37.0.0 | 17.2.0 |
+| 7.2 (RC3; due 8 December 2026) | 44.0.0 | 22.0.0 |
+
+No release registers DataViews as a script, so the plugin bundles it.
+
+**First pick, dropped: 12.0.1**, the release built against 7.0's components. It passed a first spike on 7.0.8 and 7.1.5, at 63.3 kB compressed. The handbook research (`docs/research/admin-handbooks-2026.md`) then found that it takes `Menu` and `kebabCase` through `unlock( componentsPrivateApis )`:
+
+- `dataviews-item-actions/index.mjs`, `dataviews-view-config/index.mjs` and `dataviews-filters/add-filter.mjs` in 12.0.1's `build-module`;
+- components 39 and 40 removed most of those private APIs, and 44.0.0, which 7.2 ships, removed the rest.
+
+On 7.2, 12.0.1's controls and every row action with a modal would throw. Core's dev note of 16 November asks plugins that bundle DataViews to move to 22.0.0 or later before 7.2.
+
+**Decision.** `@wordpress/dataviews` is pinned exactly at **22.0.0** (published 4 November, so past D-040's week), with wp-scripts' plain build.
+
+- **Private APIs:** `grep -r "unlock(" build-module` finds none.
+- **What it takes from WordPress:**
+  - `wp-components`, `wp-element`, `wp-data`, `wp-compose`, `wp-date`, `wp-i18n`, `wp-a11y`, `wp-keycodes`, `wp-deprecated`, `wp-warning`, `wp-primitives`, `wp-private-apis` and `wp-theme`;
+  - each is registered by 7.0.2 and 7.1.4 (`wp-includes/assets/script-loader-packages.php`).
+- **What it bundles:** `@wordpress/ui`, `@wordpress/kebab-case` and `@wordpress/react-inert-value`, which are in wp-scripts' `BUNDLED_PACKAGES`.
+- **Sizes,** with Brotli at quality 11:
+  - a screen's entry with DataForm and DataViews is 1,002 kB raw and **161.7 kB** compressed;
+  - DataViews' stylesheet is 92 kB raw and 8.5 kB compressed.
+- **Under the plan's limit:** both are under the plan's 250 kB. The admin's budget lines are set at the foundation from the first screen's measured entry, and the builder's lines are untouched.
+
+**The spike.** A throwaway admin page held a DataForm and a DataViews table.
+
+- **What its spec did:**
+  - filled a text field, picked from a combobox, chose a radio and typed an integer;
+  - opened a `details` group and cleared a checkbox to show a field hidden by `isVisible`;
+  - checked the form's data, then ran a bulk action on two rows;
+  - opened a row action's modal, where 12.0.1 called the private `kebabCase`.
+- **Where it ran:** chromium-desktop on lane 3, on 7.1.5 with WooCommerce 11.3.1, 7.0.8 with 11.2.0, and 7.2 RC3 with 11.3.1, the last after `wp core update-db`.
+- **The result:** it passed on all three, with no console error.
+
+**Not used: `@wordpress/views` 3.1.0,** which saves a table's view per user. It opts into private APIs as `@wordpress/views`, a name `wp-private-apis`' allowlist in 7.0.2 and 7.1.5 does not hold, so it throws when it loads. It also reads `getViewConfig`, a private `core-data` selector that 7.0.2 lacks. Zach had said to use it if needed (27 November); it isn't usable by a plugin. Saved views use the public `@wordpress/preferences` store with `@wordpress/preferences-persistence` (`create()`, `setPersistenceLayer`), both on 7.0 and 7.1, persisted to user meta. PRIVACY.md and the uninstaller cover the key.
+
+**Watched:**
+
+- A gate fails if the pinned package's `build-module` calls `unlock(`.
+- CI's oldest leg runs every admin test on 7.0.8.
+- The pins move to 7.2 a week after its release (D-040, D-145), and the newest leg with them.
+- A screen that uses a control the spike didn't, such as `datetime`, `array` or `color`, gets its own check on every leg.
+
+**Status:** Accepted. The research's other findings go into the foundation; M15's review lists them.
 
 ### D-564 · The ten milestone 13 branches all landed, and their archives are deleted · 2026-11-27
 
