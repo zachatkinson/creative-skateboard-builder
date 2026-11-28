@@ -67,7 +67,7 @@ final class Field {
 	private function __construct(
 		public readonly string $id,
 		public readonly string $name,
-		private readonly string $label,
+		public readonly string $label,
 		private readonly string $type,
 	) {}
 

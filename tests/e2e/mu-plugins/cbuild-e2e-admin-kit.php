@@ -98,15 +98,13 @@ function cbuild_e2e_kit_page(): void {
 	if ( isset( $_GET['saved'] ) ) {
 		echo '<div class="notice notice-success inline"><p>Saved.</p></div>';
 	}
-	foreach ( $errors->toArray() as $message ) {
-		echo '<div class="notice notice-error inline"><p>' . esc_html( $message ) . '</p></div>';
-	}
+	// The refusals are summed up by Mount::open(), with a link to each field.
 	echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
 	wp_nonce_field( CBUILD_E2E_KIT );
 	echo '<input type="hidden" name="action" value="cbuild_e2e_admin_kit">';
 	echo Mount::open( $form ); // The form's description, escaped by Mount.
-	printf( '<p><label>Assembly time <input type="number" name="cbuild[lead_days]" value="%s" required min="0" max="30"></label></p>', esc_attr( $values['lead_days'] ) );
-	printf( '<p><input type="hidden" name="cbuild[assembly]" value="0"><label><input type="checkbox" name="cbuild[assembly]" value="1"%s> Offer assembly</label></p>', checked( '1', $values['assembly'], false ) );
+	printf( '<p><label>Assembly time <input type="number" id="%s" name="cbuild[lead_days]" value="%s" required min="0" max="30"></label></p>', esc_attr( Mount::controlId( $form, 'lead_days' ) ), esc_attr( $values['lead_days'] ) );
+	printf( '<p><input type="hidden" name="cbuild[assembly]" value="0"><label><input type="checkbox" id="%s" name="cbuild[assembly]" value="1"%s> Offer assembly</label></p>', esc_attr( Mount::controlId( $form, 'assembly' ) ), checked( '1', $values['assembly'], false ) );
 	printf( '<p><label>Unit <select name="cbuild[unit]"><option value="mm"%s>Millimetres</option><option value="in"%s>Inches</option></select></label></p>', selected( 'mm', $values['unit'], false ), selected( 'in', $values['unit'], false ) );
 	printf( '<p><label>Note for inches <input type="text" name="cbuild[note]" value="%s"></label></p>', esc_attr( $values['note'] ) );
 	echo Mount::close();

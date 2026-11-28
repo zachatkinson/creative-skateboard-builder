@@ -31,9 +31,11 @@ $form = Form::of(
 )->failed( $errors ); // Errors::none()->with( 'lead_days', $message ), from the last refused save.
 
 echo Mount::open( $form );
-// The server's own controls, named as the fields' input names.
+// The server's own controls, named as the fields' input names, each with the id Mount::controlId( $form, 'lead_days' ).
 echo Mount::close();
 ```
+
+Where the server refused anything, `Mount::open()` prints one summary first: an inline error notice that says how many fields need a change and links to each, with its label and message. With a script, the summary takes focus as the page loads and each link moves focus to DataForm's control for the field. With none, each link goes to the server's control by `Mount::controlId()`, so give each control that id. A screen prints no other notice for its refusals.
 
 On the screen's own `admin_enqueue_scripts`, `Assets::enqueue( '<screen>', CBUILD_PATH, CBUILD_URL )` loads `build/admin/<screen>.js` with the dependencies the build wrote, and the kit's shared stylesheet with its right-to-left copy.
 
@@ -57,7 +59,8 @@ The kit, in `assets/src/admin/form/`, imports only its own modules and WordPress
 
 - **Number fields clamp to their limits.** A field that says 30 at most posts 30 when 99 is typed. A rule only the server knows, such as one field against another, still comes back as a refusal.
 - **Validity nests under cards.** `validityOf()` handles it. A screen passes errors by field id.
-- **A message shows once a field is left.** The kit shows the server's refusals as the page loads (`reveal()`), without moving focus. The page's own notice names them too.
+- **A message shows once a field is left.** The kit shows the server's refusals as the page loads (`reveal()`); the summary names them too, and takes focus.
+- **A required field's label gains "(Required)",** translated. The summary's links find a control by its label, the same words first, then the label and more after a space.
 
 ## Budgets and checks
 

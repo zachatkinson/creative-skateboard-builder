@@ -107,6 +107,28 @@ final class Form {
 	}
 
 	/**
+	 * What the server refused, in the fields' order: each field's id, its label and the message.
+	 *
+	 * @since 1.5.0
+	 *
+	 * @return list<array{id: string, label: string, message: string}>
+	 */
+	public function refusals(): array {
+		$messages = $this->errors->toArray();
+		$refused  = array();
+		foreach ( $this->fields as $field ) {
+			if ( isset( $messages[ $field->id ] ) ) {
+				$refused[] = array(
+					'id'      => $field->id,
+					'label'   => $field->label,
+					'message' => $messages[ $field->id ],
+				);
+			}
+		}
+		return $refused;
+	}
+
+	/**
 	 * Its fields' ids.
 	 *
 	 * @since 1.5.0

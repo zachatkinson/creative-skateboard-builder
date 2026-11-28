@@ -208,6 +208,66 @@ describe( 'the leaving warning', () => {
 	} );
 } );
 
+describe( 'the summary of the refusals', () => {
+	const summed = `<div class="notice notice-error inline cbuild-form__summary" tabindex="-1"><p>1 field needs a change before the form can be saved.</p><ul><li><a href="#cbuild-form-cbuild-settings-lead_days" data-cbuild-field="lead_days">Assembly time: Use a whole number.</a></li><li><a href="#cbuild-form-cbuild-settings-gone" data-cbuild-field="gone">Gone: No.</a></li></ul></div>`;
+	// A stand-in that draws each field's control with a label, as DataForm does, its id its own.
+	const labelled: Draw = ( where, props ) => {
+		where.innerHTML = props.fields
+			.map(
+				( field, at ) =>
+					// DataForm adds "(Required)", translated, to a required field's label.
+					`<label for="control-${ at }">${ String( field.label ) }${
+						0 === at ? ' (Required)' : ''
+					}</label><input id="control-${ at }">`
+			)
+			.join( '' );
+		return { update: () => {}, unmount: () => {} };
+	};
+	const withSummary = () => {
+		kit().insertAdjacentHTML( 'afterbegin', summed );
+		const unmount = mount( kit(), labelled );
+		live.push( unmount );
+	};
+	const link = ( field: string ) =>
+		document.querySelector< HTMLAnchorElement >(
+			`[data-cbuild-field="${ field }"]`
+		)!;
+
+	it( 'takes focus as the page loads, so a keyboard starts from it', () => {
+		withSummary();
+		expect( kit().ownerDocument.activeElement ).toBe(
+			document.querySelector( '.cbuild-form__summary' )
+		);
+	} );
+
+	it( "moves focus from a link to the field's own control in DataForm", () => {
+		withSummary();
+		const click = new MouseEvent( 'click', {
+			bubbles: true,
+			cancelable: true,
+		} );
+		link( 'lead_days' ).dispatchEvent( click );
+		expect( kit().ownerDocument.activeElement?.id ).toBe( 'control-0' );
+		expect( click.defaultPrevented ).toBe( true );
+	} );
+
+	it( 'leaves a link to a field DataForm is not showing to the page', () => {
+		withSummary();
+		const click = new MouseEvent( 'click', {
+			bubbles: true,
+			cancelable: true,
+		} );
+		link( 'gone' ).dispatchEvent( click );
+		expect( click.defaultPrevented ).toBe( false );
+	} );
+
+	it( 'leaves focus alone where nothing was refused', () => {
+		const before = kit().ownerDocument.activeElement;
+		mounted( kit() );
+		expect( kit().ownerDocument.activeElement ).toBe( before );
+	} );
+} );
+
 describe( 'counting the refusals to show', () => {
 	it( 'counts the fields in cards and outside them', () => {
 		const refused = { custom: { type: 'invalid', message: 'No.' } };

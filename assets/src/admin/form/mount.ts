@@ -18,6 +18,7 @@ import {
 } from './describe';
 import { takeOver, write } from './inputs';
 import { guard } from './leaving';
+import { summarise } from './summary';
 
 /** What DataForm is drawn with. */
 export type Drawn = {
@@ -111,6 +112,13 @@ export function mount( kit: HTMLElement, draw: Draw ): () => void {
 		drawing.update( props() );
 	}
 	const drawing = draw( app, props() );
+	const unsummarise = summarise(
+		kit,
+		app,
+		new Map(
+			description.fields.map( ( field ) => [ field.id, field.label ] )
+		)
+	);
 
 	return () => {
 		drawing.unmount();
@@ -118,5 +126,6 @@ export function mount( kit: HTMLElement, draw: Draw ): () => void {
 		server.hidden = false;
 		giveBack();
 		unguard();
+		unsummarise();
 	};
 }

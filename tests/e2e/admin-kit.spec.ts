@@ -98,6 +98,16 @@ test.describe( 'The admin kit', () => {
 		await kit.getByLabel( 'Assembly time' ).fill( '0' );
 		await save( page );
 		await expect( kit.getByText( refusal ) ).toBeVisible();
+		// The summary names it, has focus as the page loads, and its link lands on DataForm's own control.
+		const summary = page.locator( '.cbuild-form__summary' );
+		await expect( summary ).toBeFocused();
+		await expect( summary ).toContainText(
+			'1 field needs a change before the form can be saved.'
+		);
+		await summary
+			.getByRole( 'link', { name: `Assembly time: ${ refusal }` } )
+			.click();
+		await expect( kit.getByLabel( 'Assembly time' ) ).toBeFocused();
 		await axe( page, 'a refused field', '.wrap' );
 		await kit.getByLabel( 'Assembly time' ).fill( '4' );
 		await expect( kit.getByText( refusal ) ).toHaveCount( 0 );
@@ -141,5 +151,23 @@ test.describe( 'The admin kit', () => {
 		await expect( page.getByText( 'Saved.' ) ).toBeVisible();
 		// axe runs in the page's script, which this project turns off; the drawn form's axe runs above.
 		await expect( server.getByLabel( 'Assembly time' ) ).toHaveValue( '5' );
+
+		// A refusal: the summary's link goes to the server's own control.
+		await server.getByLabel( 'Offer assembly' ).check();
+		await server.getByLabel( 'Assembly time' ).fill( '0' );
+		await save( page );
+		const refusal =
+			'Assembly time: Offering assembly needs at least one day.';
+		await page
+			.locator( '.cbuild-form__summary' )
+			.getByRole( 'link', { name: refusal } )
+			.click();
+		await expect( page ).toHaveURL(
+			/#cbuild-form-cbuild-e2e-kit-lead_days$/
+		);
+		await expect( server.getByLabel( 'Assembly time' ) ).toBeFocused();
+		await server.getByLabel( 'Assembly time' ).fill( '5' );
+		await server.getByLabel( 'Offer assembly' ).uncheck();
+		await save( page );
 	} );
 } );

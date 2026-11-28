@@ -55,6 +55,67 @@ final class AdminFormMountTest extends IntegrationTestCase {
 		self::assertStringNotContainsString( '</script><b>', $html, 'the help cannot end the script early' );
 	}
 
+	// The research's recommendation 13 and finding 4.2: one notice names every refusal and links to each field. Printed
+	// inside the form, it carries `inline`, so core's common.js leaves it where it is.
+	public function test_the_refusals_are_summed_up_inside_the_mount_with_a_link_to_each_field(): void {
+		$form = Form::of(
+			'cbuild-settings',
+			array(
+				Field::of( 'unit', 'cbuild[unit]', 'Unit <i>', 'text' ),
+				Field::of( 'lead_days', 'cbuild[lead_days]', 'Assembly time', 'integer' ),
+				Field::of( 'note', 'cbuild[note]', 'Note', 'text' ),
+			),
+			array()
+		)->failed( Errors::none()->with( 'note', 'Too long & "odd".' )->with( 'unit', 'Choose one.' ) );
+		$xpath = self::read( Mount::open( $form ) . Mount::close() );
+
+		$summary = $xpath->query( '//div[@class="cbuild-form"]/div[contains(@class, "notice-error")][contains(@class, "inline")][contains(@class, "cbuild-form__summary")][@tabindex="-1"]' );
+		self::assertNotFalse( $summary );
+		self::assertSame( 1, $summary->length, 'one inline error notice, first in the mount, which the script can focus' );
+		$first = $xpath->query( '//div[@class="cbuild-form"]/*[1]' );
+		self::assertNotFalse( $first );
+		self::assertSame( $summary->item( 0 ), $first->item( 0 ), 'before the description and the controls' );
+		self::assertStringContainsString( '2 fields need a change before the form can be saved.', (string) $summary->item( 0 )?->textContent );
+
+		$links = $xpath->query( '//div[contains(@class, "cbuild-form__summary")]//li/a' );
+		self::assertNotFalse( $links );
+		$found = array();
+		foreach ( $links as $link ) {
+			self::assertInstanceOf( \DOMElement::class, $link );
+			$found[] = array( $link->getAttribute( 'href' ), $link->getAttribute( 'data-cbuild-field' ), trim( $link->textContent ) );
+		}
+		self::assertSame(
+			array(
+				array( '#' . Mount::controlId( $form, 'unit' ), 'unit', 'Unit <i>: Choose one.' ),
+				array( '#' . Mount::controlId( $form, 'note' ), 'note', 'Note: Too long & "odd".' ),
+			),
+			$found,
+			'in the fields\' order, each the field\'s label and its message, as text'
+		);
+		self::assertSame( 'cbuild-form-cbuild-settings-note', Mount::controlId( $form, 'note' ), 'the server control\'s id, for a page with no script' );
+	}
+
+	public function test_one_refusal_is_said_in_the_singular_and_none_prints_no_summary(): void {
+		$fields = array( Field::of( 'note', 'cbuild[note]', 'Note', 'text' ) );
+		$one    = self::read( Mount::open( Form::of( 'f', $fields, array() )->failed( Errors::none()->with( 'note', 'No.' ) ) ) . Mount::close() );
+		self::assertStringContainsString( '1 field needs a change before the form can be saved.', (string) $one->document->textContent );
+		$none = self::read( Mount::open( Form::of( 'f', $fields, array() ) ) . Mount::close() );
+		$summary = $none->query( '//*[contains(@class, "cbuild-form__summary")]' );
+		self::assertNotFalse( $summary );
+		self::assertSame( 0, $summary->length );
+	}
+
+	/**
+	 * The markup, read.
+	 *
+	 * @param string $html Some markup.
+	 */
+	private static function read( string $html ): DOMXPath {
+		$dom = new DOMDocument();
+		self::assertTrue( $dom->loadHTML( '<!doctype html><html><head><meta charset="utf-8"></head><body>' . $html . '</body></html>', LIBXML_NOERROR ) );
+		return new DOMXPath( $dom );
+	}
+
 	public function test_a_screen_loads_its_script_as_the_build_wrote_it_and_the_kits_styles(): void {
 		self::assertTrue( Assets::enqueue( 'settings', CBUILD_PATH, CBUILD_URL ) );
 		$script = wp_scripts()->registered['cbuild-admin-settings'] ?? null;
