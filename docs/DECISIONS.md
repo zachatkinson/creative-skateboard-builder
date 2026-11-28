@@ -132,6 +132,7 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-543 · The focus test waits out the pick's crossing, and #178 asks whether a tap in a crossing is lost](#d-543--the-focus-test-waits-out-the-picks-crossing-and-178-asks-whether-a-tap-in-a-crossing-is-lost--2026-11-27)
 - [D-544 · The integration and browser legs get 80 minutes](#d-544--the-integration-and-browser-legs-get-80-minutes--2026-11-27)
 - [D-545 · The supply chain: the SBOMs and CodeQL were already in place, and the Scorecard is added](#d-545--the-supply-chain-the-sboms-and-codeql-were-already-in-place-and-the-scorecard-is-added--2026-11-27)
+- [D-548 · Every start checks its site's WordPress and WooCommerce against the pins, and env:oldest can start both sites](#d-548--every-start-checks-its-sites-wordpress-and-woocommerce-against-the-pins-and-envoldest-can-start-both-sites--2026-11-27)
 - [D-550 · The browser tests' lock is taken only from a dead holder, and cleared in place under a clearer's lock](#d-550--the-browser-tests-lock-is-taken-only-from-a-dead-holder-and-cleared-in-place-under-a-clearers-lock--2026-11-27)
 - [D-564 · The ten milestone 13 branches all landed, and their archives are deleted](#d-564--the-ten-milestone-13-branches-all-landed-and-their-archives-are-deleted--2026-11-27)
 - [D-565 · CI tries a wp-env start again when a download fails, and caches nothing](#d-565--ci-tries-a-wp-env-start-again-when-a-download-fails-and-caches-nothing--2026-11-27)
@@ -7895,6 +7896,29 @@ Issue #169 (approved by Zach on 26 November) asked for three things. Each was ch
 Gate 9 is unchanged: the new workflow holds no secret, and `release.yml` is untouched.
 
 Generic-pattern secret scanning stays off. GitHub offers it only on organisation repositories with Secret Protection, and gitleaks in CI already scans every push and pull request for generic secrets.
+
+**Status:** Accepted.
+
+### D-548 · Every start checks its site's WordPress and WooCommerce against the pins, and env:oldest can start both sites · 2026-11-27
+
+In milestone 14's full set, a run straight after `npm run env:oldest` tested WordPress 7.1.5. The override files were written but the running sites were not restarted on them, so the oldest pair's tests ran on the newest. Nothing said so.
+
+**Decision:**
+
+- **The check.** After every successful `start`, `tools/wp-env.sh` asks the site for `wp core version` and `wp plugin get woocommerce --field=version`, through `wp-env run cli` with the site's own `--config`. Both must equal the pins in force. A pin comes from the site's override file where `env:oldest` wrote one (`.wp-env.override.json` or `.wp-env.tests.override.json`), and otherwise from `.wp-env.json` or `.wp-env.tests.json`. Either version off its pin fails the start, with a line naming the version found and the pin. That covers `npm run env:start`, a lane's start, and CI's three starts, the oldest leg's included, since D-565 put them through the wrapper.
+- **One command for the oldest leg.** `npm run env:oldest -- --start` writes the overrides and starts both sites on them, each start checked. Without `--start` it writes the overrides as before.
+
+The check takes the two WP-CLI calls' time, a few seconds per start.
+
+**Tests:** `tools/wp-env-retry-selftest.sh` (in `composer gates`) runs a copy of the wrapper and its configs in a scratch tree, with a stand-in for wp-env, so no override is written into the checkout. Five new cases:
+
+- a start on the pins passes;
+- WordPress off its pin fails, naming both versions;
+- WooCommerce off its pin fails the integration site's start;
+- after `env:oldest`, a site still on the newest pair fails, as M14's run should have;
+- after `env:oldest`, the oldest pair passes, and `--start` starts both sites and checks each.
+
+With the check made to pass always, the three mismatch cases went red; restored, all 12 cases pass.
 
 **Status:** Accepted.
 
