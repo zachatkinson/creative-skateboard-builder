@@ -198,6 +198,9 @@ jobs:
           php -l src/Support/Options.php
           php -l src/Support/Tables.php
           php -l src/Install/Uninstaller.php
+          # The e2e must-use plugins load on every request to the test sites, the zip lifecycle's WP-CLI run on PHP 7.4
+          # among them, so they parse there too (D-574).
+          for fixture in tests/e2e/mu-plugins/*.php; do php -l "$fixture"; done
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         if: always()
         with:

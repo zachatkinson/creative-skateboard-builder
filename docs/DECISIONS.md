@@ -147,6 +147,7 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-571 · The admin kit's mount: the server's form stays the page, and DataForm stands in front of it](#d-571--the-admin-kits-mount-the-servers-form-stays-the-page-and-dataform-stands-in-front-of-it--2026-11-27)
 - [D-572 · The 3D wheels' outer faces from their featured photos, read by the domain and kept a month a photo](#d-572--the-3d-wheels-outer-faces-from-their-featured-photos-read-by-the-domain-and-kept-a-month-a-photo--2026-11-27)
 - [D-573 · /verify's types step compares the types before and after regenerating them, not against the commit](#d-573--verifys-types-step-compares-the-types-before-and-after-regenerating-them-not-against-the-commit--2026-11-27)
+- [D-574 · Three CI failures on M15's first push: the wheel face's boundary tests leave the path-coverage pass, the kit's test imports DataForm with its file, and the e2e fixtures parse on PHP 7.4](#d-574--three-ci-failures-on-m15s-first-push-the-wheel-faces-boundary-tests-leave-the-path-coverage-pass-the-kits-test-imports-dataform-with-its-file-and-the-e2e-fixtures-parse-on-php-74--2026-11-28)
 
 ### Kits and their settings
 
@@ -8282,3 +8283,18 @@ A deliberate break, the reveal taken out, failed the refusal's test at "Offering
 **Context.** D-567's `tools/verify.sh` failed its types step whenever `assets/src/types` differed from the commit, so a schema change, with its types made, could never pass /verify before the commit that holds it. It stopped M15's wheel faces (D-572): `M assets/src/types/state.d.ts`, "FAILED: the generated types differ from the committed ones".
 
 **Decision.** The step takes a digest of `assets/src/types` before `npm run types` and after, and fails only if regenerating changed it, with the files and "run npm run types". That is what the step is for, that the committed types are what the schemas make. In CI, on a clean checkout, it is the same test as against the commit. Tried by hand both ways on 27 November: fresh types, not yet committed, pass, and a stale `state.d.ts` fails.
+
+### D-574 · Three CI failures on M15's first push: the wheel face's boundary tests leave the path-coverage pass, the kit's test imports DataForm with its file, and the e2e fixtures parse on PHP 7.4 · 2026-11-28
+
+**Context.** CI's run 46109090237 on PR #180 (06ddb0e, the admin kit and the wheel faces) failed three jobs that /verify on this Mac had passed.
+
+**1. The static job ran out of its 15 minutes** in `composer test:coverage`'s second pass, the domain's path coverage. `WheelFaceTest` alone took 5 minutes 28 seconds under it here: its boundary tests read photos of up to 100 samples a side many times over, and Xdebug's path coverage runs that code slowly. Eight tests took 302 of the 328 seconds, the box's corners at each grid size (107), the ties (42), the tread's rounding (34) and band (31), the centring (30), the corners exactly (17), the width against the height (17) and the box's rounding (15).
+
+- **They go in a group of their own, `exhaustive`, which `tools/coverage.sh` leaves out of that pass only,** as D-295 did for the 500-look cap test. The plain unit pass, `composer test:unit` and Infection still run them; Infection's 100 % on `WheelFace` rests on them. Without them the floors hold: 2,117 of 2,117 lines and 2,103 of 2,103 branches in `src/Domain`. The step takes 1 minute 59 seconds here with four shards, as CI's runners have, against more than 6.
+- **What was tried, and reverted:** `read()` holds 3,385 of the class's paths, so it was split into five steps. That took 8 minutes, not 5. Moving each sample's test into a closure took more than 10. Splitting the test file into four, so the shards share it, still took 6 minutes 15 seconds, since the shards balance by file size and two of the four landed together. As D-295 found, it is the work the tests do, not the paths.
+
+**2. The kit's Vitest test timed out** at 5 seconds: `counting the refusals to show` imported `draw.ts`, which brings DataForm, inside the test, and its first transform on a cold runner took longer. It is imported with the file now, which no test's time limit counts.
+
+**3. The zip lifecycle stopped at its PHP 7.4 step** with WP-CLI's exit 255. The e2e must-use plugins load on every request to the test sites, WP-CLI's on PHP 7.4 too, and M15's `cbuild-e2e-admin-kit.php` called `Field::rules()` with named arguments: "Parse error: syntax error, unexpected ':', expecting ')' in cbuild-e2e-admin-kit.php on line 90", from `php -l` in `php:7.4-cli`. The call takes its arguments in order now. CI's PHP 7.4 parse step, in the static job, lints `tests/e2e/mu-plugins/*.php` too, so a fixture that would stop the lifecycle fails there first, a few minutes in. All 11 parse on 7.4.
+
+**The ARM trial** (D-569) passed in that run, in 1,131 seconds. Its time carried the same slow pass, and the x64 job it is measured against was cancelled, so the run decides nothing; the next push's run does.

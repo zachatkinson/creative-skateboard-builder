@@ -11,6 +11,7 @@ namespace CreativeBranding\SkateboardBuilder\Tests\Unit\Domain\Scene;
 
 use CreativeBranding\SkateboardBuilder\Domain\Scene\WheelFace;
 use PHPUnit\Framework\Attributes\DataProvider;
+use PHPUnit\Framework\Attributes\Group;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -260,6 +261,7 @@ final class WheelFaceTest extends TestCase {
 		self::assertSame( WheelFace::TOO_SMALL, WheelFace::read( 1200, 1200, self::photo( self::rect( 16, 16, 31, 31 ) ) )->refused );
 	}
 
+	#[Group( 'exhaustive' )]
 	public function test_the_wheel_is_as_wide_as_tall_within_eight_hundredths(): void {
 		self::assertSame( WheelFace::NOT_ONE_WHEEL, WheelFace::read( 1200, 1200, self::photo( self::rect( 7, 9, 50, 46 ) ) )->refused );
 		self::assertSame( WheelFace::NOT_FACE_ON, WheelFace::read( 1200, 1200, self::photo( self::rect( 7, 9, 50, 45 ) ) )->refused );
@@ -294,6 +296,7 @@ final class WheelFaceTest extends TestCase {
 	 * @param bool $off   Whether it is too far off.
 	 */
 	#[DataProvider( 'offsets' )]
+	#[Group( 'exhaustive' )]
 	public function test_the_wheel_is_centred_within_eight_hundredths( int $left, int $top, int $size, int $side, bool $off ): void {
 		$face = WheelFace::read( 1200, 1200, self::photo( self::rect( $left, $top, $size, $size ), $side ) );
 		self::assertSame( $off ? WheelFace::NOT_CENTRED : WheelFace::NOT_ONE_WHEEL, $face->refused );
@@ -316,6 +319,7 @@ final class WheelFaceTest extends TestCase {
 	 * @param int $size The wheel's side in samples.
 	 */
 	#[DataProvider( 'sizes' )]
+	#[Group( 'exhaustive' )]
 	public function test_the_treads_colour_is_the_mean_of_its_band( int $size ): void {
 		$left  = intdiv( 64 - $size, 2 );
 		$sum   = array( 0, 0, 0, 0 );
@@ -351,6 +355,7 @@ final class WheelFaceTest extends TestCase {
 	 * @param int $size The wheel's side in samples.
 	 */
 	#[DataProvider( 'sizes' )]
+	#[Group( 'exhaustive' )]
 	public function test_the_corners_of_the_box_are_a_quarter_wheel_at_most( int $size ): void {
 		$left    = intdiv( 64 - $size, 2 );
 		$outside = array();
@@ -371,6 +376,7 @@ final class WheelFaceTest extends TestCase {
 		self::assertSame( WheelFace::NOT_ONE_WHEEL, WheelFace::read( 1200, 1200, self::photo( $painted( $most + 1 ) ) )->refused );
 	}
 
+	#[Group( 'exhaustive' )]
 	public function test_the_ties_fall_on_the_side_the_rules_say(): void {
 		// Exactly three hundredths apart: square.
 		self::assertNull( WheelFace::read( 1000, 970, self::photo( self::wheel() ) )->refused );
@@ -380,6 +386,7 @@ final class WheelFaceTest extends TestCase {
 		self::assertSame( WheelFace::NOT_FACE_ON, WheelFace::read( 1200, 1200, self::photo( self::rect( 19, 21, 62, 57 ), 100 ) )->refused );
 	}
 
+	#[Group( 'exhaustive' )]
 	public function test_the_corners_are_nine_tenths_ground_exactly(): void {
 		// A grid of forty: four corners of five by five, a hundred samples; ninety plain pass, eighty-nine do not.
 		$painted = static function ( int $count ): callable {
@@ -390,12 +397,14 @@ final class WheelFaceTest extends TestCase {
 		self::assertSame( WheelFace::NO_PLAIN_BACKGROUND, WheelFace::read( 1200, 1200, self::photo( $painted( 11 ), 40 ) )->refused );
 	}
 
+	#[Group( 'exhaustive' )]
 	public function test_the_box_is_in_ten_thousandths_rounded_down(): void {
 		// 19 of 64 is 2968.75 ten-thousandths; 33 of 64, 5156.25.
 		$face = WheelFace::read( 1200, 1200, self::photo( self::disc( 33, 19, 19 ) ) );
 		self::assertSame( array( 2968, 2968, 5156 ), array( $face->x, $face->y, $face->size ) );
 	}
 
+	#[Group( 'exhaustive' )]
 	public function test_the_treads_mean_is_rounded_down_and_a_colour_with_no_blue_is_one(): void {
 		$first = null;
 		$paint = static function ( int $band, int $x, int $y ) use ( &$first ): array {

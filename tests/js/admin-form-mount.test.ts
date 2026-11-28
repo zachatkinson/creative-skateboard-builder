@@ -9,6 +9,9 @@ import {
 	type Draw,
 	type Drawn,
 } from '../../assets/src/admin/form/mount';
+// Imported with the file, not inside a test: it brings DataForm, whose first transform on a cold CI runner took longer
+// than a test's 5 seconds (D-574).
+import { refusals } from '../../assets/src/admin/form/draw';
 
 const description = {
 	id: 'cbuild-settings',
@@ -133,8 +136,7 @@ describe( 'mounting a described form', () => {
 } );
 
 describe( 'counting the refusals to show', () => {
-	it( 'counts the fields in cards and outside them', async () => {
-		const { refusals } = await import( '../../assets/src/admin/form/draw' );
+	it( 'counts the fields in cards and outside them', () => {
 		const refused = { custom: { type: 'invalid', message: 'No.' } };
 		expect( refusals( undefined ) ).toBe( 0 );
 		expect(

@@ -87,7 +87,7 @@ function cbuild_e2e_kit_page(): void {
 	$form = Form::of(
 		'cbuild-e2e-kit',
 		array(
-			Field::of( 'lead_days', 'cbuild[lead_days]', 'Assembly time', 'integer' )->help( 'Business days to assemble a board.' )->rules( required: true, min: 0, max: 30 )->value( $values['lead_days'] ),
+			Field::of( 'lead_days', 'cbuild[lead_days]', 'Assembly time', 'integer' )->help( 'Business days to assemble a board.' )->rules( true, 0, 30 )->value( $values['lead_days'] ),
 			Field::of( 'assembly', 'cbuild[assembly]', 'Offer assembly', 'boolean' )->value( $values['assembly'] ),
 			Field::of( 'unit', 'cbuild[unit]', 'Unit', 'text' )->control( 'select' )->choices( array( 'mm' => 'Millimetres', 'in' => 'Inches' ) )->value( $values['unit'] ),
 			Field::of( 'note', 'cbuild[note]', 'Note for inches', 'text' )->visibleWhen( 'unit', array( 'in' ) )->value( $values['note'] ),
