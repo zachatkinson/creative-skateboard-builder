@@ -47,12 +47,13 @@ set -e
 git worktree remove --force "$tree"
 check "focused.sh --browser-only exits 3 for a change it can't map" '[ "$code" = 3 ]'
 
-# Two worktrees at a commit holding this checkout's verify.sh, so each starts clean.
+# Two worktrees at a commit holding this checkout's verify.sh, so each starts clean. The commit may be empty: on a
+# clean checkout, as in CI, the worktree already holds it.
 a="$work/a"
 b="$work/b"
 git worktree add -q --detach "$a" HEAD
 cp tools/verify.sh "$a/tools/verify.sh"
-git -C "$a" -c user.name=selftest -c user.email=selftest@example.com commit -q -am "selftest: this checkout's verify.sh" --no-verify
+git -C "$a" -c user.name=selftest -c user.email=selftest@example.com commit -q -a --allow-empty -m "selftest: this checkout's verify.sh" --no-verify
 git worktree add -q --detach "$b" "$(git -C "$a" rev-parse HEAD)"
 echo ' ' >> "$b/README.md"
 set +e
