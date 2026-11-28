@@ -143,6 +143,7 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-567 · /verify is a script in the repository, one run a lane, with a focused browser step before a commit](#d-567--verify-is-a-script-in-the-repository-one-run-a-lane-with-a-focused-browser-step-before-a-commit--2026-11-27)
 - [D-568 · The 3D deck's graphic and grip read the right way round](#d-568--the-3d-decks-graphic-and-grip-read-the-right-way-round--2026-11-27)
 - [D-569 · The ARM runner trial: CI's static and JavaScript checks again on ubuntu-26.04-arm, blocking nothing](#d-569--the-arm-runner-trial-cis-static-and-javascript-checks-again-on-ubuntu-2604-arm-blocking-nothing--2026-11-27)
+- [D-570 · A push's full browser step splits across two lanes: chromium-phone in the other lane's checkout](#d-570--a-pushs-full-browser-step-splits-across-two-lanes-chromium-phone-in-the-other-lanes-checkout--2026-11-27)
 
 ### Kits and their settings
 
@@ -8038,11 +8039,22 @@ On 7.2, 12.0.1's controls and every row action with a modal would throw. Core's 
 - **Where it ran:** chromium-desktop on lane 3, on 7.1.5 with WooCommerce 11.3.1, 7.0.8 with 11.2.0, and 7.2 RC3 with 11.3.1, the last after `wp core update-db`.
 - **The result:** it passed on all three, with no console error.
 
-**Not used: `@wordpress/views` 3.1.0,** which saves a table's view per user. It opts into private APIs as `@wordpress/views`, a name `wp-private-apis`' allowlist in 7.0.2 and 7.1.5 does not hold, so it throws when it loads. It also reads `getViewConfig`, a private `core-data` selector that 7.0.2 lacks. Zach had said to use it if needed (27 November); it isn't usable by a plugin. Saved views use the public `@wordpress/preferences` store with `@wordpress/preferences-persistence` (`create()`, `setPersistenceLayer`), both on 7.0 and 7.1, persisted to user meta. PRIVACY.md and the uninstaller cover the key.
+**Not used: `@wordpress/views` 3.1.0,** which saves a table's view per user.
+
+- **Why it fails on 7.0:** it opts into private APIs as `@wordpress/views`, a name `wp-private-apis`' allowlist holds in 7.1.5 but not in 7.0.2. On WordPress 7.0, the floor, it throws when it loads, and it reads `getViewConfig`, a private `core-data` selector that 7.0.2 lacks.
+- **A correction:** a first check grepped the allowlist for single quotes, but the built file uses double quotes, so it said 7.1.5 refused the name too. Corrected on 27 November.
+- **Instead:** Zach had said to use it if needed (27 November). Saved views use the public `@wordpress/preferences` store with `@wordpress/preferences-persistence` (`create()`, `setPersistenceLayer`), both on 7.0 and 7.1, persisted to user meta. PRIVACY.md and the uninstaller cover the key.
+
+**`@wordpress/ui`'s one private reach.** `@wordpress/ui`, which 22.0.0 bundles, opts in as `@wordpress/ui`, a name on the allowlist in 7.0.2 and 7.1.5 (`wp-includes/js/dist/private-apis.js`).
+
+- **What it reaches:** it unlocks `wp-theme`'s private `ThemeProvider` only where `wp-theme` exports none publicly (`utils/theme-provider.mjs`). That is WordPress 7.0, whose code no longer changes.
+- **From 7.1:** `wp-theme` exports `ThemeProvider` (`wp-includes/js/dist/theme.js:73` in 7.1.5), and the private one warns.
+- **The second opt-in:** the opt-in refuses only a name off the list or a wrong consent, not a second opt-in under one name, so another copy on the same page is no conflict.
+- **The gate:** `tools/private-apis.mjs` (in `npm run check`, with its test) allows exactly that fallback, and fails on any other `unlock(` or opt-in in `@wordpress/dataviews` or `@wordpress/ui`. Run against 12.0.1, it found 25.
 
 **Watched:**
 
-- A gate fails if the pinned package's `build-module` calls `unlock(`.
+- `tools/private-apis.mjs` fails if a bundled package reaches a private API beyond `@wordpress/ui`'s `ThemeProvider` fallback.
 - CI's oldest leg runs every admin test on 7.0.8.
 - The pins move to 7.2 a week after its release (D-040, D-145), and the newest leg with them.
 - A screen that uses a control the spike didn't, such as `datetime`, `array` or `color`, gets its own check on every leg.
@@ -8170,3 +8182,27 @@ The two were the wrong way round. The bottom's graphic was mirrored from under, 
 The browser jobs stay on x64 until a trial says otherwise, since the visual baselines are made in Playwright's x64 Linux container.
 
 **Status:** Accepted, as a trial; the result follows.
+
+### D-570 · A push's full browser step splits across two lanes: chromium-phone in the other lane's checkout · 2026-11-27
+
+**Context.** D-567 left a push's `tools/verify.sh --full` running chromium-desktop and chromium-phone whole, one after the other, on one lane: 33 of its 45 minutes. Zach asked for the split to land before M15's screen work, so the milestone's pushes gain from it.
+
+A lane serves its own checkout's code (wp-env names a site by its config's path, D-311), so one lane's tests can't run against another lane's site. A push carries only commits, though, and every lane's checkout is a worktree of one repository, so the other checkout can stand on the same commit.
+
+**Decision.** `bash tools/verify.sh --full --split <lane> <checkout>`:
+
+- **It refuses, before any gate,** a tree with changes, since the other checkout can only stand on a commit, and a partner checkout with changes of its own, which it will not overwrite.
+- **The other checkout** is moved to this commit with `git checkout --detach`. In the background it runs `tools/verify.sh --half chromium-phone` in its lane: packages when its lock files changed, the build, and chromium-phone. It holds its own lane's lock and trap, and logs to `tmp/split-<lane>.log`.
+- **This run** takes every other step, then chromium-desktop alone, then waits for the other half. It passes only if both halves do, printing the other's last lines either way.
+- **A failure or a stop** on either side ends the other: this run's trap sends TERM to the other half, whose own trap cleans up its sites.
+- **D-567's other rules stand.** Two lanes of browsers is the most (`browser-runs-two-lanes-max`); a split uses two, so no third browser run starts beside it.
+
+**Tests.** `tools/verify-selftest.sh` gains three cases, with no gate run:
+
+- the refusal of a partner checkout with changes;
+- the refusal of a tree with changes;
+- a usage error for `--split` without its lane and checkout.
+
+The halves themselves are checked by their first real run, before M15's next push. Its times are added here.
+
+**Status:** Accepted.

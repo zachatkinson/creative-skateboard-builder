@@ -3,7 +3,8 @@
 # - the browser step before a commit is the whole run for a change to the builder's script, a template, a stylesheet,
 #   the browser tests' support or Playwright's config, and the focused tests for anything else;
 # - a second run on one lane's sites refuses while the first still runs, and leaves the first's lock alone;
-# - focused.sh --browser-only exits 3 for a change it can't map, so verify.sh runs the whole browser step.
+# - focused.sh --browser-only exits 3 for a change it can't map, so verify.sh runs the whole browser step;
+# - --split refuses a tree with changes, and a partner checkout with changes of its own, before any gate (D-570).
 set -euo pipefail
 cd "$(dirname "$0")/.."
 fail=0
@@ -45,5 +46,31 @@ code=$?
 set -e
 git worktree remove --force "$tree"
 check "focused.sh --browser-only exits 3 for a change it can't map" '[ "$code" = 3 ]'
+
+# Two worktrees at a commit holding this checkout's verify.sh, so each starts clean.
+a="$work/a"
+b="$work/b"
+git worktree add -q --detach "$a" HEAD
+cp tools/verify.sh "$a/tools/verify.sh"
+git -C "$a" -c user.name=selftest -c user.email=selftest@example.com commit -q -am "selftest: this checkout's verify.sh" --no-verify
+git worktree add -q --detach "$b" "$(git -C "$a" rev-parse HEAD)"
+echo ' ' >> "$b/README.md"
+set +e
+( cd "$a" && TMPDIR="$work" CBUILD_PORT=9991 bash tools/verify.sh --full --split 2 "$b" ) > "$work/split-b.log" 2>&1
+# shellcheck disable=SC2034 # read by check's eval.
+split_b=$?
+echo ' ' >> "$a/README.md"
+( cd "$a" && TMPDIR="$work" CBUILD_PORT=9991 bash tools/verify.sh --full --split 2 "$b" ) > "$work/split-a.log" 2>&1
+# shellcheck disable=SC2034 # read by check's eval.
+split_a=$?
+( cd "$a" && bash tools/verify.sh --full --split 2 ) > /dev/null 2>&1
+# shellcheck disable=SC2034 # read by check's eval.
+split_usage=$?
+set -e
+git worktree remove --force "$a"
+git worktree remove --force "$b"
+check "--split refuses a partner checkout with changes of its own" '[ "$split_b" = 1 ] && grep -q "has changes of its own" "$work/split-b.log" && ! grep -q "^== " "$work/split-b.log"'
+check "--split refuses a tree with changes" '[ "$split_a" = 1 ] && grep -q "needs a clean tree" "$work/split-a.log"'
+check "--split without its lane and checkout is a usage error" '[ "$split_usage" = 2 ]'
 
 exit "$fail"

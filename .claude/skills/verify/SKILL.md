@@ -5,7 +5,7 @@ description: Run every local gate (lint, analysis, architecture, grep gates, uni
 
 Run `bash tools/verify.sh` (in another checkout, `bash tools/lane.sh <n> bash tools/verify.sh`). It runs the steps below in order, stops at the first failure, and ends with `VERIFIED` or a `FAILED:` line. Report a failure's output verbatim. Docs-only commits skip this skill. Run it in bash, in the background for a long run, and read its last line: `grep -E 'FAILED|VERIFIED'`.
 
-Before a push, run `bash tools/verify.sh --full`. Before a commit, the browser step is focused (D-567). Before the whole script, when wp-env is up, `bash tools/focused.sh` runs only the integration and browser tests that cover the change, so an early failure shows in minutes.
+Before a push, run `bash tools/verify.sh --full`, or `bash tools/verify.sh --full --split <lane> <checkout>` to run chromium-phone in another lane's clean checkout at the same commit (D-570). Before a commit, the browser step is focused (D-567). Before the whole script, when wp-env is up, `bash tools/focused.sh` runs only the integration and browser tests that cover the change, so an early failure shows in minutes.
 
 One run a lane: a second run on the same sites refuses. Stopped with Ctrl-C or a signal, a run stops its own processes and the integration suite in the container.
 
