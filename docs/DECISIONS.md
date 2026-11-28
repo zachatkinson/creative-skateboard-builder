@@ -133,6 +133,7 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-544 · The integration and browser legs get 80 minutes](#d-544--the-integration-and-browser-legs-get-80-minutes--2026-11-27)
 - [D-545 · The supply chain: the SBOMs and CodeQL were already in place, and the Scorecard is added](#d-545--the-supply-chain-the-sboms-and-codeql-were-already-in-place-and-the-scorecard-is-added--2026-11-27)
 - [D-548 · Every start checks its site's WordPress and WooCommerce against the pins, and env:oldest can start both sites](#d-548--every-start-checks-its-sites-wordpress-and-woocommerce-against-the-pins-and-envoldest-can-start-both-sites--2026-11-27)
+- [D-549 · The upgrade runs follow a support floor: unset, the previous release alone](#d-549--the-upgrade-runs-follow-a-support-floor-unset-the-previous-release-alone--2026-11-27)
 - [D-550 · The browser tests' lock is taken only from a dead holder, and cleared in place under a clearer's lock](#d-550--the-browser-tests-lock-is-taken-only-from-a-dead-holder-and-cleared-in-place-under-a-clearers-lock--2026-11-27)
 - [D-564 · The ten milestone 13 branches all landed, and their archives are deleted](#d-564--the-ten-milestone-13-branches-all-landed-and-their-archives-are-deleted--2026-11-27)
 - [D-565 · CI tries a wp-env start again when a download fails, and caches nothing](#d-565--ci-tries-a-wp-env-start-again-when-a-download-fails-and-caches-nothing--2026-11-27)
@@ -7919,6 +7920,33 @@ The check takes the two WP-CLI calls' time, a few seconds per start.
 - after `env:oldest`, the oldest pair passes, and `--start` starts both sites and checks each.
 
 With the check made to pass always, the three mismatch cases went red; restored, all 12 cases pass.
+
+**Status:** Accepted.
+
+### D-549 · The upgrade runs follow a support floor: unset, the previous release alone · 2026-11-27
+
+Zach, 27 November ("lets do it"): the upgrade paths are the ones a shop could take, not every release ever published. Today only the demo runs the plugin (`no-outside-shops-yet`), and it updates from the previous release each milestone.
+
+Before this, `npm run upgrade:all` ran every published release below the build (D-232), and CI's updates job a sample of them (D-414): every release from 1.0.0 on, with 0.1.0 and 0.9.0. Each release took about a minute, and the sample grew with every release.
+
+**Decision:** `tools/upgrade-releases.sh` holds one named value, `support_floor`: the oldest release a shop still runs. It is unset today, to be set when a shop other than the demo runs the plugin.
+
+- **No floor:** the previous release alone, the demo's path. This is CI's updates job and the routine local run.
+- **A floor:** every release of this build's major from the floor on, and the last release of each earlier major from the floor on. A shop on an older major is offered its last release first.
+- **`--every`:** every release below the build, whatever the floor. It runs before a major release, and when a migration changes.
+
+`--sample` is gone; D-414's sample is replaced. `npm run upgrade` (the previous release, through the upload screen, with no data) is unchanged. Every migration test stays: the integration suite still runs each migration from its own fixture.
+
+**Tests:** `tools/upgrade-releases-selftest.sh`, in `composer gates`. It has 17 cases; the floor is given through `CBUILD_SUPPORT_FLOOR`.
+
+- **No floor:** the previous release, in version order, never this one or a later one.
+- **`--every`:** every release, in order, the floor ignored.
+- **A floor of 1.5.0:** at 1.7.0 the run is 1.5.0, 1.5.1 and 1.6.0; at 2.1.0 it is 1.6.0 and 2.0.0; at 1.5.1 it is 1.5.0 alone. A floor of 2.0.0 at 2.1.0 gives 2.0.0 alone.
+- **Refused:** no release below the build (with or without `--every`), no release from the floor, a floor that is no version, and an unknown option (`--sample`).
+
+All were red against the old script but the cases it already met.
+
+**The time saved:** CI's updates job ran six releases at 1.4.0. It now runs one. The job's time on this milestone's first CI run is to be added here.
 
 **Status:** Accepted.
 

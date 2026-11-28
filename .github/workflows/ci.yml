@@ -557,12 +557,13 @@ jobs:
           - part: rtl, chromium tablet
             engines: chromium
             run: npm run test:e2e -- --project=rtl --project=chromium-tablet
-          # Milestone 9: from published releases, each with the shop's data made on it (D-232). Every release took the
-          # job past 15 minutes by 1.2.0, so CI runs the sample: every release from 1.0.0 on, and 0.1.0 and 0.9.0
-          # (#144, D-414). `npm run upgrade:all` alone still runs every release, on each milestone's combined tree.
+          # Milestone 9: from published releases, each with the shop's data made on it (D-232): those a shop could
+          # update from, by the support floor in tools/upgrade-releases.sh, the previous release alone while it is
+          # unset (D-549). `npm run upgrade:all -- --every` runs every release, before a major and when a migration
+          # changes.
           - part: updates
             engines: chromium
-            run: npm run upgrade:all -- --sample
+            run: npm run upgrade:all
           # In Playwright's own Linux image, as locally, so the baselines are one machine's pictures (D-162).
           - part: visual
             engines: ''
