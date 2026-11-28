@@ -157,7 +157,8 @@ jobs:
 
   static:
     name: Lint, analyse, architecture, gates, unit tests, API snapshot, audits, benchmarks, PHP 7.4 parse
-    runs-on: ubuntu-26.04
+    # Pure CPU, measured on both in two runs: about 6 % faster on ARM, every step passing (D-569).
+    runs-on: ubuntu-26.04-arm
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -209,7 +210,8 @@ jobs:
 
   js:
     name: TypeScript, JavaScript and CSS standards; generated types; the asset budgets
-    runs-on: ubuntu-26.04
+    # Pure CPU, measured on both in two runs: about 6 % faster on ARM, every step passing (D-569).
+    runs-on: ubuntu-26.04-arm
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -235,34 +237,6 @@ jobs:
   # The ARM runner trial (approved 27 November 2026, D-569): the static and JavaScript checks again on GitHub's ARM
   # runner, to measure it against the x64 jobs above before moving any job. It blocks nothing: it is in no required
   # check, and its failure fails no run. It goes once the trial is decided.
-  arm-trial:
-    name: ARM trial (static and JavaScript)
-    runs-on: ubuntu-26.04-arm
-    timeout-minutes: 20
-    continue-on-error: true
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-        with:
-          persist-credentials: false
-      - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
-        with:
-          php-version: '8.5'
-          coverage: xdebug
-          tools: composer:v2
-      - uses: ramsey/composer-install@65e4f84970763564f46a70b8a54b90d033b3bdda # 4.0.0
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
-        with:
-          node-version-file: .nvmrc
-          cache: npm
-      - run: npm ci
-      - run: composer lint
-      - run: composer analyse
-      - run: composer arch
-      - run: composer gates
-      - run: composer test:coverage
-      - run: npm run check
-      - run: npm run build
-
   mutation:
     name: Mutation testing (Infection and StrykerJS), and the release dry run
     needs: scope

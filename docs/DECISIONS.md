@@ -8201,7 +8201,23 @@ The browser jobs stay on x64 until a trial says otherwise, since the visual base
 
 About 7 % faster in all, and slower at the gates and `npm ci`. One run is one sample of a shared runner, so the second push's run is set beside it before the jobs move.
 
-**Status:** Accepted, as a trial; one run in, the second decides.
+**The second run** (CI run 46109090237, 06ddb0e) can't be compared: the x64 static job ran out of its 15 minutes in a path-coverage pass the wheel face's tests made slow, which D-574 fixed. ARM passed it, in 1,131 seconds. **The third** (CI run 46120019654, 6624061) is the second sample: every step passed on ARM again.
+
+| Step | x64 | ARM |
+| --- | --- | --- |
+| `composer lint` | 50 s | 40 s |
+| `composer analyse` | 29 s | 22 s |
+| `composer arch` | 2 s | 3 s |
+| `composer gates` | 15 s | 17 s |
+| `composer test:coverage` | 259 s | 244 s |
+| `npm ci` | 21 s | 23 s |
+| `npm run check` | 41 s | 43 s |
+| `npm run build` | 15 s | 14 s |
+| **In all** | **432 s** | **406 s** |
+
+About 6 % faster in all, again slower at the gates and `npm ci`, and every step passing in both samples: the rule above holds, so the static and js jobs run on `ubuntu-26.04-arm` from 28 November, and the `arm-trial` job is gone. The static job's other steps (the API snapshot, the audits, the benchmarks and the PHP 7.4 parse) were not in the trial; the first run on ARM is their trial, and a benchmark budget that fails there only on ARM is recorded here before anything else changes. The next trial is one integration shard, which needs wp-env's images and Playwright on arm64.
+
+**Status:** Accepted: the static and js jobs moved to ARM (28 November).
 
 ### D-570 · A push's full browser step splits across two lanes: chromium-phone in the other lane's checkout · 2026-11-27
 

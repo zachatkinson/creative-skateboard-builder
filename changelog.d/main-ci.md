@@ -6,4 +6,4 @@
 - **Development:** every start of a wp-env site checks that it runs the pinned WordPress and WooCommerce, the oldest pair's after `npm run env:oldest`, and fails if not; `npm run env:oldest -- --start` starts both sites on the oldest pair (D-548).
 - **Development:** the browser tests' lock around wp-env is taken only from a holder that has died, never on age alone, and a lock judged abandoned is cleared in place under a clearer's own lock, so two processes can no longer hold it at once (#172, D-550).
 - **Development:** the upgrade runs follow a support floor in `tools/upgrade-releases.sh`. While none is set, only the demo runs the plugin, and CI's updates job runs from the previous release alone; `npm run upgrade:all -- --every` runs every release, before a major and when a migration changes (D-549).
-- **Development:** CI runs its static and JavaScript checks again on an ARM runner, as a trial that blocks nothing (D-569).
+- **Development:** CI's static and JavaScript jobs run on ARM runners, about 6 % faster than on x64 over two measured runs, every step passing (D-569).
