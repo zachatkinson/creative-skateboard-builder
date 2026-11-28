@@ -140,6 +140,7 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-564 · The ten milestone 13 branches all landed, and their archives are deleted](#d-564--the-ten-milestone-13-branches-all-landed-and-their-archives-are-deleted--2026-11-27)
 - [D-565 · CI tries a wp-env start again when a download fails, and caches nothing](#d-565--ci-tries-a-wp-env-start-again-when-a-download-fails-and-caches-nothing--2026-11-27)
 - [D-566 · A press while a step crosses over is taken: it ends the crossing, and its control is the one it comes up over](#d-566--a-press-while-a-step-crosses-over-is-taken-it-ends-the-crossing-and-its-control-is-the-one-it-comes-up-over--2026-11-27)
+- [D-567 · /verify is a script in the repository, one run a lane, with a focused browser step before a commit](#d-567--verify-is-a-script-in-the-repository-one-run-a-lane-with-a-focused-browser-step-before-a-commit--2026-11-27)
 - [D-568 · The 3D deck's graphic and grip read the right way round](#d-568--the-3d-decks-graphic-and-grip-read-the-right-way-round--2026-11-27)
 
 ### Kits and their settings
@@ -8111,6 +8112,31 @@ So a mouse press on any of the builder's controls during a crossing came to noth
 **The tests' waits come out:** `moveTo()` (D-540), the focus test before Next: Trucks (D-543), and `settled()` in `3d.spec.ts` (D-529) no longer wait for `html.cbuild-crossing` to go. Each still waits for its answer. Two checks of the mark stay, since they test something else: that a calm move starts no crossing, and the visual tests' still frame.
 
 **Status:** Accepted.
+
+### D-567 · /verify is a script in the repository, one run a lane, with a focused browser step before a commit · 2026-11-27
+
+**Context.** /verify was a list in the skill, run through a script kept outside the repository. On 27 November, a run stopped mid-way left its PHPUnit running inside the integration site's container: the `docker exec` that started it died, the process did not. The next run's coverage step shared the test database with it and failed on "Table definition has changed" and "already exists", which cost about 25 minutes. The browser step, chromium-desktop and chromium-phone whole, was 33 of the run's 45 minutes. It ran before every commit, though every push and the pull request's CI run the browser suite anyway.
+
+**Decision** (Zach, 27 November: "leets fuckgin go", after the trade-off below):
+
+- `tools/verify.sh` runs the skill's steps in order and stops at the first failure. It ends with `VERIFIED` or a `FAILED:` line, so no run depends on a script outside the repository.
+- **One run a lane:** a lock per browser port in `$TMPDIR`. A second run on the same sites refuses while the first's process lives, and a lock whose process is gone is taken.
+- **A stopped run cleans up:** on INT or TERM it stops its own child processes, then `pkill -f "[t]ools/integration/vendor/bin/phpunit"` inside the integration site's cli container. The bracket keeps the pattern from matching a wrapper's own command line: without it, `sh -c 'pkill -f …'` killed its own shell (exit 143). The orphan was reproduced on lane 3 (a `php` process left running after its `wp-env run` was killed) and cleared by the same call.
+- **The browser step before a commit is focused:** `tools/focused.sh --browser-only` runs the browser tests that cover the change since HEAD, with no rebuild and no integration tests, since the run has done both whole. It exits 3 where a change can't be mapped, and the whole step then runs.
+- **The whole browser step still runs before a commit** for a change to `assets/src/builder/`, `templates/`, a stylesheet, `tests/e2e/support/` or `playwright.config.ts`, where picking tests is least sure.
+- `bash tools/verify.sh --full` runs the whole browser step, and runs before every push. The full project set still runs before a release push, and CI's every project before a merge.
+
+**The trade-off,** as put to Zach: between pushes, a commit is proven green only on the browser tests that cover it. A failure in the pre-push run is then among that push's few commits, found by bisecting. Its fix is a commit of its own with the red run in its message (D-065). Nothing reaches `main` unchecked by the whole suite. A typical commit's run falls from about 45 minutes to about 15.
+
+**Tests.** `tools/verify-selftest.sh`, in `composer gates`, 14 cases:
+
+- the browser step's choice for six whole-run paths and four focused ones;
+- a second run on a held lane refusing, leaving the first's lock and running no gate;
+- `focused.sh --browser-only` exiting 3 for a change to `composer.json`.
+
+`tools/focused-selftest.sh`'s 25 cases still pass.
+
+**Status:** Accepted. Supersedes the skill's own list of commands as the way /verify is run; the steps are the same.
 
 ### D-568 · The 3D deck's graphic and grip read the right way round · 2026-11-27
 

@@ -60,6 +60,7 @@
 			"bash tools/upgrade-releases-selftest.sh",
 			"bash tools/landing-selftest.sh",
 			"bash tools/wp-env-retry-selftest.sh",
+			"bash tools/verify-selftest.sh",
 			"bash tools/shellcheck.sh",
 			"@php tools/changelog.php --check"
 		],

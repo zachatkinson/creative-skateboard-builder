@@ -2,7 +2,7 @@
 # Runs, before the full /verify, only the integration tests and browser tests that cover what changed, so a long
 # /verify isn't spent finding an early failure. It never replaces /verify (D-324).
 #
-#   bash tools/focused.sh [--dry-run] [<base-ref>]
+#   bash tools/focused.sh [--dry-run] [--browser-only] [<base-ref>]
 #   bash tools/lane.sh 2 bash tools/focused.sh            (a second checkout's sites, tools/lane.sh)
 #   composer focused -- --dry-run 757b8e4~1
 #
@@ -35,21 +35,27 @@
 # global setup, the mu-plugins and fixtures), or the script says to run the full /verify and runs nothing (Composer
 # and npm files, wp-env's configs, webpack, the plugin's main file, src/Plugin.php, and the tools the suites run).
 # Unit tests, Vitest, docs and the other tools are left to /verify's other steps.
+#
+# --browser-only is tools/verify.sh's browser step before a commit (D-567): only the browser tests, with no build (the
+# run has built) and no integration tests (the run has had the whole suite). Where a change can't be mapped, it runs
+# nothing and exits 3, so the caller runs the whole browser step.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 # shellcheck source=tools/ports.sh
 source tools/ports.sh
 
 dry=0
+browser_only=0
 base=HEAD
 while [ $# -gt 0 ]; do
 	case "$1" in
 		--dry-run) dry=1 ;;
+		--browser-only) browser_only=1 ;;
 		-h | --help)
 			sed -n '2,/^set -euo/p' "$0" | sed '$d' | sed 's/^# \{0,1\}//'
 			exit 0
 			;;
-		-*) echo "Unknown option $1. Usage: bash tools/focused.sh [--dry-run] [<base-ref>]" >&2; exit 2 ;;
+		-*) echo "Unknown option $1. Usage: bash tools/focused.sh [--dry-run] [--browser-only] [<base-ref>]" >&2; exit 2 ;;
 		*) base="$1" ;;
 	esac
 	shift
@@ -428,6 +434,7 @@ awk '!seen[$0]++' "$picks" | sort -s -t "$(printf '\t')" -k1,1 -k2,2 | awk -F '\
 
 if grep -q '^full	' "$picks"; then
 	echo "Not run: a change above can't be mapped to some of the tests. Run the full /verify."
+	[ "$browser_only" -eq 0 ] || exit 3
 	exit 0
 fi
 
@@ -449,7 +456,7 @@ if [ -z "$int_tests" ] && [ "$int_all" -eq 0 ] && [ -z "$whole_specs" ] && [ -z 
 fi
 
 if [ "$dry" -eq 0 ]; then
-	if [ "$int_all" -eq 1 ] || [ -n "$int_tests" ]; then
+	if [ "$browser_only" -eq 0 ] && { [ "$int_all" -eq 1 ] || [ -n "$int_tests" ]; }; then
 		curl -sf "http://localhost:${CBUILD_TESTS_PORT}/" > /dev/null || { echo "The integration site isn't up on :${CBUILD_TESTS_PORT}. Start it (npm run env:start, in this lane)." >&2; exit 1; }
 	fi
 	if [ "$e2e_all" -eq 1 ] || [ -n "$whole_specs" ] || [ -n "$title_specs" ]; then
@@ -458,6 +465,11 @@ if [ "$dry" -eq 0 ]; then
 fi
 
 projects=(--project=chromium-desktop --project=chromium-phone)
+if [ "$browser_only" -eq 1 ]; then
+	build=0
+	int_all=0
+	int_tests=""
+fi
 [ "$build" -eq 0 ] || run npm run build
 if [ "$int_all" -eq 1 ]; then
 	run bash tools/integration.sh
