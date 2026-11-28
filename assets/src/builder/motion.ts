@@ -93,6 +93,16 @@ let counting: ( () => void ) | undefined;
 const held = new Map< Element, number >();
 
 /**
+ * Whether a step is crossing over now. For the view transition's life the browser hit-tests its pictures, not the
+ * page, so a press lands on no control (#178).
+ *
+ * @return Whether a crossing runs.
+ */
+export function crossingOver(): boolean {
+	return undefined !== crossing;
+}
+
+/**
  * Cut every running moment short at its end: a new pick, a press, or an answer that came.
  */
 export function cut(): void {

@@ -50,6 +50,7 @@ final class Container {
 			Port\PartLooks::class       => Adapter\WooPartLooks::class,
 			Port\Ranking::class         => Adapter\CreativeSearchRanking::class,
 			Port\ComposedLayers::class  => Adapter\WpComposedLayers::class,
+			Port\WheelFaces::class      => Adapter\WpWheelFaces::class,
 			Port\TextFolding::class     => Adapter\WpTextFolding::class,
 			Port\PartFacts::class       => Repository\PartFactsRepository::class,
 			Port\Tally::class           => Adapter\CacheTally::class,
@@ -490,6 +491,8 @@ final class Container {
 			Front\StateAnswer::class        => static fn( object $answer, Container $c ): object => $answer instanceof Front\StateAnswer ? $answer->withArtwork( $c->get( Service\LayerArtwork::class ) )->withShelf( $c->get( Service\StepShelf::class ) )->withPictures( self::tiles( $c ) )->withPhases( $c->get( Service\Phases::class ) )->withSwaps( $c->get( Service\BuildSwaps::class ) ) : $answer,
 			Admin\PartSpecsPanel::class     => static fn( object $panel, Container $c ): object => $panel instanceof Admin\PartSpecsPanel ? $panel->withImages( $c->get( Port\LayerImages::class ) ) : $panel,
 			Front\BuilderPage::class        => static fn( object $page, Container $c ): object => $page instanceof Front\BuilderPage ? $page->withSaved( $c->get( Service\SavedBuilds::class ) ) : $page,
+			// 1.5.0: the wheels' faces, from their photos (M15).
+			Front\SceneView::class          => static fn( object $view, Container $c ): object => $view instanceof Front\SceneView ? $view->withFaces( $c->get( Port\WheelFaces::class ) ) : $view,
 			Front\Builder::class            => static fn( object $builder, Container $c ): object => $builder instanceof Front\Builder ? $builder->withSaved( $c->get( Front\RememberedWidth::class ), $c->get( Service\SavedBuilds::class ) )->withShelf( $c->get( Service\StepShelf::class ) )->withGuide( $c->get( Front\GuidedStart::class ) )->withScene( $c->get( Front\SceneView::class ) ) : $builder,
 			Service\SpecImport::class       => static fn( object $import, Container $c ): object => $import instanceof Service\SpecImport ? $import->withLayers( $c->get( Service\LayerCheck::class ), $c->get( Port\PartLayers::class ) ) : $import,
 			Service\SpecExport::class       => static fn( object $export, Container $c ): object => $export instanceof Service\SpecExport ? $export->withLayers( $c->get( Port\PartLayers::class ) ) : $export,

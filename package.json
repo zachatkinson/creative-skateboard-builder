@@ -33,7 +33,8 @@
 		"mutate:js": "bash tools/mutate-js.sh",
 		"budget": "node tools/budget.mjs",
 		"lhci": "bash tools/lhci.sh",
-		"check": "npm run lint:js && npm run lint:css && npm run lint:md && npm run format:check && npm run typecheck && npm run test:js"
+		"check": "npm run lint:js && npm run lint:css && npm run lint:md && npm run format:check && npm run typecheck && npm run private-apis && npm run test:js",
+		"private-apis": "node tools/private-apis.mjs"
 	},
 	"devDependencies": {
 		"@axe-core/playwright": "^4.14.1",
@@ -77,6 +78,7 @@
 		"re2js": "2.8.7"
 	},
 	"dependencies": {
+		"@wordpress/dataviews": "22.0.0",
 		"three": "0.187.0"
 	}
 }

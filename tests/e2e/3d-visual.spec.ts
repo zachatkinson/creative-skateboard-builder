@@ -57,14 +57,16 @@ async function still( page: Page ) {
  * @param page    The page.
  * @param context The browser's context.
  * @param scheme  The site's colours, as the e2e theme plugin gives them by cookie.
+ * @param scene   The pinned scene, or the same with the wheels' faces from a photo (M15).
  */
 async function opened(
 	page: Page,
 	context: BrowserContext,
-	scheme: 'light' | 'dark' = 'light'
+	scheme: 'light' | 'dark' = 'light',
+	scene: 'pinned' | 'faces' = 'pinned'
 ) {
 	await context.addCookies( [
-		{ name: 'cbuild_e2e_scene', value: 'pinned', url: SITE },
+		{ name: 'cbuild_e2e_scene', value: scene, url: SITE },
 		{ name: 'cbuild_e2e_scheme', value: scheme, url: SITE },
 	] );
 	await page.addInitScript( () => {
@@ -178,6 +180,24 @@ test( 'the 3D view at its Side place', async ( { page, context } ) => {
 	await still( page );
 	await expect( page.locator( '.cbuild-3d__frame' ) ).toHaveScreenshot(
 		'3d-side-place.png',
+		{ maxDiffPixelRatio: 0.01 }
+	);
+} );
+
+// 1.5.0, M15: the wheels' faces from a photo of one wheel, its arrow up on each near wheel, the tread's colour on the
+// sides (tests/e2e/fixtures/layers/wheel-face.jpg).
+test( 'the wheels’ faces from their photo, at the Side place', async ( {
+	page,
+	context,
+} ) => {
+	await opened( page, context, 'light', 'faces' );
+	await page
+		.getByRole( 'group', { name: 'Views of the board' } )
+		.getByRole( 'button', { name: 'Side', exact: true } )
+		.click();
+	await still( page );
+	await expect( page.locator( '.cbuild-3d__frame' ) ).toHaveScreenshot(
+		'3d-wheel-faces.png',
 		{ maxDiffPixelRatio: 0.01 }
 	);
 } );

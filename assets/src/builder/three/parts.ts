@@ -19,7 +19,17 @@ import {
 	Vector2,
 	type Texture,
 } from 'three';
-import { edge, face, mm, profile, spot, surface, type Face } from './shapes';
+import {
+	edge,
+	face,
+	halves,
+	mm,
+	photoUv,
+	profile,
+	spot,
+	surface,
+	type Face,
+} from './shapes';
 import type { Scene, Slot } from './scene';
 
 /**
@@ -251,7 +261,10 @@ export function trucks( scene: Scene ): Group | null {
 }
 
 /**
- * The wheels at their places: a lathe of the wheel's own profile, turned about the axle.
+ * The wheels at their places: a lathe of the wheel's own profile, turned about the axle. Where the wheels have a face
+ * (M15), each is two lathes of the profile's halves: the outer half mapped from the wheel's photo, projected along the
+ * axle, and the rest in the tread's colour. The profile's outer half is toward -y, so a wheel on the +y side is turned
+ * half round about the vertical: its outer half faces out, and its photo reads the right way round from that side.
  *
  * @param scene    The scene.
  * @param textures Where its texture comes from.
@@ -262,20 +275,51 @@ export function wheels( scene: Scene, textures: Textures ): Group | null {
 		return null;
 	}
 	const made = group( 'wheels', wheel.part );
-	// A lathe turns about its y, as the axle runs along the scene's.
-	const shape = new LatheGeometry(
-		profile( wheel ).map( ( [ r, y ] ) => new Vector2( r, y ) ),
-		48
-	);
-	const urethane = textured(
-		textures,
-		wheel.texture,
-		wheel.color ?? COLOURS.wheel,
-		0.55
-	);
+	const lathe = ( points: [ number, number ][] ): LatheGeometry =>
+		new LatheGeometry(
+			points.map( ( [ r, y ] ) => new Vector2( r, y ) ),
+			48
+		);
+	const colour = wheel.color ?? COLOURS.wheel;
+	const shown = wheel.face ?? null;
+	if ( null === shown ) {
+		// A lathe turns about its y, as the axle runs along the scene's.
+		const shape = lathe( profile( wheel ) );
+		const urethane = textured( textures, wheel.texture, colour, 0.55 );
+		for ( const place of wheel.places ) {
+			const one = new Mesh( shape, urethane );
+			one.position.set( ...spot( place ) );
+			made.add( one );
+		}
+		return made;
+	}
+	const { outer, rest } = halves( profile( wheel ) );
+	const radius = mm( wheel.diameter ) / 2;
+	const outside = lathe( outer );
+	const position = outside.getAttribute( 'position' );
+	const uv = outside.getAttribute( 'uv' );
+	for ( let at = 0; at < position.count; at++ ) {
+		uv.setXY(
+			at,
+			...photoUv(
+				position.getX( at ),
+				position.getZ( at ),
+				radius,
+				shown
+			)
+		);
+	}
+	uv.needsUpdate = true;
+	const inside = lathe( rest );
+	const photo = textured( textures, shown.url, colour, 0.55 );
+	const urethane = material( null, colour, 0.55 );
 	for ( const place of wheel.places ) {
-		const one = new Mesh( shape, urethane );
+		const one = new Group();
+		one.add( new Mesh( outside, photo ), new Mesh( inside, urethane ) );
 		one.position.set( ...spot( place ) );
+		if ( ( place[ 1 ] ?? 0 ) > 0 ) {
+			one.rotation.z = Math.PI;
+		}
 		made.add( one );
 	}
 	return made;

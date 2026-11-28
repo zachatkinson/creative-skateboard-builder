@@ -83,6 +83,7 @@ final class UninstallTest extends IntegrationTestCase {
 		self::assertTrue( as_has_scheduled_action( Options::JOB_REINDEX, null, Options::QUEUE_GROUP ) );
 		set_transient( Options::TRANSIENT_PREFIX . 'notice_1', 'x', HOUR_IN_SECONDS );
 		set_transient( Options::TRANSIENT_PREFIX . 'forever', 'x' );
+		set_transient( Options::TRANSIENT_PREFIX . 'wheel_face_' . md5( '1' ), array( 'refused' => 'not_square' ), 30 * DAY_IN_SECONDS );
 		// A section of a kit's Build tab that was not saved, kept for the user who typed it (D-108).
 		set_transient( Options::TRANSIENT_PREFIX . 'kit_draft_12_1', array( 'refused' => array() ), HOUR_IN_SECONDS );
 		set_transient( Options::RENDITIONS_FAILED, 1, 30 * DAY_IN_SECONDS );

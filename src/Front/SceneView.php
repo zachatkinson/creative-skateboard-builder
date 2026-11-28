@@ -15,6 +15,7 @@ use CreativeBranding\SkateboardBuilder\Domain\Picture\LayerArt;
 use CreativeBranding\SkateboardBuilder\Domain\Picture\Layout;
 use CreativeBranding\SkateboardBuilder\Domain\Scene\Scene;
 use CreativeBranding\SkateboardBuilder\Port\ComposedLayers;
+use CreativeBranding\SkateboardBuilder\Port\WheelFaces;
 use CreativeBranding\SkateboardBuilder\Service\LayerArtwork;
 use CreativeBranding\SkateboardBuilder\Service\State;
 
@@ -56,6 +57,26 @@ final class SceneView {
 	public function __construct( private LayerArtwork $artwork, private ComposedLayers $layers ) {}
 
 	/**
+	 * The wheels' faces, from their photos (M15). Without them the wheels have none.
+	 *
+	 * @var WheelFaces|null
+	 */
+	private ?WheelFaces $faces = null;
+
+	/**
+	 * This view, with the wheels' faces read from their photos.
+	 *
+	 * @since 1.5.0
+	 *
+	 * @param WheelFaces $faces The wheels' faces.
+	 */
+	public function withFaces( WheelFaces $faces ): self {
+		$view        = clone $this;
+		$view->faces = $faces;
+		return $view;
+	}
+
+	/**
 	 * The scene of a build, or null where the kit's 3D view is off or no deck with a width is picked.
 	 *
 	 * @since 1.4.0
@@ -93,6 +114,19 @@ final class SceneView {
 		);
 		if ( null !== $scene['wheels'] ) {
 			$scene['wheels']['texture'] = $texture( SlotKey::WHEELS );
+			// The photo is the wheel's picture too: held back with its layer where cbuild_composed_layer says so.
+			$wheels                  = $counted[ SlotKey::WHEELS ] ?? null;
+			$face                    = null === $wheels || null === $this->faces || ComposedLayers::AS_IS !== $this->layers->answer( $wheels->id, SlotKey::WHEELS, $state->id, self::USE ) ? null : $this->faces->of( $wheels->id );
+			$scene['wheels']['face'] = null === $face ? null : array(
+				'url'  => $face['url'],
+				'x'    => $face['x'],
+				'y'    => $face['y'],
+				'size' => $face['size'],
+			);
+			// The domain gives no colour; cbuild_scene, after this, may give its own.
+			if ( null !== $face ) {
+				$scene['wheels']['color'] = $face['tread'];
+			}
 		}
 		if ( null !== $scene['grip'] ) {
 			$scene['grip']['texture'] = $grip;

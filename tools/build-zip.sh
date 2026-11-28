@@ -48,6 +48,13 @@ for built in $(grep -rhoE "'build/[a-z0-9/-]+'" src | tr -d "'" | sort -u); do
 		fi
 	done
 done
+# Every stylesheet src/ names from build/ in full, as the admin kit's (D-571).
+for file in $(grep -rhoE "'build/[a-z0-9/-]+\.css'" src | tr -d "'" | sort -u); do
+	if [ ! -s "$stage/$file" ]; then
+		echo "The zip would ship without $file, which src/ loads. Run npm run build and look at its output." >&2
+		exit 1
+	fi
+done
 cp composer.json composer.lock "$stage/"
 # composer.json stays beside vendor/ so a reviewer (and Plugin Check's missing_composer_json_file) can see what it holds.
 ( cd "$stage" && composer install --no-dev --no-interaction --quiet --optimize-autoloader && rm -f composer.lock )

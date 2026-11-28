@@ -21,6 +21,7 @@ use CreativeBranding\SkateboardBuilder\Tests\Support\Domain\KitDocuments;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Domain\Shop;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\FakeComposedLayers;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\FakeLogger;
+use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\FakeWheelFaces;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\InMemoryKits;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\InMemoryLayerImages;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\InMemoryLayerRenditions;
@@ -190,5 +191,53 @@ final class SceneViewTest extends TestCase {
 	private function sorted( array $asked ): array {
 		usort( $asked, static fn( array $a, array $b ): int => $a[0] <=> $b[0] );
 		return $asked;
+	}
+
+	public function test_the_wheels_face_is_their_photos_and_their_sides_take_the_treads_colour(): void {
+		$faces        = new FakeWheelFaces();
+		$faces->faces = array(
+			302 => array(
+				'url'   => 'https://example.com/wheel-768x768.jpg',
+				'x'     => 625,
+				'y'     => 625,
+				'size'  => 8750,
+				'tread' => '#c81e28',
+			),
+		);
+		$view  = ( new SceneView( new LayerArtwork( $this->images, $this->renditions ), $this->layers ) )->withFaces( $faces );
+		$scene = $view->of( $this->state( array( 'schema_version' => 1, 'view_3d' => true ) ) );
+
+		self::assertIsArray( $scene );
+		self::assertSame(
+			array(
+				'url'  => 'https://example.com/wheel-768x768.jpg',
+				'x'    => 625,
+				'y'    => 625,
+				'size' => 8750,
+			),
+			$scene['wheels']['face']
+		);
+		self::assertSame( '#c81e28', $scene['wheels']['color'], 'the tread\'s colour, for the sides and the inner face' );
+		self::assertSame( array( 302 ), $faces->asked );
+	}
+
+	public function test_the_wheels_have_no_face_where_their_photo_gives_none_or_their_picture_is_held_back(): void {
+		$faces        = new FakeWheelFaces();
+		$view         = ( new SceneView( new LayerArtwork( $this->images, $this->renditions ), $this->layers ) )->withFaces( $faces );
+		$scene        = $view->of( $this->state( array( 'schema_version' => 1, 'view_3d' => true ) ) );
+		self::assertIsArray( $scene );
+		self::assertNull( $scene['wheels']['face'], 'no face read' );
+		self::assertNull( $scene['wheels']['color'] );
+
+		$faces->faces          = array( 302 => array( 'url' => 'https://example.com/wheel.jpg', 'x' => 0, 'y' => 0, 'size' => 10000, 'tread' => '#000000' ) );
+		$this->layers->answers = array( 302 => array( '3d' => 'blurred' ) );
+		$held                  = $view->of( $this->state( array( 'schema_version' => 1, 'view_3d' => true ) ) );
+		self::assertIsArray( $held );
+		self::assertNull( $held['wheels']['face'], 'the photo is held back with the layer, as cbuild_composed_layer answered' );
+		self::assertNull( $held['wheels']['color'] );
+	}
+
+	public function test_a_scene_with_no_faces_given_has_none(): void {
+		self::assertNull( $this->scene( $this->state( array( 'schema_version' => 1, 'view_3d' => true ) ) )['wheels']['face'] );
 	}
 }

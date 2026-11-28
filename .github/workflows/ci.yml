@@ -157,7 +157,8 @@ jobs:
 
   static:
     name: Lint, analyse, architecture, gates, unit tests, API snapshot, audits, benchmarks, PHP 7.4 parse
-    runs-on: ubuntu-26.04
+    # Pure CPU, measured on both in two runs: about 6 % faster on ARM, every step passing (D-569).
+    runs-on: ubuntu-26.04-arm
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -198,6 +199,9 @@ jobs:
           php -l src/Support/Options.php
           php -l src/Support/Tables.php
           php -l src/Install/Uninstaller.php
+          # The e2e must-use plugins load on every request to the test sites, the zip lifecycle's WP-CLI run on PHP 7.4
+          # among them, so they parse there too (D-574).
+          for fixture in tests/e2e/mu-plugins/*.php; do php -l "$fixture"; done
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         if: always()
         with:
@@ -206,7 +210,8 @@ jobs:
 
   js:
     name: TypeScript, JavaScript and CSS standards; generated types; the asset budgets
-    runs-on: ubuntu-26.04
+    # Pure CPU, measured on both in two runs: about 6 % faster on ARM, every step passing (D-569).
+    runs-on: ubuntu-26.04-arm
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -229,6 +234,9 @@ jobs:
       - run: npm run build
       - run: npm run budget
 
+  # The ARM runner trial (approved 27 November 2026, D-569): the static and JavaScript checks again on GitHub's ARM
+  # runner, to measure it against the x64 jobs above before moving any job. It blocks nothing: it is in no required
+  # check, and its failure fails no run. It goes once the trial is decided.
   mutation:
     name: Mutation testing (Infection and StrykerJS), and the release dry run
     needs: scope
@@ -304,8 +312,9 @@ jobs:
     # 25 minutes since milestone 7; at 30 a slow runner stopped the oldest leg with its browser tests still running
     # (CI run 43906165176). At 45 a slow runner fits and a hang still stops at less than the newest leg's limit.
     # Since D-258 the newest leg runs Chromium's two projects alone, and the `browsers` job the rest beside it, so
-    # every leg takes about what the oldest does.
-    timeout-minutes: 60
+    # every leg takes about what the oldest does. With milestone 14's 3D tests the oldest leg's 804 tests took 44 and
+    # 55 minutes, and on #173 a slow runner stopped it at 60 with 704 done and none failed (D-544).
+    timeout-minutes: 80
     strategy:
       fail-fast: false
       matrix:
@@ -333,10 +342,10 @@ jobs:
       # its own. The newest pair's integration suite, with Xdebug in coverage mode, is the `suite` job's (D-323).
       - name: The integration site
         if: matrix.site == 'tests'
-        run: npx wp-env start --config=.wp-env.tests.json
+        run: bash tools/wp-env.sh start --config=.wp-env.tests.json
       - name: The browser site
         if: matrix.site == 'browser'
-        run: npx wp-env start
+        run: bash tools/wp-env.sh start
       # The POT is made in the browser site's CLI.
       - name: The i18n check (the POT current, the translations complete)
         if: matrix.pair == 'newest' && matrix.part == 'browser'
@@ -457,7 +466,7 @@ jobs:
       - run: npm ci
       - run: npm run build
       - name: The integration site, with Xdebug in coverage mode
-        run: npx wp-env start --config=.wp-env.tests.json --xdebug=coverage
+        run: bash tools/wp-env.sh start --config=.wp-env.tests.json --xdebug=coverage
       - name: The shard's part of the integration suite, with coverage
         env:
           CBUILD_SHARD: ${{ matrix.shard }}
@@ -556,12 +565,13 @@ jobs:
           - part: rtl, chromium tablet
             engines: chromium
             run: npm run test:e2e -- --project=rtl --project=chromium-tablet
-          # Milestone 9: from published releases, each with the shop's data made on it (D-232). Every release took the
-          # job past 15 minutes by 1.2.0, so CI runs the sample: every release from 1.0.0 on, and 0.1.0 and 0.9.0
-          # (#144, D-414). `npm run upgrade:all` alone still runs every release, on each milestone's combined tree.
+          # Milestone 9: from published releases, each with the shop's data made on it (D-232): those a shop could
+          # update from, by the support floor in tools/upgrade-releases.sh, the previous release alone while it is
+          # unset (D-549). `npm run upgrade:all -- --every` runs every release, before a major and when a migration
+          # changes.
           - part: updates
             engines: chromium
-            run: npm run upgrade:all -- --sample
+            run: npm run upgrade:all
           # In Playwright's own Linux image, as locally, so the baselines are one machine's pictures (D-162).
           - part: visual
             engines: ''

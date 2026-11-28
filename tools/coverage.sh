@@ -24,7 +24,7 @@ rm -f tmp/coverage-domain.xml tmp/coverage-domain-*.cov tmp/coverage-domain-*.tx
 cores="$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 1)"
 shards="${CBUILD_COVERAGE_SHARDS:-$(( cores < 8 ? cores : 8 ))}"
 # Every shard loads the domain in one order first, so each compiles it alike (tests/bootstrap-domain.php).
-domain=(env CBUILD_COVERAGE_PRELOAD=1 php -d pcov.enabled=0 -d xdebug.mode=coverage vendor/bin/phpunit -c phpunit-domain.xml.dist --testsuite unit --exclude-group benchmark --exclude-group invariant --exclude-group cap --do-not-record-test-run-history)
+domain=(env CBUILD_COVERAGE_PRELOAD=1 php -d pcov.enabled=0 -d xdebug.mode=coverage vendor/bin/phpunit -c phpunit-domain.xml.dist --testsuite unit --exclude-group benchmark --exclude-group invariant --exclude-group cap --exclude-group exhaustive --do-not-record-test-run-history)
 # A read loop, not mapfile: macOS's bash is 3.2.
 files=()
 while IFS= read -r file; do files+=("$file"); done < <("${domain[@]}" --list-test-files | grep -E '\.php$' | sed -E 's/^ *- *//')

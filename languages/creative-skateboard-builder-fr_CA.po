@@ -182,8 +182,8 @@ msgstr "Configurateur"
 #: src/Order/OrderHooks.php:252
 #: src/Order/OrderHooks.php:344
 #: src/Order/WorkshopWords.php:286
-#: templates/account/my-builds.php:52
-#: templates/account/my-builds.php:63
+#: templates/account/my-builds.php:54
+#: templates/account/my-builds.php:65
 #: templates/admin/tickets.php:72
 msgid "Build"
 msgstr "Montage"
@@ -477,7 +477,7 @@ msgstr "Aucune règle. Ces mesures changent la façon dont une planche tourne, p
 #: src/Admin/BuildTab.php:789
 #: src/Admin/BuildTab.php:1513
 #: src/Privacy/PrivacyHooks.php:132
-#: templates/account/my-builds.php:93
+#: templates/account/my-builds.php:95
 msgid "Name"
 msgstr "Nom"
 
@@ -1720,11 +1720,13 @@ msgstr "Pour une pièce, son nom avec le libellé de son emplacement."
 msgid "For a part, what the cart says when its build is removed."
 msgstr "Pour une pièce, ce que le panier affiche quand son montage est retiré."
 
+#. translators: 1: a field's label, 2: why the server refused its value.
 #. translators: 1: a slot's label, such as Deck; 2: the product's name, which may be a link.
 #. translators: 1: a slot's label, such as Bearings. 2: a part's name.
 #. translators: 1: a slot's label, such as Wheels. 2: a brand's name, or a size such as 54 mm.
 #. translators: 1: a slot's label, such as Deck. 2: the part's name.
 #. translators: 1: a spec's name, such as Deck width; 2: its value, such as 8.5″.
+#: src/Admin/Form/Mount.php:105
 #: src/Cart/ShowHooks.php:539
 #: src/Front/BuilderView.php:2177
 #: src/Front/Words.php:545
@@ -1815,12 +1817,12 @@ msgstr "%s n’est pas un fichier .csv."
 msgid "The file has no %s column. Add one, or match parts by the other with --key."
 msgstr "Le fichier n’a pas de colonne %s. Ajoutez-en une, ou associez les pièces par l’autre colonne avec --key."
 
-#: src/Front/BuilderPage.php:238
+#: src/Front/BuilderPage.php:241
 msgid "This builder isn't available right now."
 msgstr "Ce configurateur n’est pas disponible pour le moment."
 
 #. translators: %s: why the builder could not be shown, as the error said it.
-#: src/Front/BuilderPage.php:242
+#: src/Front/BuilderPage.php:245
 #, php-format
 msgid "Shown to shop managers only: %s"
 msgstr "Affiché aux gestionnaires du magasin seulement : %s"
@@ -2076,6 +2078,7 @@ msgid "Use these"
 msgstr "Utiliser ces pièces"
 
 #. translators: %s: the deleted build's name.
+#: src/Admin/Form/Mount.php:67
 #: src/Front/BuilderView.php:2235
 #: templates/account/my-builds.php:43
 msgid "Undo"
@@ -2226,61 +2229,61 @@ msgstr "Un montage enregistré"
 msgid "%1$s - %2$s"
 msgstr "%1$s - %2$s"
 
-#: src/Front/SavedBuildHooks.php:242
-#: src/Front/SavedBuildHooks.php:246
+#: src/Front/SavedBuildHooks.php:255
 #: src/Front/SavedBuildHooks.php:259
+#: src/Front/SavedBuildHooks.php:272
 msgid "My builds"
 msgstr "Mes montages"
 
-#: src/Front/SavedBuildHooks.php:347
+#: src/Front/SavedBuildHooks.php:360
 msgid "That form has expired. Please try again."
 msgstr "Ce formulaire a expiré. Veuillez réessayer."
 
-#: src/Front/SavedBuildHooks.php:362
-#: src/Front/SavedBuildHooks.php:402
-#: src/Front/SavedBuildHooks.php:546
+#: src/Front/SavedBuildHooks.php:375
+#: src/Front/SavedBuildHooks.php:415
+#: src/Front/SavedBuildHooks.php:559
 msgid "The build could not be saved just now. Please try again."
 msgstr "Le montage n’a pas pu être enregistré pour le moment. Veuillez réessayer."
 
-#: src/Front/SavedBuildHooks.php:364
+#: src/Front/SavedBuildHooks.php:377
 msgid "That build is not among your saved builds."
 msgstr "Ce montage ne fait pas partie de vos montages enregistrés."
 
-#: src/Front/SavedBuildHooks.php:366
+#: src/Front/SavedBuildHooks.php:379
 msgid "The build is renamed."
 msgstr "Le montage est renommé."
 
-#: src/Front/SavedBuildHooks.php:368
+#: src/Front/SavedBuildHooks.php:381
 msgid "The build is deleted."
 msgstr "Le montage est supprimé."
 
-#: src/Front/SavedBuildHooks.php:385
-#: src/Front/SavedBuildHooks.php:394
+#: src/Front/SavedBuildHooks.php:398
+#: src/Front/SavedBuildHooks.php:407
 msgid "The build is back in My builds."
 msgstr "Le montage est de retour dans Mes montages."
 
-#: src/Front/SavedBuildHooks.php:388
+#: src/Front/SavedBuildHooks.php:401
 msgid "That build can no longer be brought back."
 msgstr "Ce montage ne peut plus être rétabli."
 
 #. translators: %s: how many builds a customer may keep, such as 100.
-#: src/Front/SavedBuildHooks.php:399
-#: src/Front/SavedBuildHooks.php:548
+#: src/Front/SavedBuildHooks.php:412
+#: src/Front/SavedBuildHooks.php:561
 #, php-format
 msgid "You have %s saved build, the most kept. Delete it to save another."
 msgid_plural "You have %s saved builds, the most kept. Delete one to save another."
 msgstr[0] "Vous avez %s montage enregistré, soit le nombre maximal. Supprimez-le pour en enregistrer un autre."
 msgstr[1] "Vous avez %s montages enregistrés, soit le nombre maximal. Supprimez-en un pour en enregistrer un autre."
 
-#: src/Front/SavedBuildHooks.php:544
+#: src/Front/SavedBuildHooks.php:557
 msgid "The build is saved. It is listed below."
 msgstr "Le montage est enregistré. Il figure ci-dessous."
 
-#: src/Front/SavedBuildHooks.php:545
+#: src/Front/SavedBuildHooks.php:558
 msgid "Your saved build is updated."
 msgstr "Votre montage enregistré est mis à jour."
 
-#: src/Front/SavedBuildHooks.php:549
+#: src/Front/SavedBuildHooks.php:562
 msgid "This build could not be saved: a part is missing or no longer fits. Open it in the builder to check it."
 msgstr "Ce montage n’a pas pu être enregistré : une pièce manque ou n’est plus compatible. Ouvrez-le dans le configurateur pour le vérifier."
 
@@ -3269,69 +3272,69 @@ msgid "You have no saved builds yet. Save one from the review step of the builde
 msgstr "Vous n’avez pas encore de montage enregistré. Enregistrez-en un à l’étape Récapitulatif du configurateur, et il vous attendra ici."
 
 #: templates/account/compare.php:63
-#: templates/account/my-builds.php:53
-#: templates/account/my-builds.php:71
+#: templates/account/my-builds.php:55
+#: templates/account/my-builds.php:73
 msgid "Total today"
 msgstr "Total aujourd’hui"
 
-#: templates/account/my-builds.php:54
-#: templates/account/my-builds.php:78
+#: templates/account/my-builds.php:56
+#: templates/account/my-builds.php:80
 msgid "Saved"
 msgstr "Enregistré"
 
-#: templates/account/my-builds.php:55
-#: templates/account/my-builds.php:79
+#: templates/account/my-builds.php:57
+#: templates/account/my-builds.php:81
 msgid "Actions"
 msgstr "Actions"
 
 #: src/Front/CompareView.php:319
-#: templates/account/my-builds.php:75
+#: templates/account/my-builds.php:77
 msgid "A part has changed since you saved it. Open the build to see which."
 msgstr "Une pièce a changé depuis l’enregistrement. Ouvrez le montage pour voir laquelle."
 
 #. translators: %s: the saved build's name.
 #: templates/account/compare.php:30
-#: templates/account/my-builds.php:88
+#: templates/account/my-builds.php:90
 #, php-format
 msgid "Open %s"
 msgstr "Ouvrir %s"
 
 #. translators: %s: the saved build's name.
 #: templates/account/compare.php:30
-#: templates/account/my-builds.php:88
+#: templates/account/my-builds.php:90
 msgid "Open"
 msgstr "Ouvrir"
 
 #: src/Front/CompareView.php:317
-#: templates/account/my-builds.php:90
+#: templates/account/my-builds.php:92
 msgid "The shop no longer sells this kit."
 msgstr "Le magasin ne vend plus cet ensemble."
 
 #. translators: %s: the saved build's name.
-#: templates/account/my-builds.php:94
+#: templates/account/my-builds.php:96
 #, php-format
 msgid "Name of %s"
 msgstr "Nom de %s"
 
 #. translators: %s: the saved build's name.
-#: templates/account/my-builds.php:99
+#: templates/account/my-builds.php:101
 #, php-format
 msgid "Rename %s"
 msgstr "Renommer %s"
 
 #. translators: %s: the saved build's name.
-#: templates/account/my-builds.php:99
+#: templates/account/my-builds.php:101
 msgid "Rename"
 msgstr "Renommer"
 
 #. translators: %s: the saved build's name.
-#: templates/account/my-builds.php:106
+#: templates/account/my-builds.php:108
 #, php-format
 msgid "Delete %s"
 msgstr "Supprimer %s"
 
 #. translators: %s: the saved build's name.
-#: templates/account/my-builds.php:106
+#: templates/account/my-builds.php:108
 msgid "Delete"
 msgstr "Supprimer"
 
@@ -3349,10 +3352,12 @@ msgstr "Non enregistré. Voici ce que vous avez saisi, et ce qu’il faut corrig
 msgid "%1$s is now slot %2$d of %3$d."
 msgstr "%1$s est maintenant l’emplacement %2$d sur %3$d."
 
+#: src/Admin/Form/Mount.php:64
 #: templates/admin/build-tab.php:68
 msgid "Move up"
 msgstr "Monter"
 
+#: src/Admin/Form/Mount.php:65
 #: templates/admin/build-tab.php:69
 msgid "Move down"
 msgstr "Descendre"
@@ -4708,6 +4713,7 @@ msgid "Leave it empty for that width and wider."
 msgstr "Laissez vide pour cette largeur et plus."
 
 #: src/Admin/BuildTab.php:1266
+#: src/Admin/Form/Mount.php:63
 msgid "Remove"
 msgstr "Retirer"
 
@@ -4806,7 +4812,7 @@ msgstr "Afficher « Monter un skate complet avec cette planche » sur les page
 msgid "\"Use the builder's rows\" is now unticked, so the rows you type are saved."
 msgstr "« Utiliser les lignes du configurateur » est maintenant décoché, donc les lignes que vous tapez sont enregistrées."
 
-#: src/Front/BuilderPage.php:205
+#: src/Front/BuilderPage.php:208
 msgid "The shop did not answer in time. Try again in a moment."
 msgstr "La boutique n’a pas répondu à temps. Réessayez dans un instant."
 
@@ -4906,25 +4912,25 @@ msgid "Price difference"
 msgstr "Écart de prix"
 
 #. translators: %s: the saved build's name.
-#: templates/account/my-builds.php:83
+#: templates/account/my-builds.php:85
 #, php-format
 msgid "Compare %s"
 msgstr "Comparer %s"
 
 #. translators: %s: the saved build's name.
-#: templates/account/my-builds.php:84
+#: templates/account/my-builds.php:86
 msgid "Compare"
 msgstr "Comparer"
 
 #. translators: %s: the most builds compared at once, such as 3.
-#: templates/account/my-builds.php:121
+#: templates/account/my-builds.php:124
 #, php-format
 msgid "Tick up to %s build, then compare them side by side at today's prices."
 msgid_plural "Tick up to %s builds, then compare them side by side at today's prices."
 msgstr[0] "Cochez jusqu’à %s montage, puis comparez-les côte à côte aux prix d’aujourd’hui."
 msgstr[1] "Cochez jusqu’à %s montages, puis comparez-les côte à côte aux prix d’aujourd’hui."
 
-#: templates/account/my-builds.php:124
+#: templates/account/my-builds.php:127
 msgid "Compare the ticked builds"
 msgstr "Comparer les montages cochés"
 
@@ -5445,3 +5451,27 @@ msgstr "Tailles que la vue 3D suppose"
 #: templates/admin/check.php:80
 msgid "These parts leave out a size the 3D view draws, so it draws the usual one. Each is still offered, and needs no fix. Fill the size in on its Part specs to draw the part as it is."
 msgstr "Ces pièces n'indiquent pas une taille que la vue 3D dessine, donc elle dessine la valeur habituelle. Chacune est toujours offerte et n'a rien à corriger. Remplissez la taille dans ses caractéristiques pour dessiner la pièce telle qu'elle est."
+
+#. translators: %d: how many fields were refused.
+#: src/Admin/Form/Mount.php:112
+#, php-format
+msgid "%d field needs a change before the form can be saved."
+msgid_plural "%d fields need a change before the form can be saved."
+msgstr[0] "%d champ doit être modifié avant que le formulaire puisse être enregistré."
+msgstr[1] "%d champs doivent être modifiés avant que le formulaire puisse être enregistré."
+
+#: src/Admin/Form/Mount.php:62
+msgid "Edit"
+msgstr "Modifier"
+
+#: src/Admin/Form/Mount.php:66
+msgid "Row removed."
+msgstr "Ligne retirée."
+
+#: src/Admin/Form/Mount.php:68
+msgid "Cancel"
+msgstr "Annuler"
+
+#: src/Admin/Form/Mount.php:69
+msgid "Done"
+msgstr "Terminé"

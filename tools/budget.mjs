@@ -7,12 +7,26 @@
  * From 1.4.0 the 3D view's chunk, build/builder/three.js, which the builder loads only when the shopper presses View
  * in 3D, has a line of its own (#139): 200 kB, compressed with gzip at level 9, as three.js's own size is measured
  * and as Zach approved it. Its Brotli size is printed beside it. Every other budget is as it was.
+ *
+ * From 1.5.0 M15's admin screens, each its own entry, have a line of their own (Zach approved it on 26 November,
+ * D-553): 170 kB with Brotli at quality 11. A screen holds the admin kit with DataForm, about 104 kB, and DataViews'
+ * table where it lists rows, 161.7 kB in the spike, rounded up. They load on the plugin's own admin screens only, never
+ * on the shop's pages. The Build tab's and Part specs' scripts keep the 15 kB line until their screens are rebuilt on
+ * the kit, and DataViews' stylesheet, 8.5 kB, fits the stylesheets' 10 kB.
  */
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, extname } from 'node:path';
 import { brotliCompressSync, constants, gzipSync } from 'node:zlib';
 
 const BUDGETS = { '.js': 15 * 1024, '.css': 10 * 1024 };
+
+/** M15's admin screens, each with a Brotli budget of its own, by path. */
+const SCREENS = Object.fromEntries(
+	[ 'settings', 'import', 'check', 'spec-tables' ].map( ( screen ) => [
+		join( 'build', 'admin', `${ screen }.js` ),
+		170 * 1024,
+	] )
+);
 
 /** The chunks with a gzip budget of their own, by path. */
 const CHUNKS = { [ join( 'build', 'builder', 'three.js' ) ]: 200 * 1024 };
@@ -61,7 +75,7 @@ for ( const file of files ) {
 		continue;
 	}
 	const size = brotli;
-	const budget = BUDGETS[ extname( file ) ];
+	const budget = SCREENS[ file ] ?? BUDGETS[ extname( file ) ];
 	const ok = size <= budget;
 	failed ||= ! ok;
 	console.log(

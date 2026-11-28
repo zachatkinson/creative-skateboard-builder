@@ -4,6 +4,7 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import '../../assets/src/builder/view';
+import { cross } from '../../assets/src/builder/motion';
 
 /**
  * The element the pointer comes up over, as `document.elementFromPoint()` would find it.
@@ -155,6 +156,142 @@ describe( 'a press held while the builder hydrates', () => {
 			} )
 		);
 		vi.runAllTimers();
+		expect( clicks ).toBe( 1 );
+	} );
+} );
+
+/**
+ * #178: a press while a step crosses over. For the view transition's life the browser hit-tests its pictures, so the
+ * press lands on the page's root, and its click on the ancestor the press and its release share. The press ends the
+ * crossing; its control is the one it comes up over, a finger's as a mouse's.
+ */
+describe( 'a press while a step crosses over', () => {
+	let back: HTMLAnchorElement;
+	let clicks: number;
+	let skipped: number;
+
+	/**
+	 * Starts a crossing, as the store does at a step's move.
+	 */
+	function crossing(): void {
+		cross( () => {}, true, false );
+	}
+
+	/**
+	 * A press on the page's root, as the browser sends it over a crossing, coming up over `over`.
+	 *
+	 * @param options        How it is pressed.
+	 * @param options.type   The pointer's type.
+	 * @param options.button The mouse button.
+	 * @param options.reach  Where the browser's click goes: the page's root, the control, or nowhere.
+	 */
+	function overCrossing( {
+		type = 'mouse',
+		button = 0,
+		reach = 'root',
+	}: {
+		type?: string;
+		button?: number;
+		reach?: 'root' | 'control' | 'none';
+	} = {} ): void {
+		const root = document.documentElement;
+		root.dispatchEvent(
+			new PointerEvent( 'pointerdown', {
+				bubbles: true,
+				pointerType: type,
+				button,
+			} )
+		);
+		root.dispatchEvent(
+			new PointerEvent( 'pointerup', {
+				bubbles: true,
+				pointerType: type,
+			} )
+		);
+		if ( 'none' !== reach ) {
+			( 'root' === reach ? root : back ).dispatchEvent(
+				new MouseEvent( 'click', { bubbles: true } )
+			);
+		}
+		vi.runAllTimers();
+	}
+
+	beforeEach( () => {
+		vi.useFakeTimers();
+		document.body.innerHTML =
+			'<div class="cbuild"><div class="cbuild-bar"><a class="cbuild-button" href="#back"><span>Back</span></a></div></div>' +
+			'<button type="button" class="outside">Elsewhere</button>';
+		back = document.querySelector( 'a' )!;
+		clicks = 0;
+		skipped = 0;
+		back.addEventListener( 'click', ( event ) => {
+			event.preventDefault();
+			clicks++;
+		} );
+		document.startViewTransition = ( ( change: () => void ) => {
+			change();
+			return {
+				finished: new Promise( () => {} ),
+				skipTransition: () => skipped++,
+			};
+		} ) as unknown as typeof document.startViewTransition;
+		over = back.querySelector( 'span' );
+		document.elementFromPoint = () => over;
+	} );
+
+	afterEach( () => {
+		vi.useRealTimers();
+		document.body.innerHTML = '';
+		delete ( document as { startViewTransition?: unknown } )
+			.startViewTransition;
+	} );
+
+	it( 'ends the crossing and clicks the control it comes up over, once', () => {
+		crossing();
+		overCrossing();
+		expect( skipped ).toBe( 1 );
+		expect( clicks ).toBe( 1 );
+	} );
+
+	it( "clicks it for a finger's tap and a pen's too", () => {
+		crossing();
+		overCrossing( { type: 'touch' } );
+		crossing();
+		overCrossing( { type: 'pen', reach: 'none' } );
+		expect( clicks ).toBe( 2 );
+	} );
+
+	it( "leaves a press whose click reached the control, as a browser's that hit-tests where it ends", () => {
+		crossing();
+		overCrossing( { reach: 'control' } );
+		expect( clicks ).toBe( 1 );
+	} );
+
+	it( 'clicks nothing over no control, outside the builder, or for another mouse button', () => {
+		const outside = document.querySelector< HTMLElement >( '.outside' )!;
+		let elsewhere = 0;
+		outside.addEventListener( 'click', () => elsewhere++ );
+		over = outside;
+		crossing();
+		overCrossing();
+		over = document.querySelector( '.cbuild-bar' );
+		crossing();
+		overCrossing();
+		over = null;
+		crossing();
+		overCrossing();
+		over = back;
+		crossing();
+		overCrossing( { button: 2 } );
+		expect( clicks + elsewhere ).toBe( 0 );
+	} );
+
+	it( 'clicks nothing for a press over no control with no crossing on, and forgets the one before', () => {
+		crossing();
+		overCrossing();
+		expect( clicks ).toBe( 1 );
+		overCrossing();
+		overCrossing( { type: 'touch' } );
 		expect( clicks ).toBe( 1 );
 	} );
 } );

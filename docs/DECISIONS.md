@@ -130,6 +130,28 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-541 · The mutation job gets 40 minutes, and the tablet's picture-shift test is quarantined](#d-541--the-mutation-job-gets-40-minutes-and-the-tablets-picture-shift-test-is-quarantined--2026-11-27)
 - [D-542 · The visual tests' pick waits for its answer](#d-542--the-visual-tests-pick-waits-for-its-answer--2026-11-27)
 - [D-543 · The focus test waits out the pick's crossing, and #178 asks whether a tap in a crossing is lost](#d-543--the-focus-test-waits-out-the-picks-crossing-and-178-asks-whether-a-tap-in-a-crossing-is-lost--2026-11-27)
+- [D-544 · The integration and browser legs get 80 minutes](#d-544--the-integration-and-browser-legs-get-80-minutes--2026-11-27)
+- [D-545 · The supply chain: the SBOMs and CodeQL were already in place, and the Scorecard is added](#d-545--the-supply-chain-the-sboms-and-codeql-were-already-in-place-and-the-scorecard-is-added--2026-11-27)
+- [D-548 · Every start checks its site's WordPress and WooCommerce against the pins, and env:oldest can start both sites](#d-548--every-start-checks-its-sites-wordpress-and-woocommerce-against-the-pins-and-envoldest-can-start-both-sites--2026-11-27)
+- [D-549 · The upgrade runs follow a support floor: unset, the previous release alone](#d-549--the-upgrade-runs-follow-a-support-floor-unset-the-previous-release-alone--2026-11-27)
+- [D-550 · The browser tests' lock is taken only from a dead holder, and cleared in place under a clearer's lock](#d-550--the-browser-tests-lock-is-taken-only-from-a-dead-holder-and-cleared-in-place-under-a-clearers-lock--2026-11-27)
+- [D-551 · The lane practices, in one place](#d-551--the-lane-practices-in-one-place--2026-11-27)
+- [D-553 · The admin pins @wordpress/dataviews 22.0.0, which calls no private API, and takes wp-components from WordPress](#d-553--the-admin-pins-wordpressdataviews-2200-which-calls-no-private-api-and-takes-wp-components-from-wordpress--2026-11-27)
+- [D-564 · The ten milestone 13 branches all landed, and their archives are deleted](#d-564--the-ten-milestone-13-branches-all-landed-and-their-archives-are-deleted--2026-11-27)
+- [D-565 · CI tries a wp-env start again when a download fails, and caches nothing](#d-565--ci-tries-a-wp-env-start-again-when-a-download-fails-and-caches-nothing--2026-11-27)
+- [D-566 · A press while a step crosses over is taken: it ends the crossing, and its control is the one it comes up over](#d-566--a-press-while-a-step-crosses-over-is-taken-it-ends-the-crossing-and-its-control-is-the-one-it-comes-up-over--2026-11-27)
+- [D-567 · /verify is a script in the repository, one run a lane, with a focused browser step before a commit](#d-567--verify-is-a-script-in-the-repository-one-run-a-lane-with-a-focused-browser-step-before-a-commit--2026-11-27)
+- [D-568 · The 3D deck's graphic and grip read the right way round](#d-568--the-3d-decks-graphic-and-grip-read-the-right-way-round--2026-11-27)
+- [D-569 · The ARM runner trial: CI's static and JavaScript checks again on ubuntu-26.04-arm, blocking nothing](#d-569--the-arm-runner-trial-cis-static-and-javascript-checks-again-on-ubuntu-2604-arm-blocking-nothing--2026-11-27)
+- [D-570 · A push's full browser step splits across two lanes: chromium-phone in the other lane's checkout](#d-570--a-pushs-full-browser-step-splits-across-two-lanes-chromium-phone-in-the-other-lanes-checkout--2026-11-27)
+- [D-571 · The admin kit's mount: the server's form stays the page, and DataForm stands in front of it](#d-571--the-admin-kits-mount-the-servers-form-stays-the-page-and-dataform-stands-in-front-of-it--2026-11-27)
+- [D-572 · The 3D wheels' outer faces from their featured photos, read by the domain and kept a month a photo](#d-572--the-3d-wheels-outer-faces-from-their-featured-photos-read-by-the-domain-and-kept-a-month-a-photo--2026-11-27)
+- [D-573 · /verify's types step compares the types before and after regenerating them, not against the commit](#d-573--verifys-types-step-compares-the-types-before-and-after-regenerating-them-not-against-the-commit--2026-11-27)
+- [D-574 · Three CI failures on M15's first push: the wheel face's boundary tests leave the path-coverage pass, the kit's test imports DataForm with its file, and the e2e fixtures parse on PHP 7.4](#d-574--three-ci-failures-on-m15s-first-push-the-wheel-faces-boundary-tests-leave-the-path-coverage-pass-the-kits-test-imports-dataform-with-its-file-and-the-e2e-fixtures-parse-on-php-74--2026-11-28)
+- [D-575 · The browser tests' commands are tried again when wp-env loses its connection to wordpress.org before running them](#d-575--the-browser-tests-commands-are-tried-again-when-wp-env-loses-its-connection-to-wordpressorg-before-running-them--2026-11-28)
+- [D-576 · The admin kit's leaving warning: the browser's own prompt, only while something differs from what the page loaded with](#d-576--the-admin-kits-leaving-warning-the-browsers-own-prompt-only-while-something-differs-from-what-the-page-loaded-with--2026-11-28)
+- [D-577 · The admin kit sums up the server's refusals in one inline notice that takes focus, its links landing on DataForm's controls](#d-577--the-admin-kit-sums-up-the-servers-refusals-in-one-inline-notice-that-takes-focus-its-links-landing-on-dataforms-controls--2026-11-28)
+- [D-578 · The admin kit's list: a DataViews table with a modal, moves in each row's menu, Remove with an Undo, and the rows posted under the server form's names](#d-578--the-admin-kits-list-a-dataviews-table-with-a-modal-moves-in-each-rows-menu-remove-with-an-undo-and-the-rows-posted-under-the-server-forms-names--2026-11-28)
 
 ### Kits and their settings
 
@@ -7863,3 +7885,503 @@ CI run 46056908960, firefox-phone: "puts focus on each new step's heading, says 
 The same run's other firefox-phone failure was #93's ready mark, its third sighting, with the same diagnostic as the second; the evidence is on #93.
 
 **Status:** Accepted.
+
+### D-544 · The integration and browser legs get 80 minutes · 2026-11-27
+
+CI run 46063991563 on #173: "Plugin Check, the zip, browser (oldest)" was cancelled at its 60-minute limit, with 704 of its 804 browser tests run and none failed. The same job took 44 and 55 minutes on the two runs before it. Milestone 14's 3D tests made the chromium-desktop and webkit-phone leg longer, and a slow runner took it past the limit. This is D-107 and D-188 again.
+
+**Decision:** the `integration` matrix's legs get 80 minutes. That is their longest time so far plus room for a slow runner. The limit stops a hung job, and no floor moves. The legs' length is for #179's caching and M15's pipeline work to bring down.
+
+**Status:** Accepted.
+
+### D-545 · The supply chain: the SBOMs and CodeQL were already in place, and the Scorecard is added · 2026-11-27
+
+Issue #169 (approved by Zach on 26 November) asked for three things. Each was checked against what runs now:
+
+- **The SBOM:** already done. `release.yml` writes CycloneDX SBOMs for Composer and npm, of what the zip ships (D-003, D-030), and attaches them to each release, 1.4.0's included. CI's release dry run makes them on every pull request.
+- **CodeQL:** already on, through code scanning's default setup (configured 26 November). It covers `actions` and `javascript-typescript`, with the default query suite, on each push and pull request to `main` and weekly; 1.4.0's analyses on 27 November found 0 alerts. Default setup is GitHub's own recommendation where no custom queries or build are needed, so no workflow file is added. CodeQL has no PHP; PHPStan at levels 9 and 10, the gates and Plugin Check cover it.
+- **The Scorecard:** `.github/workflows/scorecard.yml`, from the OpenSSF's template. It runs weekly (Mondays, 06:17 UTC), on each push to `main` and when the branch's protection changes. It publishes its result for the README's badge and uploads its SARIF to code scanning.
+  - Its permissions are the job's alone, each with its reason; the workflow's own are `{}`.
+  - Its actions are pinned to commit SHAs: `ossf/scorecard-action` v2.6.0 (19 November) and `github/codeql-action/upload-sarif` v4.39.4 (20 November). v4.39.5 was three days old, short of D-040's week.
+  - actionlint and zizmor (`tools/workflow-lint.sh`) report nothing.
+
+**Allowed by Zach:** the repository allows GitHub's own actions and named others (Settings > Actions > General). That list is a security setting, so it was his to change. He added `ossf/scorecard-action@*` on 27 November, checked through the API beside `gitleaks/gitleaks-action@*`, `ramsey/composer-install@*` and `shivammathur/setup-php@*`.
+
+Gate 9 is unchanged: the new workflow holds no secret, and `release.yml` is untouched.
+
+Generic-pattern secret scanning stays off. GitHub offers it only on organisation repositories with Secret Protection, and gitleaks in CI already scans every push and pull request for generic secrets.
+
+**Status:** Accepted.
+
+### D-548 · Every start checks its site's WordPress and WooCommerce against the pins, and env:oldest can start both sites · 2026-11-27
+
+In milestone 14's full set, a run straight after `npm run env:oldest` tested WordPress 7.1.5. The override files were written but the running sites were not restarted on them, so the oldest pair's tests ran on the newest. Nothing said so.
+
+**Decision:**
+
+- **The check.** After every successful `start`, `tools/wp-env.sh` asks the site for `wp core version` and `wp plugin get woocommerce --field=version`, through `wp-env run cli` with the site's own `--config`. Both must equal the pins in force. A pin comes from the site's override file where `env:oldest` wrote one (`.wp-env.override.json` or `.wp-env.tests.override.json`), and otherwise from `.wp-env.json` or `.wp-env.tests.json`. Either version off its pin fails the start, with a line naming the version found and the pin. That covers `npm run env:start`, a lane's start, and CI's three starts, the oldest leg's included, since D-565 put them through the wrapper.
+- **One command for the oldest leg.** `npm run env:oldest -- --start` writes the overrides and starts both sites on them, each start checked. Without `--start` it writes the overrides as before.
+
+The check takes the two WP-CLI calls' time, a few seconds per start.
+
+**Tests:** `tools/wp-env-retry-selftest.sh` (in `composer gates`) runs a copy of the wrapper and its configs in a scratch tree, with a stand-in for wp-env, so no override is written into the checkout. Five new cases:
+
+- a start on the pins passes;
+- WordPress off its pin fails, naming both versions;
+- WooCommerce off its pin fails the integration site's start;
+- after `env:oldest`, a site still on the newest pair fails, as M14's run should have;
+- after `env:oldest`, the oldest pair passes, and `--start` starts both sites and checks each.
+
+With the check made to pass always, the three mismatch cases went red; restored, all 12 cases pass.
+
+**Status:** Accepted.
+
+### D-549 · The upgrade runs follow a support floor: unset, the previous release alone · 2026-11-27
+
+Zach, 27 November ("lets do it"): the upgrade paths are the ones a shop could take, not every release ever published. Today only the demo runs the plugin (`no-outside-shops-yet`), and it updates from the previous release each milestone.
+
+Before this, `npm run upgrade:all` ran every published release below the build (D-232), and CI's updates job a sample of them (D-414): every release from 1.0.0 on, with 0.1.0 and 0.9.0. Each release took about a minute, and the sample grew with every release.
+
+**Decision:** `tools/upgrade-releases.sh` holds one named value, `support_floor`: the oldest release a shop still runs. It is unset today, to be set when a shop other than the demo runs the plugin.
+
+- **No floor:** the previous release alone, the demo's path. This is CI's updates job and the routine local run.
+- **A floor:** every release of this build's major from the floor on, and the last release of each earlier major from the floor on. A shop on an older major is offered its last release first.
+- **`--every`:** every release below the build, whatever the floor. It runs before a major release, and when a migration changes.
+
+`--sample` is gone; D-414's sample is replaced. `npm run upgrade` (the previous release, through the upload screen, with no data) is unchanged. Every migration test stays: the integration suite still runs each migration from its own fixture.
+
+**Tests:** `tools/upgrade-releases-selftest.sh`, in `composer gates`. It has 17 cases; the floor is given through `CBUILD_SUPPORT_FLOOR`.
+
+- **No floor:** the previous release, in version order, never this one or a later one.
+- **`--every`:** every release, in order, the floor ignored.
+- **A floor of 1.5.0:** at 1.7.0 the run is 1.5.0, 1.5.1 and 1.6.0; at 2.1.0 it is 1.6.0 and 2.0.0; at 1.5.1 it is 1.5.0 alone. A floor of 2.0.0 at 2.1.0 gives 2.0.0 alone.
+- **Refused:** no release below the build (with or without `--every`), no release from the floor, a floor that is no version, and an unknown option (`--sample`).
+
+All were red against the old script but the cases it already met.
+
+**The time saved:** CI's updates job ran six releases at 1.4.0. It now runs one. The job's time on this milestone's first CI run is to be added here.
+
+**Status:** Accepted.
+
+### D-550 · The browser tests' lock is taken only from a dead holder, and cleared in place under a clearer's lock · 2026-11-27
+
+Issue #172, part 1: under three lanes' load, "keeps every key when ten processes rewrite one file at once" lost a key once, so two writers had held the lock together. The issue's guess was age: a slow live holder judged stale. Reading `tests/e2e/support/lock.ts` (D-422, D-511) found a second way in, in `clear()`. A lock judged abandoned was renamed aside, checked, and put back if it was not the one judged. Suppose two waiters judged a dead holder's lock at once. The first cleared it and a third process took it. The second's rename then took the live lock, and while it was put back the directory was missing, so a fourth process could `mkdir` it. Twenty processes on one dead holder's lock, five rounds, did not show it in three runs: the window is microseconds. So the fix is shown by deterministic tests, not by waiting for the race.
+
+**Decision:**
+
+- **Staleness.** A lock whose holder's process still runs is never taken, however old. A dead holder's is taken at once. Age counts only for a lock with no holder written, a maker that died between its `mkdir` and its write, against `staleAfter` (300 s by default). A waiter still gives up at twice `staleAfter`, with an error naming the holder, rather than overlap it.
+- **Clearing.** `clear()` first takes a lock of its own, `<dir>.breaking`. Under it nothing but the lock's holder can change the lock: acquirers can't `mkdir` a lock that exists, and other clearers wait. It judges the lock again, age included, since a fresh lock between its `mkdir` and its write has no holder either. If the lock is still the one judged, `clear()` removes it in place, and otherwise leaves it. Nothing is renamed away and back. A clearer that finds another at work leaves it to them, and takes over a clearer's lock older than 10 s, from one that died at it.
+
+**Tests** (`tests/js/e2e-lock.test.ts`), each but the race's red against the old lock:
+
+- a live holder's lock older than its limit is left, and the wait gives up naming it (red: it was taken);
+- a lock another took after it was judged stays where it was, its inode and ctime unchanged (red: it was moved and put back);
+- another clearer at work is left to it (red);
+- a dead clearer's lock is taken over (red);
+- a fresh lock with no holder written is left, though one with none was judged (made red by comparing holders alone);
+- a dead holder's lock is cleared, and a lock with no holder written is taken once older than its limit;
+- a live holder that keeps the lock past the limit is waited for, then the lock is taken once it lets go;
+- twenty processes find a dead holder's lock at once, and every key is kept, five rounds;
+- #155's millisecond crossing, now on a lock with no holder written, where age still counts.
+
+The old test "takes a lock older than its limit from a holder still running" asserted the behaviour this removes, so it is replaced by the first case above, by the issue's own ask.
+
+Part 2 of #172, the three timing tests that fail only under load, stays open on the issue.
+
+**Status:** Accepted.
+
+### D-551 · The lane practices, in one place · 2026-11-27
+
+Milestones 11 to 14 learned how three lanes (D-311, `tools/lane.sh`) work on one Mac, each lesson recorded where it was learned. Here they are once, for M15's screens and after:
+
+- **The PHP and JavaScript steps run on three lanes at once.** Three lanes take about 7.6 minutes a tree, against 18 at one (measured in M12). Stagger the lanes at the JavaScript step, the heaviest.
+- **Browser runs: at most two lanes when nobody is watching,** and never WebKit on two lanes at once. On 27 November three lanes of WebKit crashed the Mac's login session overnight, and 1.4.0 lost a day. WebKit and Firefox run on separate lanes. A lane's work is committed before a long run.
+- **Long runs are started in the background, never inside a watcher with a time limit.** A Monitor's expiry (30 minutes) kills its whole process group, the run with it.
+- **A walkthrough per lane before it lands, and one of the whole milestone before the reviews.** M11's last-step walkthrough found four defects the suites missed.
+- **The full project set before a release push,** on the lanes: every engine and width, tablets included, plus no-js, fr-ca, rtl, visual and the upgrade. A failure that shows only under load is rerun alone before it is counted.
+- **CI's diff-lines Infection** (`composer infection:diff`) on each lane against the milestone branch before it lands (D-465), and the tablet projects before a release push, since CI runs both and local runs had not.
+- **A lane's checkout is told by its sites.** A start in a lane a checkout's sites don't run in is refused (`tools/wp-env.sh`), and every start checks the pins (D-548).
+
+**Status:** Accepted.
+
+### D-553 · The admin pins @wordpress/dataviews 22.0.0, which calls no private API, and takes wp-components from WordPress · 2026-11-27
+
+Zach approved the dependency on 26 November (#156). M15's plan asked for a spike to pin a release and run it on both legs before any screen is built.
+
+**What each release ships.** Read from wordpress-develop's `package.json` at each tag, then Gutenberg's packages at that commit:
+
+| WordPress | `@wordpress/components` | `@wordpress/dataviews` alongside |
+| --- | --- | --- |
+| 7.0.8 | 32.2.1 | 12.0.1 |
+| 7.1.5 | 37.0.0 | 17.2.0 |
+| 7.2 (RC3; due 8 December 2026) | 44.0.0 | 22.0.0 |
+
+No release registers DataViews as a script, so the plugin bundles it.
+
+**First pick, dropped: 12.0.1**, the release built against 7.0's components. It passed a first spike on 7.0.8 and 7.1.5, at 63.3 kB compressed. The handbook research (`docs/research/admin-handbooks-2026.md`) then found that it takes `Menu` and `kebabCase` through `unlock( componentsPrivateApis )`:
+
+- `dataviews-item-actions/index.mjs`, `dataviews-view-config/index.mjs` and `dataviews-filters/add-filter.mjs` in 12.0.1's `build-module`;
+- components 39 and 40 removed most of those private APIs, and 44.0.0, which 7.2 ships, removed the rest.
+
+On 7.2, 12.0.1's controls and every row action with a modal would throw. Core's dev note of 16 November asks plugins that bundle DataViews to move to 22.0.0 or later before 7.2.
+
+**Decision.** `@wordpress/dataviews` is pinned exactly at **22.0.0** (published 4 November, so past D-040's week), with wp-scripts' plain build.
+
+- **Private APIs:** `grep -r "unlock(" build-module` finds none.
+- **What it takes from WordPress:**
+  - `wp-components`, `wp-element`, `wp-data`, `wp-compose`, `wp-date`, `wp-i18n`, `wp-a11y`, `wp-keycodes`, `wp-deprecated`, `wp-warning`, `wp-primitives`, `wp-private-apis` and `wp-theme`;
+  - each is registered by 7.0.2 and 7.1.4 (`wp-includes/assets/script-loader-packages.php`).
+- **What it bundles:** `@wordpress/ui`, `@wordpress/kebab-case` and `@wordpress/react-inert-value`, which are in wp-scripts' `BUNDLED_PACKAGES`.
+- **Sizes,** with Brotli at quality 11:
+  - a screen's entry with DataForm and DataViews is 1,002 kB raw and **161.7 kB** compressed;
+  - DataViews' stylesheet is 92 kB raw and 8.5 kB compressed.
+- **Under the plan's limit:** both are under the plan's 250 kB. The admin's budget lines are set at the foundation from the first screen's measured entry, and the builder's lines are untouched.
+
+**The spike.** A throwaway admin page held a DataForm and a DataViews table.
+
+- **What its spec did:**
+  - filled a text field, picked from a combobox, chose a radio and typed an integer;
+  - opened a `details` group and cleared a checkbox to show a field hidden by `isVisible`;
+  - checked the form's data, then ran a bulk action on two rows;
+  - opened a row action's modal, where 12.0.1 called the private `kebabCase`.
+- **Where it ran:** chromium-desktop on lane 3, on 7.1.5 with WooCommerce 11.3.1, 7.0.8 with 11.2.0, and 7.2 RC3 with 11.3.1, the last after `wp core update-db`.
+- **The result:** it passed on all three, with no console error.
+
+**Not used: `@wordpress/views` 3.1.0,** which saves a table's view per user.
+
+- **Why it fails on 7.0:** it opts into private APIs as `@wordpress/views`, a name `wp-private-apis`' allowlist holds in 7.1.5 but not in 7.0.2. On WordPress 7.0, the floor, it throws when it loads, and it reads `getViewConfig`, a private `core-data` selector that 7.0.2 lacks.
+- **A correction:** a first check grepped the allowlist for single quotes, but the built file uses double quotes, so it said 7.1.5 refused the name too. Corrected on 27 November.
+- **Instead:** Zach had said to use it if needed (27 November). Saved views use the public `@wordpress/preferences` store with `@wordpress/preferences-persistence` (`create()`, `setPersistenceLayer`), both on 7.0 and 7.1, persisted to user meta. PRIVACY.md and the uninstaller cover the key.
+
+**`@wordpress/ui`'s one private reach.** `@wordpress/ui`, which 22.0.0 bundles, opts in as `@wordpress/ui`, a name on the allowlist in 7.0.2 and 7.1.5 (`wp-includes/js/dist/private-apis.js`).
+
+- **What it reaches:** it unlocks `wp-theme`'s private `ThemeProvider` only where `wp-theme` exports none publicly (`utils/theme-provider.mjs`). That is WordPress 7.0, whose code no longer changes.
+- **From 7.1:** `wp-theme` exports `ThemeProvider` (`wp-includes/js/dist/theme.js:73` in 7.1.5), and the private one warns.
+- **The second opt-in:** the opt-in refuses only a name off the list or a wrong consent, not a second opt-in under one name, so another copy on the same page is no conflict.
+- **The gate:** `tools/private-apis.mjs` (in `npm run check`, with its test) allows exactly that fallback, and fails on any other `unlock(` or opt-in in `@wordpress/dataviews` or `@wordpress/ui`. Run against 12.0.1, it found 25.
+
+**Watched:**
+
+- `tools/private-apis.mjs` fails if a bundled package reaches a private API beyond `@wordpress/ui`'s `ThemeProvider` fallback.
+- CI's oldest leg runs every admin test on 7.0.8.
+- The pins move to 7.2 a week after its release (D-040, D-145), and the newest leg with them.
+- A screen that uses a control the spike didn't, such as `datetime`, `array` or `color`, gets its own check on every leg.
+
+**Status:** Accepted. The research's other findings go into the foundation; M15's review lists them.
+
+### D-564 · The ten milestone 13 branches all landed, and their archives are deleted · 2026-11-27
+
+Issue #175: ten milestone 13 branches (`m13-cards`, `m13-cowork-start`, `m13-cowork-theme`, `m13-early`, `m13-guided`, `m13-land`, `m13-pins`, `m13-tooling`, `m13-upgrade`, `m13-walk2`) had 47 commits that `git cherry` matched to nothing on `main`, since they landed through merges of rebuilt lane branches, not by patch. Kept on `origin` as `archive/m13-*` on 27 November.
+
+**Checked by content,** against `main` at c375d1f: for each commit, the share of the lines it added, translations left out, that `main` holds in the same file, or anywhere in the tree if the file moved. 44 commits are at 90 % or more, and the other three at 50 to 88 %. Every line short of 100 % was rewritten by later work, each looked at:
+
+- version strings, 1.3.0 now 1.4.0;
+- the browser tests' lock, rewritten in 1.4.0;
+- French wording changed in 1.4.0 (« remplacement » for « échange »);
+- the builder page's list of regions and the swap words' tests, extended or reworded since with the same assertions.
+
+The per-commit table is in `docs/reviews/M15.md`.
+
+**Decision:** nothing is landed again. The ten `archive/m13-*` branches were deleted from `origin` on Zach's word (27 November: "if its safe to remove them and cleans things up go ahead"). The local branches were deleted on 27 November.
+
+**Status:** Accepted.
+
+### D-565 · CI tries a wp-env start again when a download fails, and caches nothing · 2026-11-27
+
+Issue #179: twice on 27 November a CI job failed before any test ran because wp-env's first start could not download from wordpress.org. One was a timeout at TLS connect (run 46049772113) and one a `429 Too Many Requests` 16 ms after the request (run 46063991563). Some twenty jobs start at once, from GitHub's shared addresses.
+
+The issue offered two fixes: cache wp-env's downloads with `actions/cache`, or try the start again.
+
+- **Not the cache.** wp-env's folder (`~/.wp-env/<hash>/`) holds the downloads and also each site's own files, which a run writes: `wp-config.php`, uploads and `debug.log`. A cache saved after a run would bring one run's state into the next, and a test passing on another run's leftovers costs more than a rerun.
+- **The retry.** Under CI (`CI` set), `tools/wp-env.sh start` runs wp-env, keeps its output, and on a failure whose output names a download error tries again: `RequestError`, `HTTPError` 429 or 5xx, `ETIMEDOUT`, `ECONNRESET` or `EAI_AGAIN`. It makes three tries in all, 20 then 60 seconds apart. Any other failure, our own included, fails at once, and outside CI nothing is tried again.
+
+CI's three direct `npx wp-env start` calls now go through the wrapper, as `npm run env:start` and the canary already did.
+
+**Tests:** `tools/wp-env-retry-selftest.sh`, in `composer gates`, runs the wrapper with a stand-in for wp-env. A 429 then a success passes on the second try, and two timeouts on the third. Three download failures fail with no fourth try, a failure of our own gets no second try, and outside CI there is none. Each break was tried: a fourth try allowed, then every failure retried; each turned its case red.
+
+**Status:** Accepted (Zach approved #179's fix with the plan on 27 November).
+
+### D-566 · A press while a step crosses over is taken: it ends the crossing, and its control is the one it comes up over · 2026-11-27
+
+Issue #178 asked whether a press during a step's view transition is lost. Two CI runs for #173 stayed on a step after a Next pressed straight after a pick, and D-529, D-540 and D-543 made the tests wait the crossing out.
+
+**Proved, before any change:** a throwaway spec slowed one crossing to 3 s (`--cbuild-duration` on the root) and pressed Back at its own place mid-crossing. It recorded the element at that point and each pointer event's target:
+
+| Engine | Element hit, and the press's target | The click's target | Step after |
+| --- | --- | --- | --- |
+| Chromium, desktop and phone | `html` | `html` | 2, the press lost |
+| WebKit, desktop and phone | `html` | `html` | 2, the press lost |
+| Firefox, desktop and phone | `div.cbuild__layout` or `div.cbuild` | the same | 2, the press lost |
+
+So a mouse press on any of the builder's controls during a crossing came to nothing, in every engine. A finger's tap with touch emulated was taken in Chromium and WebKit, which hit-test a tap where it ends.
+
+**Tried, and not the fix:**
+
+- `:root.cbuild-crossing::view-transition { pointer-events: none }`, as the issue proposed. It changed nothing in any engine: for the transition's life the browser sends every hit to the document (or, in Firefox, the builder's box), whatever the pseudo-element's `pointer-events`.
+- Skipping the transition at the press. The store already does this: `pressEarly()` calls `cut()` on every press, which skips the crossing (spec: Milestone 11). The release then lands on the control (`a.cbuild-button` in every engine), but the browser sends the click to the ancestor the press and its release share, the root.
+
+**Decision:** `pressEarly()` asks `crossingOver()`, new in `motion.ts`, before it cuts. If a step was crossing over and the press is the main button's, the press is noted even with no control under it. At the release, `releaseEarly()` takes the builder control the pointer comes up over (`elementFromPoint()`, the same `CONTROLS`) as the press's own. If the browser's click didn't reach it, the store gives it the click, as #80 does for a press held across hydration. It covers a finger and a pen as well as a mouse, since a browser that hit-tests a tap where it began would lose those too. A control outside the builder is never clicked, and with no crossing on nothing changes.
+
+**Why not cut the crossing short some other way:** D-306's moment stays. What is lost is the press, not the motion, and the press already ends the motion.
+
+**Tests:**
+
+- `builder.spec.ts`, "A tap while a step crosses over (#178)": Back and a card's pick, tapped at their own place during a 3 s crossing. A finger is used where the project has touch. Before the fix 8 of 12 failed: every mouse press, in Chromium, WebKit and Firefox, at desktop and phone widths. After it, 12 of 12 pass.
+- `press.test.ts`, "a press while a step crosses over": five cases. With `view.ts` as it was, three were red (`press.test.ts:253`, `:261` and `:292`, "expected +0 to be 1").
+- StrykerJS on the changed lines of `view.ts`: 52 mutants, every one killed or timed out, so 100 %.
+
+**The tests' waits come out:** `moveTo()` (D-540), the focus test before Next: Trucks (D-543), and `settled()` in `3d.spec.ts` (D-529) no longer wait for `html.cbuild-crossing` to go. Each still waits for its answer. Two checks of the mark stay, since they test something else: that a calm move starts no crossing, and the visual tests' still frame.
+
+**Status:** Accepted.
+
+### D-567 · /verify is a script in the repository, one run a lane, with a focused browser step before a commit · 2026-11-27
+
+**Context.** /verify was a list in the skill, run through a script kept outside the repository. On 27 November, a run stopped mid-way left its PHPUnit running inside the integration site's container: the `docker exec` that started it died, the process did not. The next run's coverage step shared the test database with it and failed on "Table definition has changed" and "already exists", which cost about 25 minutes. The browser step, chromium-desktop and chromium-phone whole, was 33 of the run's 45 minutes. It ran before every commit, though every push and the pull request's CI run the browser suite anyway.
+
+**Decision** (Zach, 27 November: "leets fuckgin go", after the trade-off below):
+
+- `tools/verify.sh` runs the skill's steps in order and stops at the first failure. It ends with `VERIFIED` or a `FAILED:` line, so no run depends on a script outside the repository.
+- **One run a lane:** a lock per browser port in `$TMPDIR`. A second run on the same sites refuses while the first's process lives, and a lock whose process is gone is taken.
+- **A stopped run cleans up:** on INT or TERM it stops its own child processes, then `pkill -f "[t]ools/integration/vendor/bin/phpunit"` inside the integration site's cli container. The bracket keeps the pattern from matching a wrapper's own command line: without it, `sh -c 'pkill -f …'` killed its own shell (exit 143). The orphan was reproduced on lane 3 (a `php` process left running after its `wp-env run` was killed) and cleared by the same call.
+- **The browser step before a commit is focused:** `tools/focused.sh --browser-only` runs the browser tests that cover the change since HEAD, with no rebuild and no integration tests, since the run has done both whole. It exits 3 where a change can't be mapped, and the whole step then runs.
+- **The whole browser step still runs before a commit** for a change to `assets/src/builder/`, `templates/`, a stylesheet, `tests/e2e/support/` or `playwright.config.ts`, where picking tests is least sure.
+- `bash tools/verify.sh --full` runs the whole browser step, and runs before every push. The full project set still runs before a release push, and CI's every project before a merge.
+
+**The trade-off,** as put to Zach: between pushes, a commit is proven green only on the browser tests that cover it. A failure in the pre-push run is then among that push's few commits, found by bisecting. Its fix is a commit of its own with the red run in its message (D-065). Nothing reaches `main` unchecked by the whole suite. A typical commit's run falls from about 45 minutes to about 15.
+
+**Tests.** `tools/verify-selftest.sh`, in `composer gates`, 14 cases:
+
+- the browser step's choice for six whole-run paths and four focused ones;
+- a second run on a held lane refusing, leaving the first's lock and running no gate;
+- `focused.sh --browser-only` exiting 3 for a change to `composer.json`.
+
+`tools/focused-selftest.sh`'s 25 cases still pass.
+
+**Status:** Accepted. Supersedes the skill's own list of commands as the way /verify is run; the steps are the same.
+
+### D-568 · The 3D deck's graphic and grip read the right way round · 2026-11-27
+
+Zach, on the demo, 27 November: in the 3D view a deck's graphic read backwards from under. Its words were mirrored ("GNARLY" as its reflection). The 2D board was right.
+
+**Cause:** `face()` in `assets/src/builder/three/shapes.ts` gives each face's texture u across the deck's width. It wrote the top's as `u` and the bottom's as `1 - u`, "mirrored so the graphic reads the right way round" from under. But the stage turns the scene's axes, z up, into three's, y up (`axes.rotation.x = -π/2` in `stage.ts`), which sends the scene's +y to three's -z. With the nose up, the camera's right is `forward × up`:
+
+- from under, `(0, 1, 0) × (1, 0, 0) = (0, 0, -1)`, the scene's +y, so the bottom read the right way with plain `u`;
+- from above, `(0, -1, 0) × (1, 0, 0) = (0, 0, 1)`, the scene's -y, so the top needs `1 - u`.
+
+The two were the wrong way round. The bottom's graphic was mirrored from under, and so was a grip's printed sheet on the top from above. Mirroring is about handedness, not the camera's roll, so every place showed it. `TextureLoader` keeps `flipY`, so v (tail 0, nose 1) runs up the image as it should; only u was wrong.
+
+**Decision:** the top's u is `1 - u` and the bottom's `u`. Nothing else changes: the edge's stripes are the same both ways, and no other part has an image.
+
+**Tests:** `three-shapes.test.ts`, "reads the bottom's graphic the right way round from under, and the top's grip from above". It puts a face's points in three's axes as the stage does, and projects them through a camera at each of the stage's places (`aim()`): the underside, the graphic close-up and the reset for the bottom, and the top and the reset for the top. On screen, the turn from the image's u direction to its v direction must be the image's own, counter-clockwise. Before the fix it failed at the underside (`-0.00044`, "expected … to be greater than 0"). The top test's pinned u values, which held the old direction, now give 1 at the -y edge and 0 at the +y edge. The 3D visual baselines showing the underside were remade on purpose, in `tools/visual.sh`'s container.
+
+**Why no test caught it:** the shape tests checked only that the bottom was the top's mirror, and the visual baselines were made from the mirrored drawing. The fixture's art is not words, so it looked right. The new test checks the reading direction itself.
+
+**Status:** Accepted.
+
+### D-569 · The ARM runner trial: CI's static and JavaScript checks again on ubuntu-26.04-arm, blocking nothing · 2026-11-27
+
+**Context.** Zach approved trying GitHub's ARM runners on 27 November (M15's order of work). They are free for public repositories, as the x64 runners are, and are often quicker for work that is pure CPU. Moving a job unmeasured could slow it, or break a tool with no ARM build.
+
+**Decision.** A job, `arm-trial`, runs the static job's lint, analysis, architecture, gates and unit coverage, and the js job's check and build, on `ubuntu-26.04-arm`, with the same pinned actions. `continue-on-error: true` and its absence from the required checks mean it fails no run. After M15's first CI runs, its steps' times are set beside the x64 jobs' here.
+
+- Faster, with every step passing: the static and js jobs move to ARM, and the next trial is one integration shard, which needs wp-env's images and Playwright on arm64.
+- Otherwise: the job goes, with the numbers recorded.
+
+The browser jobs stay on x64 until a trial says otherwise, since the visual baselines are made in Playwright's x64 Linux container.
+
+**The first run** (CI run 46092126026, M15's draft pull request #180): every step passed on ARM. On the steps both ran:
+
+| Step | x64 | ARM |
+| --- | --- | --- |
+| `composer lint` | 46 s | 36 s |
+| `composer analyse` | 20 s | 19 s |
+| `composer arch` | 2 s | 3 s |
+| `composer gates` | 13 s | 16 s |
+| `composer test:coverage` | 206 s | 192 s |
+| `npm ci` | 22 s | 26 s |
+| `npm run check` | 46 s | 40 s |
+| `npm run build` | 9 s | 7 s |
+| **In all** | **364 s** | **339 s** |
+
+About 7 % faster in all, and slower at the gates and `npm ci`. One run is one sample of a shared runner, so the second push's run is set beside it before the jobs move.
+
+**The second run** (CI run 46109090237, 06ddb0e) can't be compared: the x64 static job ran out of its 15 minutes in a path-coverage pass the wheel face's tests made slow, which D-574 fixed. ARM passed it, in 1,131 seconds. **The third** (CI run 46120019654, 6624061) is the second sample: every step passed on ARM again.
+
+| Step | x64 | ARM |
+| --- | --- | --- |
+| `composer lint` | 50 s | 40 s |
+| `composer analyse` | 29 s | 22 s |
+| `composer arch` | 2 s | 3 s |
+| `composer gates` | 15 s | 17 s |
+| `composer test:coverage` | 259 s | 244 s |
+| `npm ci` | 21 s | 23 s |
+| `npm run check` | 41 s | 43 s |
+| `npm run build` | 15 s | 14 s |
+| **In all** | **432 s** | **406 s** |
+
+About 6 % faster in all, again slower at the gates and `npm ci`, and every step passing in both samples: the rule above holds, so the static and js jobs run on `ubuntu-26.04-arm` from 28 November, and the `arm-trial` job is gone. The static job's other steps (the API snapshot, the audits, the benchmarks and the PHP 7.4 parse) were not in the trial; the first run on ARM is their trial, and a benchmark budget that fails there only on ARM is recorded here before anything else changes. The next trial is one integration shard, which needs wp-env's images and Playwright on arm64.
+
+**Status:** Accepted: the static and js jobs moved to ARM (28 November).
+
+### D-570 · A push's full browser step splits across two lanes: chromium-phone in the other lane's checkout · 2026-11-27
+
+**Context.** D-567 left a push's `tools/verify.sh --full` running chromium-desktop and chromium-phone whole, one after the other, on one lane: 33 of its 45 minutes. Zach asked for the split to land before M15's screen work, so the milestone's pushes gain from it.
+
+A lane serves its own checkout's code (wp-env names a site by its config's path, D-311), so one lane's tests can't run against another lane's site. A push carries only commits, though, and every lane's checkout is a worktree of one repository, so the other checkout can stand on the same commit.
+
+**Decision.** `bash tools/verify.sh --full --split <lane> <checkout>`:
+
+- **It refuses, before any gate,** a tree with changes, since the other checkout can only stand on a commit, and a partner checkout with changes of its own, which it will not overwrite.
+- **The other checkout** is moved to this commit with `git checkout --detach`. In the background it runs `tools/verify.sh --half chromium-phone` in its lane: packages when its lock files changed, the build, and chromium-phone. It holds its own lane's lock and trap, and logs to `tmp/split-<lane>.log`.
+- **This run** takes every other step, then chromium-desktop alone, then waits for the other half. It passes only if both halves do, printing the other's last lines either way.
+- **A failure or a stop** on either side ends the other: this run's trap sends TERM to the other half, whose own trap cleans up its sites.
+- **D-567's other rules stand.** Two lanes of browsers is the most (`browser-runs-two-lanes-max`); a split uses two, so no third browser run starts beside it.
+
+**Tests.** `tools/verify-selftest.sh` gains three cases, with no gate run:
+
+- the refusal of a partner checkout with changes;
+- the refusal of a tree with changes;
+- a usage error for `--split` without its lane and checkout.
+
+The halves themselves are checked by their first real run, before M15's next push. Its times are added here.
+
+**First run, 27 November.** M15's push of the admin kit and the wheel faces (9859763), from csb-g on lane 3 split with csb-d on lane 2: 34 minutes in all, against D-567's 45. Before its browser step it ran every other step in about 17 minutes. Then chromium-desktop took 16.9 minutes here (380 passed), and chromium-phone took 15.9 minutes in the other lane (360 passed), at the same time. Both halves passed. One lesson: a split runs from a checkout whose lane has its own sites up. Run from the main checkout on lane 1, whose sites belong to another checkout, the integration step stopped at once with "The integration site was not found".
+
+**Status:** Accepted.
+
+### D-571 · The admin kit's mount: the server's form stays the page, and DataForm stands in front of it · 2026-11-27
+
+**Context.** M15's principle 1: every screen works with no script, and posts what it always did, through the same nonce and the same checks. The admin kit is what each of the six screens is built on (docs/ADMIN-KIT.md), so its contract is set once, here, and tested on a page of its own before any screen uses it.
+
+**Decision.** A screen prints its server form between `Mount::open( $form )` and `Mount::close()`. The form's description rides beside the controls as JSON (`JSON_HEX_TAG`, so no field's words end the script early). The script:
+
+- draws DataForm 22 in a box of its own before the server's controls, and hides them; they still post;
+- writes each edit into the server's control of the field's input name, with a bubbling `change` (WooCommerce's Settings and variations listen for one);
+- turns off the browser's own validation while it is mounted, so the server decides;
+- gives each refused field the server's message until that field is edited.
+
+What DataForm 22 does, found while building it (`node_modules/@wordpress/dataviews` 22.0.0):
+
+- **Validity nests under cards.** A field in a card is read as `validity[card].children[field]` (`build-module/components/dataform-layouts/card/index.mjs:56`, `data-form-layout.mjs:36`), not by the field's id. `validityOf()` nests it.
+- **A message waits for a touch.** `@wordpress/ui`'s `ControlWithError` shows a message once the field is left, or on an `invalid` event (`form/primitives/control-with-error/control-with-error.mjs:52-58`). A refusal that comes with the page would wait unseen, so `reveal()` sends each refused control an `invalid` of the script's own once DataForm has set its message, as DataForm's own `useRevealValidity` does (`hooks/use-reveal-validity.mjs`). An event the script makes moves no focus.
+- **A number field clamps to its limits.** Typing 99 into a field whose hint says 30 at most posts 30. The limits are the server's too, so the value posted is one the server takes; a rule only the server knows (one field's value against another's) still comes back as a refusal.
+
+The kit's stylesheet is one file every screen shares, `build/admin/kit.css`, with its right-to-left copy. It is imported through `assets/src/admin/form/style.css`, since the package declares no side effects and webpack drops an import of its own stylesheet, and named by a cache group of its own (`webpack.config.js`). Each screen has an entry from the start, so no screen's lane edits that file. ESLint keeps the kit from importing anything of the builder's or the screens'.
+
+Each screen's script is about 490 kB before compression, DataViews in it, and WP-CLI's JavaScript parser ran out of its 128 MB on them in `composer i18n:check`. They will hold the plugin's strings, so they are not left out as `build/builder/three.js` is (D-490). `i18n:pot` and `i18n:check` run `wp i18n make-pot` with PHP's memory limit at 1 GB instead (`php -d memory_limit=1G /usr/local/bin/wp`, the wp-env CLI's phar), in about six seconds. DataViews' own strings are WordPress's, in its `default` domain, and stay out of the plugin's POT.
+
+**Tests.**
+
+- `tests/Unit/Admin/Form/FormTest.php` covers the description.
+- `tests/Integration/AdminFormMountTest.php` covers the markup, a `</script>` in a help text included.
+- `tests/js/admin-form-*.test.ts` cover the reading, the writing and the mount.
+- `tests/e2e/admin-kit.spec.ts` runs on a fixture page (`tests/e2e/mu-plugins/cbuild-e2e-admin-kit.php`): an edit saved through the kit, the server's refusal named on its field until it is edited, a field shown only while its condition holds, and the server form alone with no script, axe-clean.
+
+A deliberate break, the reveal taken out, failed the refusal's test at "Offering assembly needs at least one day." not found.
+
+**Status:** Accepted.
+
+### D-572 · The 3D wheels' outer faces from their featured photos, read by the domain and kept a month a photo · 2026-11-27
+
+**Context.** Zach asked on 27 November for the 3D view's wheels to show their own faces, textured from each wheel part's featured photo: single wheels, face-on, on white, trimmed on the server, and refused where the photo is not face-on. Until now a wheel was a lathe in one colour, or the wheels' layer image wrapped round it.
+
+**Decision.**
+
+- **The domain reads the photo** (`Domain\Scene\WheelFace`): a square grid of samples over the whole photo, each red, green, blue and opacity. It refuses, with a code, a photo that is not square (3 %), whose corners are not white or clear (90 % of them), whose wheel fills less than half of it, is wider than tall or taller than wide (8 %, an angled shot), is off centre (8 %), or is not one round wheel (a quarter of the box's corners covered: a set, a box, a pack). Otherwise it gives the face's box in ten-thousandths of the photo and the tread's colour, the mean of the wheel's samples between 86 % and 96 % of its radius. Every test is on whole numbers, so Infection holds it at 100 % with no mutant left to static analysis (257 mutants).
+- **The adapter** (`Adapter\WpWheelFaces`, behind `Port\WheelFaces`) reads the featured image's `medium` file, or the whole one, into a 64-sample grid with GD or Imagick, and keeps the reading, or the refusal, in a transient `cbuild_wheel_face_<md5>` for 30 days. The key is the attachment, its file and the file's modified time, so a replaced photo is read again and a request never reads one twice. The page gets the `medium_large` rendition's address.
+- **The scene** (`Front\SceneView::withFaces()`, given by the container as each release's additions are, D-208) sets `wheels.face` to `{url, x, y, size}` and `wheels.color` to the tread, before `cbuild_scene`. The face is held back with the wheels' layer where `cbuild_composed_layer` answers other than `as_is` for `3d`, since the photo is the wheel's picture too.
+- **The 3D view** draws each wheel as two lathes of its profile: the outer half, the face and its shoulder out to the contact band, with its texture coordinates projected along the axle into the face's box (`photoUv()`), and the rest in the tread's colour. A wheel on the far side is turned half round about the vertical, so its photo faces out and reads the right way round from that side. Without a face, the wheels are drawn as before, the layer image included.
+
+**Why the domain and not the browser.** The browser never decides what a part looks like from its data (CLAUDE.md, One engine), and a photo read once on the server, then kept, costs a page nothing. Reading on the server also lets a refused photo fall back to the plain wheel before the page is drawn, with no flash of a wrong texture.
+
+**Why these thresholds.** A shop's wheel photos are product shots: centred on white, with a few per cent of crop error. The thresholds take those and refuse the shots that would texture a wheel wrongly: an angled shot stretches the face, a set or a pack puts several wheels on one, a coloured ground rings the face with it.
+
+**Tests.** `WheelFaceTest` (43 cases, the codes' boundaries on grids of 25, 40, 56 and 100), `WheelFacesTest` (the adapter with GD and with Imagick, the transient and its key), `SceneViewTest` (the face, the tread, and none where the layer is held back), `ContainerTest` (the copy), `three-shapes` and `three-parts` (the projection, the split and the far side's turn), and the visual baseline `3d-wheel-faces.png` at the Side place from `tests/e2e/fixtures/layers/wheel-face.jpg`.
+
+### D-573 · /verify's types step compares the types before and after regenerating them, not against the commit · 2026-11-27
+
+**Context.** D-567's `tools/verify.sh` failed its types step whenever `assets/src/types` differed from the commit, so a schema change, with its types made, could never pass /verify before the commit that holds it. It stopped M15's wheel faces (D-572): `M assets/src/types/state.d.ts`, "FAILED: the generated types differ from the committed ones".
+
+**Decision.** The step takes a digest of `assets/src/types` before `npm run types` and after, and fails only if regenerating changed it, with the files and "run npm run types". That is what the step is for, that the committed types are what the schemas make. In CI, on a clean checkout, it is the same test as against the commit. Tried by hand both ways on 27 November: fresh types, not yet committed, pass, and a stale `state.d.ts` fails.
+
+### D-574 · Three CI failures on M15's first push: the wheel face's boundary tests leave the path-coverage pass, the kit's test imports DataForm with its file, and the e2e fixtures parse on PHP 7.4 · 2026-11-28
+
+**Context.** CI's run 46109090237 on PR #180 (06ddb0e, the admin kit and the wheel faces) failed three jobs that /verify on this Mac had passed.
+
+**1. The static job ran out of its 15 minutes** in `composer test:coverage`'s second pass, the domain's path coverage. `WheelFaceTest` alone took 5 minutes 28 seconds under it here: its boundary tests read photos of up to 100 samples a side many times over, and Xdebug's path coverage runs that code slowly. Eight tests took 302 of the 328 seconds, the box's corners at each grid size (107), the ties (42), the tread's rounding (34) and band (31), the centring (30), the corners exactly (17), the width against the height (17) and the box's rounding (15).
+
+- **They go in a group of their own, `exhaustive`, which `tools/coverage.sh` leaves out of that pass only,** as D-295 did for the 500-look cap test. The plain unit pass, `composer test:unit` and Infection still run them; Infection's 100 % on `WheelFace` rests on them. Without them the floors hold: 2,117 of 2,117 lines and 2,103 of 2,103 branches in `src/Domain`. The step takes 1 minute 59 seconds here with four shards, as CI's runners have, against more than 6.
+- **What was tried, and reverted:** `read()` holds 3,385 of the class's paths, so it was split into five steps. That took 8 minutes, not 5. Moving each sample's test into a closure took more than 10. Splitting the test file into four, so the shards share it, still took 6 minutes 15 seconds, since the shards balance by file size and two of the four landed together. As D-295 found, it is the work the tests do, not the paths.
+
+**2. The kit's Vitest test timed out** at 5 seconds: `counting the refusals to show` imported `draw.ts`, which brings DataForm, inside the test, and its first transform on a cold runner took longer. It is imported with the file now, which no test's time limit counts.
+
+**3. The zip lifecycle stopped at its PHP 7.4 step** with WP-CLI's exit 255. The e2e must-use plugins load on every request to the test sites, WP-CLI's on PHP 7.4 too, and M15's `cbuild-e2e-admin-kit.php` called `Field::rules()` with named arguments: "Parse error: syntax error, unexpected ':', expecting ')' in cbuild-e2e-admin-kit.php on line 90", from `php -l` in `php:7.4-cli`. The call takes its arguments in order now. CI's PHP 7.4 parse step, in the static job, lints `tests/e2e/mu-plugins/*.php` too, so a fixture that would stop the lifecycle fails there first, a few minutes in. All 11 parse on 7.4.
+
+**The ARM trial** (D-569) passed in that run, in 1,131 seconds. Its time carried the same slow pass, and the x64 job it is measured against was cancelled, so the run decides nothing; the next push's run does.
+
+### D-575 · The browser tests' commands are tried again when wp-env loses its connection to wordpress.org before running them · 2026-11-28
+
+**Context.** CI run 46120019654 (6624061) lost one browser test of 718, `builder.spec.ts:9562`, to its fixture's `wp-env run cli -- wp eval-file …`, which failed with "Error [ERR_SOCKET_CLOSED_BEFORE_CONNECTION]: Socket closed before the connection was established" from a TLS socket. Every `wp-env run` loads wp-env's config, and loading it asks `https://api.wordpress.org/core/stable-check/1.0/` for the latest WordPress version, pinned versions or not (`@wordpress/env` 12, `lib/wordpress.js`, `getLatestWordPressVersion()`, called from `lib/commands/run.js`'s `loadConfig()`). A browser run calls `wp-env run` thousands of times, so a connection wordpress.org drops now and then fails whichever test made that call, before its command runs. D-565 tries a start again on a failed download; this is the same kind of failure.
+
+**Decision.** `tests/e2e/support/cli.ts`'s `retried()`, under the helpers' lock, tries a command again, twice, 2 then 5 seconds apart, where it failed with a lost connection (`ERR_SOCKET_CLOSED_BEFORE_CONNECTION`, `ECONNRESET`, `ETIMEDOUT`, `EAI_AGAIN`, "socket hang up") and printed nothing on stdout, so it never ran. Any other failure, or one that printed anything, throws at once, as before; a command that gave up says after how many tries.
+
+**Not the tests' retries.** Playwright's retries would run the whole test again and hide a test that fails on its own; this tries only the one call wp-env never made.
+
+**Tests.** `tests/js/e2e-cli.test.ts`: a lost connection tried again and the output of the try that worked, three tries at most and then the last words, any other failure tried once, a command that printed anything tried once, and the other codes. Deliberate break: without the stdout check, "tries once a command that printed anything, since it ran" failed.
+
+### D-576 · The admin kit's leaving warning: the browser's own prompt, only while something differs from what the page loaded with · 2026-11-28
+
+**Context.** M15's plan puts "a leaving warning only after a change" on every screen, and the kit's own warning off on WooCommerce's Settings, which prompt by themselves once a control's `change` bubbles, as the kit's writes do (`docs/research/admin-handbooks-2026.md`).
+
+**Decision.** `assets/src/admin/form/leaving.ts`'s `guard()`, set by the mount:
+
+- **It warns while the form's data differs from what the page loaded with,** compared as a whole, so a value changed and changed back asks nothing; an edited-field set would have warned there.
+- **The Save leaves without it.** The form's last `submit` is read when the page is about to leave, after every listener has run, so a Save that a listener stopped, and the page stayed, still warns.
+- **It is the browser's own prompt**: `preventDefault()`, and `returnValue` set for Safari and Chrome before 119, with no text of ours, since no browser shows a page's words there.
+- **`Form::leftToHost()`** describes a form whose page warns by itself, as `leave: false`, and the kit sets no guard. The WooCommerce Settings screens use it.
+- **Giving the page back** takes the guard away with the rest.
+
+**Tests.** `admin-form-mount.test.ts`: a change warns, a change undone doesn't, a Save doesn't, a stopped Save does, `leave: false` doesn't, an unmounted kit doesn't. The tests give back every mount after each, since each listens on the window. `FormTest`: `leave` true by default, false from `leftToHost()`, kept through `failed()`, and the form it was called on unchanged. `admin-kit.spec.ts` in all six engine and width projects: looked at and closed, no prompt; changed and closed, the prompt and the page stays; then saved, no prompt. In Firefox and WebKit a page may prompt only after trusted input, so the test clicks and types as a person would; with `fill()` neither prompted, while Chromium did. Deliberate break: with no guard set, the browser test failed (`prompts` was `[]`).
+
+### D-577 · The admin kit sums up the server's refusals in one inline notice that takes focus, its links landing on DataForm's controls · 2026-11-28
+
+**Context.** M15's plan sends the server's errors back to their fields, "with one notice at the top that links to each". The handbook research adds that the summary must carry `inline`, or core's `common.js` moves it under the page heading (`wp-admin/js/common.js:1090`, recommendation 13), and that its links must land on the real input (finding 4.2). A refusal arrives on a fresh page load, so nothing moves focus by itself.
+
+**Decision.**
+
+- **`Mount::open()` prints the summary first in the mount** wherever the form was refused: `wp_get_admin_notice()` (`functions.php:9196`, which passes the message through as markup, so the kit escapes each part) of type `error`, with the classes `inline` and `cbuild-form__summary` and `tabindex="-1"`. It says how many fields need a change (`_n()`), then lists each, in the fields' order, as a link: the field's label and its message, through a translatable `%1$s: %2$s`. `Form::refusals()` gives the list. A screen prints no other notice for refusals.
+- **With a script, the summary takes focus as the page loads,** as GOV.UK's error summary does after a submit ([GOV.UK Design System, Error summary](https://design-system.service.gov.uk/components/error-summary/)), so a keyboard or screen reader user starts from what went wrong. Each link moves focus to DataForm's control for its field. DataForm gives its controls ids of its own, so the control is found through its label: the same words first, then the label followed by a space, since DataForm writes a required field's label as "Assembly time (Required)", translated. A link to a field DataForm isn't showing is left to the page.
+- **With no script, each link goes to the server's control** by `Mount::controlId( $form, $field )`, `cbuild-form-<form>-<field>`, which a screen gives the control.
+- **Copy:** "1 field needs a change before the form can be saved." and its plural, in fr_CA too.
+
+**Tests.** `AdminFormMountTest`: the summary first in the mount, inline and focusable, the count, each link's address, field and words, escaped, in the fields' order; the singular; no summary without refusals. `admin-form-mount.test.ts`: focus on mount, a link to DataForm's control (its label with "(Required)"), a hidden field's link left alone, focus untouched with no refusals. `admin-kit.spec.ts` in chromium, firefox and webkit at both widths, fr-ca and rtl: the summary focused, the link landing on Assembly time; with no script, the link going to the server's control. Red: the browser test first failed in all three engines with focus "inactive" on the control, since a real DataForm label reads "Assembly time (Required)", and the unit test then reproduced it with the stand-in's label. Deliberate break: with the summary's script left out, the browser test failed at the summary's focus.
+
+### D-578 · The admin kit's list: a DataViews table with a modal, moves in each row's menu, Remove with an Undo, and the rows posted under the server form's names · 2026-11-28
+
+**Context.** Six of M15's screens hold lists of rows: the mapping, which source wins, slots, presets, the width guide and the layer order. The UX research's pattern 5 makes each a DataViews table with Add, Edit in a DataForm modal, Remove with Undo before saving, and Move up and Move down where order matters (`docs/research/admin-ux-2026.md`). DataForm has no repeating group and DataViews no row reorder (finding 3), so the kit composes them.
+
+**Decision.**
+
+- **PHP:** `Field::rows( id, name, label, columns, max )`, with `words()`, `listed()` and `ordered()`.
+  - A column is a field whose name is what follows a row's place, so a row posts as `cbuild[guide][0][size]`, the names today's no-script tables use (`templates/admin/settings-mapping.php:66`).
+  - Refused where written: no columns, a limit outside 1 to 50 (the mapping's 50 is the most of any list), a column named twice, a column not starting with `[`, a list inside a list, a column with a condition, which a table can't show, and a row with a column the list hasn't.
+  - The kit's own words (Edit, Remove, Move up, Move down, "Row removed.", Undo, Cancel, Done) are translated by `Mount::words()` and printed with a form that has a list.
+- **What it posts:** while the kit is mounted, the server's own controls for the list are turned off, since a fixed set of controls can't follow an Add or a Remove, and the kit posts hidden inputs for the rows as they stand, with a bubbling `change`. Unmounting gives the controls back. With no script, a screen prints the rows as inputs with a spare, and leaves a blank row out when saving.
+- **The table:** each column, with no search, filters, sorting, hiding or view settings, since a list is short and its order is the shop's. Each row keeps a key of its own through moves and removals, so its markup, and the focus on its menu, move with it.
+- **Row actions** are in each row's menu: Edit, Move up and Move down where ordered, each offered only where it can move, and Remove. DataViews has no drag for rows; the buttons are the keyboard's way anyway (WCAG 2.5.7).
+- **The modal** holds DataForm for one row, in a form of its own, outside the page's, so the browser holds a required column and Enter is Done. The page's form keeps its own checks off (D-571).
+- **Remove** shows wp-components' `Snackbar`, which speaks it, with Undo, which puts the row back where it was. It has no timer (`explicitDismiss`): the list waits for its Save, and an Undo that vanished would be a time limit (WCAG 2.2.1). The next change to the list closes it. Focus goes to Add, two frames on, once the row's menu has closed and handed focus back to its own button, which the removal took away.
+- **Full:** Add stays focusable but off, described by the list's own sentence, such as "The guide holds 3 rows at most."
+- **A refusal of the list** shows under its table. The list is a group named by its label, focusable, and described by the message, so the summary's link (D-577) lands on it.
+
+**A Chromium finding: a group, not a fieldset.** The list was first a `fieldset` with a `legend`. After a removal, Chromium left DataViews' table unrendered: in the DOM with `display: flex`, but `checkVisibility()` false and 0 by 0, and so out of the accessibility tree. DataViews' wrapper is a size container (`container-type: inline-size`). With a `div` of role `group`, named by `aria-labelledby`, the same steps render. Recorded so no one turns it back into a fieldset.
+
+**Tests.**
+
+- `FormTest`: the description (columns, every column in every row, the limit, `ordered`, the words), the 11 refusals, and a list as a field of its form.
+- `AdminFormMountTest`: the kit's words with a list, none without, in fr_CA.
+- `admin-form-rows.test.ts`: rows typed by their columns, moves, removal and restore, Add up to the limit, what is posted, a second post in place of the first, and the controls given back.
+- `admin-form-mount.test.ts`: the rows and the list's control given to DataForm, posting from the start and after a change, the page given back, a list with nothing to draw it refused, and the summary's link to a list.
+- `admin-kit.spec.ts`, in chromium, firefox and webkit at both widths, fr-ca and rtl: a required column holds the modal, Enter is Done, Move up, Remove with the snackbar and focus on Add, Undo, Edit, full at 3, Save in order, the server's refusal in the summary and under the table, and its link landing on the list. With no script: the spare row saves, and a blank row is left out. axe on the list and its modal.
+
+**Red runs:** the unit, integration and Vitest tests failed before the code. In the browser test, Remove first failed in Chromium with no rows found (the fieldset), then on focus (Add not focused, before the two frames). fr-ca first failed because "(Obligatoire)" holds "to", so the test matches From and To exactly. Deliberate break: with a list's change not posted, the browser test failed at the saved order.

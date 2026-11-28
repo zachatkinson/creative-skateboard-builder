@@ -60,12 +60,31 @@ declare module '@wordpress/element' {
 		props?: Record< string, unknown > | null,
 		...children: unknown[]
 	): unknown;
-	export function useState< T >( initial: T ): [ T, ( next: T ) => void ];
+	export function useState< T >(
+		initial: T | ( () => T )
+	): [ T, ( next: T ) => void ];
+	/**
+	 * A ref, for the admin kit's list to move focus to its Add button (M15, assets/src/admin/form/list.ts).
+	 *
+	 * @param initial Its first value.
+	 */
+	export function useRef< T >( initial: T | null ): { current: T | null };
+	/** A form's submit, as React gives it. */
+	export type FormEvent< T > = Event & { currentTarget: T };
 	export function useEffect(
 		effect: () => void | ( () => void ),
 		deps: unknown[]
 	): void;
 	export const Fragment: unknown;
+	/**
+	 * A React root in an element, for the admin kit's DataForm (M15, assets/src/admin/form/draw.ts).
+	 *
+	 * @param container The element.
+	 */
+	export function createRoot( container: Element ): {
+		render: ( element: unknown ) => void;
+		unmount: () => void;
+	};
 }
 declare module '@wordpress/block-editor' {
 	export const InspectorControls: unknown;
@@ -77,6 +96,10 @@ declare module '@wordpress/components' {
 	export const PanelBody: unknown;
 	export const ComboboxControl: unknown;
 	export const Placeholder: unknown;
+	/* The admin kit's list (M15, assets/src/admin/form/list.ts). */
+	export const Button: unknown;
+	export const Modal: unknown;
+	export const Snackbar: unknown;
 }
 declare module '@wordpress/server-side-render' {
 	const ServerSideRender: unknown;

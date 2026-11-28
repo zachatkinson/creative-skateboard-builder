@@ -9,7 +9,7 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-11-27T16:31:19+00:00\n"
+"POT-Creation-Date: 2026-11-28T12:04:33+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: creative-skateboard-builder\n"
@@ -824,6 +824,7 @@ msgid "Leave it empty for that width and wider."
 msgstr ""
 
 #: src/Admin/BuildTab.php:1266
+#: src/Admin/Form/Mount.php:63
 msgid "Remove"
 msgstr ""
 
@@ -1054,6 +1055,66 @@ msgstr ""
 #: src/Admin/CheckScreen.php:214
 msgid "The kit's Build tab"
 msgstr ""
+
+#: src/Admin/Form/Mount.php:62
+msgid "Edit"
+msgstr ""
+
+#: src/Admin/Form/Mount.php:64
+#: templates/admin/build-tab.php:68
+msgid "Move up"
+msgstr ""
+
+#: src/Admin/Form/Mount.php:65
+#: templates/admin/build-tab.php:69
+msgid "Move down"
+msgstr ""
+
+#: src/Admin/Form/Mount.php:66
+msgid "Row removed."
+msgstr ""
+
+#. translators: %s: the deleted build's name.
+#: src/Admin/Form/Mount.php:67
+#: src/Front/BuilderView.php:2235
+#: templates/account/my-builds.php:43
+msgid "Undo"
+msgstr ""
+
+#: src/Admin/Form/Mount.php:68
+msgid "Cancel"
+msgstr ""
+
+#: src/Admin/Form/Mount.php:69
+msgid "Done"
+msgstr ""
+
+#. translators: 1: a field's label, 2: why the server refused its value.
+#. translators: 1: a slot's label, such as Deck; 2: the product's name, which may be a link.
+#. translators: 1: a slot's label, such as Bearings. 2: a part's name.
+#. translators: 1: a slot's label, such as Wheels. 2: a brand's name, or a size such as 54 mm.
+#. translators: 1: a slot's label, such as Deck. 2: the part's name.
+#. translators: 1: a spec's name, such as Deck width; 2: its value, such as 8.5″.
+#: src/Admin/Form/Mount.php:105
+#: src/Cart/ShowHooks.php:539
+#: src/Front/BuilderView.php:2177
+#: src/Front/Words.php:545
+#: src/Front/Words.php:650
+#: src/Order/OrderHooks.php:291
+#: src/Order/WorkshopWords.php:251
+#: templates/admin/order-build.php:67
+#: templates/admin/tickets.php:113
+#, php-format
+msgid "%1$s: %2$s"
+msgstr ""
+
+#. translators: %d: how many fields were refused.
+#: src/Admin/Form/Mount.php:112
+#, php-format
+msgid "%d field needs a change before the form can be saved."
+msgid_plural "%d fields need a change before the form can be saved."
+msgstr[0] ""
+msgstr[1] ""
 
 #: src/Admin/ImportScreen.php:176
 msgid "The import had stopped part way and has been started again from where it was."
@@ -2213,23 +2274,6 @@ msgstr ""
 msgid "For a part, what the cart says when its build is removed."
 msgstr ""
 
-#. translators: 1: a slot's label, such as Deck; 2: the product's name, which may be a link.
-#. translators: 1: a slot's label, such as Bearings. 2: a part's name.
-#. translators: 1: a slot's label, such as Wheels. 2: a brand's name, or a size such as 54 mm.
-#. translators: 1: a slot's label, such as Deck. 2: the part's name.
-#. translators: 1: a spec's name, such as Deck width; 2: its value, such as 8.5″.
-#: src/Cart/ShowHooks.php:539
-#: src/Front/BuilderView.php:2177
-#: src/Front/Words.php:545
-#: src/Front/Words.php:650
-#: src/Order/OrderHooks.php:291
-#: src/Order/WorkshopWords.php:251
-#: templates/admin/order-build.php:67
-#: templates/admin/tickets.php:113
-#, php-format
-msgid "%1$s: %2$s"
-msgstr ""
-
 #: src/Cli/CheckCommand.php:87
 #: templates/admin/check.php:51
 msgid "The check found nothing to fix."
@@ -3075,12 +3119,6 @@ msgstr ""
 #: src/Front/BuilderView.php:2231
 #: src/Front/BuilderView.php:2380
 msgid "Use these"
-msgstr ""
-
-#. translators: %s: the deleted build's name.
-#: src/Front/BuilderView.php:2235
-#: templates/account/my-builds.php:43
-msgid "Undo"
 msgstr ""
 
 #. translators: %s: how many more brands there are to filter by, such as 7. The button shows their chips.
@@ -4818,14 +4856,6 @@ msgstr ""
 #: templates/admin/build-tab.php:41
 #, php-format
 msgid "%1$s is now slot %2$d of %3$d."
-msgstr ""
-
-#: templates/admin/build-tab.php:68
-msgid "Move up"
-msgstr ""
-
-#: templates/admin/build-tab.php:69
-msgid "Move down"
 msgstr ""
 
 #. translators: %s: a row's name, such as Row 2.
