@@ -8,6 +8,8 @@ M15's screens are built on one kit: a server form, described once in PHP, that D
 2. **The script stands in front of it.** DataForm is drawn before the server's controls, which are hidden but still posted. Each edit is written into the server's control of the same input name, with a bubbling `change`.
 3. **The server decides.** A field's limits are hints. While the kit is mounted the browser's own validation is off, and what the server refuses comes back on its field, shown as the page loads, until that field is edited.
 
+4. **Leaving warns only after a change.** The browser's own prompt shows when something differs from what the page loaded with, so a value changed and changed back asks nothing. A Save leaves without it; a Save that something stopped warns after.
+
 ## A screen, in PHP
 
 ```php
@@ -43,7 +45,7 @@ On the screen's own `admin_enqueue_scripts`, `Assets::enqueue( '<screen>', CBUIL
   - `readOnly( source )` for a value set elsewhere, with where;
   - `visibleWhen( field, values )` shows a field only while another holds one of the values.
 - **Card:** `of( id, label, fields )`, then `closed( summaryFieldId )` to start it shut with a field's value in its header.
-- **Form:** refuses a duplicate id, and a condition, card or summary that names an unknown field. `failed( $errors )` opens the cards that hold an error.
+- **Form:** refuses a duplicate id, and a condition, card or summary that names an unknown field. `failed( $errors )` opens the cards that hold an error. `leftToHost()` is for a page that warns before it is left by itself, as WooCommerce's Settings do: the kit adds no second warning.
 
 ## A screen, in the browser
 

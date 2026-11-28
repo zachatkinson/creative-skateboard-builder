@@ -35,6 +35,7 @@ const description = {
 	errors: { lead_days: 'Use a whole number.' },
 };
 
+const live: ( () => void )[] = [];
 let drawn: Drawn[];
 let unmounted: number;
 const draw: Draw = ( where, props ) => {
@@ -55,8 +56,21 @@ beforeEach( () => {
 } );
 
 afterEach( () => {
+	// Each mount listens on the window, so each is given back before the next test.
+	live.splice( 0 ).forEach( ( unmount ) => unmount() );
 	document.body.innerHTML = '';
 } );
+
+/**
+ * Mounts as the kit does, kept to be given back after the test.
+ *
+ * @param where The mount.
+ */
+function mounted( where: HTMLElement ): () => void {
+	const unmount = mount( where, draw );
+	live.push( unmount );
+	return unmount;
+}
 
 const last = (): Drawn => drawn[ drawn.length - 1 ]!;
 const kit = () => document.querySelector< HTMLElement >( '.cbuild-form' )!;
@@ -65,7 +79,7 @@ const server = () =>
 
 describe( 'mounting a described form', () => {
 	it( "draws DataForm in its own box before the server's controls, and hides them, which still post", () => {
-		mount( kit(), draw );
+		mounted( kit() );
 		const app = kit().querySelector< HTMLElement >( '.cbuild-form__app' )!;
 		expect( app.dataset.drawn ).toBe( 'yes' );
 		expect( app.nextElementSibling ).toBe( server() );
@@ -76,7 +90,7 @@ describe( 'mounting a described form', () => {
 	} );
 
 	it( "gives DataForm the data, the fields, the form and the server's refusals", () => {
-		mount( kit(), draw );
+		mounted( kit() );
 		expect( last().data ).toEqual( { lead_days: 3, assembly: false } );
 		expect( last().fields.map( ( field ) => field.id ) ).toEqual( [
 			'lead_days',
@@ -94,7 +108,7 @@ describe( 'mounting a described form', () => {
 	} );
 
 	it( "writes an edit into the server's control, and drops the edited field's refusal", () => {
-		mount( kit(), draw );
+		mounted( kit() );
 		last().onChange( { lead_days: 5 } );
 		expect(
 			server().querySelector< HTMLInputElement >( '[type=text]' )!.value
@@ -110,7 +124,7 @@ describe( 'mounting a described form', () => {
 	} );
 
 	it( 'gives the page back as it was when unmounted', () => {
-		const unmount = mount( kit(), draw );
+		const unmount = mounted( kit() );
 		unmount();
 		expect( unmounted ).toBe( 1 );
 		expect( kit().querySelector( '.cbuild-form__app' ) ).toBeNull();
@@ -122,7 +136,7 @@ describe( 'mounting a described form', () => {
 
 	it( 'leaves the server form alone where the description cannot be read', () => {
 		kit().querySelector( 'script' )!.textContent = '{not json';
-		expect( () => mount( kit(), draw ) ).toThrow( 'cbuild-settings' );
+		expect( () => mounted( kit() ) ).toThrow( 'cbuild-settings' );
 		expect( server().hidden ).toBe( false );
 		expect( drawn ).toEqual( [] );
 	} );
@@ -130,8 +144,67 @@ describe( 'mounting a described form', () => {
 	it( 'mounts a form outside any form element too, as a screen of its own may', () => {
 		const lone = kit();
 		document.body.replaceChildren( lone );
-		mount( lone, draw );
+		mounted( lone );
 		expect( server().hidden ).toBe( true );
+	} );
+} );
+
+/**
+ * Whether leaving the page now would be warned of: a `beforeunload` the kit cancels.
+ */
+function warned(): boolean {
+	const leaving = new Event( 'beforeunload', { cancelable: true } );
+	window.dispatchEvent( leaving );
+	return leaving.defaultPrevented;
+}
+
+describe( 'the leaving warning', () => {
+	it( 'warns only once a value differs from what the page loaded with', () => {
+		const unmount = mounted( kit() );
+		expect( warned() ).toBe( false );
+		last().onChange( { lead_days: 5 } );
+		expect( warned() ).toBe( true );
+		last().onChange( { lead_days: 3 } );
+		expect( warned() ).toBe( false );
+		unmount();
+	} );
+
+	it( 'lets the Save go without a warning', () => {
+		const unmount = mounted( kit() );
+		last().onChange( { assembly: true } );
+		document
+			.querySelector( 'form' )!
+			.dispatchEvent( new Event( 'submit', { cancelable: true } ) );
+		expect( warned() ).toBe( false );
+		unmount();
+	} );
+
+	it( 'warns again where a Save was stopped before it left the page', () => {
+		const unmount = mounted( kit() );
+		last().onChange( { assembly: true } );
+		const form = document.querySelector( 'form' )!;
+		form.addEventListener( 'submit', ( event ) => event.preventDefault() );
+		form.dispatchEvent( new Event( 'submit', { cancelable: true } ) );
+		expect( warned() ).toBe( true );
+		unmount();
+	} );
+
+	it( "leaves it to a page that warns itself, as WooCommerce's Settings do", () => {
+		kit().querySelector( 'script' )!.textContent = JSON.stringify( {
+			...description,
+			leave: false,
+		} );
+		const unmount = mounted( kit() );
+		last().onChange( { lead_days: 5 } );
+		expect( warned() ).toBe( false );
+		unmount();
+	} );
+
+	it( 'warns no more once the kit gives the page back', () => {
+		const unmount = mounted( kit() );
+		last().onChange( { lead_days: 5 } );
+		unmount();
+		expect( warned() ).toBe( false );
 	} );
 } );
 

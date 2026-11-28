@@ -54,6 +54,8 @@ export type Description = {
 	fields: FieldDescription[];
 	cards: CardDescription[];
 	errors: Record< string, string >;
+	/** Whether the kit warns before the page is left with a change; false where the page warns itself. */
+	leave?: boolean;
 };
 
 /** The field types whose min and max DataForm applies: a text field's are left to the server. */

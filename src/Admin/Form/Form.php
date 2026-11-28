@@ -31,12 +31,14 @@ final class Form {
 	 * @param list<Field> $fields Its fields.
 	 * @param list<Card>  $cards  Its cards.
 	 * @param Errors      $errors What the server refused.
+	 * @param bool        $leave  Whether the kit warns before the page is left with a change.
 	 */
 	private function __construct(
 		public readonly string $id,
 		private readonly array $fields,
 		private readonly array $cards,
 		private readonly Errors $errors,
+		private readonly bool $leave,
 	) {}
 
 	/**
@@ -74,7 +76,7 @@ final class Form {
 				}
 			}
 		}
-		return new self( $id, $fields, $cards, Errors::none() );
+		return new self( $id, $fields, $cards, Errors::none(), true );
 	}
 
 	/**
@@ -91,7 +93,17 @@ final class Form {
 			static fn( Card $card ): Card => array() === array_intersect( $card->fields, array_keys( $messages ) ) ? $card : $card->opened(),
 			$this->cards
 		);
-		return new self( $this->id, $this->fields, $cards, $errors );
+		return new self( $this->id, $this->fields, $cards, $errors, $this->leave );
+	}
+
+	/**
+	 * The form on a page that warns before it is left by itself, as WooCommerce's Settings do once a control's `change`
+	 * bubbles: the kit adds no second warning (docs/ADMIN-KIT.md).
+	 *
+	 * @since 1.5.0
+	 */
+	public function leftToHost(): self {
+		return new self( $this->id, $this->fields, $this->cards, $this->errors, false );
 	}
 
 	/**
@@ -110,7 +122,7 @@ final class Form {
 	 *
 	 * @since 1.5.0
 	 *
-	 * @return array{id: string, fields: list<array<string, mixed>>, cards: list<array<string, mixed>>, errors: array<string, string>}
+	 * @return array{id: string, fields: list<array<string, mixed>>, cards: list<array<string, mixed>>, errors: array<string, string>, leave: bool}
 	 */
 	public function toArray(): array {
 		return array(
@@ -118,6 +130,7 @@ final class Form {
 			'fields' => array_map( static fn( Field $field ): array => $field->toArray(), $this->fields ),
 			'cards'  => array_map( static fn( Card $card ): array => $card->toArray(), $this->cards ),
 			'errors' => $this->errors->toArray(),
+			'leave'  => $this->leave,
 		);
 	}
 }

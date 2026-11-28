@@ -183,4 +183,13 @@ final class FormTest extends TestCase {
 		self::assertTrue( Errors::none()->isEmpty() );
 		self::assertFalse( $errors->isEmpty() );
 	}
+
+	public function test_a_form_warns_before_the_page_is_left_unless_its_page_warns_itself(): void {
+		$form = Form::of( 'f', array( Field::of( 'a', 'a', 'A', 'text' ) ), array() );
+		self::assertTrue( $form->toArray()['leave'], 'the kit warns' );
+		$host = $form->leftToHost();
+		self::assertFalse( $host->toArray()['leave'], 'WooCommerce\'s Settings warn themselves' );
+		self::assertTrue( $form->toArray()['leave'], 'the form it was called on is as it was' );
+		self::assertFalse( $host->failed( Errors::none()->with( 'a', 'No.' ) )->toArray()['leave'], 'kept with the refusals' );
+	}
 }

@@ -17,6 +17,7 @@ import {
 	type Description,
 } from './describe';
 import { takeOver, write } from './inputs';
+import { guard } from './leaving';
 
 /** What DataForm is drawn with. */
 export type Drawn = {
@@ -76,11 +77,15 @@ export function mount( kit: HTMLElement, draw: Draw ): () => void {
 	const fields = fieldsOf( description );
 	const form = formOf( description );
 	let data = dataOf( description );
+	const loaded = JSON.stringify( data );
 	const edited = new Set< string >();
 
-	const giveBack = kit.closest( 'form' )
-		? takeOver( kit.closest( 'form' ) as HTMLFormElement )
-		: () => {};
+	const host = kit.closest( 'form' );
+	const giveBack = host ? takeOver( host ) : () => {};
+	const unguard =
+		false === description.leave
+			? () => {}
+			: guard( host, () => JSON.stringify( data ) !== loaded );
 	const app = document.createElement( 'div' );
 	app.className = 'cbuild-form__app';
 	kit.insertBefore( app, server );
@@ -112,5 +117,6 @@ export function mount( kit: HTMLElement, draw: Draw ): () => void {
 		app.remove();
 		server.hidden = false;
 		giveBack();
+		unguard();
 	};
 }

@@ -149,6 +149,7 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-573 · /verify's types step compares the types before and after regenerating them, not against the commit](#d-573--verifys-types-step-compares-the-types-before-and-after-regenerating-them-not-against-the-commit--2026-11-27)
 - [D-574 · Three CI failures on M15's first push: the wheel face's boundary tests leave the path-coverage pass, the kit's test imports DataForm with its file, and the e2e fixtures parse on PHP 7.4](#d-574--three-ci-failures-on-m15s-first-push-the-wheel-faces-boundary-tests-leave-the-path-coverage-pass-the-kits-test-imports-dataform-with-its-file-and-the-e2e-fixtures-parse-on-php-74--2026-11-28)
 - [D-575 · The browser tests' commands are tried again when wp-env loses its connection to wordpress.org before running them](#d-575--the-browser-tests-commands-are-tried-again-when-wp-env-loses-its-connection-to-wordpressorg-before-running-them--2026-11-28)
+- [D-576 · The admin kit's leaving warning: the browser's own prompt, only while something differs from what the page loaded with](#d-576--the-admin-kits-leaving-warning-the-browsers-own-prompt-only-while-something-differs-from-what-the-page-loaded-with--2026-11-28)
 
 ### Kits and their settings
 
@@ -8325,3 +8326,17 @@ A deliberate break, the reveal taken out, failed the refusal's test at "Offering
 **Not the tests' retries.** Playwright's retries would run the whole test again and hide a test that fails on its own; this tries only the one call wp-env never made.
 
 **Tests.** `tests/js/e2e-cli.test.ts`: a lost connection tried again and the output of the try that worked, three tries at most and then the last words, any other failure tried once, a command that printed anything tried once, and the other codes. Deliberate break: without the stdout check, "tries once a command that printed anything, since it ran" failed.
+
+### D-576 · The admin kit's leaving warning: the browser's own prompt, only while something differs from what the page loaded with · 2026-11-28
+
+**Context.** M15's plan puts "a leaving warning only after a change" on every screen, and the kit's own warning off on WooCommerce's Settings, which prompt by themselves once a control's `change` bubbles, as the kit's writes do (`docs/research/admin-handbooks-2026.md`).
+
+**Decision.** `assets/src/admin/form/leaving.ts`'s `guard()`, set by the mount:
+
+- **It warns while the form's data differs from what the page loaded with,** compared as a whole, so a value changed and changed back asks nothing; an edited-field set would have warned there.
+- **The Save leaves without it.** The form's last `submit` is read when the page is about to leave, after every listener has run, so a Save that a listener stopped, and the page stayed, still warns.
+- **It is the browser's own prompt**: `preventDefault()`, and `returnValue` set for Safari and Chrome before 119, with no text of ours, since no browser shows a page's words there.
+- **`Form::leftToHost()`** describes a form whose page warns by itself, as `leave: false`, and the kit sets no guard. The WooCommerce Settings screens use it.
+- **Giving the page back** takes the guard away with the rest.
+
+**Tests.** `admin-form-mount.test.ts`: a change warns, a change undone doesn't, a Save doesn't, a stopped Save does, `leave: false` doesn't, an unmounted kit doesn't. The tests give back every mount after each, since each listens on the window. `FormTest`: `leave` true by default, false from `leftToHost()`, kept through `failed()`, and the form it was called on unchanged. `admin-kit.spec.ts` in all six engine and width projects: looked at and closed, no prompt; changed and closed, the prompt and the page stays; then saved, no prompt. In Firefox and WebKit a page may prompt only after trusted input, so the test clicks and types as a person would; with `fill()` neither prompted, while Chromium did. Deliberate break: with no guard set, the browser test failed (`prompts` was `[]`).

@@ -38,6 +38,52 @@ test.describe( 'The admin kit', () => {
 		await expect( kit.getByLabel( 'Assembly time' ) ).toHaveValue( '7' );
 	} );
 
+	// The browser's own prompt, only after a change, and never for the Save (docs/ADMIN-KIT.md).
+	test( 'leaving the page warns only once something differs, and a Save leaves without a word', async ( {
+		page,
+		context,
+		javaScriptEnabled,
+	} ) => {
+		test.skip( ! javaScriptEnabled, "The warning is the script's." );
+		await login( page );
+		const prompts: string[] = [];
+		const listen = ( on: Page ) =>
+			on.on( 'dialog', ( dialog ) => {
+				prompts.push( dialog.type() );
+				// Stay on the page.
+				void dialog.dismiss();
+			} );
+
+		// Looked at, and left: no prompt. A click gives the page the user activation a prompt needs.
+		const looked = await context.newPage();
+		listen( looked );
+		await looked.goto( PAGE );
+		await looked
+			.locator( '.cbuild-form__app' )
+			.getByLabel( 'Assembly time' )
+			.click();
+		await looked.close( { runBeforeUnload: true } );
+		await expect.poll( () => looked.isClosed() ).toBe( true );
+		expect( prompts ).toEqual( [] );
+
+		// Changed, and left: the prompt, and the page stays.
+		listen( page );
+		await page.goto( PAGE );
+		const kit = page.locator( '.cbuild-form__app' );
+		// Typed, not filled: Firefox and WebKit give a page the user activation a prompt needs only for trusted input.
+		await kit.getByLabel( 'Assembly time' ).click();
+		await kit.getByLabel( 'Assembly time' ).selectText();
+		await page.keyboard.type( '6' );
+		await page.close( { runBeforeUnload: true } );
+		await expect.poll( () => prompts ).toEqual( [ 'beforeunload' ] );
+		expect( page.isClosed() ).toBe( false );
+
+		// Saved: no prompt.
+		await save( page );
+		await expect( page.getByText( 'Saved.' ) ).toBeVisible();
+		expect( prompts ).toEqual( [ 'beforeunload' ] );
+	} );
+
 	test( "the server's refusal is named on its field, and goes once the field is edited", async ( {
 		page,
 		javaScriptEnabled,
