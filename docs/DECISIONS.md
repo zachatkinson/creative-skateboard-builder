@@ -8181,7 +8181,23 @@ The two were the wrong way round. The bottom's graphic was mirrored from under, 
 
 The browser jobs stay on x64 until a trial says otherwise, since the visual baselines are made in Playwright's x64 Linux container.
 
-**Status:** Accepted, as a trial; the result follows.
+**The first run** (CI run 46092126026, M15's draft pull request #180): every step passed on ARM. On the steps both ran:
+
+| Step | x64 | ARM |
+| --- | --- | --- |
+| `composer lint` | 46 s | 36 s |
+| `composer analyse` | 20 s | 19 s |
+| `composer arch` | 2 s | 3 s |
+| `composer gates` | 13 s | 16 s |
+| `composer test:coverage` | 206 s | 192 s |
+| `npm ci` | 22 s | 26 s |
+| `npm run check` | 46 s | 40 s |
+| `npm run build` | 9 s | 7 s |
+| **In all** | **364 s** | **339 s** |
+
+About 7 % faster in all, and slower at the gates and `npm ci`. One run is one sample of a shared runner, so the second push's run is set beside it before the jobs move.
+
+**Status:** Accepted, as a trial; one run in, the second decides.
 
 ### D-570 · A push's full browser step splits across two lanes: chromium-phone in the other lane's checkout · 2026-11-27
 
