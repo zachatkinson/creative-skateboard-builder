@@ -2,7 +2,6 @@ import { randomUUID } from 'node:crypto';
 import {
 	mkdirSync,
 	readFileSync,
-	renameSync,
 	rmSync,
 	statSync,
 	writeFileSync,
@@ -15,8 +14,9 @@ import path from 'node:path';
  * was never started.
  *
  * The lock is a directory, since making one is atomic: the process whose `mkdir` succeeds holds it, and writes its
- * process ID and a token of its own into it. A lock whose holder has died (a worker Playwright stopped mid-command),
- * or that is older than `staleAfter`, is set aside with an atomic rename and taken.
+ * process ID and a token of its own into it. A lock whose holder has died (a worker Playwright stopped mid-command)
+ * is cleared and taken. A holder still running keeps it however long it takes (#172, D-550): age alone counts only for
+ * a lock with no holder written, whose maker died between its `mkdir` and its write.
  */
 
 const OWNER = 'owner';
@@ -60,7 +60,8 @@ function alive( pid: number ): boolean {
 
 /**
  * The holder of a lock nobody holds any more, or undefined while it is held. A lock with no holder written is the
- * moment between another process's `mkdir` and its write, unless it is older than `staleAfter`.
+ * moment between another process's `mkdir` and its write, unless it is older than `staleAfter`; one whose holder still
+ * runs is held, whatever its age.
  *
  * @param dir        The lock's directory.
  * @param staleAfter How old a lock may be before it is taken, in milliseconds.
@@ -79,32 +80,47 @@ function abandoned(
 	}
 	const seen = holder( dir );
 	const pid = Number( seen?.split( ' ' )[ 0 ] );
-	const dead = null !== seen && pid > 0 && ! alive( pid );
-	return dead || age > staleAfter ? ( seen ?? '' ) : undefined;
+	if ( pid > 0 ) {
+		return alive( pid ) ? undefined : ( seen ?? '' );
+	}
+	return age > staleAfter ? ( seen ?? '' ) : undefined;
 }
 
 /**
- * Sets an abandoned lock aside, by a rename only one process can win, and removes it. If what was renamed is not the
- * lock judged abandoned (its holder let it go and another took it in between), it is put back.
- *
- * @param dir  The lock's directory.
- * @param seen The holder the lock was judged abandoned with.
+ * How old a clearer's own lock may be before another takes it over: clearing is two calls to the file system.
  */
-function clear( dir: string, seen: string ): void {
-	const aside = `${ dir }.${ randomUUID() }`;
+const CLEARING_STALE = 10_000;
+
+/**
+ * Removes a lock judged abandoned, if it still is the one judged. Clearers take a lock of their own first
+ * (`<dir>.breaking`), so between the look and the removal nothing but the lock's holder can change it, and a holder
+ * judged abandoned no longer runs. A lock let go and taken by another since it was judged has another holder, and is
+ * left where it is (#172): set aside and put back, it was missing for a moment, and a third process could take it.
+ * Another clearer at work is left to it; one that died at it, its lock older than CLEARING_STALE, is taken over.
+ *
+ * @param dir        The lock's directory.
+ * @param seen       The holder the lock was judged abandoned with: '' for one with no holder written.
+ * @param staleAfter How old a lock with no holder written may be before it is taken, in milliseconds. A fresh lock,
+ *                   between its maker's `mkdir` and its write, has no holder either: it is judged again here.
+ */
+export function clear( dir: string, seen: string, staleAfter = 0 ): void {
+	const clearing = `${ dir }.breaking`;
 	try {
-		renameSync( dir, aside );
+		mkdirSync( clearing );
 	} catch {
+		try {
+			if ( Date.now() - statSync( clearing ).mtimeMs > CLEARING_STALE ) {
+				rmSync( clearing, { recursive: true, force: true } );
+			}
+		} catch {}
 		return;
 	}
-	if ( ( holder( aside ) ?? '' ) === seen ) {
-		rmSync( aside, { recursive: true, force: true } );
-		return;
-	}
 	try {
-		renameSync( aside, dir );
-	} catch {
-		rmSync( aside, { recursive: true, force: true } );
+		if ( abandoned( dir, staleAfter, Date.now() ) === seen ) {
+			rmSync( dir, { recursive: true, force: true } );
+		}
+	} finally {
+		rmSync( clearing, { recursive: true, force: true } );
 	}
 }
 
@@ -113,7 +129,7 @@ function clear( dir: string, seen: string ): void {
  *
  * @param dir        The lock's directory; its parent is made if it is missing.
  * @param run        What to run while holding it.
- * @param staleAfter How old a lock may be before it is taken from a holder that is still running, in milliseconds.
+ * @param staleAfter How old a lock with no holder written may be before it is taken, in milliseconds.
  * @return What the function returned.
  */
 export function withLock< T >(
@@ -139,7 +155,7 @@ export function withLock< T >(
 		const now = Date.now();
 		const seen = abandoned( dir, staleAfter, now );
 		if ( undefined !== seen ) {
-			clear( dir, seen );
+			clear( dir, seen, staleAfter );
 			continue;
 		}
 		if ( now > giveUp ) {

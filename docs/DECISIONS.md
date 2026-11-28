@@ -131,6 +131,7 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-542 · The visual tests' pick waits for its answer](#d-542--the-visual-tests-pick-waits-for-its-answer--2026-11-27)
 - [D-543 · The focus test waits out the pick's crossing, and #178 asks whether a tap in a crossing is lost](#d-543--the-focus-test-waits-out-the-picks-crossing-and-178-asks-whether-a-tap-in-a-crossing-is-lost--2026-11-27)
 - [D-544 · The integration and browser legs get 80 minutes](#d-544--the-integration-and-browser-legs-get-80-minutes--2026-11-27)
+- [D-550 · The browser tests' lock is taken only from a dead holder, and cleared in place under a clearer's lock](#d-550--the-browser-tests-lock-is-taken-only-from-a-dead-holder-and-cleared-in-place-under-a-clearers-lock--2026-11-27)
 - [D-564 · The ten milestone 13 branches all landed, and their archives are deleted](#d-564--the-ten-milestone-13-branches-all-landed-and-their-archives-are-deleted--2026-11-27)
 - [D-565 · CI tries a wp-env start again when a download fails, and caches nothing](#d-565--ci-tries-a-wp-env-start-again-when-a-download-fails-and-caches-nothing--2026-11-27)
 - [D-566 · A press while a step crosses over is taken: it ends the crossing, and its control is the one it comes up over](#d-566--a-press-while-a-step-crosses-over-is-taken-it-ends-the-crossing-and-its-control-is-the-one-it-comes-up-over--2026-11-27)
@@ -7874,6 +7875,33 @@ The same run's other firefox-phone failure was #93's ready mark, its third sight
 CI run 46063991563 on #173: "Plugin Check, the zip, browser (oldest)" was cancelled at its 60-minute limit, with 704 of its 804 browser tests run and none failed. The same job took 44 and 55 minutes on the two runs before it. Milestone 14's 3D tests made the chromium-desktop and webkit-phone leg longer, and a slow runner took it past the limit. This is D-107 and D-188 again.
 
 **Decision:** the `integration` matrix's legs get 80 minutes. That is their longest time so far plus room for a slow runner. The limit stops a hung job, and no floor moves. The legs' length is for #179's caching and M15's pipeline work to bring down.
+
+**Status:** Accepted.
+
+### D-550 · The browser tests' lock is taken only from a dead holder, and cleared in place under a clearer's lock · 2026-11-27
+
+Issue #172, part 1: under three lanes' load, "keeps every key when ten processes rewrite one file at once" lost a key once, so two writers had held the lock together. The issue's guess was age: a slow live holder judged stale. Reading `tests/e2e/support/lock.ts` (D-422, D-511) found a second way in, in `clear()`. A lock judged abandoned was renamed aside, checked, and put back if it was not the one judged. Suppose two waiters judged a dead holder's lock at once. The first cleared it and a third process took it. The second's rename then took the live lock, and while it was put back the directory was missing, so a fourth process could `mkdir` it. Twenty processes on one dead holder's lock, five rounds, did not show it in three runs: the window is microseconds. So the fix is shown by deterministic tests, not by waiting for the race.
+
+**Decision:**
+
+- **Staleness.** A lock whose holder's process still runs is never taken, however old. A dead holder's is taken at once. Age counts only for a lock with no holder written, a maker that died between its `mkdir` and its write, against `staleAfter` (300 s by default). A waiter still gives up at twice `staleAfter`, with an error naming the holder, rather than overlap it.
+- **Clearing.** `clear()` first takes a lock of its own, `<dir>.breaking`. Under it nothing but the lock's holder can change the lock: acquirers can't `mkdir` a lock that exists, and other clearers wait. It judges the lock again, age included, since a fresh lock between its `mkdir` and its write has no holder either. If the lock is still the one judged, `clear()` removes it in place, and otherwise leaves it. Nothing is renamed away and back. A clearer that finds another at work leaves it to them, and takes over a clearer's lock older than 10 s, from one that died at it.
+
+**Tests** (`tests/js/e2e-lock.test.ts`), each but the race's red against the old lock:
+
+- a live holder's lock older than its limit is left, and the wait gives up naming it (red: it was taken);
+- a lock another took after it was judged stays where it was, its inode and ctime unchanged (red: it was moved and put back);
+- another clearer at work is left to it (red);
+- a dead clearer's lock is taken over (red);
+- a fresh lock with no holder written is left, though one with none was judged (made red by comparing holders alone);
+- a dead holder's lock is cleared, and a lock with no holder written is taken once older than its limit;
+- a live holder that keeps the lock past the limit is waited for, then the lock is taken once it lets go;
+- twenty processes find a dead holder's lock at once, and every key is kept, five rounds;
+- #155's millisecond crossing, now on a lock with no holder written, where age still counts.
+
+The old test "takes a lock older than its limit from a holder still running" asserted the behaviour this removes, so it is replaced by the first case above, by the issue's own ask.
+
+Part 2 of #172, the three timing tests that fail only under load, stays open on the issue.
 
 **Status:** Accepted.
 
