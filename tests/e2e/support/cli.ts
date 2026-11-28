@@ -12,14 +12,36 @@ import { withLock } from './lock';
 export const LOCK = path.join( process.cwd(), 'tmp', 'wp-env-run.lock' );
 
 /**
- * Runs a shell command on the host under the lock, and gives back what it printed, trimmed. One that fails throws with
- * what it said on stderr and stdout, which wp-env and WP-CLI print their reasons to: the tests' helpers used to throw
- * stderr away.
+ * What wp-env says when it lost its connection to api.wordpress.org while loading its config, before the command ran:
+ * every `wp-env run` asks there for the latest WordPress version, pinned versions or not (@wordpress/env 12,
+ * lib/wordpress.js, getLatestWordPressVersion()). CI run 46120019654 lost one test to it (D-575).
+ */
+const DROPPED =
+	/ERR_SOCKET_CLOSED_BEFORE_CONNECTION|ECONNRESET|ETIMEDOUT|EAI_AGAIN|socket hang up/;
+
+/**
+ * Waits, holding the thread: the helpers are synchronous, as `execSync` is.
+ *
+ * @param ms How long, in milliseconds.
+ */
+function pause( ms: number ): void {
+	Atomics.wait( new Int32Array( new SharedArrayBuffer( 4 ) ), 0, 0, ms );
+}
+
+/**
+ * Runs a shell command on the host and gives back what it printed, trimmed. A try that failed on a lost connection,
+ * having printed nothing on stdout, so before the command ran, is tried again after each pause; any other failure
+ * throws at once. A failure throws with what it said on stderr and stdout, which wp-env and WP-CLI print their reasons
+ * to: the tests' helpers used to throw stderr away.
  *
  * @param command The command.
+ * @param pauses  The waits before each try after the first, in milliseconds: so its tries are one more.
  */
-export function locked( command: string ): string {
-	return withLock( LOCK, () => {
+export function retried(
+	command: string,
+	pauses: readonly number[] = [ 2000, 5000 ]
+): string {
+	for ( let at = 0; ; at++ ) {
 		try {
 			return execSync( command, {
 				stdio: [ 'ignore', 'pipe', 'pipe' ],
@@ -31,9 +53,18 @@ export function locked( command: string ): string {
 				stderr?: string;
 				stdout?: string;
 			};
+			const again =
+				at < pauses.length &&
+				! failed.stdout?.trim() &&
+				DROPPED.test( failed.stderr ?? '' );
+			if ( again ) {
+				pause( pauses[ at ] ?? 0 );
+				continue;
+			}
+			const tried = at > 0 ? ` after ${ at + 1 } tries` : '';
 			throw new Error(
 				[
-					`${ command } failed with exit code ${ failed.status }.`,
+					`${ command } failed with exit code ${ failed.status }${ tried }.`,
 					failed.stderr?.trim(),
 					failed.stdout?.trim(),
 				]
@@ -41,7 +72,16 @@ export function locked( command: string ): string {
 					.join( '\n' )
 			);
 		}
-	} );
+	}
+}
+
+/**
+ * Runs a shell command on the host under the lock, tried again where wp-env lost its connection (retried()).
+ *
+ * @param command The command.
+ */
+export function locked( command: string ): string {
+	return withLock( LOCK, () => retried( command ) );
 }
 
 /**

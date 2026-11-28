@@ -148,6 +148,7 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-572 · The 3D wheels' outer faces from their featured photos, read by the domain and kept a month a photo](#d-572--the-3d-wheels-outer-faces-from-their-featured-photos-read-by-the-domain-and-kept-a-month-a-photo--2026-11-27)
 - [D-573 · /verify's types step compares the types before and after regenerating them, not against the commit](#d-573--verifys-types-step-compares-the-types-before-and-after-regenerating-them-not-against-the-commit--2026-11-27)
 - [D-574 · Three CI failures on M15's first push: the wheel face's boundary tests leave the path-coverage pass, the kit's test imports DataForm with its file, and the e2e fixtures parse on PHP 7.4](#d-574--three-ci-failures-on-m15s-first-push-the-wheel-faces-boundary-tests-leave-the-path-coverage-pass-the-kits-test-imports-dataform-with-its-file-and-the-e2e-fixtures-parse-on-php-74--2026-11-28)
+- [D-575 · The browser tests' commands are tried again when wp-env loses its connection to wordpress.org before running them](#d-575--the-browser-tests-commands-are-tried-again-when-wp-env-loses-its-connection-to-wordpressorg-before-running-them--2026-11-28)
 
 ### Kits and their settings
 
@@ -8314,3 +8315,13 @@ A deliberate break, the reveal taken out, failed the refusal's test at "Offering
 **3. The zip lifecycle stopped at its PHP 7.4 step** with WP-CLI's exit 255. The e2e must-use plugins load on every request to the test sites, WP-CLI's on PHP 7.4 too, and M15's `cbuild-e2e-admin-kit.php` called `Field::rules()` with named arguments: "Parse error: syntax error, unexpected ':', expecting ')' in cbuild-e2e-admin-kit.php on line 90", from `php -l` in `php:7.4-cli`. The call takes its arguments in order now. CI's PHP 7.4 parse step, in the static job, lints `tests/e2e/mu-plugins/*.php` too, so a fixture that would stop the lifecycle fails there first, a few minutes in. All 11 parse on 7.4.
 
 **The ARM trial** (D-569) passed in that run, in 1,131 seconds. Its time carried the same slow pass, and the x64 job it is measured against was cancelled, so the run decides nothing; the next push's run does.
+
+### D-575 · The browser tests' commands are tried again when wp-env loses its connection to wordpress.org before running them · 2026-11-28
+
+**Context.** CI run 46120019654 (6624061) lost one browser test of 718, `builder.spec.ts:9562`, to its fixture's `wp-env run cli -- wp eval-file …`, which failed with "Error [ERR_SOCKET_CLOSED_BEFORE_CONNECTION]: Socket closed before the connection was established" from a TLS socket. Every `wp-env run` loads wp-env's config, and loading it asks `https://api.wordpress.org/core/stable-check/1.0/` for the latest WordPress version, pinned versions or not (`@wordpress/env` 12, `lib/wordpress.js`, `getLatestWordPressVersion()`, called from `lib/commands/run.js`'s `loadConfig()`). A browser run calls `wp-env run` thousands of times, so a connection wordpress.org drops now and then fails whichever test made that call, before its command runs. D-565 tries a start again on a failed download; this is the same kind of failure.
+
+**Decision.** `tests/e2e/support/cli.ts`'s `retried()`, under the helpers' lock, tries a command again, twice, 2 then 5 seconds apart, where it failed with a lost connection (`ERR_SOCKET_CLOSED_BEFORE_CONNECTION`, `ECONNRESET`, `ETIMEDOUT`, `EAI_AGAIN`, "socket hang up") and printed nothing on stdout, so it never ran. Any other failure, or one that printed anything, throws at once, as before; a command that gave up says after how many tries.
+
+**Not the tests' retries.** Playwright's retries would run the whole test again and hide a test that fails on its own; this tries only the one call wp-env never made.
+
+**Tests.** `tests/js/e2e-cli.test.ts`: a lost connection tried again and the output of the try that worked, three tries at most and then the last words, any other failure tried once, a command that printed anything tried once, and the other codes. Deliberate break: without the stdout check, "tries once a command that printed anything, since it ran" failed.
