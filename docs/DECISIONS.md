@@ -142,6 +142,7 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-566 · A press while a step crosses over is taken: it ends the crossing, and its control is the one it comes up over](#d-566--a-press-while-a-step-crosses-over-is-taken-it-ends-the-crossing-and-its-control-is-the-one-it-comes-up-over--2026-11-27)
 - [D-567 · /verify is a script in the repository, one run a lane, with a focused browser step before a commit](#d-567--verify-is-a-script-in-the-repository-one-run-a-lane-with-a-focused-browser-step-before-a-commit--2026-11-27)
 - [D-568 · The 3D deck's graphic and grip read the right way round](#d-568--the-3d-decks-graphic-and-grip-read-the-right-way-round--2026-11-27)
+- [D-569 · The ARM runner trial: CI's static and JavaScript checks again on ubuntu-26.04-arm, blocking nothing](#d-569--the-arm-runner-trial-cis-static-and-javascript-checks-again-on-ubuntu-2604-arm-blocking-nothing--2026-11-27)
 
 ### Kits and their settings
 
@@ -8156,3 +8157,16 @@ The two were the wrong way round. The bottom's graphic was mirrored from under, 
 **Why no test caught it:** the shape tests checked only that the bottom was the top's mirror, and the visual baselines were made from the mirrored drawing. The fixture's art is not words, so it looked right. The new test checks the reading direction itself.
 
 **Status:** Accepted.
+
+### D-569 · The ARM runner trial: CI's static and JavaScript checks again on ubuntu-26.04-arm, blocking nothing · 2026-11-27
+
+**Context.** Zach approved trying GitHub's ARM runners on 27 November (M15's order of work). They are free for public repositories, as the x64 runners are, and are often quicker for work that is pure CPU. Moving a job unmeasured could slow it, or break a tool with no ARM build.
+
+**Decision.** A job, `arm-trial`, runs the static job's lint, analysis, architecture, gates and unit coverage, and the js job's check and build, on `ubuntu-26.04-arm`, with the same pinned actions. `continue-on-error: true` and its absence from the required checks mean it fails no run. After M15's first CI runs, its steps' times are set beside the x64 jobs' here.
+
+- Faster, with every step passing: the static and js jobs move to ARM, and the next trial is one integration shard, which needs wp-env's images and Playwright on arm64.
+- Otherwise: the job goes, with the numbers recorded.
+
+The browser jobs stay on x64 until a trial says otherwise, since the visual baselines are made in Playwright's x64 Linux container.
+
+**Status:** Accepted, as a trial; the result follows.
