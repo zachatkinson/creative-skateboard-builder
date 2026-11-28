@@ -145,6 +145,7 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-569 · The ARM runner trial: CI's static and JavaScript checks again on ubuntu-26.04-arm, blocking nothing](#d-569--the-arm-runner-trial-cis-static-and-javascript-checks-again-on-ubuntu-2604-arm-blocking-nothing--2026-11-27)
 - [D-570 · A push's full browser step splits across two lanes: chromium-phone in the other lane's checkout](#d-570--a-pushs-full-browser-step-splits-across-two-lanes-chromium-phone-in-the-other-lanes-checkout--2026-11-27)
 - [D-571 · The admin kit's mount: the server's form stays the page, and DataForm stands in front of it](#d-571--the-admin-kits-mount-the-servers-form-stays-the-page-and-dataform-stands-in-front-of-it--2026-11-27)
+- [D-573 · /verify's types step compares the types before and after regenerating them, not against the commit](#d-573--verifys-types-step-compares-the-types-before-and-after-regenerating-them-not-against-the-commit--2026-11-27)
 
 ### Kits and their settings
 
@@ -8255,3 +8256,9 @@ Each screen's script is about 490 kB before compression, DataViews in it, and WP
 A deliberate break, the reveal taken out, failed the refusal's test at "Offering assembly needs at least one day." not found.
 
 **Status:** Accepted.
+
+### D-573 · /verify's types step compares the types before and after regenerating them, not against the commit · 2026-11-27
+
+**Context.** D-567's `tools/verify.sh` failed its types step whenever `assets/src/types` differed from the commit, so a schema change, with its types made, could never pass /verify before the commit that holds it. It stopped M15's wheel faces (D-572): `M assets/src/types/state.d.ts`, "FAILED: the generated types differ from the committed ones".
+
+**Decision.** The step takes a digest of `assets/src/types` before `npm run types` and after, and fails only if regenerating changed it, with the files and "run npm run types". That is what the step is for, that the committed types are what the schemas make. In CI, on a clean checkout, it is the same test as against the commit. Tried by hand both ways on 27 November: fresh types, not yet committed, pass, and a stale `state.d.ts` fails.

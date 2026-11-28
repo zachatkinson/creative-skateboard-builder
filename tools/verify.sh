@@ -149,16 +149,24 @@ if [ -n "$half" ]; then
 	exit 0
 fi
 
+# The generated types as the tree holds them, committed or not.
+types_digest() {
+	find assets/src/types -type f -print0 | sort -z | xargs -0 shasum -a 256 | shasum -a 256
+}
+
 step composer -q lint
 step composer -q analyse
 step composer -q arch
 step composer -q gates
 step composer -q test:coverage
 step composer -q api:check
+# The types must be what the schemas make: regenerating them changes nothing in the tree. Before a commit the tree may
+# hold a schema's change with its types made; in CI, on a clean checkout, this is the same as against the commit.
+types_before="$(types_digest)"
 step npm run -s types
-if [ -n "$(git status --porcelain -- assets/src/types)" ]; then
+if [ "$(types_digest)" != "$types_before" ]; then
 	git status --porcelain -- assets/src/types
-	echo "FAILED: the generated types differ from the committed ones"
+	echo "FAILED: the generated types differ from what the schemas make: run npm run types"
 	exit 1
 fi
 step npm run -s check
