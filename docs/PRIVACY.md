@@ -48,6 +48,10 @@ The plugin sets no cookie of its own, sends nothing about a shopper anywhere, an
 - **`cbuild:3d-failed`** (D-481), sent where the view can't be shown, carries the kit's ID and one of four reason codes, and goes only to scripts on the same page, as the builder's other events do; the reason is also warned in the browser's own console. The plugin sends it nowhere, logs it nowhere and keeps no count of it.
 - **No browser storage.** A search of `assets/src` for `localStorage`, `sessionStorage`, `indexedDB` and `document.cookie` finds none on 27 November 2026: the 3D view, like the rest of the builder's script, keeps nothing in the browser. The camera's place and the view's being open last for that page view alone.
 
+**1.5.0's wheel faces store nothing about a person.**
+
+- **The wheels' faces** (M15, D-572) are read from each wheel part's featured photo, the shop's own image on its own origin, and kept in a transient a photo (the table below): the face's box in the photo and the tread's colour, or why the photo gave none. The photo's address goes to the page in the scene's `wheels.face`, as any product image's does.
+
 ## Personal data
 
 From 0.8.0, saved builds are the only personal data the plugin keeps (spec: Privacy and data handling; D-217, D-220): the customer's user ID, the picks, assembly, the name they give the build, and when it was made and last saved.
@@ -71,6 +75,7 @@ Order item meta is not personal data the plugin adds: each build's snapshot name
 | Option, autoloaded | `cbuild_db_version` | The installed schema version, a number. | No | Uninstall | `ActivationTest`, `UninstallTest` |
 | Option | `cbuild_migrations` | Each upgrade step's status, attempts, cursor, last error message and next attempt time. | No | Uninstall | `MigrationTest`, `UninstallTest` |
 | Option | `cbuild_migration_lock` | The time an upgrade took its lock, in UTC seconds, and a random token naming that run. | No | The upgrade ends, or 300 seconds; deactivation; uninstall | `MigrationTest`, `ActivationTest` |
+| Transient | `cbuild_wheel_face_<md5>` | From 1.5.0, a wheel photo's reading (M15, D-572): the face's box in ten-thousandths of the photo and the tread's colour as `#rrggbb`, or the code of why the photo gives no face. The key is an MD5 of the attachment's ID, its file and the file's modified time, so a replaced photo is read again. | No | 30 days; uninstall deletes every transient of the plugin's | `WheelFacesTest`, `UninstallTest` |
 | Site transient | `cbuild_update_manifest` | The agency's release manifest: versions, a download address, a checksum, release notes. | No | 12 hours (1 hour after a failed request); uninstall | `UpdaterTest`, `UninstallTest` |
 | Transient | `cbuild_kit_draft_<kit>_<user>` | A section of a kit's Build tab that was not saved, as it was typed, and the sentences that say why. The kit's ID and the ID of the user who sent it are in the name. | No: the owner's own words and product IDs | The tab is next drawn for that user, or 1 hour; uninstall | `BuildTabTest`, `UninstallTest` |
 | Table | `{prefix}cbuild_specs` | One row per part and spec: the product's or variation's ID, the spec's key, its value, which source it came from (the part's field, an attribute, a spec table), what in that source, and when it was read. Nothing about a person. | No | Uninstall; the site's deletion on a network; rebuilt from the products, never edited | `ActivationTest`, `UninstallTest`, `SpecIndexRepositoryTest` |

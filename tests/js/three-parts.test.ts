@@ -31,7 +31,12 @@ import {
 	trucks,
 	wheels,
 } from '../../assets/src/builder/three/parts';
-import { face, surface } from '../../assets/src/builder/three/shapes';
+import {
+	face,
+	photoUv,
+	spot,
+	surface,
+} from '../../assets/src/builder/three/shapes';
 import { SLOTS } from '../../assets/src/builder/three/scene';
 import { scene } from './support/scene';
 
@@ -387,6 +392,93 @@ describe( 'wheels', () => {
 			expect.any( Function )
 		);
 		expect( look( one ).map ).toBeInstanceOf( Texture );
+	} );
+} );
+
+describe( 'wheels with a face', () => {
+	const faced = () => {
+		const made = scene();
+		made.wheels!.color = '#c81e28';
+		made.wheels!.texture = '/wheel-layer.png';
+		made.wheels!.face = {
+			url: '/wheel-768x768.jpg',
+			x: 625,
+			y: 625,
+			size: 8750,
+		};
+		return made;
+	};
+	const loaded = () =>
+		vi.fn(
+			(
+				_url: string | null | undefined,
+				use: ( t: Texture ) => void
+			) => {
+				use( new Texture() );
+				return null;
+			}
+		);
+
+	it( 'maps each wheel’s outer half from the photo and draws the rest in the tread’s colour', () => {
+		const load = loaded();
+		const group = wheels( faced(), { load } );
+		const four = ( group?.children ?? [] ) as Group[];
+		expect( four ).toHaveLength( 4 );
+		const [ outer, rest ] = meshes( four[ 0 ]! );
+		expect( outer!.geometry ).toBeInstanceOf( LatheGeometry );
+		expect( look( outer ).map ).toBeInstanceOf( Texture );
+		expect( look( rest ).map ).toBeNull();
+		expect( look( rest ).color.getHexString() ).toBe( 'c81e28' );
+		expect( load ).toHaveBeenCalledWith(
+			'/wheel-768x768.jpg',
+			expect.any( Function )
+		);
+		expect( load ).not.toHaveBeenCalledWith(
+			'/wheel-layer.png',
+			expect.any( Function )
+		);
+		// One shape for the four, each half's.
+		expect( meshes( four[ 3 ]! )[ 0 ]!.geometry ).toBe( outer!.geometry );
+	} );
+
+	it( 'projects the photo along the axle: the axle at the box’s centre, the edge at its sides', () => {
+		const [ outer ] = meshes(
+			( wheels( faced(), { load: loaded() } )?.children ??
+				[] )[ 0 ] as Group
+		);
+		const position = outer!.geometry.getAttribute( 'position' );
+		const uv = outer!.geometry.getAttribute( 'uv' );
+		for ( let at = 0; at < position.count; at++ ) {
+			const [ u, v ] = photoUv(
+				position.getX( at ),
+				position.getZ( at ),
+				27,
+				{ x: 625, y: 625, size: 8750 }
+			);
+			expect( uv.getX( at ) ).toBeCloseTo( u, 6 );
+			expect( uv.getY( at ) ).toBeCloseTo( v, 6 );
+		}
+		const us = Array.from( { length: uv.count }, ( _, at ) =>
+			uv.getX( at )
+		);
+		expect( Math.max( ...us ) ).toBeCloseTo( 0.9375, 3 );
+		expect( Math.min( ...us ) ).toBeCloseTo( 0.0625, 3 );
+	} );
+
+	it( 'turns the wheels on the far side half round, so each outer half faces out and reads the right way round', () => {
+		const made = faced();
+		const four = ( wheels( made, { load: loaded() } )?.children ??
+			[] ) as Group[];
+		made.wheels!.places.forEach( ( place, at ) => {
+			const one = four[ at ]!;
+			expect( one.rotation.z ).toBeCloseTo(
+				( place[ 1 ] ?? 0 ) > 0 ? Math.PI : 0,
+				9
+			);
+			expect( one.position.toArray() ).toEqual( spot( place ) );
+		} );
+		const box = new Box3().setFromObject( four[ 0 ]! );
+		expect( box.getSize( new Vector3() ).y ).toBeCloseTo( 32, 3 );
 	} );
 } );
 

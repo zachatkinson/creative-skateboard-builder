@@ -12,7 +12,9 @@ import {
 	ends,
 	face,
 	halfWidth,
+	halves,
 	mm,
+	photoUv,
 	profile,
 	rise,
 	spot,
@@ -416,5 +418,42 @@ describe( 'spot', () => {
 	it( 'turns a point into millimetres, a flat one on the top face', () => {
 		expect( spot( [ 1000, -2000, 3000 ] ) ).toEqual( [ 1, -2, 3 ] );
 		expect( spot( [ 1000, 2000 ] ) ).toEqual( [ 1, 2, 0 ] );
+	} );
+} );
+
+describe( 'photoUv', () => {
+	// The face's box: from 625 to 9375 ten-thousandths of the photo across and down.
+	const box = { x: 625, y: 625, size: 8750 };
+
+	it( 'puts the axle at the box’s centre and the tread’s edge at its sides', () => {
+		const [ u, v ] = photoUv( 0, 0, 27, box );
+		expect( u ).toBeCloseTo( 0.5, 9 );
+		expect( v ).toBeCloseTo( 0.5, 9 );
+		expect( photoUv( 27, 0, 27, box )[ 0 ] ).toBeCloseTo( 0.9375, 9 );
+		expect( photoUv( -27, 0, 27, box )[ 0 ] ).toBeCloseTo( 0.0625, 9 );
+	} );
+
+	it( 'reads the photo’s top as up: a texture’s v runs from its foot', () => {
+		expect( photoUv( 0, 27, 27, box )[ 1 ] ).toBeCloseTo( 1 - 0.0625, 9 );
+		expect( photoUv( 0, -27, 27, box )[ 1 ] ).toBeCloseTo( 0.0625, 9 );
+	} );
+
+	it( 'follows a box off the photo’s centre', () => {
+		const [ u, v ] = photoUv( 0, 0, 27, { x: 1000, y: 2000, size: 6000 } );
+		expect( u ).toBeCloseTo( 0.4, 9 );
+		expect( v ).toBeCloseTo( 1 - 0.5, 9 );
+	} );
+} );
+
+describe( 'halves', () => {
+	const points = profile( scene().wheels! );
+
+	it( 'splits the profile at its outer half: the face and its shoulder, and the rest from where that ends', () => {
+		const { outer, rest } = halves( points );
+		expect( outer.every( ( [ , y ] ) => y < 0 ) ).toBe( true );
+		expect( outer[ 0 ] ).toEqual( points[ 0 ] );
+		expect( rest[ 0 ] ).toEqual( outer.at( -1 ) );
+		expect( outer.length + rest.length - 1 ).toBe( points.length );
+		expect( rest.at( -1 ) ).toEqual( points.at( -1 ) );
 	} );
 } );

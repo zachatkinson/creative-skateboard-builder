@@ -145,6 +145,7 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-569 · The ARM runner trial: CI's static and JavaScript checks again on ubuntu-26.04-arm, blocking nothing](#d-569--the-arm-runner-trial-cis-static-and-javascript-checks-again-on-ubuntu-2604-arm-blocking-nothing--2026-11-27)
 - [D-570 · A push's full browser step splits across two lanes: chromium-phone in the other lane's checkout](#d-570--a-pushs-full-browser-step-splits-across-two-lanes-chromium-phone-in-the-other-lanes-checkout--2026-11-27)
 - [D-571 · The admin kit's mount: the server's form stays the page, and DataForm stands in front of it](#d-571--the-admin-kits-mount-the-servers-form-stays-the-page-and-dataform-stands-in-front-of-it--2026-11-27)
+- [D-572 · The 3D wheels' outer faces from their featured photos, read by the domain and kept a month a photo](#d-572--the-3d-wheels-outer-faces-from-their-featured-photos-read-by-the-domain-and-kept-a-month-a-photo--2026-11-27)
 - [D-573 · /verify's types step compares the types before and after regenerating them, not against the commit](#d-573--verifys-types-step-compares-the-types-before-and-after-regenerating-them-not-against-the-commit--2026-11-27)
 
 ### Kits and their settings
@@ -8256,6 +8257,23 @@ Each screen's script is about 490 kB before compression, DataViews in it, and WP
 A deliberate break, the reveal taken out, failed the refusal's test at "Offering assembly needs at least one day." not found.
 
 **Status:** Accepted.
+
+### D-572 · The 3D wheels' outer faces from their featured photos, read by the domain and kept a month a photo · 2026-11-27
+
+**Context.** Zach asked on 27 November for the 3D view's wheels to show their own faces, textured from each wheel part's featured photo: single wheels, face-on, on white, trimmed on the server, and refused where the photo is not face-on. Until now a wheel was a lathe in one colour, or the wheels' layer image wrapped round it.
+
+**Decision.**
+
+- **The domain reads the photo** (`Domain\Scene\WheelFace`): a square grid of samples over the whole photo, each red, green, blue and opacity. It refuses, with a code, a photo that is not square (3 %), whose corners are not white or clear (90 % of them), whose wheel fills less than half of it, is wider than tall or taller than wide (8 %, an angled shot), is off centre (8 %), or is not one round wheel (a quarter of the box's corners covered: a set, a box, a pack). Otherwise it gives the face's box in ten-thousandths of the photo and the tread's colour, the mean of the wheel's samples between 86 % and 96 % of its radius. Every test is on whole numbers, so Infection holds it at 100 % with no mutant left to static analysis (257 mutants).
+- **The adapter** (`Adapter\WpWheelFaces`, behind `Port\WheelFaces`) reads the featured image's `medium` file, or the whole one, into a 64-sample grid with GD or Imagick, and keeps the reading, or the refusal, in a transient `cbuild_wheel_face_<md5>` for 30 days. The key is the attachment, its file and the file's modified time, so a replaced photo is read again and a request never reads one twice. The page gets the `medium_large` rendition's address.
+- **The scene** (`Front\SceneView::withFaces()`, given by the container as each release's additions are, D-208) sets `wheels.face` to `{url, x, y, size}` and `wheels.color` to the tread, before `cbuild_scene`. The face is held back with the wheels' layer where `cbuild_composed_layer` answers other than `as_is` for `3d`, since the photo is the wheel's picture too.
+- **The 3D view** draws each wheel as two lathes of its profile: the outer half, the face and its shoulder out to the contact band, with its texture coordinates projected along the axle into the face's box (`photoUv()`), and the rest in the tread's colour. A wheel on the far side is turned half round about the vertical, so its photo faces out and reads the right way round from that side. Without a face, the wheels are drawn as before, the layer image included.
+
+**Why the domain and not the browser.** The browser never decides what a part looks like from its data (CLAUDE.md, One engine), and a photo read once on the server, then kept, costs a page nothing. Reading on the server also lets a refused photo fall back to the plain wheel before the page is drawn, with no flash of a wrong texture.
+
+**Why these thresholds.** A shop's wheel photos are product shots: centred on white, with a few per cent of crop error. The thresholds take those and refuse the shots that would texture a wheel wrongly: an angled shot stretches the face, a set or a pack puts several wheels on one, a coloured ground rings the face with it.
+
+**Tests.** `WheelFaceTest` (43 cases, the codes' boundaries on grids of 25, 40, 56 and 100), `WheelFacesTest` (the adapter with GD and with Imagick, the transient and its key), `SceneViewTest` (the face, the tread, and none where the layer is held back), `ContainerTest` (the copy), `three-shapes` and `three-parts` (the projection, the split and the far side's turn), and the visual baseline `3d-wheel-faces.png` at the Side place from `tests/e2e/fixtures/layers/wheel-face.jpg`.
 
 ### D-573 · /verify's types step compares the types before and after regenerating them, not against the commit · 2026-11-27
 

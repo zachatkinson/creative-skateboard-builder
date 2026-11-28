@@ -83,6 +83,8 @@ final class ContainerTest extends TestCase {
 				array( \CreativeBranding\SkateboardBuilder\Front\SavedBuildHooks::class, 'compare', \Closure::class ),
 				// 1.4.0's: the 3D view's scene.
 				array( \CreativeBranding\SkateboardBuilder\Front\Builder::class, 'scene', \CreativeBranding\SkateboardBuilder\Front\SceneView::class ),
+				// 1.5.0's: the wheels' faces.
+				array( \CreativeBranding\SkateboardBuilder\Front\SceneView::class, 'faces', \CreativeBranding\SkateboardBuilder\Port\WheelFaces::class ),
 			) as [ $id, $property, $type ]
 		) {
 			$service = $container->get( $id );
@@ -118,6 +120,8 @@ final class ContainerTest extends TestCase {
 				array( \CreativeBranding\SkateboardBuilder\Front\StateAnswer::class, 'swaps', static fn( object $earlier ): object => $earlier->withSwaps( $container->get( \CreativeBranding\SkateboardBuilder\Service\BuildSwaps::class ) ) ),
 				// 1.4.0's: the 3D view's scene.
 				array( \CreativeBranding\SkateboardBuilder\Front\Builder::class, 'scene', static fn( object $earlier ): object => $earlier->withScene( $container->get( \CreativeBranding\SkateboardBuilder\Front\SceneView::class ) ) ),
+				// 1.5.0's: the wheels' faces.
+				array( \CreativeBranding\SkateboardBuilder\Front\SceneView::class, 'faces', static fn( object $earlier ): object => $earlier->withFaces( $container->get( \CreativeBranding\SkateboardBuilder\Port\WheelFaces::class ) ) ),
 				array( \CreativeBranding\SkateboardBuilder\Front\SavedBuildHooks::class, 'compare', static fn( object $earlier ): object => $earlier->withCompare( static fn(): object => $container->get( \CreativeBranding\SkateboardBuilder\Front\CompareView::class ) ) ),
 			) as [ $class, $property, $with ]
 		) {

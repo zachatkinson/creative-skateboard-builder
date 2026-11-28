@@ -828,10 +828,22 @@ export interface CbuildState {
 				 */
 				contact: number;
 				/**
-				 * As the deck's.
+				 * As the deck's. Drawn only where the wheels have no `face`.
 				 */
 				texture: string | null;
+				/**
+				 * From 1.5.0, where the wheels have a `face`, the tread's colour from their photo, for their sides and inner faces, unless `cbuild_scene` gave another.
+				 */
 				color: string | null;
+				/**
+				 * From 1.5.0: each wheel's outer face, from the wheel part's featured photo where the domain reads it as one wheel seen face-on (`WheelFace`), or null. The photo's address at `medium_large`, and the face's box in it, in ten-thousandths of the photo's sides from its top left. Held back with the wheels' layer where `cbuild_composed_layer` answers other than `as_is` for `3d`.
+				 */
+				face?: null | {
+					url: string;
+					x: number;
+					y: number;
+					size: number;
+				};
 				/**
 				 * The four wheels' centres, x, y and z: the nose's pair first, each pair's left first. Each outer face is at its axle's end, and z is the axle's.
 				 */

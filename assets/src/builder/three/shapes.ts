@@ -262,6 +262,48 @@ export function profile( wheels: Wheels ): [ number, number ][] {
 }
 
 /**
+ * The profile split for the wheels' faces (M15): its outer half, the face and its shoulder out to the contact band,
+ * mapped from the wheel's photo; and the rest, from where the outer half ends, round the band and the inner face, in
+ * the tread's colour. The two share the point where they meet, so the lathes join.
+ *
+ * @param points The profile, as profile() gives it.
+ */
+export function halves( points: [ number, number ][] ): {
+	outer: [ number, number ][];
+	rest: [ number, number ][];
+} {
+	const at = points.findIndex( ( [ , y ] ) => y >= 0 );
+	const end = at < 1 ? points.length : at;
+	return { outer: points.slice( 0, end ), rest: points.slice( end - 1 ) };
+}
+
+/**
+ * Where a point on a wheel's outer half falls on its photo, seen along the axle: the photo's face box, in
+ * ten-thousandths of its sides from its top left, spans the wheel's diameter. A texture's v runs up from its foot, and
+ * the photo's top is up, so z up is the box's top.
+ *
+ * @param x        Across the face, in millimetres from the axle.
+ * @param z        Up the face, in millimetres from the axle.
+ * @param radius   The wheel's radius in millimetres.
+ * @param box      The face's box in its photo.
+ * @param box.x    Its left.
+ * @param box.y    Its top.
+ * @param box.size Its side.
+ */
+export function photoUv(
+	x: number,
+	z: number,
+	radius: number,
+	box: { x: number; y: number; size: number }
+): [ number, number ] {
+	const side = box.size / 10000;
+	return [
+		box.x / 10000 + side * ( 0.5 + x / ( 2 * radius ) ),
+		1 - ( box.y / 10000 + side * ( 0.5 - z / ( 2 * radius ) ) ),
+	];
+}
+
+/**
  * A point from the scene in millimetres.
  *
  * @param point The scene's point.
