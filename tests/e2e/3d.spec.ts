@@ -158,13 +158,12 @@ const isRoute = ( url: string ): boolean =>
 	/cbuild(%2F|\/)v1(%2F|\/)kits(%2F|\/)\d+(%2F|\/)state/.test( url );
 
 /**
- * Wait until the builder has done with a press: no answer awaited and no step crossing over, so the next press lands
- * on the step the shopper sees, as theirs would (D-529).
+ * Wait until the builder has done with a press: no answer awaited, so the next press lands on the step the shopper
+ * sees, as theirs would (D-529). A press while a step still crosses over is taken since #178 (D-566).
  *
  * @param page The page.
  */
 async function settled( page: Page ) {
-	await expect( page.locator( 'html.cbuild-crossing' ) ).toHaveCount( 0 );
 	await expect( page.locator( '.cbuild' ) ).not.toHaveAttribute(
 		'aria-busy',
 		'true'
@@ -172,8 +171,8 @@ async function settled( page: Page ) {
 }
 
 /**
- * Press Next and wait for what the press promises: the step after it, its answer drawn and its crossing over done
- * (D-529). Pressed sooner, a pick or a Next could land in the crossing, or on a step the answer was about to redraw.
+ * Press Next and wait for what the press promises: the step after it and its answer drawn (D-529). Pressed sooner, a
+ * pick or a Next could land on a step the answer was about to redraw.
  *
  * @param page The page.
  * @param step The next step's heading.

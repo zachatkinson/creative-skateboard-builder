@@ -48,6 +48,7 @@ import {
 	close,
 	count,
 	cross,
+	crossingOver,
 	cut,
 	measured,
 	outline,
@@ -219,8 +220,17 @@ function release(): void {
  * A mouse press on one of the builder's controls, noted from the moment the script runs, and whether a click reached
  * it (#80). Hydration takes a pressed control out of the page and puts it back, and a browser drops the click of a press
  * whose element left the page between down and up, so a press held while the regions hydrate would come to nothing.
+ *
+ * A press that goes down while a step crosses over lands on no control (#178): for the view transition's life the
+ * browser hit-tests its pictures, so the press is on the page's root or the builder's box, and its click goes to the
+ * ancestor the press and its release share. The press ends the crossing, its control is the one it comes up over, and
+ * it is a finger's too, for a browser that hit-tests a tap where it began.
  */
-let early: { control: HTMLElement; clicked: boolean } | null = null;
+let early: {
+	control: HTMLElement | null;
+	clicked: boolean;
+	crossed: boolean;
+} | null = null;
 
 /**
  * The builder's controls a press can land on.
@@ -234,14 +244,19 @@ const CONTROLS =
  * @param event The pointer going down.
  */
 function pressEarly( event: PointerEvent ): void {
+	const crossed = crossingOver();
 	// No control waits on a moment: a press ends every one at once (spec: Milestone 11).
 	cut();
 	// A mouse's main button alone: the pointer's up says whether it was a mouse's.
+	const main = 0 === event.button;
 	const control =
-		0 === event.button && event.target instanceof Element
+		main && event.target instanceof Element
 			? event.target.closest< HTMLElement >( CONTROLS )
 			: null;
-	early = control ? { control, clicked: false } : null;
+	early =
+		control || ( main && crossed )
+			? { control, clicked: false, crossed }
+			: null;
 }
 
 /**
@@ -251,7 +266,7 @@ function pressEarly( event: PointerEvent ): void {
  */
 function clickEarly( event: MouseEvent ): void {
 	if (
-		early &&
+		early?.control &&
 		event.target instanceof Node &&
 		early.control.contains( event.target )
 	) {
@@ -268,20 +283,24 @@ function clickEarly( event: MouseEvent ): void {
 function releaseEarly( event: PointerEvent ): void {
 	const pressed = early;
 	// A press taken up as the script started may have been a finger's, whose tap the browser never drops.
-	if ( ! pressed || 'mouse' !== event.pointerType ) {
+	if ( ! pressed || ( ! pressed.crossed && 'mouse' !== event.pointerType ) ) {
 		early = null;
 		return;
 	}
 	const over = document.elementFromPoint( event.clientX, event.clientY );
+	// Over a crossing the press had no control: it is the one it comes up over, set before the click is looked for.
+	pressed.control ??= over?.closest< HTMLElement >( CONTROLS ) ?? null;
+	const control = pressed.control;
 	window.setTimeout( () => {
 		early = null;
 		if (
+			control &&
 			! pressed.clicked &&
-			pressed.control.isConnected &&
+			control.isConnected &&
 			// Over nothing, `contains()` is false.
-			pressed.control.contains( over )
+			control.contains( over )
 		) {
-			pressed.control.click();
+			control.click();
 		}
 	} );
 }
@@ -295,7 +314,7 @@ document.addEventListener( 'pointerup', releaseEarly, true );
  * after (#120, D-363): while the button is down, the control and the elements around it are `:active`.
  */
 const already = document.querySelector< HTMLElement >( CONTROLS + ':active' );
-early = already ? { control: already, clicked: false } : null;
+early = already ? { control: already, clicked: false, crossed: false } : null;
 
 /**
  * Each panel the shopper scrolled before its builder was ready, and where they left it (#94). Hydrating a region takes

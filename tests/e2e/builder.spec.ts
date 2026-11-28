@@ -1565,8 +1565,6 @@ test.describe( 'The builder with JavaScript', () => {
 			'the page keeps its own title after a pick'
 		).toHaveTitle( /^Build a complete/ );
 
-		// The pick's crossing over first, as moveTo() waits (D-540, #178).
-		await expect( page.locator( 'html.cbuild-crossing' ) ).toHaveCount( 0 );
 		await page.getByRole( 'button', { name: 'Next: Trucks' } ).click();
 		await expect( heading( page ) ).toHaveText(
 			'Step 2 of 7: Choose your trucks'
@@ -9381,9 +9379,7 @@ test.describe( 'Compare saved builds (#136)', () => {
  * @param titled The heading the step it leads to has.
  */
 async function moveTo( page: Page, name: string | RegExp, titled: RegExp ) {
-	// A press while the last step still crosses over is not taken, as the 3D tests found (D-529): firefox-phone on CI
-	// stayed on hardware after Next: Grip tape (#173, D-540).
-	await expect( page.locator( 'html.cbuild-crossing' ) ).toHaveCount( 0 );
+	// A press while the last step still crosses over is taken (#178, D-566), so the press is not held for it.
 	await page.getByRole( 'button', { name, exact: true } ).click();
 	await expect( heading( page ) ).toHaveText( titled );
 	await expect( page.locator( '.cbuild' ) ).not.toHaveAttribute(
@@ -13394,5 +13390,77 @@ test.describe( 'A hostile theme', () => {
 		} finally {
 			unsave();
 		}
+	} );
+} );
+
+/**
+ * #178: a tap while a step still crosses over. For the view transition's life the browser hit-tests its pictures, not
+ * the page: the press lands on the page's root (Chromium, WebKit) or the builder's box (Firefox), and its click goes
+ * to the ancestor its press and its release share, so no control had it and the tap was lost in every engine. The
+ * crossing is slowed to 3 s, so the tap lands during it however fast the runner is.
+ */
+test.describe( 'A tap while a step crosses over (#178)', () => {
+	test.beforeEach( async ( { page }, info ) => {
+		test.skip(
+			'no-js' === info.project.name,
+			'Without JavaScript a step is a page of its own, and nothing crosses over.'
+		);
+		await page.goto( fixture().page );
+		await ride( page, '8.25″' );
+		await choose( page, 'Builder test deck 8.25' );
+		await settled( page );
+		await expect( page.locator( 'html.cbuild-crossing' ) ).toHaveCount( 0 );
+		await page.evaluate( () =>
+			document.documentElement.style.setProperty(
+				'--cbuild-duration',
+				'3000ms'
+			)
+		);
+		await page
+			.getByRole( 'button', { name: 'Next: Trucks', exact: true } )
+			.click();
+		await expect( heading( page ) ).toHaveText( /^Step 2 of 7:/ );
+		await expect( page.locator( 'html.cbuild-crossing' ) ).toHaveCount( 1 );
+	} );
+
+	/**
+	 * Taps the middle of an element, with a finger where the project has one, and says the crossing was on then.
+	 *
+	 * @param page    The page.
+	 * @param target  What is tapped.
+	 * @param fingers Whether the project has a touch screen.
+	 */
+	async function tap( page: Page, target: Locator, fingers: boolean ) {
+		const box = await target.boundingBox();
+		expect( box ).not.toBeNull();
+		const x = ( box?.x ?? 0 ) + ( box?.width ?? 0 ) / 2;
+		const y = ( box?.y ?? 0 ) + ( box?.height ?? 0 ) / 2;
+		expect(
+			await page.locator( 'html.cbuild-crossing' ).count(),
+			'tapped while the step crosses over'
+		).toBe( 1 );
+		await ( fingers
+			? page.touchscreen.tap( x, y )
+			: page.mouse.click( x, y ) );
+	}
+
+	test( 'takes Back', async ( { page }, info ) => {
+		await tap(
+			page,
+			page.locator( '.cbuild-bar__back' ).filter( { visible: true } ),
+			true === info.project.use.hasTouch
+		);
+		await expect( heading( page ) ).toHaveText( /^Step 1 of 7:/ );
+	} );
+
+	test( "takes a card's pick", async ( { page }, info ) => {
+		const card = page
+			.locator(
+				'.cbuild-card:not(.cbuild-card--sold-out) label.cbuild-card__body[for]'
+			)
+			.first();
+		const radio = await card.getAttribute( 'for' );
+		await tap( page, card, true === info.project.use.hasTouch );
+		await expect( page.locator( `[id="${ radio }"]` ) ).toBeChecked();
 	} );
 } );

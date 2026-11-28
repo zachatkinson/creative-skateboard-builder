@@ -133,6 +133,7 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-544 · The integration and browser legs get 80 minutes](#d-544--the-integration-and-browser-legs-get-80-minutes--2026-11-27)
 - [D-564 · The ten milestone 13 branches all landed, and their archives are deleted](#d-564--the-ten-milestone-13-branches-all-landed-and-their-archives-are-deleted--2026-11-27)
 - [D-565 · CI tries a wp-env start again when a download fails, and caches nothing](#d-565--ci-tries-a-wp-env-start-again-when-a-download-fails-and-caches-nothing--2026-11-27)
+- [D-566 · A press while a step crosses over is taken: it ends the crossing, and its control is the one it comes up over](#d-566--a-press-while-a-step-crosses-over-is-taken-it-ends-the-crossing-and-its-control-is-the-one-it-comes-up-over--2026-11-27)
 
 ### Kits and their settings
 
@@ -7906,3 +7907,36 @@ CI's three direct `npx wp-env start` calls now go through the wrapper, as `npm r
 **Tests:** `tools/wp-env-retry-selftest.sh`, in `composer gates`, runs the wrapper with a stand-in for wp-env. A 429 then a success passes on the second try, and two timeouts on the third. Three download failures fail with no fourth try, a failure of our own gets no second try, and outside CI there is none. Each break was tried: a fourth try allowed, then every failure retried; each turned its case red.
 
 **Status:** Accepted (Zach approved #179's fix with the plan on 27 November).
+
+### D-566 · A press while a step crosses over is taken: it ends the crossing, and its control is the one it comes up over · 2026-11-27
+
+Issue #178 asked whether a press during a step's view transition is lost. Two CI runs for #173 stayed on a step after a Next pressed straight after a pick, and D-529, D-540 and D-543 made the tests wait the crossing out.
+
+**Proved, before any change:** a throwaway spec slowed one crossing to 3 s (`--cbuild-duration` on the root) and pressed Back at its own place mid-crossing. It recorded the element at that point and each pointer event's target:
+
+| Engine | Element hit, and the press's target | The click's target | Step after |
+| --- | --- | --- | --- |
+| Chromium, desktop and phone | `html` | `html` | 2, the press lost |
+| WebKit, desktop and phone | `html` | `html` | 2, the press lost |
+| Firefox, desktop and phone | `div.cbuild__layout` or `div.cbuild` | the same | 2, the press lost |
+
+So a mouse press on any of the builder's controls during a crossing came to nothing, in every engine. A finger's tap with touch emulated was taken in Chromium and WebKit, which hit-test a tap where it ends.
+
+**Tried, and not the fix:**
+
+- `:root.cbuild-crossing::view-transition { pointer-events: none }`, as the issue proposed. It changed nothing in any engine: for the transition's life the browser sends every hit to the document (or, in Firefox, the builder's box), whatever the pseudo-element's `pointer-events`.
+- Skipping the transition at the press. The store already does this: `pressEarly()` calls `cut()` on every press, which skips the crossing (spec: Milestone 11). The release then lands on the control (`a.cbuild-button` in every engine), but the browser sends the click to the ancestor the press and its release share, the root.
+
+**Decision:** `pressEarly()` asks `crossingOver()`, new in `motion.ts`, before it cuts. If a step was crossing over and the press is the main button's, the press is noted even with no control under it. At the release, `releaseEarly()` takes the builder control the pointer comes up over (`elementFromPoint()`, the same `CONTROLS`) as the press's own. If the browser's click didn't reach it, the store gives it the click, as #80 does for a press held across hydration. It covers a finger and a pen as well as a mouse, since a browser that hit-tests a tap where it began would lose those too. A control outside the builder is never clicked, and with no crossing on nothing changes.
+
+**Why not cut the crossing short some other way:** D-306's moment stays. What is lost is the press, not the motion, and the press already ends the motion.
+
+**Tests:**
+
+- `builder.spec.ts`, "A tap while a step crosses over (#178)": Back and a card's pick, tapped at their own place during a 3 s crossing. A finger is used where the project has touch. Before the fix 8 of 12 failed: every mouse press, in Chromium, WebKit and Firefox, at desktop and phone widths. After it, 12 of 12 pass.
+- `press.test.ts`, "a press while a step crosses over": five cases. With `view.ts` as it was, three were red (`press.test.ts:253`, `:261` and `:292`, "expected +0 to be 1").
+- StrykerJS on the changed lines of `view.ts`: 52 mutants, every one killed or timed out, so 100 %.
+
+**The tests' waits come out:** `moveTo()` (D-540), the focus test before Next: Trucks (D-543), and `settled()` in `3d.spec.ts` (D-529) no longer wait for `html.cbuild-crossing` to go. Each still waits for its answer. Two checks of the mark stay, since they test something else: that a calm move starts no crossing, and the visual tests' still frame.
+
+**Status:** Accepted.
