@@ -134,6 +134,7 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-564 · The ten milestone 13 branches all landed, and their archives are deleted](#d-564--the-ten-milestone-13-branches-all-landed-and-their-archives-are-deleted--2026-11-27)
 - [D-565 · CI tries a wp-env start again when a download fails, and caches nothing](#d-565--ci-tries-a-wp-env-start-again-when-a-download-fails-and-caches-nothing--2026-11-27)
 - [D-566 · A press while a step crosses over is taken: it ends the crossing, and its control is the one it comes up over](#d-566--a-press-while-a-step-crosses-over-is-taken-it-ends-the-crossing-and-its-control-is-the-one-it-comes-up-over--2026-11-27)
+- [D-568 · The 3D deck's graphic and grip read the right way round](#d-568--the-3d-decks-graphic-and-grip-read-the-right-way-round--2026-11-27)
 
 ### Kits and their settings
 
@@ -7938,5 +7939,24 @@ So a mouse press on any of the builder's controls during a crossing came to noth
 - StrykerJS on the changed lines of `view.ts`: 52 mutants, every one killed or timed out, so 100 %.
 
 **The tests' waits come out:** `moveTo()` (D-540), the focus test before Next: Trucks (D-543), and `settled()` in `3d.spec.ts` (D-529) no longer wait for `html.cbuild-crossing` to go. Each still waits for its answer. Two checks of the mark stay, since they test something else: that a calm move starts no crossing, and the visual tests' still frame.
+
+**Status:** Accepted.
+
+### D-568 · The 3D deck's graphic and grip read the right way round · 2026-11-27
+
+Zach, on the demo, 27 November: in the 3D view a deck's graphic read backwards from under. Its words were mirrored ("GNARLY" as its reflection). The 2D board was right.
+
+**Cause:** `face()` in `assets/src/builder/three/shapes.ts` gives each face's texture u across the deck's width. It wrote the top's as `u` and the bottom's as `1 - u`, "mirrored so the graphic reads the right way round" from under. But the stage turns the scene's axes, z up, into three's, y up (`axes.rotation.x = -π/2` in `stage.ts`), which sends the scene's +y to three's -z. With the nose up, the camera's right is `forward × up`:
+
+- from under, `(0, 1, 0) × (1, 0, 0) = (0, 0, -1)`, the scene's +y, so the bottom read the right way with plain `u`;
+- from above, `(0, -1, 0) × (1, 0, 0) = (0, 0, 1)`, the scene's -y, so the top needs `1 - u`.
+
+The two were the wrong way round. The bottom's graphic was mirrored from under, and so was a grip's printed sheet on the top from above. Mirroring is about handedness, not the camera's roll, so every place showed it. `TextureLoader` keeps `flipY`, so v (tail 0, nose 1) runs up the image as it should; only u was wrong.
+
+**Decision:** the top's u is `1 - u` and the bottom's `u`. Nothing else changes: the edge's stripes are the same both ways, and no other part has an image.
+
+**Tests:** `three-shapes.test.ts`, "reads the bottom's graphic the right way round from under, and the top's grip from above". It puts a face's points in three's axes as the stage does, and projects them through a camera at each of the stage's places (`aim()`): the underside, the graphic close-up and the reset for the bottom, and the top and the reset for the top. On screen, the turn from the image's u direction to its v direction must be the image's own, counter-clockwise. Before the fix it failed at the underside (`-0.00044`, "expected … to be greater than 0"). The top test's pinned u values, which held the old direction, now give 1 at the -y edge and 0 at the +y edge. The 3D visual baselines showing the underside were remade on purpose, in `tools/visual.sh`'s container.
+
+**Why no test caught it:** the shape tests checked only that the bottom was the top's mirror, and the visual baselines were made from the mirrored drawing. The fixture's art is not words, so it looked right. The new test checks the reading direction itself.
 
 **Status:** Accepted.

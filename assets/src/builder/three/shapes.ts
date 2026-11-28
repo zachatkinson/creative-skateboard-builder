@@ -141,8 +141,9 @@ export interface Face {
 
 /**
  * The deck's top or bottom face, as a grid over its outline. Its texture lies across the width and from the tail to
- * the nose, as a layer image is drawn nose up; seen from under, the bottom's is mirrored so the graphic reads the
- * right way round.
+ * the nose, as a layer image is drawn nose up, and reads the right way round from the side it faces. The stage turns
+ * these axes, z up, into three's, y up, so with the nose up the deck's +y side is on the left seen from above and on
+ * the right seen from under: the top's u runs against y and the bottom's with it (D-568).
  *
  * @param deck The scene's deck.
  * @param side Which face.
@@ -161,7 +162,7 @@ export function face( deck: Deck, side: 'top' | 'bottom' ): Face {
 			points.push( x, y, surface( deck, x, y ) - drop );
 			const u = half > 0 ? ( y + half ) / ( 2 * half ) : 0.5;
 			uvs.push(
-				'top' === side ? u : 1 - u,
+				'top' === side ? 1 - u : u,
 				( x - tail ) / ( nose - tail )
 			);
 		}
