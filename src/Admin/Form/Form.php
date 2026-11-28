@@ -107,6 +107,20 @@ final class Form {
 	}
 
 	/**
+	 * Whether a field of the form is a list of rows.
+	 *
+	 * @since 1.5.0
+	 */
+	public function hasList(): bool {
+		foreach ( $this->fields as $field ) {
+			if ( 'rows' === $field->type ) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/**
 	 * What the server refused, in the fields' order: each field's id, its label and the message.
 	 *
 	 * @since 1.5.0

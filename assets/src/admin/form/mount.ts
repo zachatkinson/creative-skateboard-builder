@@ -13,9 +13,15 @@ import {
 	fieldsOf,
 	formOf,
 	validityOf,
+	isList,
 	type Data,
 	type Description,
+	type ListDescription,
+	type ListEdit,
+	type Row,
+	type Value,
 } from './describe';
+import { post, release } from './rows';
 import { takeOver, write } from './inputs';
 import { guard } from './leaving';
 import { summarise } from './summary';
@@ -58,11 +64,16 @@ function describe( kit: HTMLElement ): Description {
 /**
  * Mounts DataForm over a described form.
  *
- * @param kit  The mount: `.cbuild-form`.
- * @param draw What draws DataForm.
+ * @param kit      The mount: `.cbuild-form`.
+ * @param draw     What draws DataForm.
+ * @param listEdit What draws a list, where the form has one (list.ts).
  * @return What gives the page back as it was.
  */
-export function mount( kit: HTMLElement, draw: Draw ): () => void {
+export function mount(
+	kit: HTMLElement,
+	draw: Draw,
+	listEdit?: ListEdit
+): () => void {
 	const description = describe( kit );
 	const server = kit.querySelector< HTMLElement >(
 		':scope > .cbuild-form__server'
@@ -75,7 +86,12 @@ export function mount( kit: HTMLElement, draw: Draw ): () => void {
 	const names = new Map(
 		description.fields.map( ( field ) => [ field.id, field.name ] )
 	);
-	const fields = fieldsOf( description );
+	const fields = fieldsOf( description, listEdit );
+	const lists = new Map(
+		description.fields
+			.filter( isList )
+			.map( ( list ): [ string, ListDescription ] => [ list.id, list ] )
+	);
 	const form = formOf( description );
 	let data = dataOf( description );
 	const loaded = JSON.stringify( data );
@@ -91,6 +107,9 @@ export function mount( kit: HTMLElement, draw: Draw ): () => void {
 	app.className = 'cbuild-form__app';
 	kit.insertBefore( app, server );
 	server.hidden = true;
+	for ( const list of lists.values() ) {
+		post( server, list, data[ list.id ] as Row[] );
+	}
 
 	const props = (): Drawn => ( {
 		data,
@@ -105,7 +124,12 @@ export function mount( kit: HTMLElement, draw: Draw ): () => void {
 			if ( undefined === name || undefined === value ) {
 				continue;
 			}
-			write( server as HTMLElement, name, value );
+			const list = lists.get( id );
+			if ( undefined !== list ) {
+				post( server as HTMLElement, list, value as Row[] );
+			} else {
+				write( server as HTMLElement, name, value as Value );
+			}
 			edited.add( id );
 		}
 		data = { ...data, ...edits } as Data;
@@ -123,6 +147,9 @@ export function mount( kit: HTMLElement, draw: Draw ): () => void {
 	return () => {
 		drawing.unmount();
 		app.remove();
+		for ( const list of lists.values() ) {
+			release( server, list );
+		}
 		server.hidden = false;
 		giveBack();
 		unguard();

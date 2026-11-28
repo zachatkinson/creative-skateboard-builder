@@ -151,6 +151,7 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-575 · The browser tests' commands are tried again when wp-env loses its connection to wordpress.org before running them](#d-575--the-browser-tests-commands-are-tried-again-when-wp-env-loses-its-connection-to-wordpressorg-before-running-them--2026-11-28)
 - [D-576 · The admin kit's leaving warning: the browser's own prompt, only while something differs from what the page loaded with](#d-576--the-admin-kits-leaving-warning-the-browsers-own-prompt-only-while-something-differs-from-what-the-page-loaded-with--2026-11-28)
 - [D-577 · The admin kit sums up the server's refusals in one inline notice that takes focus, its links landing on DataForm's controls](#d-577--the-admin-kit-sums-up-the-servers-refusals-in-one-inline-notice-that-takes-focus-its-links-landing-on-dataforms-controls--2026-11-28)
+- [D-578 · The admin kit's list: a DataViews table with a modal, moves in each row's menu, Remove with an Undo, and the rows posted under the server form's names](#d-578--the-admin-kits-list-a-dataviews-table-with-a-modal-moves-in-each-rows-menu-remove-with-an-undo-and-the-rows-posted-under-the-server-forms-names--2026-11-28)
 
 ### Kits and their settings
 
@@ -8354,3 +8355,33 @@ A deliberate break, the reveal taken out, failed the refusal's test at "Offering
 - **Copy:** "1 field needs a change before the form can be saved." and its plural, in fr_CA too.
 
 **Tests.** `AdminFormMountTest`: the summary first in the mount, inline and focusable, the count, each link's address, field and words, escaped, in the fields' order; the singular; no summary without refusals. `admin-form-mount.test.ts`: focus on mount, a link to DataForm's control (its label with "(Required)"), a hidden field's link left alone, focus untouched with no refusals. `admin-kit.spec.ts` in chromium, firefox and webkit at both widths, fr-ca and rtl: the summary focused, the link landing on Assembly time; with no script, the link going to the server's control. Red: the browser test first failed in all three engines with focus "inactive" on the control, since a real DataForm label reads "Assembly time (Required)", and the unit test then reproduced it with the stand-in's label. Deliberate break: with the summary's script left out, the browser test failed at the summary's focus.
+
+### D-578 · The admin kit's list: a DataViews table with a modal, moves in each row's menu, Remove with an Undo, and the rows posted under the server form's names · 2026-11-28
+
+**Context.** Six of M15's screens hold lists of rows: the mapping, which source wins, slots, presets, the width guide and the layer order. The UX research's pattern 5 makes each a DataViews table with Add, Edit in a DataForm modal, Remove with Undo before saving, and Move up and Move down where order matters (`docs/research/admin-ux-2026.md`). DataForm has no repeating group and DataViews no row reorder (finding 3), so the kit composes them.
+
+**Decision.**
+
+- **PHP:** `Field::rows( id, name, label, columns, max )`, with `words()`, `listed()` and `ordered()`.
+  - A column is a field whose name is what follows a row's place, so a row posts as `cbuild[guide][0][size]`, the names today's no-script tables use (`templates/admin/settings-mapping.php:66`).
+  - Refused where written: no columns, a limit outside 1 to 50 (the mapping's 50 is the most of any list), a column named twice, a column not starting with `[`, a list inside a list, a column with a condition, which a table can't show, and a row with a column the list hasn't.
+  - The kit's own words (Edit, Remove, Move up, Move down, "Row removed.", Undo, Cancel, Done) are translated by `Mount::words()` and printed with a form that has a list.
+- **What it posts:** while the kit is mounted, the server's own controls for the list are turned off, since a fixed set of controls can't follow an Add or a Remove, and the kit posts hidden inputs for the rows as they stand, with a bubbling `change`. Unmounting gives the controls back. With no script, a screen prints the rows as inputs with a spare, and leaves a blank row out when saving.
+- **The table:** each column, with no search, filters, sorting, hiding or view settings, since a list is short and its order is the shop's. Each row keeps a key of its own through moves and removals, so its markup, and the focus on its menu, move with it.
+- **Row actions** are in each row's menu: Edit, Move up and Move down where ordered, each offered only where it can move, and Remove. DataViews has no drag for rows; the buttons are the keyboard's way anyway (WCAG 2.5.7).
+- **The modal** holds DataForm for one row, in a form of its own, outside the page's, so the browser holds a required column and Enter is Done. The page's form keeps its own checks off (D-571).
+- **Remove** shows wp-components' `Snackbar`, which speaks it, with Undo, which puts the row back where it was. It has no timer (`explicitDismiss`): the list waits for its Save, and an Undo that vanished would be a time limit (WCAG 2.2.1). The next change to the list closes it. Focus goes to Add, two frames on, once the row's menu has closed and handed focus back to its own button, which the removal took away.
+- **Full:** Add stays focusable but off, described by the list's own sentence, such as "The guide holds 3 rows at most."
+- **A refusal of the list** shows under its table. The list is a group named by its label, focusable, and described by the message, so the summary's link (D-577) lands on it.
+
+**A Chromium finding: a group, not a fieldset.** The list was first a `fieldset` with a `legend`. After a removal, Chromium left DataViews' table unrendered: in the DOM with `display: flex`, but `checkVisibility()` false and 0 by 0, and so out of the accessibility tree. DataViews' wrapper is a size container (`container-type: inline-size`). With a `div` of role `group`, named by `aria-labelledby`, the same steps render. Recorded so no one turns it back into a fieldset.
+
+**Tests.**
+
+- `FormTest`: the description (columns, every column in every row, the limit, `ordered`, the words), the 11 refusals, and a list as a field of its form.
+- `AdminFormMountTest`: the kit's words with a list, none without, in fr_CA.
+- `admin-form-rows.test.ts`: rows typed by their columns, moves, removal and restore, Add up to the limit, what is posted, a second post in place of the first, and the controls given back.
+- `admin-form-mount.test.ts`: the rows and the list's control given to DataForm, posting from the start and after a change, the page given back, a list with nothing to draw it refused, and the summary's link to a list.
+- `admin-kit.spec.ts`, in chromium, firefox and webkit at both widths, fr-ca and rtl: a required column holds the modal, Enter is Done, Move up, Remove with the snackbar and focus on Add, Undo, Edit, full at 3, Save in order, the server's refusal in the summary and under the table, and its link landing on the list. With no script: the spare row saves, and a blank row is left out. axe on the list and its modal.
+
+**Red runs:** the unit, integration and Vitest tests failed before the code. In the browser test, Remove first failed in Chromium with no rows found (the fieldset), then on focus (Add not focused, before the two frames). fr-ca first failed because "(Obligatoire)" holds "to", so the test matches From and To exactly. Deliberate break: with a list's change not posted, the browser test failed at the saved order.

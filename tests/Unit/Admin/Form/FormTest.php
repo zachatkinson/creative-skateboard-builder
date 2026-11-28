@@ -192,4 +192,107 @@ final class FormTest extends TestCase {
 		self::assertTrue( $form->toArray()['leave'], 'the form it was called on is as it was' );
 		self::assertFalse( $host->failed( Errors::none()->with( 'a', 'No.' ) )->toArray()['leave'], 'kept with the refusals' );
 	}
+
+	/**
+	 * The width guide's columns: a shoe size and the board widths it takes.
+	 *
+	 * @return list<Field>
+	 */
+	private static function columns(): array {
+		return array(
+			Field::of( 'size', '[size]', 'Shoe size', 'text' )->rules( required: true, maxLength: 8 ),
+			Field::of( 'from', '[from]', 'From', 'number' )->suffix( 'in' ),
+			Field::of( 'to', '[widths][to]', 'To', 'number' ),
+		);
+	}
+
+	public function test_a_list_of_rows_describes_its_columns_rows_limit_and_words(): void {
+		$rows = Field::rows( 'guide', 'cbuild[guide]', 'Width guide', self::columns(), 12 )
+			->help( 'Which board widths suit each shoe size.' )
+			->words( 'Add a row', 'Edit the row', 'No rows yet. Add the first shoe size.', 'The guide holds 12 rows at most.' )
+			->listed(
+				array(
+					array( 'size' => '8', 'from' => '8', 'to' => '8.25' ),
+					array( 'size' => '10', 'from' => '8.25' ),
+				)
+			);
+		$array = $rows->toArray();
+		self::assertSame( 'rows', $array['type'] );
+		self::assertSame( 'cbuild[guide]', $array['name'] );
+		self::assertSame( 'Which board widths suit each shoe size.', $array['description'] );
+		self::assertSame( array_map( static fn( Field $column ): array => $column->toArray(), self::columns() ), $array['columns'] );
+		self::assertSame(
+			array(
+				array( 'size' => '8', 'from' => '8', 'to' => '8.25' ),
+				array( 'size' => '10', 'from' => '8.25', 'to' => '' ),
+			),
+			$array['rows'],
+			'every column in every row, in the columns\' order, a missing one empty'
+		);
+		self::assertSame( 12, $array['max'] );
+		self::assertFalse( $array['ordered'] );
+		self::assertSame(
+			array(
+				'add'   => 'Add a row',
+				'edit'  => 'Edit the row',
+				'empty' => 'No rows yet. Add the first shoe size.',
+				'full'  => 'The guide holds 12 rows at most.',
+			),
+			$array['words']
+		);
+		self::assertTrue( $rows->ordered()->toArray()['ordered'], 'Move up and Move down, where order matters' );
+		self::assertFalse( $rows->toArray()['ordered'], 'the list it was called on is as it was' );
+		self::assertSame( array(), Field::rows( 'g', 'g', 'G', self::columns(), 1 )->toArray()['rows'], 'none to start' );
+	}
+
+	/**
+	 * Lists that can't be drawn.
+	 *
+	 * @return iterable<string, array{\Closure(): Field, string}>
+	 */
+	public static function broken_lists(): iterable {
+		yield 'no columns' => array( static fn(): Field => Field::rows( 'g', 'g', 'G', array(), 3 ), 'needs a column' );
+		yield 'a limit under one' => array( static fn(): Field => Field::rows( 'g', 'g', 'G', self::columns(), 0 ), 'at least one row' );
+		yield 'a limit over fifty' => array( static fn(): Field => Field::rows( 'g', 'g', 'G', self::columns(), 51 ), 'at most 50 rows' );
+		yield 'a column named twice' => array(
+			static fn(): Field => Field::rows( 'g', 'g', 'G', array( Field::of( 'a', '[a]', 'A', 'text' ), Field::of( 'a', '[b]', 'B', 'text' ) ), 3 ),
+			'the column &quot;a&quot; twice',
+		);
+		yield 'a column posted outside its row' => array(
+			static fn(): Field => Field::rows( 'g', 'g', 'G', array( Field::of( 'a', 'a', 'A', 'text' ) ), 3 ),
+			'posted inside its row',
+		);
+		yield 'a list in a list' => array(
+			static fn(): Field => Field::rows( 'g', 'g', 'G', array( Field::rows( 'h', '[h]', 'H', self::columns(), 2 ) ), 3 ),
+			'a list inside a list',
+		);
+		yield 'a column shown by a condition' => array(
+			static fn(): Field => Field::rows( 'g', 'g', 'G', array( Field::of( 'a', '[a]', 'A', 'text' )->visibleWhen( 'b', array( 'x' ) ) ), 3 ),
+			'condition',
+		);
+		yield 'a row with a column the list has not' => array(
+			static fn(): Field => Field::rows( 'g', 'g', 'G', self::columns(), 3 )->listed( array( array( 'size' => '8', 'colour' => 'red' ) ) ),
+			'no column &quot;colour&quot;',
+		);
+		yield 'rows on a field that is no list' => array( static fn(): Field => Field::of( 'a', 'a', 'A', 'text' )->listed( array() ), 'not a list' );
+		yield 'words on a field that is no list' => array( static fn(): Field => Field::of( 'a', 'a', 'A', 'text' )->words( 'a', 'b', 'c', 'd' ), 'not a list' );
+		yield 'order on a field that is no list' => array( static fn(): Field => Field::of( 'a', 'a', 'A', 'text' )->ordered(), 'not a list' );
+	}
+
+	/**
+	 * @param \Closure(): Field $make What makes it.
+	 * @param string            $says What the refusal says.
+	 */
+	#[DataProvider( 'broken_lists' )]
+	public function test_a_list_that_cannot_be_drawn_is_refused_where_it_is_written( \Closure $make, string $says ): void {
+		$this->expectException( InvalidArgumentException::class );
+		$this->expectExceptionMessage( $says );
+		$make();
+	}
+
+	public function test_a_list_of_rows_is_a_field_of_its_form(): void {
+		$form = Form::of( 'f', array( Field::rows( 'guide', 'cbuild[guide]', 'Width guide', self::columns(), 3 ) ), array( Card::of( 'c', 'C', array( 'guide' ) ) ) );
+		self::assertSame( 'rows', $form->toArray()['fields'][0]['type'] );
+		self::assertSame( 'Width guide', $form->failed( Errors::none()->with( 'guide', 'Sizes overlap.' ) )->refusals()[0]['label'] );
+	}
 }

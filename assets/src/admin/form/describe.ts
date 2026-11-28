@@ -12,8 +12,8 @@ import type { Field, Form, FormValidity } from '@wordpress/dataviews';
 /** A value as DataForm's data holds it. */
 export type Value = string | number | boolean;
 
-/** A form's data: each field's value, by field id. */
-export type Data = Record< string, Value >;
+/** A form's data: each field's value, or a list's rows, by field id. */
+export type Data = Record< string, Value | Row[] >;
 
 /** A field, as src/Admin/Form/Field.php describes it. */
 export type FieldDescription = {
@@ -39,6 +39,31 @@ export type FieldDescription = {
 	visibleWhen?: Record< string, string[] >;
 };
 
+/** A row: each column's value, by column id. */
+export type Row = Record< string, Value >;
+
+/** A list, as Field::rows() describes it. */
+export type ListDescription = FieldDescription & {
+	type: 'rows';
+	columns: FieldDescription[];
+	rows: Array< Record< string, string > >;
+	max: number;
+	ordered: boolean;
+	words: { add: string; edit: string; empty: string; full: string };
+};
+
+/** The kit's own words for a list, translated by src/Admin/Form/Mount.php. */
+export type KitWords = {
+	edit: string;
+	remove: string;
+	moveUp: string;
+	moveDown: string;
+	removed: string;
+	undo: string;
+	cancel: string;
+	done: string;
+};
+
 /** A card, as src/Admin/Form/Card.php describes it. */
 export type CardDescription = {
 	id: string;
@@ -56,7 +81,15 @@ export type Description = {
 	errors: Record< string, string >;
 	/** Whether the kit warns before the page is left with a change; false where the page warns itself. */
 	leave?: boolean;
+	/** The kit's own words, where the form has a list. */
+	kit?: KitWords;
 };
+
+/** What draws a list in DataForm: the control its field is given. */
+export type ListEdit = (
+	list: ListDescription,
+	words: KitWords
+) => Field< Data >[ 'Edit' ];
 
 /** The field types whose min and max DataForm applies: a text field's are left to the server. */
 const NUMERIC = new Set( [ 'integer', 'number' ] );
@@ -68,14 +101,24 @@ const NUMERIC = new Set( [ 'integer', 'number' ] );
  * @param field The field.
  */
 function valueOf( field: FieldDescription ): Value {
+	return typed( field, field.value );
+}
+
+/**
+ * A value the server wrote, as a field's type takes it.
+ *
+ * @param field The field, or a list's column.
+ * @param raw   The value, as the input holds it.
+ */
+export function typed( field: FieldDescription, raw: string ): Value {
 	if ( 'boolean' === field.type ) {
-		return '' !== field.value && '0' !== field.value;
+		return '' !== raw && '0' !== raw;
 	}
-	if ( NUMERIC.has( field.type ) && '' !== field.value.trim() ) {
-		const number = Number( field.value );
-		return Number.isFinite( number ) ? number : field.value;
+	if ( NUMERIC.has( field.type ) && '' !== raw.trim() ) {
+		const number = Number( raw );
+		return Number.isFinite( number ) ? number : raw;
 	}
-	return field.value;
+	return raw;
 }
 
 /**
@@ -85,7 +128,35 @@ function valueOf( field: FieldDescription ): Value {
  */
 export function dataOf( description: Description ): Data {
 	return Object.fromEntries(
-		description.fields.map( ( field ) => [ field.id, valueOf( field ) ] )
+		description.fields.map( ( field ) => [
+			field.id,
+			isList( field ) ? rowsOf( field ) : valueOf( field ),
+		] )
+	);
+}
+
+/**
+ * Whether a field is a list.
+ *
+ * @param field A field.
+ */
+export function isList( field: FieldDescription ): field is ListDescription {
+	return 'rows' === field.type;
+}
+
+/**
+ * A list's rows, each value as its column's type takes it.
+ *
+ * @param list The list.
+ */
+export function rowsOf( list: ListDescription ): Row[] {
+	return list.rows.map( ( row ) =>
+		Object.fromEntries(
+			list.columns.map( ( column ) => [
+				column.id,
+				typed( column, row[ column.id ] ?? '' ),
+			] )
+		)
 	);
 }
 
@@ -114,9 +185,16 @@ function rulesOf( field: FieldDescription ): Field< Data >[ 'isValid' ] {
  * DataForm's fields.
  *
  * @param description The form's description.
+ * @param listEdit    What draws a list, where the form has one.
  */
-export function fieldsOf( description: Description ): Field< Data >[] {
+export function fieldsOf(
+	description: Description,
+	listEdit?: ListEdit
+): Field< Data >[] {
 	return description.fields.map( ( field ) => {
+		if ( isList( field ) ) {
+			return listField( field, description, listEdit );
+		}
 		const made: Record< string, unknown > = {
 			id: field.id,
 			label: field.label,
@@ -153,6 +231,35 @@ export function fieldsOf( description: Description ): Field< Data >[] {
 		}
 		return made as Field< Data >;
 	} );
+}
+
+/**
+ * A list's field: its own control, which draws the table, the Add button and the modal.
+ *
+ * @param  list        The list.
+ * @param  description The form's description, with the kit's words.
+ * @param  listEdit    What draws a list.
+ * @throws {Error} A list with nothing given to draw it, or no words to draw it with.
+ */
+function listField(
+	list: ListDescription,
+	description: Description,
+	listEdit: ListEdit | undefined
+): Field< Data > {
+	if ( undefined === listEdit || undefined === description.kit ) {
+		throw new Error(
+			`The form ${ description.id } has the list ${ list.id }, and nothing to draw it with.`
+		);
+	}
+	const made: Record< string, unknown > = {
+		id: list.id,
+		label: list.label,
+		Edit: listEdit( list, description.kit ),
+	};
+	if ( undefined !== list.description ) {
+		made.description = list.description;
+	}
+	return made as Field< Data >;
 }
 
 /**

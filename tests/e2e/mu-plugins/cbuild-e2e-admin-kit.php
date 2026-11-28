@@ -22,11 +22,11 @@ const CBUILD_E2E_KIT = 'cbuild_e2e_admin_kit';
 /**
  * The fixture's saved values, and the errors of the last refused save.
  *
- * @return array{lead_days: string, assembly: string, unit: string, note: string}
+ * @return array{lead_days: string, assembly: string, unit: string, note: string, guide: list<array{size: string, from: string, to: string}>}
  */
 function cbuild_e2e_kit_values(): array {
 	$saved = get_option( CBUILD_E2E_KIT, array() );
-	return array_merge( array( 'lead_days' => '3', 'assembly' => '', 'unit' => 'mm', 'note' => '' ), is_array( $saved ) ? $saved : array() );
+	return array_merge( array( 'lead_days' => '3', 'assembly' => '', 'unit' => 'mm', 'note' => '', 'guide' => array( array( 'size' => '8', 'from' => '8', 'to' => '8.25' ) ) ), is_array( $saved ) ? $saved : array() );
 }
 
 add_action(
@@ -54,13 +54,31 @@ add_action(
 			'assembly'  => isset( $posted['assembly'] ) && '1' === $posted['assembly'] ? '1' : '',
 			'unit'      => in_array( $posted['unit'] ?? '', array( 'mm', 'in' ), true ) ? (string) $posted['unit'] : 'mm',
 			'note'      => sanitize_text_field( (string) ( $posted['note'] ?? '' ) ),
+			'guide'     => array(),
 		);
+		// The width guide's rows, as either form posts them: a blank row (the no-script form's spare) is left out.
+		foreach ( is_array( $posted['guide'] ?? null ) ? $posted['guide'] : array() as $row ) {
+			$row = array_map( static fn( $value ): string => sanitize_text_field( (string) $value ), array_intersect_key( (array) $row, array_flip( array( 'size', 'from', 'to' ) ) ) );
+			$row = array_merge( array( 'size' => '', 'from' => '', 'to' => '' ), $row );
+			if ( '' !== implode( '', $row ) ) {
+				$values['guide'][] = $row;
+			}
+		}
 		$errors = array();
 		if ( 1 !== preg_match( '/^\d+$/', $values['lead_days'] ) || (int) $values['lead_days'] > 30 ) {
 			$errors['lead_days'] = 'Use a whole number from 0 to 30.';
 		} elseif ( '1' === $values['assembly'] && '0' === $values['lead_days'] ) {
 			// A rule across two fields, which only the server knows: the kit's limits are hints.
 			$errors['lead_days'] = 'Offering assembly needs at least one day.';
+		}
+		foreach ( $values['guide'] as $at => $row ) {
+			if ( '' !== $row['from'] && '' !== $row['to'] && (float) $row['from'] > (float) $row['to'] ) {
+				$errors['guide'] = sprintf( 'Row %d: From is wider than To.', $at + 1 );
+				break;
+			}
+		}
+		if ( count( $values['guide'] ) > 3 ) {
+			$errors['guide'] = 'The guide holds 3 rows at most.';
 		}
 		if ( array() === $errors ) {
 			update_option( CBUILD_E2E_KIT, $values, false );
@@ -91,8 +109,22 @@ function cbuild_e2e_kit_page(): void {
 			Field::of( 'assembly', 'cbuild[assembly]', 'Offer assembly', 'boolean' )->value( $values['assembly'] ),
 			Field::of( 'unit', 'cbuild[unit]', 'Unit', 'text' )->control( 'select' )->choices( array( 'mm' => 'Millimetres', 'in' => 'Inches' ) )->value( $values['unit'] ),
 			Field::of( 'note', 'cbuild[note]', 'Note for inches', 'text' )->visibleWhen( 'unit', array( 'in' ) )->value( $values['note'] ),
+			Field::rows(
+				'guide',
+				'cbuild[guide]',
+				'Width guide',
+				array(
+					Field::of( 'size', '[size]', 'Shoe size', 'text' )->rules( true, null, null, 8 ),
+					Field::of( 'from', '[from]', 'From', 'number' ),
+					Field::of( 'to', '[to]', 'To', 'number' ),
+				),
+				3
+			)->help( 'Which board widths suit each shoe size.' )
+				->words( 'Add a row', 'Edit the row', 'No rows yet. Add the first shoe size.', 'The guide holds 3 rows at most.' )
+				->ordered()
+				->listed( $values['guide'] ),
 		),
-		array( Card::of( 'builds', 'Builds', array( 'lead_days', 'assembly', 'unit', 'note' ) ) )
+		array( Card::of( 'builds', 'Builds', array( 'lead_days', 'assembly', 'unit', 'note' ) ), Card::of( 'sizes', 'Sizes', array( 'guide' ) ) )
 	)->failed( $errors );
 	echo '<div class="wrap"><h1>Admin kit fixture</h1>';
 	if ( isset( $_GET['saved'] ) ) {
@@ -107,6 +139,20 @@ function cbuild_e2e_kit_page(): void {
 	printf( '<p><input type="hidden" name="cbuild[assembly]" value="0"><label><input type="checkbox" id="%s" name="cbuild[assembly]" value="1"%s> Offer assembly</label></p>', esc_attr( Mount::controlId( $form, 'assembly' ) ), checked( '1', $values['assembly'], false ) );
 	printf( '<p><label>Unit <select name="cbuild[unit]"><option value="mm"%s>Millimetres</option><option value="in"%s>Inches</option></select></label></p>', selected( 'mm', $values['unit'], false ), selected( 'in', $values['unit'], false ) );
 	printf( '<p><label>Note for inches <input type="text" name="cbuild[note]" value="%s"></label></p>', esc_attr( $values['note'] ) );
+	// The width guide with no script: its rows, and a spare for one more while it holds fewer than 3.
+	$rows = $values['guide'];
+	if ( count( $rows ) < 3 ) {
+		$rows[] = array( 'size' => '', 'from' => '', 'to' => '' );
+	}
+	echo '<fieldset id="' . esc_attr( Mount::controlId( $form, 'guide' ) ) . '" tabindex="-1"><legend>Width guide</legend><table><thead><tr><th>Shoe size</th><th>From</th><th>To</th></tr></thead><tbody>';
+	foreach ( $rows as $at => $row ) {
+		echo '<tr>';
+		foreach ( array( 'size' => 'Shoe size', 'from' => 'From', 'to' => 'To' ) as $key => $label ) {
+			printf( '<td><input type="text" name="cbuild[guide][%1$d][%2$s]" value="%3$s" aria-label="%4$s, row %5$d"></td>', (int) $at, esc_attr( $key ), esc_attr( $row[ $key ] ), esc_attr( $label ), (int) $at + 1 );
+		}
+		echo '</tr>';
+	}
+	echo '</tbody></table></fieldset>';
 	echo Mount::close();
 	submit_button( 'Save' );
 	echo '</form></div>';

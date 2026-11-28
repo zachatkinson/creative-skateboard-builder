@@ -43,6 +43,16 @@ final class Field {
 	public const HELP_LIMIT = 140;
 
 	/**
+	 * The most rows a list may hold: the most of any of M15's lists, the mapping's 50.
+	 */
+	public const ROWS_LIMIT = 50;
+
+	/**
+	 * A list's type: rows of columns, drawn as a table with a modal (docs/ADMIN-KIT.md), not one of DataForm's.
+	 */
+	private const ROWS = 'rows';
+
+	/**
 	 * What the field says of itself beyond its id, name, label and type, keyed as the script reads it.
 	 *
 	 * @var array<string, mixed>
@@ -57,6 +67,13 @@ final class Field {
 	private string $value = '';
 
 	/**
+	 * A list's column ids, in order; none for any other field.
+	 *
+	 * @var list<string>
+	 */
+	private array $columns = array();
+
+	/**
 	 * A field.
 	 *
 	 * @param string $id    Its id: a slug.
@@ -68,7 +85,7 @@ final class Field {
 		public readonly string $id,
 		public readonly string $name,
 		public readonly string $label,
-		private readonly string $type,
+		public readonly string $type,
 	) {}
 
 	/**
@@ -97,6 +114,131 @@ final class Field {
 			throw new InvalidArgumentException( esc_html( sprintf( 'The field "%s" has the type "%s", which DataForm has not.', $id, $type ) ) );
 		}
 		return new self( $id, $name, $label, $type );
+	}
+
+	/**
+	 * A list of rows, each a value for each column: a table the shop owner adds to, edits in a modal, removes from with
+	 * an Undo, and, once ordered(), reorders. Each row posts as the list's name with its place and the column's name
+	 * after it: `cbuild[guide][0][size]`.
+	 *
+	 * @since 1.5.0
+	 *
+	 * @param string      $id      Its id, as of() takes it.
+	 * @param string      $name    The input name its rows are posted under.
+	 * @param string      $label   Its label, translated.
+	 * @param list<Field> $columns Its columns: fields whose names are what follows a row's place, such as `[size]`.
+	 * @param int         $max     The most rows it holds, from 1 to ROWS_LIMIT.
+	 *
+	 * @throws InvalidArgumentException A list that cannot be drawn.
+	 */
+	public static function rows( string $id, string $name, string $label, array $columns, int $max ): self {
+		$list = self::of( $id, $name, $label, 'text' );
+		if ( array() === $columns ) {
+			throw new InvalidArgumentException( esc_html( sprintf( 'The list "%s" needs a column.', $id ) ) );
+		}
+		if ( $max < 1 || $max > self::ROWS_LIMIT ) {
+			throw new InvalidArgumentException( esc_html( sprintf( 'The list "%s" holds at least one row and at most %d rows.', $id, self::ROWS_LIMIT ) ) );
+		}
+		$described = array();
+		foreach ( $columns as $column ) {
+			if ( isset( $described[ $column->id ] ) ) {
+				throw new InvalidArgumentException( esc_html( sprintf( 'The list "%s" has the column "%s" twice.', $id, $column->id ) ) );
+			}
+			if ( self::ROWS === $column->type ) {
+				throw new InvalidArgumentException( esc_html( sprintf( 'The list "%s" has a list inside a list.', $id ) ) );
+			}
+			if ( ! str_starts_with( $column->name, '[' ) ) {
+				throw new InvalidArgumentException( esc_html( sprintf( 'The column "%s" of the list "%s" is posted inside its row: its name starts with "[".', $column->id, $id ) ) );
+			}
+			if ( null !== $column->condition() ) {
+				throw new InvalidArgumentException( esc_html( sprintf( 'The column "%s" of the list "%s" has a condition, which a table cannot show.', $column->id, $id ) ) );
+			}
+			$described[ $column->id ] = $column->toArray();
+		}
+		$made          = new self( $id, $name, $label, self::ROWS );
+		$made->extra   = $list->extra;
+		$made->columns = array_keys( $described );
+		return $made->with( 'columns', array_values( $described ) )
+			->with( 'rows', array() )
+			->with( 'max', $max )
+			->with( 'ordered', false );
+	}
+
+	/**
+	 * The list with its rows, as the server holds them.
+	 *
+	 * @since 1.5.0
+	 *
+	 * @param list<array<string, string>> $rows Each row's values, by column id.
+	 *
+	 * @throws InvalidArgumentException A field that is not a list, or a row with a column the list has not.
+	 */
+	public function listed( array $rows ): self {
+		$this->listOnly( 'rows' );
+		$listed = array();
+		foreach ( $rows as $row ) {
+			foreach ( array_keys( $row ) as $key ) {
+				if ( ! in_array( $key, $this->columns, true ) ) {
+					throw new InvalidArgumentException( esc_html( sprintf( 'The list "%s" has no column "%s".', $this->id, $key ) ) );
+				}
+			}
+			$full = array();
+			foreach ( $this->columns as $column ) {
+				$full[ $column ] = $row[ $column ] ?? '';
+			}
+			$listed[] = $full;
+		}
+		return $this->with( 'rows', $listed );
+	}
+
+	/**
+	 * The list's words, translated.
+	 *
+	 * @since 1.5.0
+	 *
+	 * @param string $add   Its Add button, such as "Add a mapping".
+	 * @param string $edit  Its modal's title for a row, such as "Edit the mapping".
+	 * @param string $none  What it says with no rows: what a row is for, and the first step.
+	 * @param string $full  What it says once it holds its most rows, such as "The mapping holds 50 lines at most.".
+	 *
+	 * @throws InvalidArgumentException A field that is not a list.
+	 */
+	public function words( string $add, string $edit, string $none, string $full ): self {
+		$this->listOnly( 'words' );
+		return $this->with(
+			'words',
+			array(
+				'add'   => $add,
+				'edit'  => $edit,
+				'empty' => $none,
+				'full'  => $full,
+			)
+		);
+	}
+
+	/**
+	 * The list in an order that matters: each row moves up and down.
+	 *
+	 * @since 1.5.0
+	 *
+	 * @throws InvalidArgumentException A field that is not a list.
+	 */
+	public function ordered(): self {
+		$this->listOnly( 'an order' );
+		return $this->with( 'ordered', true );
+	}
+
+	/**
+	 * Refuses a list's method on a field that is not one.
+	 *
+	 * @param string $what What was asked of it.
+	 *
+	 * @throws InvalidArgumentException A field that is not a list.
+	 */
+	private function listOnly( string $what ): void {
+		if ( self::ROWS !== $this->type ) {
+			throw new InvalidArgumentException( esc_html( sprintf( 'The field "%s" is not a list, so it takes no %s.', $this->id, $what ) ) );
+		}
 	}
 
 	/**

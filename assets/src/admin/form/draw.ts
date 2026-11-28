@@ -5,6 +5,7 @@
  */
 import { DataForm } from '@wordpress/dataviews';
 import { createElement, createRoot } from '@wordpress/element';
+import { listEdit } from './list';
 import { mount, type Draw } from './mount';
 // DataForm's styles (style.css): wp-scripts writes them beside each screen's script, with a right-to-left copy.
 import './style.css';
@@ -84,5 +85,5 @@ export function reveal(
 export function mountAll( within: ParentNode = document ): Array< () => void > {
 	return Array.from(
 		within.querySelectorAll< HTMLElement >( '.cbuild-form' )
-	).map( ( kit ) => mount( kit, draw ) );
+	).map( ( kit ) => mount( kit, draw, listEdit ) );
 }

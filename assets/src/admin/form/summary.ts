@@ -19,7 +19,8 @@ function names( words: string, label: string, exact: boolean ): boolean {
 }
 
 /**
- * The control DataForm drew for a label: the one its label points to, or the first inside a group named by it. A label
+ * The control DataForm drew for a label: the one its label points to, a list's group (list.ts), or the first inside a
+ * fieldset named by it. A label
  * of the same words is taken before one that only starts with them, so "Unit" never lands on "Unit price".
  *
  * @param app   DataForm's box.
@@ -39,6 +40,25 @@ function control( app: HTMLElement, label: string ): HTMLElement | null {
 				pointed ??
 				named.querySelector< HTMLElement >( 'input, select, textarea' )
 			);
+		}
+		// A list: a group named by its label (list.ts), which takes focus itself.
+		const group = Array.from(
+			app.querySelectorAll< HTMLElement >(
+				'[role="group"][aria-labelledby]'
+			)
+		).find( ( one ) =>
+			names(
+				app.ownerDocument
+					.getElementById(
+						one.getAttribute( 'aria-labelledby' ) ?? ''
+					)
+					?.textContent?.trim() ?? '',
+				label,
+				exact
+			)
+		);
+		if ( group ) {
+			return group;
 		}
 		const legend = Array.from( app.querySelectorAll( 'legend' ) ).find(
 			( one ) => names( one.textContent?.trim() ?? '', label, exact )

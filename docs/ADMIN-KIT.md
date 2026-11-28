@@ -46,6 +46,10 @@ On the screen's own `admin_enqueue_scripts`, `Assets::enqueue( '<screen>', CBUIL
   - `choices()`, `rules()`, `suffix()`, `placeholder()`;
   - `readOnly( source )` for a value set elsewhere, with where;
   - `visibleWhen( field, values )` shows a field only while another holds one of the values.
+- **A list:** `Field::rows( id, name, label, columns, max )` for rows of columns, at most 50. Each column is a field whose name is what follows a row's place, such as `[size]`, so a row posts as `cbuild[guide][0][size]`. Then:
+  - `words( add, edit, empty, full )`: the Add button, the modal's title for a row, what it says with no rows (what a row is for, and the first step), and what it says once full;
+  - `listed( rows )`: the rows, each a value by column id;
+  - `ordered()`: Move up and Move down, where order matters.
 - **Card:** `of( id, label, fields )`, then `closed( summaryFieldId )` to start it shut with a field's value in its header.
 - **Form:** refuses a duplicate id, and a condition, card or summary that names an unknown field. `failed( $errors )` opens the cards that hold an error. `leftToHost()` is for a page that warns before it is left by itself, as WooCommerce's Settings do: the kit adds no second warning.
 
@@ -54,6 +58,16 @@ On the screen's own `admin_enqueue_scripts`, `Assets::enqueue( '<screen>', CBUIL
 Each screen has an entry, `assets/src/admin/<screen>.ts`, that calls `mountAll()`. A panel that WooCommerce loads later, such as a variation's, calls `mountAll( panel )`, and gives each back before WooCommerce empties it.
 
 The kit, in `assets/src/admin/form/`, imports only its own modules and WordPress's packages. ESLint refuses anything else, so the agency's other plugins can copy it.
+
+## A list, in the browser
+
+The kit draws a list as a DataViews table with each column, and nothing else: no search, filters or view settings.
+
+- **Add** opens a modal holding DataForm for one row. Its form is the modal's own, so the browser holds a required column, and Enter is Done. At its most rows, Add is turned off and the list says it is full.
+- **Each row's menu** holds Edit, which opens the same modal with the row, Move up and Move down where the list is ordered, and Remove.
+- **Remove** says "Row removed." with Undo, which puts the row back where it was. The Undo stays until it is closed or the list changes again, and focus goes to Add.
+- **The server's controls for the list** are its no-script form. While the kit is mounted they are turned off, and the kit posts the rows as they stand, under the same names. With no script, print the rows as inputs and a spare row for one more, and leave a blank row out when saving.
+- **A refusal of the list** is shown under its table. The summary's link moves focus to the list, which the message describes.
 
 ## What DataForm does that a screen should know
 

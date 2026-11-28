@@ -251,6 +251,42 @@ describe( 'the summary of the refusals', () => {
 		expect( click.defaultPrevented ).toBe( true );
 	} );
 
+	it( 'moves focus from a link to a list, which is a group named by its label', () => {
+		kit().insertAdjacentHTML(
+			'afterbegin',
+			'<div class="notice notice-error inline cbuild-form__summary" tabindex="-1"><ul><li><a href="#x" data-cbuild-field="guide">Width guide: Rows overlap.</a></li></ul></div>'
+		);
+		const groups: Draw = ( where ) => {
+			where.innerHTML =
+				'<div role="group" aria-labelledby="guide-label" tabindex="-1"><div id="guide-label">Width guide</div><button type="button">Add a row</button></div>';
+			return { update: () => {}, unmount: () => {} };
+		};
+		kit().querySelector( 'script' )!.textContent = JSON.stringify( {
+			...description,
+			fields: [
+				{
+					id: 'guide',
+					name: 'cbuild[guide]',
+					label: 'Width guide',
+					type: 'rows',
+					value: '',
+					max: 3,
+					ordered: false,
+					columns: [],
+					rows: [],
+					words: {},
+				},
+			],
+			errors: {},
+			kit: {},
+		} );
+		live.push( mount( kit(), groups, () => () => null ) );
+		link( 'guide' ).click();
+		expect(
+			kit().ownerDocument.activeElement?.getAttribute( 'role' )
+		).toBe( 'group' );
+	} );
+
 	it( 'leaves a link to a field DataForm is not showing to the page', () => {
 		withSummary();
 		const click = new MouseEvent( 'click', {
@@ -265,6 +301,115 @@ describe( 'the summary of the refusals', () => {
 		const before = kit().ownerDocument.activeElement;
 		mounted( kit() );
 		expect( kit().ownerDocument.activeElement ).toBe( before );
+	} );
+} );
+
+describe( 'a list in the form', () => {
+	const words = {
+		edit: 'Edit',
+		remove: 'Remove',
+		moveUp: 'Move up',
+		moveDown: 'Move down',
+		removed: 'Row removed.',
+		undo: 'Undo',
+		cancel: 'Cancel',
+		done: 'Done',
+	};
+	const guide = {
+		id: 'guide',
+		name: 'cbuild[guide]',
+		label: 'Width guide',
+		type: 'rows',
+		value: '',
+		max: 3,
+		ordered: false,
+		columns: [
+			{
+				id: 'size',
+				name: '[size]',
+				label: 'Shoe size',
+				type: 'text',
+				value: '',
+			},
+		],
+		rows: [ { size: '8' } ],
+		words: {
+			add: 'Add',
+			edit: 'Edit the row',
+			empty: 'None.',
+			full: 'Full.',
+		},
+	};
+	const asked: unknown[] = [];
+	const Edit = () => null;
+	const listed = () => {
+		kit().querySelector( 'script' )!.textContent = JSON.stringify( {
+			...description,
+			fields: [ ...description.fields, guide ],
+			kit: words,
+		} );
+		server().insertAdjacentHTML(
+			'beforeend',
+			'<input name="cbuild[guide][0][size]" value="8"><input name="cbuild[guide][1][size]" value="">'
+		);
+		const unmount = mount( kit(), draw, ( list, kitWords ) => {
+			asked.push( [ list.id, kitWords ] );
+			return Edit;
+		} );
+		live.push( unmount );
+		return unmount;
+	};
+	const posted = () =>
+		Array.from(
+			new FormData( document.querySelector( 'form' )! ).entries()
+		).filter( ( [ name ] ) => name.startsWith( 'cbuild[guide]' ) );
+
+	beforeEach( () => {
+		asked.length = 0;
+	} );
+
+	it( "gives DataForm the list's rows and the list's own control, with the kit's words", () => {
+		listed();
+		expect( last().data.guide ).toEqual( [ { size: '8' } ] );
+		const field = last().fields.find( ( one ) => 'guide' === one.id )!;
+		expect( field.Edit ).toBe( Edit );
+		expect( field.label ).toBe( 'Width guide' );
+		expect( asked ).toEqual( [ [ 'guide', words ] ] );
+	} );
+
+	it( 'posts the rows as they stand, from the start and after each change', () => {
+		listed();
+		expect( posted() ).toEqual( [ [ 'cbuild[guide][0][size]', '8' ] ] );
+		last().onChange( { guide: [ { size: '10' }, { size: '8' } ] } );
+		expect( posted() ).toEqual( [
+			[ 'cbuild[guide][0][size]', '10' ],
+			[ 'cbuild[guide][1][size]', '8' ],
+		] );
+		expect( last().data.guide ).toEqual( [
+			{ size: '10' },
+			{ size: '8' },
+		] );
+		expect( warned() ).toBe( true );
+	} );
+
+	it( "gives the server's own controls back when unmounted", () => {
+		const unmount = listed();
+		last().onChange( { guide: [] } );
+		unmount();
+		expect( posted() ).toEqual( [
+			[ 'cbuild[guide][0][size]', '8' ],
+			[ 'cbuild[guide][1][size]', '' ],
+		] );
+	} );
+
+	it( 'refuses a list with no control to draw it, where none was given', () => {
+		kit().querySelector( 'script' )!.textContent = JSON.stringify( {
+			...description,
+			fields: [ guide ],
+			kit: words,
+		} );
+		expect( () => mounted( kit() ) ).toThrow( 'guide' );
+		expect( server().hidden ).toBe( false );
 	} );
 } );
 

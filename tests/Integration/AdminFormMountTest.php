@@ -18,6 +18,7 @@ use CreativeBranding\SkateboardBuilder\Admin\Form\Mount;
 use CreativeBranding\SkateboardBuilder\Tests\Support\IntegrationTestCase;
 use DOMDocument;
 use DOMXPath;
+use WP_Locale_Switcher;
 
 /**
  * M15's principle 1: the server's form stays the page, inside the mount, and the description rides beside it as JSON
@@ -114,6 +115,40 @@ final class AdminFormMountTest extends IntegrationTestCase {
 		$dom = new DOMDocument();
 		self::assertTrue( $dom->loadHTML( '<!doctype html><html><head><meta charset="utf-8"></head><body>' . $html . '</body></html>', LIBXML_NOERROR ) );
 		return new DOMXPath( $dom );
+	}
+
+	public function test_a_form_with_a_list_carries_the_kits_own_words_for_it_translated(): void {
+		$columns = array( Field::of( 'size', '[size]', 'Shoe size', 'text' ) );
+		$listed  = Form::of( 'f', array( Field::rows( 'guide', 'cbuild[guide]', 'Width guide', $columns, 3 ) ), array() );
+		$json    = json_decode( (string) self::read( Mount::open( $listed ) . Mount::close() )->query( '//script' )?->item( 0 )?->textContent, true );
+		self::assertIsArray( $json );
+		self::assertSame(
+			array( 'edit', 'remove', 'moveUp', 'moveDown', 'removed', 'undo', 'cancel', 'done' ),
+			array_keys( $json['kit'] ),
+			'the words of a list\'s actions, its snackbar and its modal'
+		);
+		self::assertSame( 'Remove', $json['kit']['remove'] );
+		self::assertSame( 'Row removed.', $json['kit']['removed'] );
+		self::assertSame( $listed->toArray(), array_diff_key( $json, array( 'kit' => true ) ), 'the description as it was, beside them' );
+
+		$plain = json_decode( (string) self::read( Mount::open( Form::of( 'f', $columns, array() ) ) . Mount::close() )->query( '//script' )?->item( 0 )?->textContent, true );
+		self::assertIsArray( $plain );
+		self::assertArrayNotHasKey( 'kit', $plain, 'none for a form with no list' );
+
+		// As ListWordsTest switches: the test site has no fr_CA of its own, so the plugin's file is loaded by hand.
+		add_filter( 'get_available_languages', static fn( array $languages ): array => array_merge( $languages, array( 'fr_CA' ) ) );
+		$GLOBALS['wp_locale_switcher'] = new WP_Locale_Switcher();
+		$GLOBALS['wp_locale_switcher']->init();
+		self::assertTrue( switch_to_locale( 'fr_CA' ) );
+		self::assertTrue( load_textdomain( 'creative-skateboard-builder', CBUILD_PATH . 'languages/creative-skateboard-builder-fr_CA.mo', 'fr_CA' ) );
+		try {
+			$french = json_decode( (string) self::read( Mount::open( $listed ) . Mount::close() )->query( '//script' )?->item( 0 )?->textContent, true );
+		} finally {
+			unload_textdomain( 'creative-skateboard-builder' );
+			restore_previous_locale();
+		}
+		self::assertIsArray( $french );
+		self::assertSame( 'Retirer', $french['kit']['remove'] );
 	}
 
 	public function test_a_screen_loads_its_script_as_the_build_wrote_it_and_the_kits_styles(): void {

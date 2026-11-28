@@ -137,6 +137,120 @@ test.describe( 'The admin kit', () => {
 		await save( page );
 	} );
 
+	test( 'a list adds in a modal, edits, moves, removes with an Undo, and saves in its order', async ( {
+		page,
+		javaScriptEnabled,
+	} ) => {
+		test.skip( ! javaScriptEnabled, 'The table is drawn by the script.' );
+		await login( page );
+		await page.goto( PAGE );
+		const list = page.locator( '.cbuild-form__list' );
+		const sizes = () =>
+			list
+				.getByRole( 'row' )
+				.filter( { has: page.getByRole( 'cell' ) } )
+				.locator( 'td:first-of-type' );
+		const act = async ( size: string, action: string ) => {
+			await list
+				.getByRole( 'row' )
+				.filter( {
+					has: page.getByRole( 'cell', { name: size, exact: true } ),
+				} )
+				.getByRole( 'button', { name: 'Actions' } )
+				.click();
+			await page.getByRole( 'menuitem', { name: action } ).click();
+		};
+		const add = list.getByRole( 'button', { name: 'Add a row' } );
+		const addRow = async ( size: string, from: string, to: string ) => {
+			await add.click();
+			const modal = page.getByRole( 'dialog', { name: 'Add a row' } );
+			await modal.getByLabel( 'Shoe size' ).fill( size );
+			await modal.getByLabel( 'From', { exact: true } ).fill( from );
+			await modal.getByLabel( 'To', { exact: true } ).fill( to );
+			await modal.getByRole( 'button', { name: 'Done' } ).click();
+			await expect( modal ).toHaveCount( 0 );
+		};
+		await expect( sizes() ).toHaveText( [ '8' ] );
+		await axe( page, 'a list', '.wrap' );
+
+		// The modal's own form: a required column holds it open, and Enter is Done.
+		await add.click();
+		const modal = page.getByRole( 'dialog', { name: 'Add a row' } );
+		await modal.getByRole( 'button', { name: 'Done' } ).click();
+		await expect( modal ).toBeVisible();
+		await axe( page, "a list's modal", '[role="dialog"]' );
+		await modal.getByLabel( 'Shoe size' ).fill( '10' );
+		await modal.getByLabel( 'From', { exact: true } ).fill( '8.25' );
+		await modal.getByLabel( 'To', { exact: true } ).fill( '8.5' );
+		await modal.getByLabel( 'To', { exact: true } ).press( 'Enter' );
+		await expect( modal ).toHaveCount( 0 );
+		await expect( sizes() ).toHaveText( [ '8', '10' ] );
+
+		await act( '10', 'Move up' );
+		await expect( sizes() ).toHaveText( [ '10', '8' ] );
+
+		await act( '8', 'Remove' );
+		await expect( sizes() ).toHaveText( [ '10' ] );
+		const snackbar = page.locator( '.cbuild-form__snackbar' );
+		await expect( snackbar ).toContainText( 'Row removed.' );
+		await expect( add ).toBeFocused();
+		await snackbar.getByRole( 'button', { name: 'Undo' } ).click();
+		await expect( sizes() ).toHaveText( [ '10', '8' ] );
+		await expect( snackbar ).toHaveCount( 0 );
+
+		await act( '8', 'Edit' );
+		const edit = page.getByRole( 'dialog', { name: 'Edit the row' } );
+		await expect( edit.getByLabel( 'To', { exact: true } ) ).toHaveValue(
+			'8.25'
+		);
+		await edit.getByLabel( 'Shoe size' ).fill( '9' );
+		await edit.getByRole( 'button', { name: 'Done' } ).click();
+		await expect( sizes() ).toHaveText( [ '10', '9' ] );
+
+		await addRow( '12', '8.5', '9' );
+		await expect( add ).toBeDisabled();
+		await expect( list ).toContainText( 'The guide holds 3 rows at most.' );
+
+		await save( page );
+		await expect( page.getByText( 'Saved.' ) ).toBeVisible();
+		await expect( sizes() ).toHaveText( [ '10', '9', '12' ] );
+
+		// The server's refusal of the list: named in the summary, and under the table.
+		await act( '9', 'Edit' );
+		await page
+			.getByRole( 'dialog', { name: 'Edit the row' } )
+			.getByLabel( 'From', { exact: true } )
+			.fill( '9.5' );
+		await page
+			.getByRole( 'dialog', { name: 'Edit the row' } )
+			.getByRole( 'button', { name: 'Done' } )
+			.click();
+		await save( page );
+		const refusal = 'Row 2: From is wider than To.';
+		await expect( page.locator( '.cbuild-form__summary' ) ).toContainText(
+			`Width guide: ${ refusal }`
+		);
+		await expect( list ).toContainText( refusal );
+		await page
+			.locator( '.cbuild-form__summary' )
+			.getByRole( 'link', { name: `Width guide: ${ refusal }` } )
+			.click();
+		await expect( list ).toBeFocused();
+		await expect( list ).toHaveAccessibleDescription( refusal );
+
+		// Back to the one row the other tests start from.
+		await act( '12', 'Remove' );
+		await act( '9', 'Remove' );
+		await act( '10', 'Edit' );
+		const back = page.getByRole( 'dialog', { name: 'Edit the row' } );
+		await back.getByLabel( 'Shoe size' ).fill( '8' );
+		await back.getByLabel( 'From', { exact: true } ).fill( '8' );
+		await back.getByLabel( 'To', { exact: true } ).fill( '8.25' );
+		await back.getByRole( 'button', { name: 'Done' } ).click();
+		await save( page );
+		await expect( sizes() ).toHaveText( [ '8' ] );
+	} );
+
 	test( "with no script the server's form is the page, and saves", async ( {
 		page,
 		javaScriptEnabled,
@@ -169,5 +283,22 @@ test.describe( 'The admin kit', () => {
 		await server.getByLabel( 'Assembly time' ).fill( '5' );
 		await server.getByLabel( 'Offer assembly' ).uncheck();
 		await save( page );
+
+		// A list with no script: its rows as inputs, and a spare for one more.
+		await server.getByLabel( 'Shoe size, row 2' ).fill( '10' );
+		await server.getByLabel( 'From, row 2' ).fill( '8.25' );
+		await save( page );
+		await expect( server.getByLabel( 'Shoe size, row 2' ) ).toHaveValue(
+			'10'
+		);
+		await expect( server.getByLabel( 'Shoe size, row 3' ) ).toHaveValue(
+			''
+		);
+		await server.getByLabel( 'Shoe size, row 2' ).fill( '' );
+		await server.getByLabel( 'From, row 2' ).fill( '' );
+		await save( page );
+		await expect( server.getByLabel( 'Shoe size, row 3' ) ).toHaveCount(
+			0
+		);
 	} );
 } );

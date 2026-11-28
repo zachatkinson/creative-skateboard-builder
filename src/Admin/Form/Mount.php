@@ -37,12 +37,36 @@ final class Mount {
 	 */
 	public static function open( Form $form ): string {
 		// JSON_HEX_TAG writes < and > as \u003C and \u003E, so no field's words can end the script early.
-		$json = wp_json_encode( $form->toArray(), JSON_HEX_TAG | JSON_HEX_AMP | JSON_UNESCAPED_SLASHES );
+		$description = $form->toArray();
+		if ( $form->hasList() ) {
+			$description['kit'] = self::words();
+		}
+		$json = wp_json_encode( $description, JSON_HEX_TAG | JSON_HEX_AMP | JSON_UNESCAPED_SLASHES );
 		return sprintf(
 			'<div class="cbuild-form" data-cbuild-form="%1$s">%3$s<script type="application/json" class="cbuild-form__description">%2$s</script><div class="cbuild-form__server">',
 			esc_attr( $form->id ),
 			false === $json ? '{}' : $json,
 			self::summary( $form )
+		);
+	}
+
+	/**
+	 * The kit's own words for a list: its row actions, the snackbar after a removal and the modal's buttons.
+	 *
+	 * @since 1.5.0
+	 *
+	 * @return array{edit: string, remove: string, moveUp: string, moveDown: string, removed: string, undo: string, cancel: string, done: string}
+	 */
+	public static function words(): array {
+		return array(
+			'edit'     => __( 'Edit', 'creative-skateboard-builder' ),
+			'remove'   => __( 'Remove', 'creative-skateboard-builder' ),
+			'moveUp'   => __( 'Move up', 'creative-skateboard-builder' ),
+			'moveDown' => __( 'Move down', 'creative-skateboard-builder' ),
+			'removed'  => __( 'Row removed.', 'creative-skateboard-builder' ),
+			'undo'     => __( 'Undo', 'creative-skateboard-builder' ),
+			'cancel'   => __( 'Cancel', 'creative-skateboard-builder' ),
+			'done'     => __( 'Done', 'creative-skateboard-builder' ),
 		);
 	}
 
@@ -98,6 +122,7 @@ final class Mount {
 			)
 		);
 	}
+
 	/**
 	 * The mount's end.
 	 *
