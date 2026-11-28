@@ -5,6 +5,7 @@
 A WooCommerce plugin that sells complete skateboards built from the parts a shop already stocks.
 
 [![CI](https://github.com/zachatkinson/creative-skateboard-builder/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/zachatkinson/creative-skateboard-builder/actions/workflows/ci.yml)
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/zachatkinson/creative-skateboard-builder/badge)](https://scorecard.dev/viewer/?uri=github.com/zachatkinson/creative-skateboard-builder)
 [![Version](https://img.shields.io/github/v/tag/zachatkinson/creative-skateboard-builder?sort=semver&label=version)](CHANGELOG.md)
 [![Licence: GPL-2.0-or-later](https://img.shields.io/badge/licence-GPL--2.0--or--later-blue)](LICENSE)
 ![PHP 8.5+](https://img.shields.io/badge/PHP-8.5%2B-777bb4)

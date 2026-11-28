@@ -131,6 +131,7 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-542 · The visual tests' pick waits for its answer](#d-542--the-visual-tests-pick-waits-for-its-answer--2026-11-27)
 - [D-543 · The focus test waits out the pick's crossing, and #178 asks whether a tap in a crossing is lost](#d-543--the-focus-test-waits-out-the-picks-crossing-and-178-asks-whether-a-tap-in-a-crossing-is-lost--2026-11-27)
 - [D-544 · The integration and browser legs get 80 minutes](#d-544--the-integration-and-browser-legs-get-80-minutes--2026-11-27)
+- [D-545 · The supply chain: the SBOMs and CodeQL were already in place, and the Scorecard is added](#d-545--the-supply-chain-the-sboms-and-codeql-were-already-in-place-and-the-scorecard-is-added--2026-11-27)
 - [D-550 · The browser tests' lock is taken only from a dead holder, and cleared in place under a clearer's lock](#d-550--the-browser-tests-lock-is-taken-only-from-a-dead-holder-and-cleared-in-place-under-a-clearers-lock--2026-11-27)
 - [D-564 · The ten milestone 13 branches all landed, and their archives are deleted](#d-564--the-ten-milestone-13-branches-all-landed-and-their-archives-are-deleted--2026-11-27)
 - [D-565 · CI tries a wp-env start again when a download fails, and caches nothing](#d-565--ci-tries-a-wp-env-start-again-when-a-download-fails-and-caches-nothing--2026-11-27)
@@ -7875,6 +7876,25 @@ The same run's other firefox-phone failure was #93's ready mark, its third sight
 CI run 46063991563 on #173: "Plugin Check, the zip, browser (oldest)" was cancelled at its 60-minute limit, with 704 of its 804 browser tests run and none failed. The same job took 44 and 55 minutes on the two runs before it. Milestone 14's 3D tests made the chromium-desktop and webkit-phone leg longer, and a slow runner took it past the limit. This is D-107 and D-188 again.
 
 **Decision:** the `integration` matrix's legs get 80 minutes. That is their longest time so far plus room for a slow runner. The limit stops a hung job, and no floor moves. The legs' length is for #179's caching and M15's pipeline work to bring down.
+
+**Status:** Accepted.
+
+### D-545 · The supply chain: the SBOMs and CodeQL were already in place, and the Scorecard is added · 2026-11-27
+
+Issue #169 (approved by Zach on 26 November) asked for three things. Each was checked against what runs now:
+
+- **The SBOM:** already done. `release.yml` writes CycloneDX SBOMs for Composer and npm, of what the zip ships (D-003, D-030), and attaches them to each release, 1.4.0's included. CI's release dry run makes them on every pull request.
+- **CodeQL:** already on, through code scanning's default setup (configured 26 November). It covers `actions` and `javascript-typescript`, with the default query suite, on each push and pull request to `main` and weekly; 1.4.0's analyses on 27 November found 0 alerts. Default setup is GitHub's own recommendation where no custom queries or build are needed, so no workflow file is added. CodeQL has no PHP; PHPStan at levels 9 and 10, the gates and Plugin Check cover it.
+- **The Scorecard:** `.github/workflows/scorecard.yml`, from the OpenSSF's template. It runs weekly (Mondays, 06:17 UTC), on each push to `main` and when the branch's protection changes. It publishes its result for the README's badge and uploads its SARIF to code scanning.
+  - Its permissions are the job's alone, each with its reason; the workflow's own are `{}`.
+  - Its actions are pinned to commit SHAs: `ossf/scorecard-action` v2.6.0 (19 November) and `github/codeql-action/upload-sarif` v4.39.4 (20 November). v4.39.5 was three days old, short of D-040's week.
+  - actionlint and zizmor (`tools/workflow-lint.sh`) report nothing.
+
+**Allowed by Zach:** the repository allows GitHub's own actions and named others (Settings > Actions > General). That list is a security setting, so it was his to change. He added `ossf/scorecard-action@*` on 27 November, checked through the API beside `gitleaks/gitleaks-action@*`, `ramsey/composer-install@*` and `shivammathur/setup-php@*`.
+
+Gate 9 is unchanged: the new workflow holds no secret, and `release.yml` is untouched.
+
+Generic-pattern secret scanning stays off. GitHub offers it only on organisation repositories with Secret Protection, and gitleaks in CI already scans every push and pull request for generic secrets.
 
 **Status:** Accepted.
 
