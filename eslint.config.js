@@ -21,6 +21,25 @@ module.exports = [
 		},
 	},
 	{
+		// The admin kit (M15, docs/ADMIN-KIT.md) is kept apart from the builder's code, so the agency's other plugins
+		// can copy it: it imports WordPress's packages and its own modules, nothing of the builder's or the screens'.
+		files: [ 'assets/src/admin/form/**/*.ts' ],
+		rules: {
+			'no-restricted-imports': [
+				'error',
+				{
+					patterns: [
+						{
+							group: [ '../*', '!./*' ],
+							message:
+								'The admin kit imports only its own modules and WordPress packages (docs/ADMIN-KIT.md).',
+						},
+					],
+				},
+			],
+		},
+	},
+	{
 		// Command-line scripts report on the console.
 		files: [ 'tools/*.mjs' ],
 		rules: { 'no-console': 'off' },

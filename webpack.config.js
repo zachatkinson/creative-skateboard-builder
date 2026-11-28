@@ -24,6 +24,14 @@ const ADMIN = {
 		__dirname,
 		'assets/src/admin/build-tab.ts'
 	),
+	// M15's screens, one entry each, so no screen's lane edits this file.
+	'admin/settings': path.resolve( __dirname, 'assets/src/admin/settings.ts' ),
+	'admin/import': path.resolve( __dirname, 'assets/src/admin/import.ts' ),
+	'admin/check': path.resolve( __dirname, 'assets/src/admin/check.ts' ),
+	'admin/spec-tables': path.resolve(
+		__dirname,
+		'assets/src/admin/spec-tables.ts'
+	),
 };
 
 // Asked for the blocks' scripts only once there is a block: with none, wp-scripts warns that it found no entry.
@@ -33,6 +41,25 @@ const blocks =
 module.exports = [
 	{
 		...scripts,
+		optimization: {
+			...scripts.optimization,
+			splitChunks: {
+				...scripts.optimization.splitChunks,
+				cacheGroups: {
+					...scripts.optimization.splitChunks.cacheGroups,
+					// The admin kit's styles (M15): one stylesheet every screen shares, build/admin/kit.css, with its
+					// right-to-left copy, rather than one named after whichever screen came first.
+					kit: {
+						type: 'css/mini-extract',
+						test: /[\\/]admin[\\/]form[\\/]style\.css$/,
+						chunks: 'all',
+						enforce: true,
+						priority: 10,
+						name: 'admin/kit',
+					},
+				},
+			},
+		},
 		entry: async () => ( {
 			...( blocks ? await scripts.entry() : {} ),
 			...ADMIN,

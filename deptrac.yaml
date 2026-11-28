@@ -38,7 +38,13 @@ deptrac:
     - name: Presentation
       collectors:
         - type: classLike
-          value: ^CreativeBranding\\SkateboardBuilder\\(Hooks|Rest|Abilities|Cli|Block|Front|Cart|Order|Admin|Privacy|Health|Updates)\\
+          value: ^CreativeBranding\\SkateboardBuilder\\(Hooks|Rest|Abilities|Cli|Block|Front|Cart|Order|Admin(?!\\Form\\)|Privacy|Health|Updates)\\
+    # The admin kit (M15, docs/ADMIN-KIT.md): kept apart from the builder's code, so the agency's other plugins can
+    # copy it. It may use WordPress and nothing of the builder's.
+    - name: AdminKit
+      collectors:
+        - type: classLike
+          value: ^CreativeBranding\\SkateboardBuilder\\Admin\\Form\\
     - name: Core
       collectors:
         - type: classLike
@@ -72,7 +78,10 @@ deptrac:
       - WordPress
     Support:
       - WordPress
+    AdminKit:
+      - WordPress
     Presentation:
+      - AdminKit
       - Domain
       - Port
       - Service
@@ -89,5 +98,6 @@ deptrac:
       - Install
       - Support
       - Presentation
+      - AdminKit
       - WordPress
     WordPress: []

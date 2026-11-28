@@ -144,6 +144,7 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-568 · The 3D deck's graphic and grip read the right way round](#d-568--the-3d-decks-graphic-and-grip-read-the-right-way-round--2026-11-27)
 - [D-569 · The ARM runner trial: CI's static and JavaScript checks again on ubuntu-26.04-arm, blocking nothing](#d-569--the-arm-runner-trial-cis-static-and-javascript-checks-again-on-ubuntu-2604-arm-blocking-nothing--2026-11-27)
 - [D-570 · A push's full browser step splits across two lanes: chromium-phone in the other lane's checkout](#d-570--a-pushs-full-browser-step-splits-across-two-lanes-chromium-phone-in-the-other-lanes-checkout--2026-11-27)
+- [D-571 · The admin kit's mount: the server's form stays the page, and DataForm stands in front of it](#d-571--the-admin-kits-mount-the-servers-form-stays-the-page-and-dataform-stands-in-front-of-it--2026-11-27)
 
 ### Kits and their settings
 
@@ -8220,5 +8221,37 @@ A lane serves its own checkout's code (wp-env names a site by its config's path,
 - a usage error for `--split` without its lane and checkout.
 
 The halves themselves are checked by their first real run, before M15's next push. Its times are added here.
+
+**Status:** Accepted.
+
+### D-571 · The admin kit's mount: the server's form stays the page, and DataForm stands in front of it · 2026-11-27
+
+**Context.** M15's principle 1: every screen works with no script, and posts what it always did, through the same nonce and the same checks. The admin kit is what each of the six screens is built on (docs/ADMIN-KIT.md), so its contract is set once, here, and tested on a page of its own before any screen uses it.
+
+**Decision.** A screen prints its server form between `Mount::open( $form )` and `Mount::close()`. The form's description rides beside the controls as JSON (`JSON_HEX_TAG`, so no field's words end the script early). The script:
+
+- draws DataForm 22 in a box of its own before the server's controls, and hides them; they still post;
+- writes each edit into the server's control of the field's input name, with a bubbling `change` (WooCommerce's Settings and variations listen for one);
+- turns off the browser's own validation while it is mounted, so the server decides;
+- gives each refused field the server's message until that field is edited.
+
+What DataForm 22 does, found while building it (`node_modules/@wordpress/dataviews` 22.0.0):
+
+- **Validity nests under cards.** A field in a card is read as `validity[card].children[field]` (`build-module/components/dataform-layouts/card/index.mjs:56`, `data-form-layout.mjs:36`), not by the field's id. `validityOf()` nests it.
+- **A message waits for a touch.** `@wordpress/ui`'s `ControlWithError` shows a message once the field is left, or on an `invalid` event (`form/primitives/control-with-error/control-with-error.mjs:52-58`). A refusal that comes with the page would wait unseen, so `reveal()` sends each refused control an `invalid` of the script's own once DataForm has set its message, as DataForm's own `useRevealValidity` does (`hooks/use-reveal-validity.mjs`). An event the script makes moves no focus.
+- **A number field clamps to its limits.** Typing 99 into a field whose hint says 30 at most posts 30. The limits are the server's too, so the value posted is one the server takes; a rule only the server knows (one field's value against another's) still comes back as a refusal.
+
+The kit's stylesheet is one file every screen shares, `build/admin/kit.css`, with its right-to-left copy. It is imported through `assets/src/admin/form/style.css`, since the package declares no side effects and webpack drops an import of its own stylesheet, and named by a cache group of its own (`webpack.config.js`). Each screen has an entry from the start, so no screen's lane edits that file. ESLint keeps the kit from importing anything of the builder's or the screens'.
+
+Each screen's script is about 490 kB before compression, DataViews in it, and WP-CLI's JavaScript parser ran out of its 128 MB on them in `composer i18n:check`. They will hold the plugin's strings, so they are not left out as `build/builder/three.js` is (D-490). `i18n:pot` and `i18n:check` run `wp i18n make-pot` with PHP's memory limit at 1 GB instead (`php -d memory_limit=1G /usr/local/bin/wp`, the wp-env CLI's phar), in about six seconds. DataViews' own strings are WordPress's, in its `default` domain, and stay out of the plugin's POT.
+
+**Tests.**
+
+- `tests/Unit/Admin/Form/FormTest.php` covers the description.
+- `tests/Integration/AdminFormMountTest.php` covers the markup, a `</script>` in a help text included.
+- `tests/js/admin-form-*.test.ts` cover the reading, the writing and the mount.
+- `tests/e2e/admin-kit.spec.ts` runs on a fixture page (`tests/e2e/mu-plugins/cbuild-e2e-admin-kit.php`): an edit saved through the kit, the server's refusal named on its field until it is edited, a field shown only while its condition holds, and the server form alone with no script, axe-clean.
+
+A deliberate break, the reveal taken out, failed the refusal's test at "Offering assembly needs at least one day." not found.
 
 **Status:** Accepted.

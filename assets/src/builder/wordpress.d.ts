@@ -66,6 +66,15 @@ declare module '@wordpress/element' {
 		deps: unknown[]
 	): void;
 	export const Fragment: unknown;
+	/**
+	 * A React root in an element, for the admin kit's DataForm (M15, assets/src/admin/form/draw.ts).
+	 *
+	 * @param container The element.
+	 */
+	export function createRoot( container: Element ): {
+		render: ( element: unknown ) => void;
+		unmount: () => void;
+	};
 }
 declare module '@wordpress/block-editor' {
 	export const InspectorControls: unknown;
